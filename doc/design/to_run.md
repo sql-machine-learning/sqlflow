@@ -1,178 +1,174 @@
-# To Run Statement
+# SQLFlow Syntax Extension: `TO RUN`
 
-## The Problem
 
-SQLFlow extends the SQL syntax and can describe an end-to-end machine learning pipeline. Data transformation is an important part in the entire pipeline. Currently we have the following two options for data transformation:
+## Data Transformation
 
-- SQL.
-- COLUMN clause for per data instance transform. The transform logic is saved into the model.
+As the purpose of SQLFlow is to extend SQL syntax for end-to-end
+machine learning, we have to consider *data transformation*.  Usually,
+there are two kinds of data transformations:
 
-But that's not enough. It's a common case that the transformation is not per data instance which COLUMN clause is not suitable for. And we may need write very complex SQL or even cannot use SQL to express the transfomration logic. Let's take `extract_features` from [tsfresh package](https://tsfresh.readthedocs.io/en/latest/api/tsfresh.feature_extraction.html#module-tsfresh.feature_extraction.extraction) for example. It will preprocess the time series data, calculate statistical values using various analysis functions and parameters, and then generate tens or hunderds of features. [Convert the time series data of sliding window to rows](https://github.com/sql-machine-learning/sqlflow/issues/2238) is also a typical scenario.
+1. *pre-processing*, which happens before the training stage. Examples
+   include joining a feature lookup table with the training data
+   table.
+1. *in-train loop transformation*, which happens in the training loop
+   for each data instance.
 
-We can express the data transform logic using Python, leverage many mature python packages and encapsulate it into a reusable function. And then we propose to add the `TO RUN` clause in SQLFlow to call it.
+The in-train loop transformation differs from the pre-processing
+primarily in that they are part of the trained models and used in
+predictions.
+
+SQLFlow users can describe the in-train loop transformation using the
+`COLUMN` clause in the `TO TRAIN`-clause, and they can write standard
+statements like `SELECT .. INTO new_table` to pre-process data.
+
+This design is about pre-processing that we cannot express using
+standard SQL statements.
+
+
+## The Challenge
+
+SQL is extensible and thus powerful.  Most DBMS support user-defined
+functions (UDFs).  The SELECT statement applies UDFs and built-in
+functions to each row of a table/view.  However, some pre-processing
+transformations are not row-wise.  An example is *sliding-window*.
+
+A [user told
+us](https://github.com/sql-machine-learning/sqlflow/issues/2238) that
+he wants to extract temporal features from time-series data by calling
+the well-known Python package
+[`tsfresh`](https://tsfresh.readthedocs.io), which runs a
+sliding-window over the time-series data and convert each step into a
+new row.
+
+This requirement intrigues us to support a general way to call
+arbitrary programs from SQL, hence the idea of the `TO RUN` clause.
+
 
 ## Syntax Extension
 
-```SQL
-SELECT * FROM source_table
-TO RUN a_data_scientist/maxcompute_functions:1.0/my_func.data_preprocessor.a_python_func
-WITH param_a = value_a,
-     param_b = value_b
-INTO result_table
+The subject to run is a program.  A program needs versioning and
+releasing.  As always, we assume Docker images are released form.
+Therefore, the user needs to provide a Docker image as the subject of
+the `TO RUN` clause.  The SQLFlow compiler translates the TO RUN
+statement into a Tekton step that runs this Docker image.
+
+```sql
+SELECT * FROM source_table ORDER BY creation_date
+TO RUN 
+  a_data_scientist/extract_ts_features:1.0
+CMD 
+  "--verbose",
+  "--window_width=120"
+  "output_table_name";
 ```
 
-The SQLFlow statement above will call the python function `a_python_func` from the file `/run/my_func/data_preprocessor.py` inside the docker image `a_data_scientist/maxcompute_functions:1.0`. The attributes in the `WITH` clause will be passed to the python function as parameters.
+In this example, the entrypoint program is likely written in Python so
+it can call the `tsfresh` Python package.  The CMD clause provides
+command-line options to the entrypoint program.
 
-## Challenges
 
-- TO RUN can execute functions in Kubernetes and MaxCompute.
-- TO RUN can execute functions in both a single process and a distributed cluster.
-- TO RUN can execute functions built upon various data computing frameworks such as [Dask](https://github.com/dask/dask), [Mars](https://github.com/mars-project/mars), [Ray](https://github.com/ray-project/ray) and so on.
+### The SELECT Prefix
 
-## Design
+As the `TO RUN` clause can run any program in the Docker image, it is
+not necessary to have the SELECT statement as a prefix.  Instead, we
+can change the above syntax design to make the SELECT prefix a
+command-line option to the entrypoint program, which then calls the
+DBMS API to execute it.
 
-### Address the challenges
-
-The semantics of `TO RUN a_data_scientist/maxcompute_functions:1.0/my_func.data_preprocessor.a_python_func` is that `a_python_func` will be executed in a docker container for Kubernetes or a PyODPS node for MaxCompute. The implementation of `a_python_func` is fully customized by users. Because the execution environments for `a_python_func` are different between Kubernetes and MaxCompute, there are some differences considering these three challenges above.
-
-Kubernetes
-
-- Execution environment  
-  `a_python_func` is executed inside the function image `a_data_scientist/maxcompute_functions:1.0`. We can customized this image at the `docker build` stage and make sure that all the dependencies `a_python_func` need are already installed in the image.
-
-- Single process execution  
-  User writes the data transform process using pandas, numpy, tsfresh and so on inside `a_python_func`.
-
-- Distributed cluster execution  
-  User can install Dask/Mars/Ray while building the docker image. Inside the implementation of `a_python_func`, we can create a Dask/Mars/Ray cluster, build a computing graph and submit the distribution execution using the API from these packages.
-
-MaxCompute
-
-- Execution environment  
-  The packages of PyODPS node are already pre-installed and user cannot customize it. `a_python_func` can only use these pre-installed python packages.
-
-- Single process execution
-  Since PyODPS node cannot guarantee it contains all the packages we need such as `tsfresh`, `a_python_func` create a mars cluster containing only one worker and tell this worker to execute another function `another_python_func` to do the data transformation via [Mars remote API](https://github.com/mars-project/mars/issues/1227). The cluster uses our function image `a_data_scientist/maxcompute_functions:1.0`, `another_python_func` and its dependencies are already installed while building this image.
-  
-- Distributed cluster execution  
-  The PyODPS node only installed Mars package, but not Dask and Ray. So we can create a cluster, build the computing graph and submit the distributed execution only using Mars API inside `a_python_func`.
-
-### How to build TO RUN function
-
-#### Kubernetes
-
-```TXT
--- my_func
----- data_preprocessor.py
----- utils.py (optional)
--- Dockerfile
+```sql
+TO RUN 
+  a_data_scientist/extract_ts_features:1.0
+CMD 
+  "SELECT * FROM source_table ORDER BY creation_date"
+  "--verbose",
+  "--window_width=120"
+  "output_table_name";
 ```
 
-`a_python_func` is implemented in `data_preprocessor.py`. `docker build -f Dockerfile .` will install the dependency and copy `my_func` folder into `/run/my_func` in the image. `utils.py` contains some helper utils to be used in `data_preprocessor.py`.
+However, we still prefer the SELECT statement as a prefix, but the
+SQLFlow compiler doesn't run it as a step container; instead, the
+compiler passes the SELECT statement to the entrypoint as part of the
+context.
 
-#### MaxCompute
 
-```TXT
--- my_func
----- data_preprocessor.py
----- utils.py (optional)
--- Dockerfile
+## The Context
+
+In the above example, the entrypoint program takes three command-line
+options: `--verbose`, `--window_width=120`, and `output_table_name`.
+Also, the program needs context information, including the DBMS
+endpoints, credential information to access the data, and the SELECT
+prefix.
+
+The SQLFlow compiler has to pass context in the form of environment
+variables other than command-line options because some command-line
+parsing frameworks terminates the program seeing unknown options.
+When SQLFlow upgrades and introduces new options, the entrypoint
+program would fail.
+
+The SQLFlow server cannot pass in all context information in a single
+environment variable, which has a limit of value size.  Instead, it
+sets environment variables prefixed with `SQLFLOW_`.
+
+- `SQLFLOW_DB`: the type of DBMS.
+- [To-be-complete]
+
+
+## Run a Python Function
+
+Some contributors might want to simply provide a Python function call
+to the `TO RUN` clauses.  In such cases, we need a standard entrypoint
+program that evaluates the Python function call.
+
+Because Python functions have dependencies, the author needs to
+provide a Dockerfile. They can use a standard base image that contains
+the standard entrypoint program.  The base image could be defined as
+follows to include the Python function call evaluator.
+
+```dockerfile
+FROM ubuntu:18.04
+COPY . /src
+ENV PYTHONPATH /src/python_eval.py
+ENTRYPOINT ["/src/python_eval.py"]
 ```
 
-Build a computing graph using Mars API and submit into mars cluster. `data_preprocessor.py` contains only one function `a_python_func`.
+An over-simplified implementation of `python_eval.py` evaluates its
+command-line options one-by-one.
 
-```Python
-def a_python_func(param_a, param_b):
-    import mars.dataframe as md
-    import mars.tensor as mt
-
-    # Create a mars cluster containing 2 workers
-    client = o.create_mars_cluster(2, 4, 16, min_worker_num=1)
-    result = md.DataFrame(mt.random.rand(1000, 3)).sum().execute()
-    client.stop_server()
+```python
+import sys
+if __name__ == "__main__":
+    for i, arg in enumerate(sys.argv):
+        if i > 0:
+            eval(arg)
 ```
 
-Tell the worker to execute the data transformation the dependency of which is not included in PyODPS node but in function image. `data_preprocessor.py` contains two functions `a_python_func` (execute in PyODPS node) and `another_python_func` (execute in the mars worker pod).
+Given the above base Docker image, say, `sqlflow/run:python`,
+contributors can derive their images by adding their Python code.
 
-```Python
-def a_python_func(param_a, param_b):
-    import mars.remote as mr
-
-    def func():
-        import sys
-        sys.path.append('/run/my_func')
-
-        from data_preprocessor import another_python_func
-        another_python_func(param_a, param_b)
-
-    # Create a mars cluster containing 1 worker
-    client = o.create_mars_cluster(1, 4, 16)
-    # Use mars remote api to tell the worker execute func.
-    mr.spawn(func, args=()).execute()
-
-    client.stop_server()
-
-
-def another_python_func(param_a, param_b):
-    import tsfresh
-
-    # Do data transformation using the packages which
-    # are not included in PyODPS node but included in
-    # the function image.
+```dockerfile
+FROM sqlflow/run:python 
+COPY . /opt/python
+ENV PYTHONPATH /opt/python
 ```
 
-#### Function Standards
+Suppose that the above Dockerfile builds into image
+`a_data_scientist/my_python_zoo`, SQLFlow users can run it with the
+following statement.
 
-The parameters of the python function for `TO RUN` contain two parts:
-
-1. Context from the SQLFlow statement, it contains the following required fields.
-
-- db_type: mysql/hive/maxcompute, from sqlflowserver configuration.
-- input_table: the table name from the clause `SELECT * FROM input_table`.
-- output_table: the table name from the clause `INTO output_table`.
-- image_name: the docker image name from the clause `TO RUN image_name/func_name`.
-
-2. Attributes from `WITH` clause.
-
-Please check the following example. The first four parameters are from the context and param_1 ~ param_n are from `WITH` Attributes.
-
-```Python
-def a_python_func(
-    db_type,
-    input_table,
-    output_table,
-    image_name,
-    param_1,
-    param_2,
-    ...,
-    param_n
-):
-    pass
+```sql
+SELECT ... 
+TO RUN
+  a_data_scientist/my_python_zoo
+CMD
+  "a_python_func(parameters)",
+  "another_python_func(params)";
 ```
 
-### How to invoke TO RUN function
 
-#### Kubernetes
+## Distributed Data Pre-processing
 
-```BASH
-docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.k8s --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table itable --output_table otable --image_name a_data_scientist/functions:1.0 --db_type hive
-```
-
-What `sqlflow.run.submitter.k8s` does:
-
-1. Load the python module `my_func.data_preprocessor` and get the function object `a_python_func`.
-2. Invoke the function `a_python_func` with the parameters in the command line above.
-
-#### MaxCompute
-
-```BASH
-docker run a_data_scientist/functions:1.0 python sqlflow.run.submitter.alisa --func_name my_func.data_preprocessor.a_python_func --param_a value_a --param_b value_b --input_table in_table --output_table out_table --image_name a_data_scientist/functions:1.0 --db_type maxcompute
-```
-
-What `sqlflow.run.submitter.alisa` does:
-
-1. Load the python module `my_func.data_preprocessor` and get the function object `a_python_func`.
-2. Get source code of `a_python_func` using inspect.getsource(a_python_func).
-3. Generate a line of code to invoke `a_python_func` with the parameters from the command line above and append it to the code from step 2.
-4. Submit a PyODPS task using alisa, the generated code is a parameter of the web request to alisa.
-5. Wait for the PyODPS task done.
+The above abstraction enables TO RUN to execute a Python function
+locally in a Tekton step container.  This function can call Kubernetes
+API to start some jobs.  For example, it can launch a Dask job on
+Kubernetes to have multiple workers running the same Python function
+to pre-process the data in parallel.
