@@ -50,7 +50,7 @@ func imageExistsOnRegistry(imageName, tag string) bool {
 	return true
 }
 
-func buildAndPushImage(dir, name, tag string) error {
+func buildAndPushImage(dir, name, tag string, dryrun bool) error {
 	// for public model zoo server, the Docker image name should not contain url prefix like
 	// hub.docker.com/group/my_model_image
 	if strings.Contains(name, ".") {
@@ -74,6 +74,12 @@ func buildAndPushImage(dir, name, tag string) error {
 	if err != nil {
 		return fmt.Errorf("run docker build err: %v, stderr: %s", err, cmdStderr.String())
 	}
+
+	if dryrun {
+		// skip push to registry when dryrun enabled.
+		return nil
+	}
+
 	dockerUsername := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER")
 	dockerPasswd := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS")
 	if dockerUsername == "" || dockerPasswd == "" {

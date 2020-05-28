@@ -199,7 +199,12 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	}
 
 	// do Docker image build and push
-	if err := buildAndPushImage("./modelrepo", reqName, reqTag); err != nil {
+	dryrun := false
+	if os.Getenv("SQLFLOW_TEST_DB") != "" {
+		// do not push images when testing on CI
+		dryrun = true
+	}
+	if err := buildAndPushImage("./modelrepo", reqName, reqTag, dryrun); err != nil {
 		return err
 	}
 

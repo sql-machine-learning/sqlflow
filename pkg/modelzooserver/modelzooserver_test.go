@@ -31,10 +31,6 @@ import (
 )
 
 func startServer() {
-	// env DOCKER_USERNAME is seted on travis-ci, use it for test model zoo pushing.
-	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER", os.Getenv("DOCKER_USERNAME"))
-	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS", os.Getenv("DOCKER_PASSWORD"))
-
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 50055))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -91,10 +87,6 @@ func mockTmpModelRepo() (string, error) {
 }
 
 func TestModelZooServer(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
-		t.Skip("only test build and push to model zoo when SQLFLOW_TEST_DB=mysql")
-	}
-
 	a := assert.New(t)
 	go startServer()
 	server.WaitPortReady("localhost:50055", 0)
