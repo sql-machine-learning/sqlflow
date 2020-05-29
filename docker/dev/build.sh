@@ -71,6 +71,8 @@ if [[ ! -d models ]]; then
     git clone https://github.com/sql-machine-learning/models
 fi
 cd models
+git checkout master # The residual local repo might not be on a branch.
+git pull  # Pull the most recent commits, which might include the one we want.
 git checkout 07a75db
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
