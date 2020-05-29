@@ -116,7 +116,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	sqls := rewriteStatementsWithHints(stmts, session.GetSubmitter())
+	sqls := RewriteStatementsWithHints(stmts, db.DriverName)
 	for _, sql := range sqls {
 		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session); err != nil {
 			return err
@@ -176,8 +176,8 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	return r.Execute(submitter)
 }
 
-// More precisely, use database
-func rewriteStatementsWithHints(stmts []*parser.SQLFlowStmt, dialect string) []*parser.SQLFlowStmt {
+// RewriteStatementsWithHints comines hints into stardard SQL
+func RewriteStatementsWithHints(stmts []*parser.SQLFlowStmt, dialect string) []*parser.SQLFlowStmt {
 	hints, sqls := splitHints(stmts, dialect)
 	if len(hints) > 0 {
 		for _, sql := range sqls {
