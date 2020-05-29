@@ -42,11 +42,19 @@ programs from SQL, hence the idea of the `TO RUN` clause.
 
 ## Syntax Extension
 
+We want the syntax extension support to run any program written in any langauge,
+and we also want it easy to run Python functions in a way that best fit the
+current SQLFlow deployment.  Let us dive deep into the no-compromise design.
+
+### Run Any Program
+
 The subject to run is a program.  A program needs versioning and releasing.  As
 always, we assume Docker images are released form.  Therefore, the user needs to
 provide a Docker image as the subject of the `TO RUN` clause.  The SQLFlow
 compiler translates the TO RUN statement into a Tekton step that runs this
-Docker image.
+Docker image, or more specificially, the entrypoint program of the Docker image.
+
+Consider the following example.
 
 ```sql
 SELECT * FROM source_table ORDER BY creation_date
@@ -58,9 +66,52 @@ CMD
 INTO output_table_name;
 ```
 
-In this example, the entrypoint program is likely written in Python so it can
-call the `tsfresh` Python package.  The CMD clause provides command-line options
-to the entrypoint program.
+The SQLFlow compiler translates it into a Tekton step that
+executes the Docker image `a_data_scientist/extract_ts_features:1.0` with 
+command-line options 
+
+- `"--verbose"`
+- `"--window_width=120"`, 
+
+and environment varaibles 
+
+- `SQLFLOW_TO_RUN_PATH` unset, 
+- `SQLFLOW_TO_RUN_SELECT=SELECT * FROM source_table ORDER BY creation_date`
+- `SQLFLOW_TO_RUN_INTO=output_table_name`
+
+We will talk more about the command-line options and environment variables
+later in this document.
+
+
+### Run Python Functions
+
+In our syntax extension of `TO TRAIN`, users specify a model definition by a
+Docker image and the full Python class/function name.  For example, 
+`a_data_scientist/extract_ts_features:1.0/package.module.MyModel`.  Consider 
+that SQLFlow is a machine learning tool and many users have machine learning
+background, which implies knowing Python somehow, we want our design especially
+friendly to Python users.  Thus, we hope that if a user writes the following
+statement
+
+```sql
+SELECT * FROM source_table ORDER BY creation_date
+TO RUN 
+  a_data_scientist/extract_ts_features:1.0/package.module.a_python_func
+WITH
+  param1="hello world!"
+  param2=[1,2,5,10]
+INTO output_table_name;
+```
+
+The SQLFlow compiler generates a Tekton step that runs the Docker image
+`a_data_scientist/extract_ts_features:1.0` with teh following environment
+variables
+
+- `SQLFLOW_TO_RUN_PATH=/package.module.a_python_func`
+- `SQLFLOW_TO_RUN_SELECT=SELECT * FROM source_table ORDER BY creation_date`
+- `SQLFLOW_TO_RUN_INTO=output_table_name`
+- `SQLFLOW_TO_RUN_PARAM_param1="hello world!"`
+- `SQLFLOW_TO_RUN_PARAM_param2=[1,2,5,10]`
 
 
 ### The SELECT Prefix
