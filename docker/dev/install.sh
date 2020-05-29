@@ -15,14 +15,14 @@
 
 set -e
 
-echo "Use Ubuntu apt-get source $APT_MIRROR ..."
-cat > /etc/apt/sources.list <<EOF
-deb $APT_MIRROR bionic main restricted universe multiverse
-deb $APT_MIRROR bionic-security main restricted universe multiverse
-deb $APT_MIRROR bionic-updates main restricted universe multiverse
-deb $APT_MIRROR bionic-proposed main restricted universe multiverse
-deb $APT_MIRROR bionic-backports main restricted universe multiverse
-EOF
+# echo "Use Ubuntu apt-get source $APT_MIRROR ..."
+# cat > /etc/apt/sources.list <<EOF
+# deb $APT_MIRROR bionic main restricted universe multiverse
+# deb $APT_MIRROR bionic-security main restricted universe multiverse
+# deb $APT_MIRROR bionic-updates main restricted universe multiverse
+# deb $APT_MIRROR bionic-proposed main restricted universe multiverse
+# deb $APT_MIRROR bionic-backports main restricted universe multiverse
+# EOF
 apt-get -qq update
 
 
