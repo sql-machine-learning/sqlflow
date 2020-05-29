@@ -22,9 +22,17 @@ spec:
     - -c
     - 'export SQLFLOW_DATASOURCE=mysql://root:root@tcp\(${MY_POD_IP}:3306\)/?maxAllowedPacket=0 && jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root'
     env:
-    - name: SQLFLOW_SERVER      # specify SQLFlow gRPC server endpoint
+    # Tell the Jupyter Notebook magic command the SQLFlow gRPC server address.
+    - name: SQLFLOW_SERVER
       value: "localhost:50051"
-    - name: MY_POD_IP           # package the database connection string, that workflow step can access the MySQL server.
+    # When Kubernetes starts a container, it fills in environment variables 
+    # before it runs the command.  Here Kubernetes fills in MY_POD_IP with the
+    # IP address of the pod, which contains the MySQL server container.  The
+    # above command use MY_POD_IP to construct SQLFLOW_DATASOURCE, which, will
+    # be retrieved by the Jupyter Notebook magic command and be sent to the
+    # SQLFlow gRPC server in each request.  The SQLFlow server compiles the value
+    # into each step container, so these steps knows the MySQL server IP.
+    - name: MY_POD_IP
       valueFrom:
         fieldRef:
           fieldPath: status.podIP
@@ -40,6 +48,10 @@ spec:
       value: "3306"
     readinessProbe:
       exec:
+        # The entrypoing script of sqlflow/sqlflow:mysql populates datasets into the
+        # MySQL server and then touch a file /work/mysql-initd to indicate the
+        # completion of population.  Only if the file is created, the cat command
+        # exits with 0, and indicates the readiness of the MySQL server.
         command:
         - cat
         - /work/mysql-inited
