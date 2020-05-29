@@ -9,8 +9,6 @@ spec:
     env:
     - name: SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT
       value: "http://localhost:8001"
-    - name: SQLFLOW_WORKFLOW_STEP_IMAGE
-      value: sqlflow:server
     command:
       - sqlflowserver
       - --argo-mode
@@ -24,9 +22,9 @@ spec:
     - -c
     - 'export SQLFLOW_DATASOURCE=mysql://root:root@tcp\(${MY_POD_IP}:3306\)/?maxAllowedPacket=0 && jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root'
     env:
-    - name: SQLFLOW_SERVER
+    - name: SQLFLOW_SERVER      # specify SQLFlow gRPC server endpoint
       value: "localhost:50051"
-    - name: MY_POD_IP
+    - name: MY_POD_IP           # package the database connection string, that workflow step can access the MySQL server.
       valueFrom:
         fieldRef:
           fieldPath: status.podIP
