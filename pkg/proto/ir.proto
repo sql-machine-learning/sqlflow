@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package proto;
+
+message Statement {
+  // `select` is the query for fetching data. For example,
+  // "SELECT * FROM iris.train;"
+  string select = 2;
+  // `validation_select` is the query for fetching the validation data.
+  // For example, "SELECT * FROM iris.val;".
+  string validation_select = 3;
+  // `model_image` is the name of the model's Docker image, for example, in the
+  // statement "TO TRAIN a_data_scientist/regressors:v0.2/MyDNNRegressor", the
+  // name "a_data_scientist/regressors:v0.2" is a Docker image.
+  string model_image = 4;
+  // `estimator` specifies the estimator type. For example, after parsing
+  // "SELECT ... TRAIN DNNClassifier WITH ...", `estimator` will be
+  // "DNNClassifier".
+  string estimator = 5;
+  // `attributes` is a map of parsed attribute in the WITH Clause. For example,
+  // after parsing "SELECT ... TO TRAIN ... with train.epoch=1000,
+  // model.hidden_units = [10, 10]", the `attributes` will be
+  // {"train.epoch": "1000", "model.hidden_units": "[10, 10]"}
+  map<string, string> attributes = 6;
+  string label = 7;
+  message Columns {
+  // The COLUMN clause will be split into `column`. For example, in the COLUMN
+  // clause "COLUMN NUMERIC(sepal_length), INDICATOR(ID)" will be saved in
+  // `columns` as ["NUMERIC(sepal_length)", "INDICATOR(ID)"]
+    repeated string columns = 1;
+  }
+  // `columns` contain a map of string to `Columns` for multiple COLUMN clauses
+  // like "COLUMN ... FOR deep_feature, COLUMN ... FOR wide_feature". They will
+  // be parsed as {"deep_feature": [...], "wide_feature": [...]}. For single
+  // column clause like "COLUMN ...", "feature_columns" will be used as the
+  // default map key.
+  map<string, Columns> columns = 8;
+  // `model_save` specifies the saved model path in the INTO/USING clause.
+  string model_save = 9;
+  enum Type {
+    RUN = 0;
+    QUERY = 1;
+    TRAIN = 2;
+    PREDICT = 3;
+    EXPLAIN = 4;
+    EVALUATE = 5;
+    OPTIMIZE = 6;
+	SHOW = 7;
+  }
+  Type type = 10;
+  // `target` specifies the table/column to store predict/explain result.
+  // For example: "iris.predict.class"
+  string target = 11;
+  // `trained_model` is used in incremental training (TO TRAIN ... USING `trained_model`)
+  // and have the same format as `model_save`
+  string trained_model = 12;
+  // `original_sql` is the original statement from that this `Statement` is
+  // generated. This can be for diagnostic purpose.
+  string original_sql = 100;
+}
+
+message Program {
+  // `datasource` is the connection string to the database
+  string datasource = 1;
+  // `statements` is a list of `Statement` to be executed as a workflow
+  repeated Statement statements = 2;
+}
