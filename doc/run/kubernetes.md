@@ -20,10 +20,10 @@ Before starting any sections, please [Setup Minikube and Argo](#setup-minikube-a
 1. Access the Argo UI
 
     ``` bash
-    kubectl -n argo port-forward deployment/argo-ui 8001:8001
+    kubectl -n argo port-forward deployment/argo-server 2746:2746
     ```
 
-    Then visit: `http://127.0.0.1:8001`
+    Then visit: `http://127.0.0.1:2746`
 
 ## Install SQLFlow Playground with single-user Mode
 
