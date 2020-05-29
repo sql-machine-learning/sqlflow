@@ -11,6 +11,7 @@ ENV SQLFLOW_PARSER_SERVER_LOADING_PATH="/usr/local/sqlflow/java"
 # latter is in Java, so we need JRE.
 RUN apt-get -qq update \
 	&& apt-get -qq install -y openjdk-8-jre-headless \
+	&& mkdir -p "$SQLFLOW_PARSER_SERVER_LOADING_PATH" \
 	&& mv /build/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" \
 	&& mv /build/sqlflowserver /build/sqlflow /build/step /usr/local/bin/
 
