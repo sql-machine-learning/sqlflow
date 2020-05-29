@@ -1,5 +1,8 @@
 # The CI image needs to build Go and Java tests and run Python tests,
 # so it must contain the bulding tools.
+#
+# NOTE: The docker build context directory must be the root of the source tree.
+# NOTE: To build the release image, SQLFlow must be built into ./build
 FROM sqlflow:dev
 
 # Install dependencies.
@@ -41,11 +44,8 @@ ENV PYTHONPATH=/usr/local/sqlflow/python:$PYTHONPATH
 COPY build /build
 ENV SQLFLOW_PARSER_SERVER_PORT=12300
 ENV SQLFLOW_PARSER_SERVER_LOADING_PATH="/usr/local/sqlflow/java"
-RUN pip install --quiet /build/*.whl \
-        && mv /build/sqlflowserver /build/sqlflow /build/step /usr/local/bin/ \
-        && mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH \
-        && mv /build/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH \
-        && mv /build/tutorial /workspace
+COPY docker/release/install.sh /install.sh
+RUN /install.sh
 WORKDIR /workspace
 
 # Expose SQLFlow gRPC server and Jupyter Notebook server port.
