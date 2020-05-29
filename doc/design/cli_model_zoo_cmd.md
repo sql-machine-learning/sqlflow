@@ -10,14 +10,16 @@ From the user's perspective, the command can be divided into categories like acc
 SQLFlow Command-line Tool.
 
 Usage:
-    sqlflow [options] run [-d <data_source> -e <program> -f <file> -A]
-    sqlflow [options] release modelcoll [--force] <model_dir> <name_version>
-    sqlflow [options] release trained [--force] <model> <version>
-    sqlflow [options] delete modelcoll <name_version>
-    sqlflow [options] delete trained <model> <version>
+    sqlflow [options] run [-d <data_source> -e <program> -f <file>]
+    sqlflow [options] release repo [--force] <model_dir> <name_version>
+    sqlflow [options] release model [--force] <model> <version>
+    sqlflow [options] delete repo <name_version>
+    sqlflow [options] delete model <model> <version>
 
 Options:
-    -c, --cert-file=<file>          certification file to use
+    -v, --version                   print the version and exit
+    -h, --help                      print this screen
+    -c, --cert-file=<file>          cert file to connect SQLFlow or Model Zoo server
     --env-file=<file>               config file in KEY=VAL format
     -s, --sqlflow-server=<addr>     SQLFlow server address and port
     -m, --model-zoo-server=<addr>   Model Zoo server address and port
@@ -26,7 +28,6 @@ Run Options:
     -d, --data-source=<data_source>   data source to operate
     -e, --execute=<program>           execute given program
     -f, --file=<file>                 execute program in file
-    -A, --no-auto-complete            do not auto-complete
 
 Release Options:
     --force                  force overwrite existing model
