@@ -20,6 +20,12 @@ def connect(user, passwd, host, port):
     it makes it reasonable to import mysql.connector in this file, so
     to make it self-complete as a template.
 
+    Args:
+        user: Specifies the MySQL user name.
+        passwd : Specify the MySQL password.
+        host : The host name or IP address.
+        port : Specifies the port number that attempts to connect to the MySQL server.
+
     """
     return connect(user=user, passwd=passwd, host=host, port=port)
 

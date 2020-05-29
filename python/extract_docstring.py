@@ -134,6 +134,8 @@ if __name__ == "__main__":
         "Nadam",
         "RMSprop",
         "SGD",
+        "Momentum",
+        "Nesterov"
     ]
     param_doc.clear()
     for cls in tf_optimizers:
