@@ -57,7 +57,7 @@ func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Log
 	if e != nil {
 		return "", e
 	}
-	sqls := sql.RewriteStatementsWithHints(stmts, db.DriverName)
+	sqls := sql.RewriteStatementsWithHints(stmts, driverName)
 
 	spIRs, e := sql.ResolveSQLProgram(sqls, logger)
 	if e != nil {
