@@ -41,5 +41,5 @@ docker run --rm -it \
 echo "Build sqlflow:ci by loading $TRAVIS_BUILD_DIR/build ..."
 docker build -t sqlflow:ci -f docker/ci/Dockerfile "$TRAVIS_BUILD_DIR"
 
-echo "Build sqlflow:release by loading $TRAVIS_BUILD_DIR/build ..."
-docker build -t sqlflow:release -f docker/release/Dockerfile "$TRAVIS_BUILD_DIR"
+echo "Build sqlflow:server by loading $TRAVIS_BUILD_DIR/build ..."
+docker build -t sqlflow:server -f docker/server/Dockerfile "$TRAVIS_BUILD_DIR"

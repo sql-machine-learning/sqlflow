@@ -72,6 +72,6 @@ echo "docker push sqlflow/sqlflow:mysql"
 docker tag sqlflow:mysql sqlflow/sqlflow:mysql
 docker push sqlflow/sqlflow:mysql
 
-echo "docker push sqlflow/sqlflow:release"
-docker tag sqlflow:release sqlflow/sqlflow:release
-docker push sqlflow/sqlflow:release
+echo "docker push sqlflow/sqlflow:server"
+docker tag sqlflow:server sqlflow/sqlflow:server
+docker push sqlflow/sqlflow:server
