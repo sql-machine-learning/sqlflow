@@ -38,6 +38,10 @@ docker run --rm -it \
        -v "$HOME"/.cache:/root/.cache \
        sqlflow:dev
 
-echo "Build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build ..."
+echo "Build sqlflow:ci by loading $TRAVIS_BUILD_DIR/build ..."
 cd "$TRAVIS_BUILD_DIR"
 docker build -t sqlflow:ci -f docker/ci/Dockerfile .
+
+echo "Build sqlflow:release by loading $TRAVIS_BUILD_DIR/build ..."
+cd "$TRAVIS_BUILD_DIR"
+docker build -t sqlflow:release -f docker/release/Dockerfile .
