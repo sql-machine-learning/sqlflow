@@ -20,7 +20,7 @@ set -e
 # use sqlflow/sqlflow:dev as the cache when building sqlflow:dev on
 # the newly started VM.
 echo "Build the devbox image sqlflow:dev ..."
-cd $TRAVIS_BUILD_DIR/docker/dev
+cd "$TRAVIS_BUILD_DIR"/docker/dev
 if [[ "$(docker images -q sqlflow:dev 2> /dev/null)" == "" ]]; then
     echo "  using sqlflow/sqlflow:dev as the cache image"
     docker pull sqlflow/sqlflow:dev
@@ -30,14 +30,14 @@ else
 fi
 
 echo "Build SQLFlow into $TRAVIS_BUILD_DIR/build using sqlflow:dev ..."
-mkdir -p $TRAVIS_BUILD_DIR/build
+mkdir -p "$TRAVIS_BUILD_DIR"/build
 docker run --rm -it \
-       -v $TRAVIS_BUILD_DIR:/work -w /work \
-       -v $GOPATH:/root/go \
-       -v $HOME/.m2:/root/.m2 \
-       -v $HOME/.cache:/root/.cache \
+       -v "$TRAVIS_BUILD_DIR":/work -w /work \
+       -v "$GOPATH":/root/go \
+       -v "$HOME"/.m2:/root/.m2 \
+       -v "$HOME"/.cache:/root/.cache \
        sqlflow:dev
 
 echo "Build sqlflow:ci byloading $TRAVIS_BUILD_DIR/build ..."
-cd $TRAVIS_BUILD_DIR
-docker build -t sqlflow:ci .
+cd "$TRAVIS_BUILD_DIR"
+docker build -t sqlflow:ci -f docker/ci/Dockerfile .
