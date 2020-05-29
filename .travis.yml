@@ -25,6 +25,9 @@ addons:
     packages:
       - docker-ce
 
+before_install:
+  - bash docker/dev/install.sh
+
 # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
 # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
 # being not up to date: https://github.com/golang/go/issues/15038
@@ -38,97 +41,98 @@ jobs:
   - stage: BuildAndTest
     script:
     - set -e
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:dev
-      pre-commit run -a --show-diff-on-failure
-  - env: SQLFLOW_TEST_DB=mysql
-    script:
-    - set -e
-    # Build MySQL server image including datasets.
-    - cd $TRAVIS_BUILD_DIR
-    - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    # Build sqlflow:dev, SQLFlow, and sqlflow:ci
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    # Run a MySQL server container.
-    - docker run --rm -d -p 13306:3306
-      -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
-    - docker run --rm
-      -v $TRAVIS_BUILD_DIR:/work -w /work
-      --net=host
-      -e SQLFLOW_TEST_DB=mysql
-      -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"
-      sqlflow:ci scripts/test/units.sh
-    - scripts/travis/upload_codecov.sh
-  - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
-    script:
-    - set -e
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker pull sqlflow/gohive:dev
-    - docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
-    - docker run --rm -it --net=container:hive
-      -v $TRAVIS_BUILD_DIR:/work -w /work
-      -v $GOPATH:/root/go
-      sqlflow:ci scripts/test/hive.sh
-  - env: SQLFLOW_TEST_DB=maxcompute
-    script:
-    - set -e
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    # Download minikube and start a Kubernetes cluster.  The credential is 
-    # written into $HOME/.kube/ on the Travis CI VM.
-    - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
-    # Bind mount $HOME/.kube into the container, so that test/maxcompute.sh
-    # running in the container can call kubectl to submit jobs to the minikube
-    # cluster.
-    - docker run --rm --net=host
-      -e SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
-      -e SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
-      -v /var/run/docker.sock:/var/run/docker.sock
-      -v $HOME/.kube:/root/.kube
-      -v /home/$USER/.minikube/:/home/$USER/.minikube/
-      -v $TRAVIS_BUILD_DIR:/work -w /work
-      sqlflow:ci scripts/test/maxcompute.sh
-  - env: SQLFLOW_TEST=java
-    script:
-    - set -e
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    - docker run --rm
-      -v $TRAVIS_BUILD_DIR:/work -w /work
-      sqlflow:ci scripts/test/java.sh
-  - env: SQLFLOW_TEST=workflow
-    script:
-    - set -e
-    - cd $TRAVIS_BUILD_DIR
-    - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    # Download minikube and start a Kubernetes cluster.  The credential is 
-    # written into $HOME/.kube/ on the Travis CI VM.
-    - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
-    # Configure environment to use minikube’s Docker daemon.
-    - eval $(sudo minikube docker-env)
-    # Bind mount $HOME/.kube into the container, so that test/workflow.sh
-    # running in the container can call kubectl to submit jobs to the minikube
-    # cluster.
-    - docker run --rm --net=host
-      -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:ci
-      -v /var/run/docker.sock:/var/run/docker.sock
-      -v $HOME/.kube:/root/.kube
-      -v /home/$USER/.minikube/:/home/$USER/.minikube/
-      -v $TRAVIS_BUILD_DIR:/work -w /work
-      sqlflow:ci scripts/test/workflow.sh
-  - stage: Deploy
-    env: DESC="Deploy macOS client"
-    os: osx
-    script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  - env: DESC="Deploy Linux client"
-    os: linux
-    dist: bionic
-    script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  - env: DESC="Deploy Windows client"
-    os: windows
-    script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  - env: DESC="Deploy server Docker image"
-    script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
+    - pre-commit run -a --show-diff-on-failure
+    - bash docker/dev/build.sh
+    - bash scripts/test/units.sh
+    - bash scripts/travis/upload_codecov.sh
+  # - env: SQLFLOW_TEST_DB=mysql
+  #   script:
+  #   - set -e
+  #   # Build MySQL server image including datasets.
+  #   - cd $TRAVIS_BUILD_DIR
+  #   - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+  #   # Build sqlflow:dev, SQLFlow, and sqlflow:ci
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+  #   # Run a MySQL server container.
+  #   - docker run --rm -d -p 13306:3306
+  #     -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
+  #   - docker run --rm
+  #     -v $TRAVIS_BUILD_DIR:/work -w /work
+  #     --net=host
+  #     -e SQLFLOW_TEST_DB=mysql
+  #     -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"
+  #     sqlflow:ci scripts/test/units.sh
+  #   - scripts/travis/upload_codecov.sh
+  # - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
+  #   script:
+  #   - set -e
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+  #   - docker pull sqlflow/gohive:dev
+  #   - docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
+  #   - docker run --rm -it --net=container:hive
+  #     -v $TRAVIS_BUILD_DIR:/work -w /work
+  #     -v $GOPATH:/root/go
+  #     sqlflow:ci scripts/test/hive.sh
+  # - env: SQLFLOW_TEST_DB=maxcompute
+  #   script:
+  #   - set -e
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+  #   # Download minikube and start a Kubernetes cluster.  The credential is 
+  #   # written into $HOME/.kube/ on the Travis CI VM.
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
+  #   # Bind mount $HOME/.kube into the container, so that test/maxcompute.sh
+  #   # running in the container can call kubectl to submit jobs to the minikube
+  #   # cluster.
+  #   - docker run --rm --net=host
+  #     -e SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
+  #     -e SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
+  #     -v /var/run/docker.sock:/var/run/docker.sock
+  #     -v $HOME/.kube:/root/.kube
+  #     -v /home/$USER/.minikube/:/home/$USER/.minikube/
+  #     -v $TRAVIS_BUILD_DIR:/work -w /work
+  #     sqlflow:ci scripts/test/maxcompute.sh
+  # - env: SQLFLOW_TEST=java
+  #   script:
+  #   - set -e
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+  #   - docker run --rm
+  #     -v $TRAVIS_BUILD_DIR:/work -w /work
+  #     sqlflow:ci scripts/test/java.sh
+  # - env: SQLFLOW_TEST=workflow
+  #   script:
+  #   - set -e
+  #   - cd $TRAVIS_BUILD_DIR
+  #   - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
+  #   # Download minikube and start a Kubernetes cluster.  The credential is 
+  #   # written into $HOME/.kube/ on the Travis CI VM.
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
+  #   # Configure environment to use minikube’s Docker daemon.
+  #   - eval $(sudo minikube docker-env)
+  #   # Bind mount $HOME/.kube into the container, so that test/workflow.sh
+  #   # running in the container can call kubectl to submit jobs to the minikube
+  #   # cluster.
+  #   - docker run --rm --net=host
+  #     -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:ci
+  #     -v /var/run/docker.sock:/var/run/docker.sock
+  #     -v $HOME/.kube:/root/.kube
+  #     -v /home/$USER/.minikube/:/home/$USER/.minikube/
+  #     -v $TRAVIS_BUILD_DIR:/work -w /work
+  #     sqlflow:ci scripts/test/workflow.sh
+  # - stage: Deploy
+  #   env: DESC="Deploy macOS client"
+  #   os: osx
+  #   script:
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+  # - env: DESC="Deploy Linux client"
+  #   os: linux
+  #   dist: bionic
+  #   script:
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+  # - env: DESC="Deploy Windows client"
+  #   os: windows
+  #   script:
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+  # - env: DESC="Deploy server Docker image"
+  #   script:
+  #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
