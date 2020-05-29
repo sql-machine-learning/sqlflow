@@ -28,6 +28,8 @@ func imageExistsOnRegistry(imageName, tag string) bool {
 	var registryPart string
 	registryPart = os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY")
 	imageNamePart = imageName
+	// if the imageName contains domain name like "hub.docker.com/group/my_model",
+	// get the registry and image name from input imageName.
 	if strings.Contains(imageName, ".") {
 		parts := strings.Split(imageName, "/")
 		registryPart = parts[0]

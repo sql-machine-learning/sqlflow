@@ -22,6 +22,5 @@ def import_model_def(estimator_name, namespace):
                 try:
                     namespace[model_name_parts[0]] = __import__(
                         model_name_parts[0])
-                    return model_name_parts[0]
                 except Exception as e:
                     print("failed to import %s: %s" % (model_name_parts[0], e))
