@@ -116,16 +116,16 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	hints, sqls := splitHints(stmts, session.GetSubmitter())
+	sqls := rewriteStatementsWithHints(stmts, session.GetSubmitter())
 	for _, sql := range sqls {
-		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session, hints); err != nil {
+		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *database.DB, modelDir string, session *pb.Session, hints []string) (e error) {
+func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *database.DB, modelDir string, session *pb.Session) (e error) {
 	defer func(startTime int64) {
 		// NOTE(tony): EndOfExecution indicates a successful run,
 		// so we only writes it when e != nil
@@ -162,7 +162,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
 		}
 	} else {
-		standardSQL := ir.NormalStmt(rewriteSQLWithHints(sql.Original, hints))
+		standardSQL := ir.NormalStmt(sql.Original)
 		r = &standardSQL
 	}
 	if err != nil {
@@ -176,29 +176,34 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	return r.Execute(submitter)
 }
 
-func rewriteSQLWithHints(sql string, hints []string) string {
-	ns := ""
-	for _, h := range hints {
-		ns += h
-	}
-	return ns + sql
-}
-
-func splitHints(stmts []*parser.SQLFlowStmt, submitter string) ([]string, []*parser.SQLFlowStmt) {
-	hints, queries := []string{}, []*parser.SQLFlowStmt{}
-	for _, stmt := range stmts {
-		if isHint(stmt, submitter) {
-			hints = append(hints, stmt.Original)
-		} else {
-			queries = append(queries, stmt)
+// More precisely, use database
+func rewriteStatementsWithHints(stmts []*parser.SQLFlowStmt, dialect string) []*parser.SQLFlowStmt {
+	hints, sqls := splitHints(stmts, dialect)
+	if len(hints) > 0 {
+		for _, sql := range sqls {
+			if !sql.IsExtendedSyntax() {
+				sql.Original = hints + sql.Original
+			}
 		}
 	}
-	return hints, queries
+	return sqls
 }
 
-func isHint(stmt *parser.SQLFlowStmt, submitter string) bool {
+func splitHints(stmts []*parser.SQLFlowStmt, dialect string) (string, []*parser.SQLFlowStmt) {
+	hints, sqls := "", []*parser.SQLFlowStmt{}
+	for _, stmt := range stmts {
+		if isHint(stmt, dialect) {
+			hints += stmt.Original
+		} else {
+			sqls = append(sqls, stmt)
+		}
+	}
+	return hints, sqls
+}
+
+func isHint(stmt *parser.SQLFlowStmt, dialect string) bool {
 	if !stmt.IsExtendedSyntax() {
-		if submitter == "alisa" {
+		if dialect == "alisa" {
 			if strings.HasPrefix(strings.ToLower(stmt.Original), "set ") {
 				return true
 			}
