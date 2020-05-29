@@ -98,7 +98,7 @@ func getSecret() (string, string, error) {
 }
 
 // GenFiller generates Filler to fill the template
-func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error) {
+func GenFiller(programIR *pb.Program, session *pb.Session) (*Filler, error) {
 	stepEnvs, err := getStepEnvs(session)
 	if err != nil {
 		return nil, err
@@ -131,41 +131,44 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 		defaultDockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
 	}
 
-	for _, sqlIR := range programIR {
-		switch i := sqlIR.(type) {
-		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt:
+	for _, stmt := range programIR.Statements {
+		switch stmt.Type {
+		case pb.Statement_QUERY, pb.Statement_PREDICT, pb.Statement_EXPLAIN:
 			// TODO(typhoonzero): get model image used when training.
 			sqlStmt := &sqlStatement{
-				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
-				DockerImage: defaultDockerImage}
+				OriginalSQL:   stmt.OriginalSql,
+				IsExtendedSQL: stmt.Type != pb.Statement_QUERY,
+				DockerImage:   defaultDockerImage}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
-		case *ir.TrainStmt:
+		case pb.Statement_TRAIN:
 			stepImage := defaultDockerImage
-			if i.ModelImage != "" {
-				stepImage = i.ModelImage
+			if stmt.ModelImage != "" {
+				stepImage = stmt.ModelImage
 			}
 			if r.SQLFlowSubmitter == "katib" {
-				sqlStmt, err := ParseKatibSQL(sqlIR.(*ir.TrainStmt))
+				sqlStmt, err := ParseKatibSQL(stmt)
 				if err != nil {
-					return nil, fmt.Errorf("Fail to parse Katib train statement %s", sqlIR.GetOriginalSQL())
+					return nil, fmt.Errorf("Fail to parse Katib train statement %s", stmt.OriginalSql)
 				}
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			} else {
 				sqlStmt := &sqlStatement{
-					OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
-					DockerImage: stepImage}
+					OriginalSQL:   stmt.OriginalSql,
+					IsExtendedSQL: true,
+					DockerImage:   stepImage}
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		default:
-			return nil, fmt.Errorf("unrecognized IR type: %v", i)
+			return nil, fmt.Errorf("unrecognized IR type: %v", stmt)
 		}
 	}
 	return r, nil
 }
 
 // GenCode generates a Couler program
-func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
+func (cg *Codegen) GenCode(programIR *pb.Program, session *pb.Session) (string, error) {
 	r, e := GenFiller(programIR, session)
+	fmt.Println(r)
 	if e != nil {
 		return "", e
 	}
@@ -198,8 +201,11 @@ func (cg *Codegen) GenYAML(coulerProgram string) (string, error) {
 }
 
 // MockSQLProgramIR mock a SQLFLow program which contains multiple statements
-func MockSQLProgramIR() []ir.SQLFlowStmt {
-	normalStmt := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
+func MockSQLProgramIR() *pb.Program {
+	queryStmt := &pb.Statement{
+		Select: "SELECT * FROM iris.train limit 10;",
+		Type:   pb.Statement_QUERY,
+	}
 	trainStmt := ir.MockTrainStmt(true)
-	return []ir.SQLFlowStmt{&normalStmt, trainStmt}
+	return &pb.Program{Statements: []*pb.Statement{queryStmt, trainStmt}}
 }

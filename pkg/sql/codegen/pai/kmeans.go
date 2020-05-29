@@ -13,6 +13,7 @@
 
 package pai
 
+/* TODO(shendiaomo): migrate to python
 import (
 	"fmt"
 	"strings"
@@ -94,3 +95,4 @@ func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error)
 	return fmt.Sprintf(`pai -name kmeans -project algo_public -DinputTableName=%s -DcenterCount=%d -DmodelName %s -DidxTableName=%s -DselectedColNames=%s -DappendColNames="%s"`,
 		ir.TmpTrainTable, centerCount, ir.Into, idxTableName, strings.Join(selectedCols, ","), strings.Join(featureCols, ",")), nil
 }
+*/

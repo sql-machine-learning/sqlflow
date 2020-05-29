@@ -13,6 +13,7 @@
 
 package sql
 
+/* TODO(shendiaomo): migrate to python
 import (
 	"bytes"
 	"fmt"
@@ -602,3 +603,4 @@ func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
 func pickPAILogViewerURL(output string) []string {
 	return reODPSLogURL.FindAllString(output, -1)
 }
+*/

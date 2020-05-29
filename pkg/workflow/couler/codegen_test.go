@@ -114,10 +114,10 @@ func TestCoulerCodegen(t *testing.T) {
 
 func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a := assert.New(t)
-	specialCharsStmt := ir.NormalStmt("`$\"\\;")
-	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
+	specialCharsStmt := pb.Statement{Select: "`$\"\\;", Type: pb.Statement_QUERY}
+	sqlIR := pb.Program{Statements: []*pb.Statement{&specialCharsStmt}}
 	cg := &Codegen{}
-	code, err := cg.GenCode(sqlIR, &pb.Session{})
+	code, err := cg.GenCode(&sqlIR, &pb.Session{})
 	a.NoError(err)
 	yaml, e := cg.GenYAML(code)
 	a.NoError(e)
@@ -125,10 +125,14 @@ func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a.Equal("\\`\\$\\\"\\\\", r.FindStringSubmatch(yaml)[1])
 }
 
-func mockSQLProgramIR() []ir.SQLFlowStmt {
-	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
+func mockSQLProgramIR() *pb.Program {
+	queryStmt := &pb.Statement{
+		Select: "SELECT * FROM iris.train limit 10;",
+		Type:   pb.Statement_QUERY,
+	}
 	trainStmt := ir.MockTrainStmt(false)
-	return []ir.SQLFlowStmt{&standardSQL, trainStmt}
+	return &pb.Program{Statements: []*pb.Statement{queryStmt, trainStmt}}
+
 }
 
 func TestCompileCoulerProgram(t *testing.T) {
@@ -152,27 +156,27 @@ func TestKatibCodegen(t *testing.T) {
 	a := assert.New(t)
 	os.Setenv("SQLFLOW_submitter", "katib")
 
-	standardSQL := ir.NormalStmt("SELECT * FROM iris.train limit 10;")
-	sqlIR := MockKatibTrainStmt(database.GetTestingMySQLURL())
+	queryStmt := &pb.Statement{
+		Select: "SELECT * FROM iris.train limit 10;",
+		Type:   pb.Statement_QUERY,
+	}
+	trainStmt := MockKatibTrainStmt(database.GetTestingMySQLURL())
 
-	program := []ir.SQLFlowStmt{&standardSQL, &sqlIR}
-
+	program := &pb.Program{Statements: []*pb.Statement{queryStmt, trainStmt}}
 	cg := &Codegen{}
 	_, err := cg.GenCode(program, &pb.Session{})
-
 	a.NoError(err)
 }
 
-func MockKatibTrainStmt(datasource string) ir.TrainStmt {
-	attrs := map[string]interface{}{}
+func MockKatibTrainStmt(datasource string) *pb.Statement {
+	attrs := map[string]string{
+		"objective":       "multi:softprob",
+		"eta":             "0.1",
+		"range.max_depth": "[2, 10]",
+	}
 
-	attrs["objective"] = "multi:softprob"
-	attrs["eta"] = float32(0.1)
-	attrs["range.max_depth"] = []int{2, 10}
-	estimator := "xgboost.gbtree"
-
-	return ir.TrainStmt{
-		OriginalSQL: `
+	return &pb.Statement{
+		OriginalSql: `
 SELECT *
 FROM iris.train
 TO TRAIN xgboost.gbtree
@@ -186,13 +190,9 @@ INTO sqlflow_models.my_xgboost_model;
 `,
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
-		Estimator:        estimator,
+		Estimator:        "xgboost.gbtree",
 		Attributes:       attrs,
-		Features: map[string][]ir.FeatureColumn{
-			"feature_columns": {
-				&ir.NumericColumn{&ir.FieldDesc{"sepal_length", ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldDesc{"sepal_width", ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldDesc{"petal_length", ir.Float, "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, "", []int{1}, false, nil, 0}}}},
-		Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
+		Label:            "class",
+		Type:             pb.Statement_TRAIN,
+	}
 }

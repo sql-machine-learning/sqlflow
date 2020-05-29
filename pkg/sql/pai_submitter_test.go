@@ -13,6 +13,7 @@
 
 package sql
 
+/* TODO(shendiaomo): mirate to python
 import (
 	"testing"
 
@@ -41,3 +42,4 @@ func TestPickPAILogViwerURL(t *testing.T) {
 		"http://logview.odps.com:8080/logview/?h=http://service.sqlflow.com/api&p=my_project&id=2"}, pickPAILogViewerURL(mockPAIOutput))
 
 }
+*/

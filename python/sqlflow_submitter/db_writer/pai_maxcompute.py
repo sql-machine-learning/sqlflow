@@ -15,7 +15,6 @@ try:
     import paiio
 except:
     pass
-import tensorflow as tf
 from odps import ODPS, tunnel
 
 from .base import BufferedDBWriter

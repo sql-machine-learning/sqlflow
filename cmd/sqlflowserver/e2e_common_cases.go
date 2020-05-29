@@ -91,8 +91,8 @@ func caseSelect(t *testing.T) {
 		}
 	}
 	expectedRows := [][]interface{}{
-		{6.4, 2.8, 5.6, 2.2, int64(2)},
-		{5.0, 2.3, 3.3, 1.0, int64(1)},
+		{6.4, 2.8, 5.6, 2.2, 2.},
+		{5.0, 2.3, 3.3, 1.0, 1.},
 	}
 	for rowIdx, row := range rows {
 		for colIdx, rowCell := range row {

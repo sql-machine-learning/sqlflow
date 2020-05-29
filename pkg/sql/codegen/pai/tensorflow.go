@@ -13,6 +13,7 @@
 
 package pai
 
+/* TODO(shendiaomo): implement in python
 import (
 	"bytes"
 	"encoding/json"
@@ -236,3 +237,4 @@ func getTFPAICmd(cc *ClusterConfig, tarball, paramsFile, modelName, ossModelPath
 	}
 	return cmd, nil
 }
+*/

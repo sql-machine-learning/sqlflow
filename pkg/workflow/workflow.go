@@ -17,7 +17,6 @@ import (
 	"fmt"
 
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -28,7 +27,7 @@ import (
 
 // Codegen generates workflow YAML
 type Codegen interface {
-	GenCode([]ir.SQLFlowStmt, *pb.Session) (string, error)
+	GenCode(*pb.Program, *pb.Session) (string, error)
 	GenYAML(string) (string, error)
 }
 
@@ -59,7 +58,7 @@ func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Log
 	}
 	sqls := sql.RewriteStatementsWithHints(stmts, driverName)
 
-	spIRs, e := sql.ResolveSQLProgram(sqls, logger)
+	spIRs, e := sql.ResolveSQLProgram(sqls, session, logger)
 	if e != nil {
 		return "", e
 	}

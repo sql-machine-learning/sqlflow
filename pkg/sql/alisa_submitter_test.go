@@ -13,6 +13,7 @@
 
 package sql
 
+/* TODO(shendiaomo): migrate to python
 import (
 	"testing"
 
@@ -30,3 +31,4 @@ func TestFindPyModulePath(t *testing.T) {
 	_, err := findPyModulePath("sqlflow_submitter")
 	a.NoError(err)
 }
+*/

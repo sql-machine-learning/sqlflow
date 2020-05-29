@@ -13,6 +13,7 @@
 
 package pai
 
+/* TODO(shendiamo): migrate to python
 import (
 	"fmt"
 	"os"
@@ -24,7 +25,6 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
 var dataSource = "maxcompute://test:test@service-maxcompute.com/api?curr_project=test&scheme=http"
@@ -160,3 +160,4 @@ func TestPredictCodegen(t *testing.T) {
 	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DhyperParameters=\"%s\" -DcheckpointDir='oss://sqlflow-models/iris/sqlflow/my_dnn_model/?role_arn=xxx&host=xxx' -DgpuRequired='0'", scriptPath, paramsPath)
 	a.Equal(expectedPAICmd, paiCmd)
 }
+*/

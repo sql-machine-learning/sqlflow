@@ -13,8 +13,12 @@
 
 package ir
 
+import (
+	pb "sqlflow.org/sqlflow/pkg/proto"
+)
+
 // MockTrainStmt generates a sample TrainStmt for test.
-func MockTrainStmt(isxgboost bool) *TrainStmt {
+func MockTrainStmt(isxgboost bool) *pb.Statement {
 	originalSQL := `SELECT * FROM iris_train
 TO TRAIN DNNClassifier WITH
 	train.batch_size=4,
@@ -24,44 +28,36 @@ TO TRAIN DNNClassifier WITH
 LABEL class
 INTO my_dnn_model;
 	`
-	attrs := map[string]interface{}{}
+	attrs := map[string]string{}
 	estimator := "DNNClassifier"
 	if isxgboost {
-		attrs["train.num_boost_round"] = 10
+		attrs["train.num_boost_round"] = "10"
 		attrs["objective"] = "multi:softprob"
-		attrs["eta"] = float32(0.1)
-		attrs["num_class"] = 3
+		attrs["eta"] = "0.1"
+		attrs["num_class"] = "3"
 		estimator = "xgboost.gbtree"
 	} else {
-		attrs["train.batch_size"] = 4
-		attrs["train.epoch"] = 3
-		attrs["model.hidden_units"] = []int{10, 20}
-		attrs["model.n_classes"] = 3
+		attrs["train.batch_size"] = "4"
+		attrs["train.epoch"] = "3"
+		attrs["model.hidden_units"] = "[10, 20]"
+		attrs["model.n_classes"] = "3"
 	}
-	return &TrainStmt{
-		OriginalSQL:      originalSQL,
+	return &pb.Statement{
+		OriginalSql:      originalSQL,
 		Select:           "select * from iris.train;",
 		ValidationSelect: "select * from iris.test;",
 		Estimator:        estimator,
 		Attributes:       attrs,
-		TmpTrainTable:    "iris.train",
-		TmpValidateTable: "iris.test",
-		Features: map[string][]FeatureColumn{
-			"feature_columns": {
-				&NumericColumn{&FieldDesc{"sepal_length", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldDesc{"sepal_width", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldDesc{"petal_length", Float, "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldDesc{"petal_width", Float, "", []int{1}, false, nil, 0}}}},
-		Label: &NumericColumn{&FieldDesc{"class", Int, "", []int{1}, false, nil, 0}}}
+		Type:             pb.Statement_TRAIN,
+		Label:            "class"}
 }
 
 // MockPredStmt generates a sample PredictStmt for test.
-func MockPredStmt(trainStmt *TrainStmt) *PredictStmt {
-	return &PredictStmt{
-		Select:          "select * from iris.test;",
-		ResultTable:     "iris.predict",
-		Attributes:      make(map[string]interface{}),
-		TrainStmt:       trainStmt,
-		TmpPredictTable: "iris.predict",
+func MockPredStmt() *pb.Statement {
+	return &pb.Statement{
+		Select:     "select * from iris.test;",
+		Target:     "iris.predict",
+		Attributes: map[string]string{},
+		Type:       pb.Statement_PREDICT,
 	}
 }

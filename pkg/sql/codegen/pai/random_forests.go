@@ -13,6 +13,7 @@
 
 package pai
 
+/* TODO(shendiaomo): migrate to python
 import (
 	"fmt"
 	"strings"
@@ -68,3 +69,4 @@ func getExplainRandomForestsPAICmd(ir *ir.ExplainStmt, session *pb.Session) (str
 	return fmt.Sprintf(`pai -name feature_importance -project algo_public -DmodelName="%s" -DinputTableName="%s"  -DoutputTableName="%s" -DlabelColName="%s" -DfeatureColNames="%s"`,
 		ir.ModelName, ir.TmpExplainTable, ir.Into, labelCol.(string), strings.Join(featureFields, ",")), nil
 }
+*/

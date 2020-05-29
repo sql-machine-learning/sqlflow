@@ -13,6 +13,7 @@
 
 package pai
 
+/* TODO(shendiaomo): implement this in python
 import (
 	"bytes"
 	"fmt"
@@ -22,9 +23,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
-	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
 const (
@@ -329,3 +327,4 @@ func Evaluate(ir *ir.EvaluateStmt, session *pb.Session, tarball, paramsFile, mod
 	}
 	return code, paiCmd, requirements, err
 }
+*/

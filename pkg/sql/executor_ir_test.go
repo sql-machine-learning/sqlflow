@@ -14,9 +14,11 @@
 package sql
 
 import (
+	"container/list"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -113,6 +115,35 @@ FROM housing.test
 TO PREDICT housing.xgb_predict.target
 USING sqlflow_models.my_xgb_regression_model;
 `
+)
+
+func goodStream(stream chan interface{}) (bool, string) {
+	lastResp := list.New()
+	keepSize := 10
+
+	for rsp := range stream {
+		switch rsp.(type) {
+		case error:
+			var ss []string
+			for e := lastResp.Front(); e != nil; e = e.Next() {
+				if s, ok := e.Value.(string); ok {
+					ss = append(ss, s)
+				}
+			}
+			return false, fmt.Sprintf("%v: %s", rsp, strings.Join(ss, "\n"))
+		}
+		lastResp.PushBack(rsp)
+		if lastResp.Len() > keepSize {
+			e := lastResp.Front()
+			lastResp.Remove(e)
+		}
+	}
+	return true, ""
+}
+
+const (
+	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
+	testSelectIris                    = `SELECT * FROM iris.train`
 )
 
 func TestRunSQLProgram(t *testing.T) {

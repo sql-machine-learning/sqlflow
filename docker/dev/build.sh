@@ -28,6 +28,7 @@ echo "Build $SQLFLOWPATH into $SQLFLOW_BIN ..."
 echo "Build sqlflowserver, sqlflow, and step into $SQLFLOW_BIN ..."
 go generate ./...
 GOBIN=$SQLFLOW_BIN go install ./...
+protoc -I pkg/proto/ ir.proto --python_out=python/sqlflow
 
 echo "Build $SQLFLOWPATH/python/couler into $SQLFLOW_BIN ..."
 cd $SQLFLOWPATH/python/couler

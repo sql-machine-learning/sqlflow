@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 var attributeDictionary = attribute.Dictionary{
@@ -68,16 +69,20 @@ func parseAttribute(attrs map[string]interface{}) (map[string]interface{}, error
 }
 
 // ParseKatibSQL generates Couler Katib step
-func ParseKatibSQL(t *ir.TrainStmt) (*sqlStatement, error) {
+func ParseKatibSQL(t *pb.Statement) (*sqlStatement, error) {
 	ss := &sqlStatement{}
 	ss.IsKatibTrain = true
 
-	ss.OriginalSQL = t.OriginalSQL
+	ss.OriginalSQL = t.OriginalSql
 
-	params, err := parseAttribute(t.Attributes)
-	if err != nil {
-		return nil, err
-	}
+	// params, err := parseAttribute(t.Attributes)
+	// TODO(shendiaomo): temporarily mock this
+	params := map[string]interface{}{}
+	/*
+		if err != nil {
+			return nil, err
+		}
+	*/
 
 	model, booster, err := resolveModelType(t.Estimator)
 	if err != nil {

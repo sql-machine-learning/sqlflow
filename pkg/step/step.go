@@ -89,7 +89,7 @@ func Render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 			log.Println(s)
 		}
 	case string:
-		log.Println(s)
+		log.Printf("%s", s)
 	case nil:
 		return nil
 	default:

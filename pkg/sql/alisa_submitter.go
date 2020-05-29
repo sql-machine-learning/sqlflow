@@ -13,6 +13,7 @@
 
 package sql
 
+/* TODO(shendiaomo): migrate to python
 import (
 	"bufio"
 	"bytes"
@@ -334,3 +335,4 @@ func uploadResource(cwd, localFileName, ossObjectName string, bucket *oss.Bucket
 	}
 	return resourceURL, nil
 }
+*/

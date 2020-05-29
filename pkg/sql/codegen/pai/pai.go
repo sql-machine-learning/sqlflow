@@ -13,6 +13,7 @@
 
 package pai
 
+/* TODO(shendiaomo): migrate to python
 import (
 	"fmt"
 	"strings"
@@ -57,3 +58,4 @@ func CleanupPAIModel(ir *ir.TrainStmt, session *pb.Session) error {
 	}
 	return nil
 }
+*/
