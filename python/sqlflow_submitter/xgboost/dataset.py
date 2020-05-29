@@ -13,6 +13,7 @@
 
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -39,7 +40,14 @@ def xgb_dataset(datasource,
                 rank=0,
                 nworkers=1,
                 transform_fn=None,
-                feature_column_code=""):
+                feature_column_code="",
+                raw_data_dir=None):
+    if raw_data_dir:
+        if os.path.exists(raw_data_dir):
+            shutil.rmtree(raw_data_dir, ignore_errors=True)
+
+        os.mkdir(raw_data_dir)
+
     if is_pai:
         for dmatrix in pai_dataset(
                 fn,
@@ -52,7 +60,8 @@ def xgb_dataset(datasource,
                 rank,
                 nworkers,
                 batch_size=batch_size,
-                feature_column_code=feature_column_code):
+                feature_column_code=feature_column_code,
+                raw_data_dir=raw_data_dir):
             yield dmatrix
         return
 
@@ -71,7 +80,8 @@ def xgb_dataset(datasource,
                                     feature_specs,
                                     label_spec,
                                     selected_cols,
-                                    transform_fn=transform_fn)
+                                    transform_fn=transform_fn,
+                                    raw_data_dir=raw_data_dir)
 
         while written_rows > 0:
             yield load_dmatrix('{0}#{0}.cache'.format(step_file_name)
@@ -86,7 +96,8 @@ def xgb_dataset(datasource,
                                         feature_specs,
                                         label_spec,
                                         selected_cols,
-                                        transform_fn=transform_fn)
+                                        transform_fn=transform_fn,
+                                        raw_data_dir=raw_data_dir)
 
 
 def dump_dmatrix(filename,
@@ -96,14 +107,30 @@ def dump_dmatrix(filename,
                  has_label,
                  selected_cols,
                  batch_size=None,
-                 transform_fn=None):
+                 transform_fn=None,
+                 raw_data_dir=None):
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
+
+    if raw_data_dir:
+        raw_data_fid = open(os.path.join(raw_data_dir, filename), 'a')
+    else:
+        raw_data_fid = None
+
     with open(filename, 'a') as f:
         for row, label in generator:
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_specs)
+
+            if raw_data_fid is not None:
+                row_data = [
+                    "{}:{}".format(i, f[0] if len(f) == 1 else f[1])
+                    for i, f in enumerate(features)
+                ]
+                if has_label:
+                    row_data = [str(label)] + row_data
+                raw_data_fid.write("\t".join(row_data) + "\n")
 
             if transform_fn:
                 features = transform_fn(features)
@@ -144,6 +171,9 @@ def dump_dmatrix(filename,
             if row_id >= batch_size:
                 break
     # return rows written
+    if raw_data_fid is not None:
+        raw_data_fid.close()
+
     return row_id
 
 
@@ -207,7 +237,8 @@ def pai_dataset(filename,
                 rank=0,
                 nworkers=1,
                 batch_size=None,
-                feature_column_code=""):
+                feature_column_code="",
+                raw_data_dir=None):
     from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
@@ -215,6 +246,10 @@ def pai_dataset(filename,
     dname = filename
     if single_file:
         dname = filename + '.dir'
+
+    if os.path.exists(dname):
+        shutil.rmtree(dname, ignore_errors=True)
+
     os.mkdir(dname)
 
     slice_count = get_pai_table_slice_count(pai_table, nworkers, batch_size)
@@ -231,7 +266,8 @@ def pai_dataset(filename,
         p.communicate(
             json.dumps([
                 dname, feature_specs, feature_column_names, label_spec,
-                pai_table, slice_id, slice_count, feature_column_code
+                pai_table, slice_id, slice_count, feature_column_code,
+                raw_data_dir
             ]))
 
         assert p.returncode == 0, "The subprocess raises error when reading data"
@@ -275,7 +311,8 @@ def pai_dataset(filename,
 
 def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                    label_spec, pai_table, slice_id,
-                                   slice_count, feature_column_code):
+                                   slice_count, feature_column_code,
+                                   raw_data_dir):
     import sqlflow_submitter.xgboost as xgboost_extended
     feature_column_transformers = eval('[{}]'.format(feature_column_code))
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
@@ -296,7 +333,8 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                  feature_specs,
                  label_spec,
                  selected_cols,
-                 transform_fn=transform_fn)
+                 transform_fn=transform_fn,
+                 raw_data_dir=raw_data_dir)
 
 
 if __name__ == "__main__":

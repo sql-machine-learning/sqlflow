@@ -52,7 +52,8 @@ def pred(datasource,
                         cache=True,
                         batch_size=DEFAULT_PREDICT_BATCH_SIZE,
                         transform_fn=transform_fn,
-                        feature_column_code=feature_column_code
+                        feature_column_code=feature_column_code,
+                        raw_data_dir="../predict.raw.dir"
                         )  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
@@ -90,10 +91,19 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
         # way, can remove this else branch when we can load the model meta not only on PAI submitter.
         if len(preds.shape) == 2:
             preds = np.argmax(np.array(preds), axis=1)
+
     if is_pai:
-        feature_file_read = open("predict.txt", "r")
+        feature_file_read = open("../predict.raw.dir/predict.txt", "r")
     else:
-        feature_file_read = open("predict.txt_%d" % feature_file_id, "r")
+        feature_file_read = open(
+            "../predict.raw.dir/predict.txt_%d" % feature_file_id, "r")
+
+    result_column_names = []
+    valid_column_ids = set()  # some feature column names may be duplicated
+    for i, fname in enumerate(feature_column_names):
+        if fname not in result_column_names:
+            valid_column_ids.add(i)
+            result_column_names.append(fname)
 
     result_column_names = feature_column_names
     result_column_names.append(label_name)
@@ -115,7 +125,11 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             line = feature_file_read.readline()
             if not line:
                 break
-            row = [i.split(":")[1] for i in line.strip().split("\t")]
+            row = [
+                item.split(":")[1]
+                for i, item in enumerate(line.strip().split("\t"))
+                if i in valid_column_ids
+            ]
             row.append(str(preds[line_no]))
             w.write(row)
             line_no += 1

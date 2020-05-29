@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import json
-import os
 import sys
 
 import six
@@ -205,8 +204,11 @@ def save_local_file(booster, model_params, model_name):
 
     meta = dict()
     if objective.startswith("binary:") or objective.startswith("multi:"):
-        num_class = model_params.get("num_class")
-        assert num_class is not None and num_class > 0, "num_class should not be None"
+        if objective.startswith("binary:"):
+            num_class = 2
+        else:
+            num_class = model_params.get("num_class")
+            assert num_class is not None and num_class > 0, "num_class should not be None"
 
         model = xgb.XGBClassifier()
         label_encoder = XGBoostLabelEncoder()

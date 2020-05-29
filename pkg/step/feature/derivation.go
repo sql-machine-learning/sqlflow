@@ -135,7 +135,7 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 		switch unifyDatabaseTypeName(typeName) {
 		case "CHAR", "VARCHAR", "TEXT", "STRING":
 			rowData[idx] = new(string)
-		case "INT":
+		case "INT", "TINYINT":
 			rowData[idx] = new(int32)
 		case "BIGINT", "DECIMAL":
 			rowData[idx] = new(int64)
@@ -239,7 +239,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		// start the feature derivation routine
 		typeName := ct.DatabaseTypeName()
 		switch unifyDatabaseTypeName(typeName) {
-		case "INT", "DECIMAL", "BIGINT":
+		case "INT", "TINYINT", "DECIMAL", "BIGINT":
 			fieldDescMap[fld].DType = ir.Int
 			fieldDescMap[fld].Shape = []int{1}
 		case "FLOAT", "DOUBLE":

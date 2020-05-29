@@ -14,6 +14,7 @@
 import numpy as np
 import pandas as pd
 import shap
+import six
 import xgboost as xgb
 from sqlflow_submitter import db, explainer
 
@@ -44,7 +45,15 @@ def xgb_shap_dataset(datasource,
                                  feature_specs)
         selected_cols = db.selected_cols(conn.driver, conn, select)
 
-    xs = pd.DataFrame(columns=feature_column_names)
+    if transform_fn:
+        column_names = transform_fn.get_column_names()
+    else:
+        column_names = feature_column_names
+
+    xs = pd.DataFrame(columns=column_names)
+
+    dtypes = []
+
     i = 0
     for row, label in stream():
         features = db.read_features_from_row(row, selected_cols,
@@ -56,6 +65,25 @@ def xgb_shap_dataset(datasource,
         # TODO(sneaxiy): support sparse features in `TO Explain`
         features = [item[0] for item in features]
         xs.loc[i] = features
+
+        if i == 0:
+            for f in features:
+                if isinstance(f, np.ndarray):
+                    if f.dtype == np.float32 or f.dtype == np.float64:
+                        dtypes.append('float32')
+                    elif f.dtype == np.int32 or f.dtype == np.int64:
+                        dtypes.append('int64')
+                    else:
+                        raise ValueError('Not supported data type {}'.format(
+                            f.dtype))
+                elif isinstance(f, (np.float32, np.float64, float)):
+                    dtypes.append('float32')
+                elif isinstance(f, (np.int32, np.int64, six.integer_types)):
+                    dtypes.append('int64')
+                else:
+                    raise ValueError('Not supported data type {}'.format(
+                        type(f)))
+
         i += 1
     # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype
     # may be "object". Use below code to reproduce:
@@ -65,9 +93,8 @@ def xgb_shap_dataset(datasource,
     # for i in range(10):
     #     xs.loc[i] = [int(j) for j in range(2)]
     # print(xs.dtypes)
-    for fname in feature_column_names:
-        dtype = feature_specs[fname]["dtype"]
-        xs[fname] = xs[fname].astype(dtype)
+    for dtype, name in zip(dtypes, column_names):
+        xs[name] = xs[name].astype(dtype)
     return xs
 
 

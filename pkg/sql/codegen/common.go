@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-func toModuleDType(dtype int, module string) (string, error) {
+func toModuleDataType(dtype int, module string) (string, error) {
 	switch dtype {
 	case ir.Int:
 		return fmt.Sprintf("%s.dtypes.int64", module), nil
@@ -42,14 +42,10 @@ func isTensorFlowModule(module string) bool {
 func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, error) {
 	switch c := fc.(type) {
 	case *ir.NumericColumn:
-		dtype, err := toModuleDType(c.FieldDesc.DType, module)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s, dtype=%s)",
+		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
 			module,
 			c.FieldDesc.Name,
-			util.IntArrayToJSONString(c.FieldDesc.Shape), dtype), nil
+			util.IntArrayToJSONString(c.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
@@ -81,7 +77,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			module, c.FieldDesc.Name, c.BucketSize), nil
 	case *ir.CategoryHashColumn:
 		// FIXME(typhoonzero): do we need to support dtype other than int64?
-		dtype, err := toModuleDType(c.FieldDesc.DType, module)
+		dtype, err := toModuleDataType(c.FieldDesc.DType, module)
 		if err != nil {
 			return "", err
 		}
