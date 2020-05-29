@@ -50,7 +50,7 @@ else
     exit 1
 fi
 
-# Build sqlflow:dev and sqlflow:ci.
+# Build sqlflow:dev, sqlflow:ci, and sqlflow:release.
 "$(dirname "$0")"/build.sh
 
 # Build sqlflow:mysql
@@ -71,3 +71,7 @@ docker push sqlflow/sqlflow:"$DOCKER_TAG"
 echo "docker push sqlflow/sqlflow:mysql"
 docker tag sqlflow:mysql sqlflow/sqlflow:mysql
 docker push sqlflow/sqlflow:mysql
+
+echo "docker push sqlflow/sqlflow:release"
+docker tag sqlflow:release sqlflow/sqlflow:release
+docker push sqlflow/sqlflow:release
