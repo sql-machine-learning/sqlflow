@@ -55,7 +55,7 @@ TO RUN
 CMD 
   "--verbose",
   "--window_width=120"
-  "output_table_name";
+INTO output_table_name;
 ```
 
 In this example, the entrypoint program is likely written in Python so it can
@@ -82,8 +82,12 @@ CMD
 
 However, we still prefer the SELECT statement as a prefix, but the SQLFlow
 compiler doesn't run it as a step container; instead, the compiler passes the
-SELECT statement to the entrypoint as part of the context.
+SELECT statement to the entrypoint program as part of the context.
 
+### The INTO Suffix
+
+Like the way it handles the SELECT prefix, the compiler passes the INTO suffix
+to the entrypoint program as part of the context.
 
 ## The Context
 
@@ -101,6 +105,8 @@ The SQLFlow server cannot pass in all context information in a single
 environment variable, which has a limit of value size.  Instead, it sets
 environment variables prefixed with `SQLFLOW_`.
 
+- `SQLFLOW_RUN_SELECT`
+- `SQLFLOW_RUN_INTO`
 - `SQLFLOW_DB`: the type of DBMS.
 - [To-be-complete]
 
