@@ -23,6 +23,7 @@ pip install --quiet \
 
 # Load SQLFlow's Jupyter magic command
 # automatically. c.f. https://stackoverflow.com/a/32683001.
+IPYTHON_STARTUP="/root/.ipython/profile_default/startup/"
 mkdir -p "$IPYTHON_STARTUP"
 mkdir -p /workspace
 { echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")';

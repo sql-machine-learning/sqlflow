@@ -4,8 +4,6 @@ FROM sqlflow:dev
 
 # Install dependencies.
 COPY docker/ci/js /ci/js
-# Required by install-jupyter.bash
-ENV IPYTHON_STARTUP /root/.ipython/profile_default/startup/
 
 RUN apt-get -qq update
 
