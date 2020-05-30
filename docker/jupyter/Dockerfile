@@ -4,18 +4,18 @@
 FROM ubuntu:18.04
 
 # Install dependencies.
-COPY docker/notebook/js /notebook/js
+COPY docker/jupyter/js /jupyter/js
 
 RUN apt-get -qq update
 
-COPY /docker/ci/install-python.bash /notebook
-RUN /notebook/install-python.bash
+COPY /docker/ci/install-python.bash /jupyter
+RUN /jupyter/install-python.bash
 
-COPY docker/ci/install-pips.bash /notebook/
-RUN /notebook/install-pips.bash
+COPY docker/ci/install-pips.bash /jupyter/
+RUN /jupyter/install-pips.bash
 
-COPY docker/notebook/install-jupyter.bash /notebook
-RUN /notebook/install-jupyter.bash
+COPY docker/jupyter/install-jupyter.bash /jupyter
+RUN /jupyter/install-jupyter.bash
 
 # Install IPythono Notebook tutorials
 COPY build/tutorials /workspace
@@ -27,17 +27,14 @@ COPY build/tutorials /workspace
 ARG SQLFLOW_SERVER="localhost:50051"
 ENV SQLFLOW_SERVER=${SQLFLOW_SERVER}
 
-
 # The following data source URL implies that the MySQL server runs in
 # a container, the data source will be retrieved by SQLFlow magic command
 # and be sent to SQLFLow server in each request. The SQLFlow server compiles this
 # value into each step container, so these step container knews data source.
 ARG SQLFLOW_DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
-ENV SQLFLOW_DATASOURCE=${SQLFLOW_DATASOURCE}}
-
-ADD docker/notebook/start.bash /
+ENV SQLFLOW_DATASOURCE=${SQLFLOW_DATASOURCE}
 
 WORKDIR /workspace
 EXPOSE 8888
 
-CMD ["bash", "/start.bash"]
+CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--allow-root", "-NotebookApp.token=''"] 
