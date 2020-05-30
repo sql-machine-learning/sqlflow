@@ -47,15 +47,18 @@ func getModelClasses(dir string) ([]*modelClassDesc, error) {
 		return nil, err
 	}
 	pythonPackages := []string{}
+	dockerfileFound := false
 	for _, f := range files {
 		if f.IsDir() {
 			pythonPackages = append(pythonPackages, f.Name())
 		} else {
 			if f.Name() == "Dockerfile" {
-				// TODO(typhoonzero): Dockerfile is required when releasing
-				fmt.Printf("got Dockerfile\n")
+				dockerfileFound = true
 			}
 		}
+	}
+	if !dockerfileFound {
+		return nil, fmt.Errorf("releasing a model definition requires a Dockerfile under your repo directory")
 	}
 	if len(pythonPackages) == 0 {
 		return nil, fmt.Errorf("folder %s got no sub-folders as Python packages", dir)
