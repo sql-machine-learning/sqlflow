@@ -37,5 +37,5 @@ CODE_MIRROR_MODE_PATH=$NOTEBOOK_DIR/static/components/codemirror/mode
 mkdir -p "$HOME"/.jupyter/custom/
 mkdir -p "$CODE_MIRROR_MODE_PATH"/sqlflow
 # Depends on Docekrfile to COPY *.js to /js.
-cp /ci/js/custom.js "$HOME"/.jupyter/custom/
-cp /ci/js/sqlflow.js "$CODE_MIRROR_MODE_PATH"/sqlflow/
+cp /jupyter/js/custom.js "$HOME"/.jupyter/custom/
+cp /jupyter/js/sqlflow.js "$CODE_MIRROR_MODE_PATH"/sqlflow/
