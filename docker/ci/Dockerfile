@@ -2,9 +2,6 @@
 # so it must contain the bulding tools.
 FROM sqlflow:dev
 
-# Install dependencies.
-COPY docker/ci/js /ci/js
-
 RUN apt-get -qq update
 
 COPY docker/ci/install-pips.bash /ci/
@@ -39,7 +36,7 @@ ENV SQLFLOW_PARSER_SERVER_LOADING_PATH="/usr/local/sqlflow/java"
 RUN pip install --quiet /build/*.whl \
         && mv /build/sqlflowserver /build/sqlflow /build/step /usr/local/bin/ \
         && mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH \
-        && mv /build/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH \
+        && mv /build/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH
 
 # Expose SQLFlow gRPC server port.
 EXPOSE 50051 
