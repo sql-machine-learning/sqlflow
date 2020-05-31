@@ -23,6 +23,7 @@ pip install --quiet \
 
 # Load SQLFlow's Jupyter magic command
 # automatically. c.f. https://stackoverflow.com/a/32683001.
+IPYTHON_STARTUP="/root/.ipython/profile_default/startup/"
 mkdir -p "$IPYTHON_STARTUP"
 mkdir -p /workspace
 { echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")';
@@ -36,5 +37,5 @@ CODE_MIRROR_MODE_PATH=$NOTEBOOK_DIR/static/components/codemirror/mode
 mkdir -p "$HOME"/.jupyter/custom/
 mkdir -p "$CODE_MIRROR_MODE_PATH"/sqlflow
 # Depends on Docekrfile to COPY *.js to /js.
-cp /ci/js/custom.js "$HOME"/.jupyter/custom/
-cp /ci/js/sqlflow.js "$CODE_MIRROR_MODE_PATH"/sqlflow/
+cp /jupyter/js/custom.js "$HOME"/.jupyter/custom/
+cp /jupyter/js/sqlflow.js "$CODE_MIRROR_MODE_PATH"/sqlflow/

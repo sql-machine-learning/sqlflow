@@ -53,10 +53,6 @@ fi
 # Build sqlflow:dev, sqlflow:ci, and sqlflow:release.
 "$(dirname "$0")"/build.sh
 
-# Build sqlflow:mysql
-(cd "$TRAVIS_BUILD_DIR" && \
-    docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .)
-
 echo "$DOCKER_PASSWORD" |
     docker login --username "$DOCKER_USERNAME" --password-stdin
 
@@ -69,9 +65,10 @@ docker tag sqlflow:ci sqlflow/sqlflow:"$DOCKER_TAG"
 docker push sqlflow/sqlflow:"$DOCKER_TAG"
 
 echo "docker push sqlflow/sqlflow:mysql"
-docker tag sqlflow:mysql sqlflow/sqlflow:mysql
 docker push sqlflow/sqlflow:mysql
 
+echo "docker push sqlflow/sqlflow:jupyter"
+docker push sqlflow/sqlflow:jupyter
+
 echo "docker push sqlflow/sqlflow:server"
-docker tag sqlflow:server sqlflow/sqlflow:server
 docker push sqlflow/sqlflow:server
