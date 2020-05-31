@@ -176,7 +176,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	return r.Execute(submitter)
 }
 
-// RewriteStatementsWithHints comines hints into stardard SQL
+// RewriteStatementsWithHints combines the hints into the standard SQL(s)
 func RewriteStatementsWithHints(stmts []*parser.SQLFlowStmt, dialect string) []*parser.SQLFlowStmt {
 	hints, sqls := splitHints(stmts, dialect)
 	if len(hints) > 0 {
