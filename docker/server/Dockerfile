@@ -2,20 +2,17 @@
 # NOTE: To build the release image, SQLFlow must be built into ./build
 FROM ubuntu:18.04
 
-# Install Python, because SQLFlow server requires Couler/Fluid to generate YAML
-# files, and Couler/Fluid depends on Python.
-RUN apt-get -qq install -y --no-install-recommends \
-        python3-dev python3-pip > /dev/null
+# Install Python and JRE.  SQLFlow server requires Couler/Fluid to generate YAML
+# files, and Couler/Fluid depends on Python.  The external parsers are in Java.
+RUN apt-get -qq update \
+        && apt-get -qq install -y \
+           python3-dev python3-pip openjdk-8-jre-headless > /dev/null \
+        rm -rf /var/lib/apt/lists/* \
+        apt-get -qq clean -y
 
 # Install the SQLFlow Python source code, which includes template code.
 COPY python /usr/local/sqlflow/python
 ENV PYTHONPATH=/usr/local/sqlflow/python:$PYTHONPATH
-
-# Install Java runtime, because the external parsers are in Java.
-RUN apt-get -qq update \
-        && apt-get -qq install -y openjdk-8-jre-headless \
-        rm -rf /var/lib/apt/lists/* \
-        apt-get -qq clean -y
 
 # Install pre-built SQLFlow components.
 COPY build /build
