@@ -7,8 +7,8 @@ FROM ubuntu:18.04
 RUN apt-get -qq update \
         && apt-get -qq install -y \
            python3-dev python3-pip openjdk-8-jre-headless > /dev/null \
-        rm -rf /var/lib/apt/lists/* \
-        apt-get -qq clean -y
+        && rm -rf /var/lib/apt/lists/* \
+        && apt-get -qq clean -y
 
 # Install the SQLFlow Python source code, which includes template code.
 COPY python /usr/local/sqlflow/python
