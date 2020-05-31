@@ -47,7 +47,8 @@ echo "Build sqlflow:server by loading $TRAVIS_BUILD_DIR/build ..."
 if docker pull sqlflow/sqlflow:server 2> /dev/null; then
     echo "  using sqlflow/sqlflow:server as the cache image"
 fi
-docker build -t sqlflow:server -f docker/server/Dockerfile "$TRAVIS_BUILD_DIR"
+docker build -t sqlflow/sqlflow:server \
+       -f docker/server/Dockerfile "$TRAVIS_BUILD_DIR"
 
 echo "Build sqlflow:mysql ..."
 if docker pull sqlflow/sqlflow:mysql 2> /dev/null; then
