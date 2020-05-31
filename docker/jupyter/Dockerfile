@@ -18,7 +18,7 @@ COPY docker/jupyter/install-jupyter.bash /jupyter
 RUN /jupyter/install-jupyter.bash
 
 # Install IPythono Notebook tutorials
-COPY build/tutorials /workspace
+COPY build/tutorial /workspace
 
 # The following SQLFlow gRPC server endpoint implies the server runs in a container,
 # and if container has the option --net=container:sqlflow_server_container, SQLFlow magic

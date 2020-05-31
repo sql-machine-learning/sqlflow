@@ -81,5 +81,6 @@ mkdir -p $SQLFLOW_BIN/tutorial
 for file in $SQLFLOWPATH/doc/tutorial/*.md; do
     base=$(basename -- "$file")
     output=$SQLFLOW_BIN/tutorial/${base%.*}."ipynb"
+    echo "Generate $output ..."
     cat $file | markdown-to-ipynb --code-block-type=sql > $output
 done
