@@ -26,7 +26,7 @@ addons:
       - docker-ce
 
 before_install:
-  - bash docker/dev/install.sh
+  - sudo bash docker/dev/install.sh
 
 # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
 # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
