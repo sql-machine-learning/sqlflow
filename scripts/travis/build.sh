@@ -24,10 +24,10 @@ if [[ "$(docker images -q sqlflow:dev 2> /dev/null)" == "" ]]; then
     echo "  using sqlflow/sqlflow:dev as the cache image"
     docker pull sqlflow/sqlflow:dev
     docker build --cache-from sqlflow/sqlflow:dev -t sqlflow:dev \
-	   "$TRAVIS_BUILD_DIR"/docker/dev
+           "$TRAVIS_BUILD_DIR"/docker/dev
 else
     docker build -t sqlflow:dev \
-	   -f docker/dev/Dockerfile "$TRAVIS_BUILD_DIR"/docker/dev
+           -f docker/dev/Dockerfile "$TRAVIS_BUILD_DIR"/docker/dev
 fi
 
 echo "Build SQLFlow into $TRAVIS_BUILD_DIR/build using sqlflow:dev ..."
