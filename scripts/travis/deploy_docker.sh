@@ -53,12 +53,6 @@ fi
 # Build sqlflow:dev and sqlflow:ci.
 "$(dirname "$0")"/build.sh
 
-# Build sqlflow:mysql
-docker build -t sqlflow/sqlflow:mysql -f docker/mysql/Dockerfile .
-
-# Build sqlflow:jupyter
-docker build -t sqlflow/sqlflow:jupyter -f docker/jupyter/Dockerfile .
-
 echo "$DOCKER_PASSWORD" |
     docker login --username "$DOCKER_USERNAME" --password-stdin
 
