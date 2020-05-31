@@ -30,9 +30,11 @@ class PAIMaxComputeDBWriter(BufferedDBWriter):
         table_name_formatted = "odps://%s/tables/%s" % (table_name_parts[0],
                                                         table_name_parts[1])
         self.writer = paiio.TableWriter(table_name_formatted, slice_id=0)
-        self.writer_indices = range(len(table_schema))
+        self.writer_indices = None
 
     def flush(self):
+        if self.writer_indices is None:
+            self.writer_indices = list(range(len(self.rows[0])))
         self.writer.write(self.rows, self.writer_indices)
         self.rows = []
 

@@ -1616,7 +1616,7 @@ func getUniqueID() int {
 	return uniqueID
 }
 
-func CaseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int) {
+func CaseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool) {
 	tableSplits := strings.SplitN(table, ".", 2)
 	dbPrefix := ""
 	if len(tableSplits) == 2 {
@@ -1632,7 +1632,7 @@ func CaseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 	SELECT %s FROM %s TO TRAIN xgboost.gbtree
 	WITH
 		objective="multi:softprob",
-		train.num_boost_round = 30,
+		train.num_boost_round = 1,
 		train.num_workers = %d,
 		eta = 0.4,
 		num_class = %d,
@@ -1648,26 +1648,40 @@ func CaseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 
 	// a unique id to avoid name conflict when run parallel
 	uniqueID := getUniqueID()
-	modelName := fmt.Sprintf("%sxgb_fc_test_model_%d", dbPrefix, uniqueID)
+
+	var modelName string
+	if isPai {
+		modelName = fmt.Sprintf("xgb_fc_test_model_%d", uniqueID)
+	} else {
+		modelName = fmt.Sprintf("%sxgb_fc_test_model_%d", dbPrefix, uniqueID)
+	}
 
 	trainSQL := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table, columnClauses, label, modelName)
 	executeSQLFunc(trainSQL)
 
 	predictTableName := fmt.Sprintf("%sxgb_fc_test_predict_table_%d", dbPrefix, uniqueID)
-	predictSQL := fmt.Sprintf(`SELECT %s FROM %s TO PREDICT %s.%s USING %s;`, selectColumns, table, predictTableName, label, modelName)
+	predictSQL := fmt.Sprintf(`SELECT %s FROM %s TO PREDICT %s.%s_new USING %s;`, selectColumns, table, predictTableName, label, modelName)
 	executeSQLFunc(predictSQL)
 
-	evaluateTableName := fmt.Sprintf("%sxgb_fc_test_evaluate_table_%d", dbPrefix, uniqueID)
-	evaluateSQL := fmt.Sprintf(`
+	if !isPai { // PAI does not support evaluate now
+		evaluateTableName := fmt.Sprintf("%sxgb_fc_test_evaluate_table_%d", dbPrefix, uniqueID)
+		evaluateSQL := fmt.Sprintf(`
 SELECT %s FROM %s TO EVALUATE %s WITH validation.metrics="accuracy_score" LABEL %s INTO %s;`,
-		selectColumns, table, modelName, label, evaluateTableName)
-	executeSQLFunc(evaluateSQL)
+			selectColumns, table, modelName, label, evaluateTableName)
+		executeSQLFunc(evaluateSQL)
+	}
 
-	explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar;`, selectColumns, table, modelName)
+	paiExplainExtra := ""
+	if isPai {
+		paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
+	}
+	explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
 	executeSQLFunc(explainSQL)
 
-	showTrainSQL := fmt.Sprintf(`SHOW TRAIN %s;`, modelName)
-	executeSQLFunc(showTrainSQL)
+	if !isPai { // PAI does not support SHOW TRAIN, because the model is not saved into database
+		showTrainSQL := fmt.Sprintf(`SHOW TRAIN %s;`, modelName)
+		executeSQLFunc(showTrainSQL)
+	}
 }
 
 func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
@@ -1684,21 +1698,21 @@ func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 	}
 
 	t.Run("CaseXGBoostNoFeatureColumn", func(*testing.T) {
-		CaseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers)
+		CaseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai)
 	})
 
 	t.Run("CaseXGBoostBucketFeatureColumn", func(*testing.T) {
-		CaseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers)
+		CaseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai)
 	})
 
 	t.Run("CaseXGBoostCategoryFeatureColumn", func(*testing.T) {
 		CaseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
-			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers)
+			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai)
 	})
 
 	t.Run("CaseXGBoostCrossFeatureColumn", func(*testing.T) {
 		CaseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
-			`CROSS([customerid, gender], 10)`, 2, numWorkers)
+			`CROSS([customerid, gender], 10)`, 2, numWorkers, isPai)
 	})
 }
 

@@ -37,7 +37,7 @@ def xgb_shap_dataset(datasource,
                                                 feature_column_names,
                                                 label_column_name,
                                                 feature_specs)
-        selected_cols = feature_column_names[:]
+        selected_cols = stream.column_names
     else:
         conn = db.connect_with_data_source(datasource)
         stream = db.db_generator(conn.driver, conn, select,

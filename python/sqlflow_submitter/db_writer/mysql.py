@@ -19,9 +19,9 @@ class MySQLDBWriter(BufferedDBWriter):
         return super().__init__(conn, table_name, table_schema, buff_size)
 
     def flush(self):
-        statement = '''insert into {} ({}) values({})'''.format(
-            self.table_name, ", ".join(self.table_schema),
-            ", ".join(["%s"] * len(self.table_schema)))
+        column_num = len(self.rows[0])
+        statement = '''insert into {} values({})'''.format(
+            self.table_name, ", ".join(["%s"] * column_num))
         cursor = self.conn.cursor()
         try:
             cursor.executemany(statement, self.rows)

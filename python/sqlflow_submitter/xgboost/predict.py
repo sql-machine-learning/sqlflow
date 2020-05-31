@@ -40,21 +40,21 @@ def pred(datasource,
     else:
         conn = None
     label_name = label_meta["feature_name"]
-    dpred = xgb_dataset(datasource=datasource,
-                        fn='predict.txt',
-                        dataset_sql=select,
-                        feature_specs=feature_metas,
-                        feature_column_names=feature_column_names,
-                        label_spec=None,
-                        is_pai=is_pai,
-                        pai_table=pai_table,
-                        pai_single_file=True,
-                        cache=True,
-                        batch_size=DEFAULT_PREDICT_BATCH_SIZE,
-                        transform_fn=transform_fn,
-                        feature_column_code=feature_column_code,
-                        raw_data_dir="../predict.raw.dir"
-                        )  # NOTE: default to use external memory
+    dpred = xgb_dataset(
+        datasource=datasource,
+        fn='predict.txt',
+        dataset_sql=select,
+        feature_specs=feature_metas,
+        feature_column_names=feature_column_names,
+        label_spec=None,
+        is_pai=is_pai,
+        pai_table=pai_table,
+        pai_single_file=True,
+        cache=True,
+        batch_size=DEFAULT_PREDICT_BATCH_SIZE,
+        transform_fn=transform_fn,
+        feature_column_code=feature_column_code,
+        raw_data_dir="predict.raw.dir")  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
     print("Start predicting XGBoost model...")
@@ -93,17 +93,10 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             preds = np.argmax(np.array(preds), axis=1)
 
     if is_pai:
-        feature_file_read = open("../predict.raw.dir/predict.txt", "r")
+        feature_file_read = open("predict.txt.raw", "r")
     else:
         feature_file_read = open(
-            "../predict.raw.dir/predict.txt_%d" % feature_file_id, "r")
-
-    result_column_names = []
-    valid_column_ids = set()  # some feature column names may be duplicated
-    for i, fname in enumerate(feature_column_names):
-        if fname not in result_column_names:
-            valid_column_ids.add(i)
-            result_column_names.append(fname)
+            "predict.raw.dir/predict.txt_%d" % feature_file_id, "r")
 
     result_column_names = feature_column_names
     result_column_names.append(label_name)
@@ -128,7 +121,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             row = [
                 item.split(":")[1]
                 for i, item in enumerate(line.strip().split("\t"))
-                if i in valid_column_ids
             ]
             row.append(str(preds[line_no]))
             w.write(row)

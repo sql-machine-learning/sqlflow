@@ -100,6 +100,11 @@ def xgb_dataset(datasource,
                                         raw_data_dir=raw_data_dir)
 
 
+def join_path_and_file(dir, file):
+    index = file.rindex('/') + 1 if '/' in file else 0
+    return os.path.join(dir, file[index:])
+
+
 def dump_dmatrix(filename,
                  generator,
                  feature_column_names,
@@ -113,7 +118,7 @@ def dump_dmatrix(filename,
     row_id = 0
 
     if raw_data_dir:
-        raw_data_fid = open(os.path.join(raw_data_dir, filename), 'a')
+        raw_data_fid = open(join_path_and_file(raw_data_dir, filename), 'a')
     else:
         raw_data_fid = None
 
@@ -124,12 +129,7 @@ def dump_dmatrix(filename,
                                                  feature_specs)
 
             if raw_data_fid is not None:
-                row_data = [
-                    "{}:{}".format(i, f[0] if len(f) == 1 else f[1])
-                    for i, f in enumerate(features)
-                ]
-                if has_label:
-                    row_data = [str(label)] + row_data
+                row_data = ["{}:{}".format(i, r) for i, r in enumerate(row)]
                 raw_data_fid.write("\t".join(row_data) + "\n")
 
             if transform_fn:
@@ -198,6 +198,8 @@ def load_dmatrix(filename):
 
         if os.path.isdir(filename):
             files = [os.path.join(filename, f) for f in os.listdir(filename)]
+            assert len(files) > 0, "No data file found in {}".format(filename)
+
             ret = load_svmlight_files(files, zero_based=True)
             X = vstack(ret[0::2])
             y = np.concatenate(ret[1::2], axis=0)
@@ -297,11 +299,18 @@ def pai_dataset(filename,
                 os.unlink(downloaded_file)
 
     if single_file:
-        cmd = "cat %s/*.txt > %s" % (dname, filename)
-        p = Popen(cmd, shell=True, stdin=PIPE, stderr=PIPE)
-        out, err = p.communicate()
-        if err:
-            raise Exception("merge data files failed: %s" % err)
+
+        def merge_files(dir_name, file_name):
+            cmd = "cat %s/*.txt > %s" % (dir_name, file_name)
+            p = Popen(cmd, shell=True, stdin=PIPE, stderr=PIPE)
+            out, err = p.communicate()
+            if err:
+                raise Exception("merge data files failed: %s" % err)
+
+        merge_files(dname, filename)
+        if raw_data_dir:
+            merge_files(raw_data_dir, '{}.raw'.format(filename))
+
         yield load_dmatrix(
             '{0}#{0}.cache'.format(filename) if cache else filename)
 
