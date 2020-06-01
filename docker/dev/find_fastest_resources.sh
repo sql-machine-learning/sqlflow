@@ -24,139 +24,207 @@
 # function find_fastest_maven_repo()  echos fastest maven repo
 # function find_fastest_go_proxy()    echos fastest go proxy
 # function find_fastest_docker_url()  echos fastest docker download url
-# function find_fastest_docker_mirror echos fastest docker mirror url
-#
+# function find_fastest_docker_mirror() echos fastest docker mirror url
+# function find_fastest_pip_mirror()  echos fastest pip mirror config
 
 
-# Accept a url and output it's domain
-function get_domain_from_url {
-	# cut extract the domain, domain is the third field split by '/'
-	echo "$1" | cut -d '/' -f 3
+# Returns the domain name of an URL.
+function get_domain_from_url() {
+    # cut extract the domain, domain is the third field split by '/'
+    echo "$1" | cut -d '/' -f 3
 }
 
-# Find fastest url, params should be urls separated by space
+# Find the fastest URL. The parameter consists of URLS separated by whitespace.
 function find_fastest_url() {
-	local speed=99999.9
-	for i in $@; do
-		local domain=$(get_domain_from_url "$i")
-		# c.f. https://stackoverflow.com/a/9634982/724872
-		# redirect log output to stderr
-		echo "Testig speed of $domain ..." >&2
-		local cur_speed=$(ping -c 4 -W 2 "$domain" | tail -1 | grep "/avg/" | awk '{print $4}' | cut -d '/' -f 2)
-		cur_speed=${cur_speed:-99999.9}
-		echo "$cur_speed" >&2
+    local speed=99999.9
+    # shellcheck disable=SC2068
+    for i in $@; do
+        local domain
+        domain=$(get_domain_from_url "$i")
 
-		# c.f. https://stackoverflow.com/a/31087503/724872
-		if (( $(echo "$cur_speed < $speed" | bc -l) )); then
-			local best_domain="$i"
-			speed="$cur_speed"
-		fi
-	done
-	echo $best_domain
+        # c.f. https://stackoverflow.com/a/9634982/724872
+        # redirect log output to stderr
+        echo "Testig speed of $domain ..." >&2
+        local cur_speed
+        cur_speed=$(ping -c 4 -W 2 "$domain" | tail -1 \
+                           | grep "/avg/" | awk '{print $4}'\
+                           | cut -d '/' -f 2)
+        cur_speed=${cur_speed:-99999.9}
+        echo "$cur_speed" >&2
+
+        # c.f. https://stackoverflow.com/a/31087503/724872
+        if (( $(echo "$cur_speed < $speed" | bc -l) )); then
+            local best_domain="$i"
+            speed="$cur_speed"
+        fi
+    done
+    echo "$best_domain"
 }
 
 # Find fastest apt-get source, you can add mirrors in the 'apt_sources'
 function find_fastest_apt_source() {
-	# Define a list of mirrors without using Bash arrays.
-	# c.f. https://stackoverflow.com/a/23930212/724872
-	read -r -d '' apt_sources <<- EOM
-		http://mirrors.aliyun.com
-		http://mirrors.ustc.edu.cn
-		http://mirrors.163.com
-		http://archive.ubuntu.com
-	EOM
+    # Define a list of mirrors without using Bash arrays.
+    # c.f. https://stackoverflow.com/a/23930212/724872
+    read -r -d '' apt_sources <<- EOM
+http://mirrors.aliyun.com
+http://mirrors.ustc.edu.cn
+http://mirrors.163.com
+http://archive.ubuntu.com
+EOM
 
-	# Find the fastest APT source using ping.
-	local best_apt_source=$(find_fastest_url $apt_sources)
+    # Find the fastest APT source using ping.
+    local fastest
+    # shellcheck disable=SC2086
+    fastest=$(find_fastest_url $apt_sources)/ubuntu/
 
-	# The default Ubuntu version is 18.04, code named bionic.
-	local ubuntu_codename=${ubuntu_codename-"bionic"}
+    # The default Ubuntu version is 18.04, code named bionic.
+    local codename
+    codename=${ubuntu_codename-"bionic"}
 
-	# Write APT source lists.
-	cat <<-EOF
-		deb $best_apt_source/ubuntu/ $ubuntu_codename main restricted universe multiverse
-		deb $best_apt_source/ubuntu/ $ubuntu_codename-security main restricted universe multiverse
-		deb $best_apt_source/ubuntu/ $ubuntu_codename-updates main restricted universe multiverse
-		deb $best_apt_source/ubuntu/ $ubuntu_codename-proposed main restricted universe multiverse
-		deb $best_apt_source/ubuntu/ $ubuntu_codename-backports main restricted universe multiverse
-		deb-src $best_apt_source/ubuntu/ $ubuntu_codename main restricted universe multiverse
-		deb-src $best_apt_source/ubuntu/ $ubuntu_codename-security main restricted universe multiverse
-		deb-src $best_apt_source/ubuntu/ $ubuntu_codename-updates main restricted universe multiverse
-		deb-src $best_apt_source/ubuntu/ $ubuntu_codename-proposed main restricted universe multiverse
-		deb-src $best_apt_source/ubuntu/ $ubuntu_codename-backports main restricted universe multiverse
-	EOF
+    # Write APT source lists.
+    cat <<-EOF
+deb $fastest $codename main restricted universe multiverse
+deb $fastest $codename-security main restricted universe multiverse
+deb $fastest $codename-updates main restricted universe multiverse
+deb $fastest $codename-proposed main restricted universe multiverse
+deb $fastest $codename-backports main restricted universe multiverse
+deb-src $fastest $codename main restricted universe multiverse
+deb-src $fastest $codename-security main restricted universe multiverse
+deb-src $fastest $codename-updates main restricted universe multiverse
+deb-src $fastest $codename-proposed main restricted universe multiverse
+deb-src $fastest $codename-backports main restricted universe multiverse
+EOF
 }
 
 function find_fastest_maven_repo() {
-	# c.f. https://unix.stackexchange.com/questions/353076
-	# we can indent EOM wiht tab if we use the "<<-" form
-	read -r -d '' maven_repos <<-EOM
-		https://repo1.maven.org/maven2/
-		https://maven.aliyun.com/repository/central
-	EOM
+    # c.f. https://unix.stackexchange.com/questions/353076
+    # we can indent EOM wiht tab if we use the "<<-" form
+    #
+    read -r -d '' maven_repos <<-EOM
+https://repo1.maven.org/maven2/
+https://maven.aliyun.com/repository/central
+EOM
 
-	local best_maven_repo=$(find_fastest_url ${maven_repos})
-	local domain=$(get_domain_from_url $best_maven_repo)
+    local best_maven_repo
+    # shellcheck disable=SC2086
+    best_maven_repo=$(find_fastest_url $maven_repos)
+    local domain
+    domain=$(get_domain_from_url "$best_maven_repo")
 
-	cat <<-EOF
-	<?xml version="1.0" encoding="UTF-8"?>
-	<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-	    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-	    <mirrors>
-	        <mirror>
-	            <id>${domain}</id>
-	            <mirrorOf>central</mirrorOf>
-	            <name>${best_maven_repo}</name>
-	            <url>${domain}</url>
-	        </mirror>
-	    </mirrors>
-	</settings>
-	EOF
+    cat <<-EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <mirrors>
+        <mirror>
+            <id>${domain}</id>
+            <mirrorOf>central</mirrorOf>
+            <name>${best_maven_repo}</name>
+            <url>${domain}</url>
+        </mirror>
+    </mirrors>
+</settings>
+EOF
 }
 
 function find_fastest_go_proxy() {
-	# This is not really a proxy, we just want to compare the access speed with other
-	# proxies like 'proxygo.cn', if it is faster, we do not even need a proxy
-	local direct_access_url="https://pkg.go.dev/"
-	read -r -d '' go_proxies <<-EOM
-		${direct_access_url}
-		https://goproxy.cn/,direct
-	EOM
+    # This is not really a proxy, we just want to compare the access speed with other
+    # proxies like 'proxygo.cn', if it is faster, we do not even need a proxy
+    local default
+    default="https://pkg.go.dev/"
+    read -r -d '' go_proxies <<-EOM
+$default
+https://goproxy.cn/,direct
+EOM
 
-	local best_url=$(find_fastest_url $go_proxies)
+    local best
+    # shellcheck disable=SC2086
+    best=$(find_fastest_url $go_proxies)
 
-	if [[ "$best_url" == "$direct_access_url" ]]; then
-		# We do not need a proxy if we can access https://pkg.go.dev/ fast
-		echo ""
-	else
-		echo $best_url
-	fi
+    if [[ "$best" == "$default" ]]; then
+        # We do not need a proxy if we can access https://pkg.go.dev/ fast
+        echo ""
+    else
+        echo "$best"
+    fi
 }
 
-# Find fastest docker download url
+# Find fastest docker download URL
 function find_fastest_docker_url() {
-	read -r -d '' download_urls <<-EOM
-		https://get.daocloud.io/docker
-		https://get.docker.com
-	EOM
-	find_fastest_url $download_urls
+    read -r -d '' download_urls <<-EOM
+https://get.daocloud.io/docker
+https://get.docker.com
+EOM
+    # shellcheck disable=SC2086
+    find_fastest_url $download_urls
 }
 
 # Find fastest docker mirror url
 function find_fastest_docker_mirror() {
-	local direct_access_url="https://www.docker.com/"
-	read -r -d '' mirror_urls <<-EOM
-		${direct_access_url}
-		https://hub-mirror.c.163.com
-		https://registry.docker-cn.com
-		https://docker.mirrors.ustc.edu.cn
-	EOM
-	local best_mirror=$(find_fastest_url $mirror_urls)
-	if [[ "${best_mirror}" == "${direct_access_url}" ]]; then
-		echo ""
-	else
-		echo ${best_mirror}
-	fi
+    local url="https://www.docker.com/"
+    read -r -d '' mirror_urls <<-EOM
+${url}
+https://hub-mirror.c.163.com
+https://registry.docker-cn.com
+https://docker.mirrors.ustc.edu.cn
+EOM
+    local best
+    # shellcheck disable=SC2086
+    best=$(find_fastest_url $mirror_urls)
+    if [[ "$best" == "$url" ]]; then
+        echo ""
+    else
+        echo "$best"
+    fi
 }
 
+# Find pip mirror and echo a config if needed
+function find_fastest_pip_mirror() {
+    local url="https://pypi.org/"
+    read -r -d '' mirror_urls <<-EOM
+${url}
+https://mirrors.aliyun.com/pypi/simple/
+EOM
+    local best
+    # shellcheck disable=SC2086
+    best=$(find_fastest_url $mirror_urls)
+    if [[ "${best}" == "${url}" ]]; then
+        echo ""
+    else
+        cat <<-EOF
+[global]
+index-url = https://mirrors.aliyun.com/pypi/simple/
+[install]
+trusted-host=mirrors.aliyun.com
+EOF
+    fi
+}
+
+# All find_xxx functions need ping and some needs bc.
+function install_requirements_if_not() {
+    which ping >/dev/null
+    r1="$?"
+    which bc >/dev/null
+    r2="$?"
+
+    if [[ "$r1" && "$r2" ]]; then
+        echo "Found ping and bc"
+    else
+        apt-get -qq update
+        apt-get -qq install -y iputils-ping bc > /dev/null
+    fi
+}
+
+function choose_fastest_apt_source() {
+    install_requirement_if_not
+    echo "Find fastest apt-get mirror ..."
+    find_fastest_apt_source > /etc/apt/sources.list
+}
+
+function choose_fastest_pip_source() {
+    install_requirement_if_not
+    echo "Find fastest apt-get mirror ..."
+    mkdir -p ~/.pip
+    find_fastest_pip_mirror > ~/.pip/pip.conf
+}
