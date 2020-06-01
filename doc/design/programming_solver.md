@@ -64,9 +64,13 @@ s.t. demand{x in X}: ProductAmt[x] <= 40;
 
 ## Grammar Design
 
-In order to extend SQL to have completely same ability of AMPL, the extended syntax should be able to describe **objective and constraints** while the input data table can store the **params** for each **variable**, and the rows in the table is naturally become the **set** we defined in AMPL. Then we have the below `train_table`:
+In order to extend SQL to have completely same ability of AMPL, the extended syntax should be able to describe **objective and constraints** while the input data table can store the **params** for each **variable**, and the rows in the table is naturally become the **set** we defined in AMPL. 
 
-|  type   | price | materials_cost | other_cost | finishing | carpentry | max_num |
+### Single Variable
+
+Then we have the below `train_table`:
+
+| product | price | materials_cost | other_cost | finishing | carpentry | max_num |
 | ------- | ----- | -------------- | ---------- | --------- | --------- | ------- |
 | soldier | 27    | 10             | 14         | 2         | 1         | 40      |
 | train   | 21    | 9              | 10         | 1         | 1         | 10000   |
@@ -74,53 +78,113 @@ In order to extend SQL to have completely same ability of AMPL, the extended syn
 In the `train_table`:
 
 - The set X is row one and row two.
-- We have one variable, and the variable name strings is stored in column `type`. In cases that have multiple variables (like the example described at https://en.wikipedia.org/wiki/AMPL), the table should have multiple string columns to store the variable.
+- We have one variable, and the variable name strings is stored in column `product`. In cases that have multiple variables (like the example described at https://en.wikipedia.org/wiki/AMPL), the table should have multiple string columns to store the variable.
 - Other columns like `price`, `materials_cost` are all params for the corresponding variable.
 
-For a more general example that have multiple variables, to minimize the cost of shipment between plants and markets we have a table looks like below:
-
-| plants  | markets | capacity | demand | distance |
-| ------- | ------- | -------- | ------ | -------- |
-| plantA  |         | 100      | NULL   |  NULL    |
-| plantB  |         | 90       | NULL   |  NULL    |
-|         | marketA | NULL     | 130    |  NULL    |
-|         | marketB | NULL     | 60     |  NULL    |
-| plantA  | marketB | NULL     | NULL   | 300      |
-| plantA  | marketB | NULL     | NULL   | 90       |
-
-Then we can use below extended SQL syntax to describe the column:
+Then we can use below extended SQL syntax to describe above example:
 
 ```sql
 SELECT * FROM train_table
-TO MAXIMIZE|MINIMIZE sum{i in @X} (price[i] - materials_cost[i] - other_cost[i]) * @X[i]
-CONSTRAINT sum{i in @X} finishing[i] * @X[i] <= 100
-CONSTRAINT sum{i in @X} carpentry[x] * @X[x] <= 80
-CONSTRAINT {i in @X} @X[i] <= max_num[i]
-WITH var_name_col="type:@X",
-     var_type="type:Integers",
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
+CONSTRAINT SUM(finishing * product) <= 100
+CONSTRAINT SUM(carpentry * product) <= 80
+CONSTRAINT product <= max_num
+WITH variables="product",
+     var_type="product:Integers"
 [USING glpk]
 INTO result_table;
 ```
 
 In the SQL statement:
 
-- `TO MAXIMIZE|MINIMIZE ...` an expression string that describes the objective. 
+- `TO MAXIMIZE|MINIMIZE ...` defines an expression string that describes the objective. 
     - The syntax `MAXIMIZE|MINIMIZE` is used to specify the objective sense. 
-    - Notations like `@X` will be replaced to variable to be solved when generating Python code. Variables will be defined by `WITH var_name_col` attribute below. 
-    - Notations like `{i in @X}` have the same meaning of in AMPL. `sum{i in @X} expr` is equal to Python code `sum([expr for i in X])` where X is a set. `{i in @X} expr` is equal to Python code `expr for i in X`.
+    - In the expression, `SUM` means sum the value across all rows like normal SQL statements.
 - `CONSTRAINT ...` expression strings that describe the constraints, can have multiple `CONSTRAINT` clause lines.
 - `WITH` attributes:
-    - var_name_col: **required**, specify one column that stores the variable name. Format like `column:var_name,column:var_name`, e.g. `plants:@X,markets:@Y` in the above second example.
+    - variables: **required**, specify one column that stores the variable name. Using comma to separate if there are multiple variables.
     - var_type: **required**, specify the variable type for each variable, format like "column:type,column:type...",  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc.
 - `USING`: **optional**, solver tool to use, default: glpk.
 - `INTO result_table`: set the result table name.
 
 After the SQL statement finishes execution, the result table `result_table` should look like:
 
-| type    | result |
+| product | result |
 | ------  | ------ |
 | soldier | 20     |
 | train   | 60     |
+
+### Two Variables
+
+For a more general example that have two variables (plants and markets, see the example described in https://en.wikipedia.org/wiki/AMPL for details), we want to minimize the cost of shipment between plants and markets, we have three tables looks like below:
+
+1. Plants capacity table:
+
+    | plants  | capacity |
+    | ------- | -------- |
+    | plantA  | 100      |
+    | plantB  | 90       |
+
+2. Markets demand table:
+
+    | markets |  demand |
+    | ------- | ------- |
+    | marketA | 130     |
+    | marketB | 60      |
+
+3. Plants to markets distance table:
+
+    | plants  | markets | distance |
+    | ------- | ------- | -------- |
+    | plantA  | marketA |  140     |
+    | plantA  | marketB |  210     |
+    | plantB  | marketA |  300     |
+    | plantB  | marketB |  90      |
+
+4. When we start to solve the problem, we'd like to join the tables beforehand:
+
+    ```sql
+    SELECT src.plants, src.markets, src.distance, plants.capacity, markets.demand FROM train_table AS src
+    LEFT JOIN plants ON src.plants = plants.plants
+    LEFT JOIN markets ON src.markets = markets.markets;
+    ```
+    Then we have a "joined" table like below to start the solving process:
+
+    | plants  | markets | distance | capacity | demand |
+    | ------- | ------- | -------- | -------- | ------ |
+    | plantA  | marketA |  140     | 100      | 130    |
+    | plantA  | marketB |  210     | 100      | 60     |
+    | plantB  | marketA |  300     | 90       | 130    |
+    | plantB  | marketB |  90      | 90       | 60     |
+
+Then we can use below extended SQL syntax to describe above example:
+
+```sql
+SELECT src.plants, src.markets, src.distance, plants.capacity, markets.demand FROM train_table AS src
+LEFT JOIN plants ON src.plants = plants.plants
+LEFT JOIN markets ON src.markets = markets.markets
+TO MINIMIZE SUM(distance * 90 / 1000)
+CONSTRAINT SUM(markets) <= capacity GROUP BY plants
+CONSTRAINT SUM(plants) >= demand GROUP BY markets
+WITH variables="plants,markets",
+     var_type="plants:Integers,markets:Integers"
+[USING glpk]
+INTO result_table;
+```
+
+Then after the solving job has completed, we should have below contents in the `result_table` (the result column is a fake result for demonstration):
+
+| plants  | markets | result |
+| ------- | ------- | ------ |
+| plantA  | marketA |  123   |
+| plantA  | marketB |  123   |
+| plantB  | marketA |  123   |
+| plantB  | marketB |  123   |
+
+
+### Aggregation Functions
+
+Support any aggregation functions accross rows that the programming solvers support. We may need to add support more syntax than `SUM` in the future.
 
 ## Implementation
 
