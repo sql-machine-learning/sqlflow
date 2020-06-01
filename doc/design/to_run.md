@@ -1,6 +1,5 @@
 # SQLFlow Syntax Extension: `TO RUN`
 
-
 ## Data Transformation
 
 As the purpose of SQLFlow is to extend SQL syntax for end-to-end machine
@@ -16,12 +15,11 @@ The in-train loop transformation differs from the pre-processing primarily in
 that they are part of the trained models and used in predictions.
 
 SQLFlow users can describe the in-train loop transformation using the `COLUMN`
-clause in the `TO TRAIN`-clause, and they can write standard statements like
-`SELECT .. INTO new_table` to pre-process data.
+clause in the `TO TRAIN` clause, and they can write standard statements like
+`SELECT .. INTO new_table` to pre-process the data.
 
 This design is about pre-processing that we cannot express using standard SQL
 statements.
-
 
 ## The Challenge
 
@@ -39,11 +37,10 @@ row.
 This requirement intrigues us to support a general way to call arbitrary
 programs from SQL, hence the idea of the `TO RUN` clause.
 
-
 ## Syntax Extension
 
-We want the syntax extension support to run any program written in any langauge,
-and we also want it easy to run Python functions in a way that best fits the
+We want the syntax extension support to run any program written in any language,
+and we also want it easy to run Python programs in a way that best fits the
 current SQLFlow deployment.  Let us dive deep into the no-compromise design.
 
 ### Run Any Program
@@ -58,61 +55,30 @@ Consider the following example.
 
 ```sql
 SELECT * FROM source_table ORDER BY creation_date
-TO RUN 
-  a_data_scientist/extract_ts_features:1.0
-CMD 
+TO RUN a_data_scientist/extract_ts_features:1.0
+CMD
   "--verbose",
   "--window_width=120"
 INTO output_table_name;
 ```
 
 The SQLFlow compiler translates it into a Tekton step that
-executes the Docker image `a_data_scientist/extract_ts_features:1.0` with 
-command-line options 
+executes the Docker image `a_data_scientist/extract_ts_features:1.0` with the
+command-line options
 
+- `"feature_extractor.py"`
 - `"--verbose"`
-- `"--window_width=120"`, 
+- `"--window_width=120"`,
 
-and environment varaibles 
+and environment varaibles
 
-- `SQLFLOW_TO_RUN_PATH` unset, 
+- `SQLFLOW_TO_RUN_PATH=feature_extractor.py`,
 - `SQLFLOW_TO_RUN_SELECT=SELECT * FROM source_table ORDER BY creation_date`
 - `SQLFLOW_TO_RUN_INTO=output_table_name`
+- `SQLFLOW_TO_RUN_IMAGE=a_data_scientist/extract_ts_features:1.0`
 
 We will talk more about the command-line options and environment variables
 later in this document.
-
-
-### Run Python Functions
-
-In our syntax extension of `TO TRAIN`, users specify a model definition by a
-Docker image and the full Python class/function name.  For example, 
-`a_data_scientist/extract_ts_features:1.0/package.module.MyModel`.  Consider 
-that SQLFlow is a machine learning tool and many users have machine learning
-background, which implies knowing Python somehow, we want our design especially
-friendly to Python users.  Thus, we hope that if a user writes the following
-statement
-
-```sql
-SELECT * FROM source_table ORDER BY creation_date
-TO RUN 
-  a_data_scientist/extract_ts_features:1.0/package.module.a_python_func
-WITH
-  param1="hello world!"
-  param2=[1,2,5,10]
-INTO output_table_name;
-```
-
-The SQLFlow compiler generates a Tekton step that runs the Docker image
-`a_data_scientist/extract_ts_features:1.0` with teh following environment
-variables
-
-- `SQLFLOW_TO_RUN_PATH=/package.module.a_python_func`
-- `SQLFLOW_TO_RUN_SELECT=SELECT * FROM source_table ORDER BY creation_date`
-- `SQLFLOW_TO_RUN_INTO=output_table_name`
-- `SQLFLOW_TO_RUN_PARAM_param1="hello world!"`
-- `SQLFLOW_TO_RUN_PARAM_param2=[1,2,5,10]`
-
 
 ### The SELECT Prefix
 
@@ -123,13 +89,11 @@ entrypoint program, which then calls the DBMS API to execute it.
 
 ```sql
 SELECT ...
-TO RUN 
-  a_data_scientist/extract_ts_features:1.0
-CMD 
-  "SELECT * FROM source_table ORDER BY creation_date"
+TO RUN a_data_scientist/extract_ts_features:1.0
+CMD
   "--verbose",
   "--window_width=120"
-  "output_table_name";
+INTO output_table_name;
 ```
 
 However, we still prefer the SELECT statement as a prefix, but the SQLFlow
@@ -160,10 +124,9 @@ environment variables prefixed with `SQLFLOW_`.
 - `SQLFLOW_RUN_SELECT`
 - `SQLFLOW_RUN_INTO`
 - `SQLFLOW_DB`: the type of DBMS.
-- [To-be-complete]
+- `SQLFLOW_RUN_IMAGE`
 
-
-## Run a Python Function
+## Run a Python Program
 
 Some contributors might want to simply provide a Python function call to the `TO
 RUN` clauses.  In such cases, we need a standard entrypoint program that
@@ -196,7 +159,7 @@ Given the above base Docker image, say, `sqlflow/run:python`, contributors can
 derive their images by adding their Python code.
 
 ```dockerfile
-FROM sqlflow/run:python 
+FROM sqlflow/run:python
 COPY . /opt/python
 ENV PYTHONPATH /opt/python
 ```
@@ -206,7 +169,7 @@ Suppose that the above Dockerfile builds into image
 statement.
 
 ```sql
-SELECT ... 
+SELECT ...
 TO RUN
   a_data_scientist/my_python_zoo
 CMD
@@ -214,10 +177,11 @@ CMD
   "another_python_func(params)";
 ```
 
-
 ## Distributed Data Pre-processing
 
 The above abstraction enables TO RUN to execute a Python function locally in a
 Tekton step container.  This function can call Kubernetes API to start some
 jobs.  For example, it can launch a Dask job on Kubernetes to have multiple
 workers running the same Python function to pre-process the data in parallel.
+
+## Execution Platforms
