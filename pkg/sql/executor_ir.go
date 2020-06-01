@@ -98,6 +98,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 			return nil, err
 		}
 		r.SetOriginalSQL(sql.Original)
+		logger.Infof("Original SQL is:%s", r.GetOriginalSQL())
 		spIRs = append(spIRs, r)
 	}
 	return spIRs, nil
@@ -204,7 +205,8 @@ func splitHints(stmts []*parser.SQLFlowStmt, dialect string) (string, []*parser.
 func isHint(stmt *parser.SQLFlowStmt, dialect string) bool {
 	if !stmt.IsExtendedSyntax() {
 		if dialect == "alisa" {
-			if strings.HasPrefix(strings.ToLower(stmt.Original), "set ") {
+			s := strings.ToLower(strings.TrimSpace(stmt.Original))
+			if strings.HasPrefix(s, "set ") {
 				return true
 			}
 		}

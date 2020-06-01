@@ -272,7 +272,7 @@ func TestRewriteStatementsWithHints4Alisa(t *testing.T) {
 	dialect := "alisa"
 	hint1, hint2 := `set odps.stage.mapper.num=1;`, `set odps.sql.mapper.split.size=4096;`
 	standardSQL, extendedSQL := `select 1;`, `select 1 to predict d.t.f using m;`
-	sqlProgram := hint1 + standardSQL + hint2 + extendedSQL
+	sqlProgram := hint1 + "\n" + standardSQL + hint2 + extendedSQL
 
 	a := assert.New(t)
 	stmts, err := parser.Parse(dialect, sqlProgram)
@@ -281,6 +281,6 @@ func TestRewriteStatementsWithHints4Alisa(t *testing.T) {
 
 	sqls := RewriteStatementsWithHints(stmts, dialect)
 	a.Equal(len(sqls), 2)
-	a.Equal(sqls[0].Original, hint1+hint2+standardSQL)
+	a.Equal(sqls[0].Original, hint1+"\n"+hint2+standardSQL)
 	a.Equal(sqls[1].Original, extendedSQL)
 }
