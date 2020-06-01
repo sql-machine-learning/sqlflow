@@ -281,6 +281,6 @@ func TestRewriteStatementsWithHints4Alisa(t *testing.T) {
 
 	sqls := RewriteStatementsWithHints(stmts, dialect)
 	a.Equal(len(sqls), 2)
-	a.Equal(sqls[0].Original, hint1+"\n"+hint2+standardSQL)
+	a.Equal(sqls[0].Original, hint1+hint2+"\n"+standardSQL)
 	a.Equal(sqls[1].Original, extendedSQL)
 }
