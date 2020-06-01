@@ -78,7 +78,7 @@ rm -rf "$HOME"/.cache/pip/*
 # tar -C /usr/local -xzf go.tar.gz
 # rm go.tar.gz
 # export GOPATH="/root/go"
-export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
+# export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 
 
 echo "Install goyacc, protoc-gen-go, linters, etc. ..."

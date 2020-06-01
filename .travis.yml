@@ -26,6 +26,7 @@ addons:
       - docker-ce
 
 before_install:
+  - go version
   - sudo bash -x docker/dev/install.sh
 
 # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
