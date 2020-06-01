@@ -26,7 +26,7 @@ addons:
       - docker-ce
 
 before_install:
-  - sudo bash docker/dev/install.sh
+  - sudo bash -x docker/dev/install.sh
 
 # Note(tony): TravisCI's native `go get ${gobuild_args} ./...` failed with
 # `/usr/bin/ld: final link failed: Bad value`, the cause is the system linker
@@ -42,9 +42,9 @@ jobs:
     script:
     - set -e
     - pre-commit run -a --show-diff-on-failure
-    - bash docker/dev/build.sh
-    - bash scripts/test/units.sh
-    - bash scripts/travis/upload_codecov.sh
+    - bash -x docker/dev/build.sh
+    - bash -x scripts/test/units.sh
+    - bash -x scripts/travis/upload_codecov.sh
   # - env: SQLFLOW_TEST_DB=mysql
   #   script:
   #   - set -e
