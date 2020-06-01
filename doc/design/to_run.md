@@ -43,7 +43,7 @@ programs from SQL, hence the idea of the `TO RUN` clause.
 ## Syntax Extension
 
 We want the syntax extension support to run any program written in any langauge,
-and we also want it easy to run Python functions in a way that best fit the
+and we also want it easy to run Python functions in a way that best fits the
 current SQLFlow deployment.  Let us dive deep into the no-compromise design.
 
 ### Run Any Program
@@ -122,6 +122,7 @@ above syntax design to make the SELECT prefix a command-line option to the
 entrypoint program, which then calls the DBMS API to execute it.
 
 ```sql
+SELECT ...
 TO RUN 
   a_data_scientist/extract_ts_features:1.0
 CMD 
