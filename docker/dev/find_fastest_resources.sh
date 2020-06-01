@@ -118,10 +118,10 @@ EOM
     xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
     <mirrors>
         <mirror>
-            <id>${domain}</id>
+            <id>$domain</id>
             <mirrorOf>central</mirrorOf>
-            <name>${best_maven_repo}</name>
-            <url>${domain}</url>
+            <name>$best_maven_repo</name>
+            <url>$domain</url>
         </mirror>
     </mirrors>
 </settings>
@@ -164,7 +164,7 @@ EOM
 function find_fastest_docker_mirror() {
     local url="https://www.docker.com/"
     read -r -d '' mirror_urls <<-EOM
-${url}
+$url
 https://hub-mirror.c.163.com
 https://registry.docker-cn.com
 https://docker.mirrors.ustc.edu.cn
@@ -183,13 +183,13 @@ EOM
 function find_fastest_pip_mirror() {
     local url="https://pypi.org/"
     read -r -d '' mirror_urls <<-EOM
-${url}
+$url
 https://mirrors.aliyun.com/pypi/simple/
 EOM
     local best
     # shellcheck disable=SC2086
     best=$(find_fastest_url $mirror_urls)
-    if [[ "${best}" == "${url}" ]]; then
+    if [[ "$best" == "$url" ]]; then
         echo ""
     else
         cat <<-EOF
