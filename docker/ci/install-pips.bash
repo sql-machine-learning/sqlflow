@@ -19,7 +19,7 @@ set -e
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
 #       need to install manually.
 # NOTE: mysqlclient depends on apt package mysqlclient from install-mysql.bash.
-pip install --quiet \
+pip install --quiet --upgrade \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
     impyla==0.16.0 \
