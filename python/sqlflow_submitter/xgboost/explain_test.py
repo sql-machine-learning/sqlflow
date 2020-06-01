@@ -147,6 +147,9 @@ class ExplainXGBModeTestCase(TestCase):
         os.remove('my_model')
 
     def test_explain(self):
+        import sklearn
+        assert sklearn.__version__ == "0.23.0", "sklearn version {} not match".format(sklearn.__version__)
+
         feature_column_names = [k["feature_name"] for k in feature_field_meta]
         feature_metas = {k['feature_name']: k for k in feature_field_meta}
         xgb_train(datasource=datasource,
