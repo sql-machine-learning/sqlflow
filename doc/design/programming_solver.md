@@ -66,16 +66,16 @@ s.t. demand{x in X}: ProductAmt[x] <= 40;
 
 In order to extend SQL to have completely same ability of AMPL, the extended syntax should be able to describe **objective and constraints** while the input data table can store the **params** for each **variable**, and the rows in the table is naturally become the **set** we defined in AMPL. 
 
-### Single Variable
+### Linear Programming Syntax
 
-Then we have the below `train_table`:
+Then we have the below table `woodcarving`:
 
 | product | price | materials_cost | other_cost | finishing | carpentry | max_num |
 | ------- | ----- | -------------- | ---------- | --------- | --------- | ------- |
 | soldier | 27    | 10             | 14         | 2         | 1         | 40      |
 | train   | 21    | 9              | 10         | 1         | 1         | 10000   |
 
-In the `train_table`:
+In the `woodcarving`:
 
 - The set X is row one and row two.
 - We have one variable, and the variable name strings is stored in column `product`. In cases that have multiple variables (like the example described at https://en.wikipedia.org/wiki/AMPL), the table should have multiple string columns to store the variable.
@@ -84,13 +84,13 @@ In the `train_table`:
 Then we can use below extended SQL syntax to describe above example:
 
 ```sql
-SELECT * FROM train_table
+SELECT * FROM woodcarving
 TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
 CONSTRAINT SUM(finishing * product) <= 100
 CONSTRAINT SUM(carpentry * product) <= 80
 CONSTRAINT product <= max_num
 WITH variables="product",
-     var_type="product:Integers"
+     product="Integers"
 [USING glpk]
 INTO result_table;
 ```
@@ -102,8 +102,8 @@ In the SQL statement:
     - In the expression, `SUM` means sum the value across all rows like normal SQL statements.
 - `CONSTRAINT ...` expression strings that describe the constraints, can have multiple `CONSTRAINT` clause lines.
 - `WITH` attributes:
-    - variables: **required**, specify one column that stores the variable name. Using comma to separate if there are multiple variables.
-    - var_type: **required**, specify the variable type for each variable, format like "column:type,column:type...",  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc.
+    - `variables="product"`: **required**, specify one column that stores the variable name. Using comma to separate if there are multiple variables.
+    - `product="Integers"`: **optional**, specify the variable type for each variable, format like `variable="Type"`,  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc. The default variable type is `Integers`.
 - `USING`: **optional**, solver tool to use, default: glpk.
 - `INTO result_table`: set the result table name.
 
@@ -114,9 +114,11 @@ After the SQL statement finishes execution, the result table `result_table` shou
 | soldier | 20     |
 | train   | 60     |
 
-### Two Variables
+### Combinatorial Optimization Syntax
 
-For a more general example that have two variables (plants and markets, see the example described in https://en.wikipedia.org/wiki/AMPL for details), we want to minimize the cost of shipment between plants and markets, we have three tables looks like below:
+Combinatorial Optimization Problem (https://en.wikipedia.org/wiki/Combinatorial_optimization) is a subset of mathematical optimization that is widely used in real life. Here we demostrate how to use a SQL statement to solve a typicall combinational optimization problem.
+
+For example, there are several plants that manufactures products and several markets that sells them (see the example described in https://en.wikipedia.org/wiki/AMPL for details), we want to minimize the cost of transportation between plants and markets, we have three tables looks like below:
 
 1. Plants capacity table:
 
@@ -144,7 +146,7 @@ For a more general example that have two variables (plants and markets, see the 
 4. When we start to solve the problem, we'd like to join the tables beforehand:
 
     ```sql
-    SELECT src.plants, src.markets, src.distance, plants.capacity, markets.demand FROM train_table AS src
+    SELECT trans.plants, trans.markets, trans.distance, plants.capacity, markets.demand FROM transportation AS trans
     LEFT JOIN plants ON src.plants = plants.plants
     LEFT JOIN markets ON src.markets = markets.markets;
     ```
@@ -160,14 +162,15 @@ For a more general example that have two variables (plants and markets, see the 
 Then we can use below extended SQL syntax to describe above example:
 
 ```sql
-SELECT src.plants, src.markets, src.distance, plants.capacity, markets.demand FROM train_table AS src
+SELECT src.plants, src.markets, src.distance, plants.capacity, markets.demand FROM transportation AS src
 LEFT JOIN plants ON src.plants = plants.plants
 LEFT JOIN markets ON src.markets = markets.markets
 TO MINIMIZE SUM(distance * 90 / 1000)
 CONSTRAINT SUM(markets) <= capacity GROUP BY plants
 CONSTRAINT SUM(plants) >= demand GROUP BY markets
 WITH variables="plants,markets",
-     var_type="plants:Integers,markets:Integers"
+     plants="Integers",
+     markets="Integers"
 [USING glpk]
 INTO result_table;
 ```
