@@ -86,9 +86,9 @@ Then we can use below extended SQL syntax to describe above example:
 ```sql
 SELECT * FROM woodcarving
 TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
-CONSTRAINT SUM(finishing * product) <= 100
-CONSTRAINT SUM(carpentry * product) <= 80
-CONSTRAINT product <= max_num
+CONSTRAINT SUM(finishing * product) <= 100,
+           SUM(carpentry * product) <= 80,
+           product <= max_num
 WITH variables="product",
      product="Integers"
 [USING glpk]
@@ -100,7 +100,7 @@ In the SQL statement:
 - `TO MAXIMIZE|MINIMIZE ...` defines an expression string that describes the objective. 
     - The syntax `MAXIMIZE|MINIMIZE` is used to specify the objective sense. 
     - In the expression, `SUM` means sum the value across all rows like normal SQL statements.
-- `CONSTRAINT ...` expression strings that describe the constraints, can have multiple `CONSTRAINT` clause lines.
+- `CONSTRAINT ...` expression strings that describe the constraints, can have multiple `CONSTRAINT` expressions separated by comma.
 - `WITH` attributes:
     - `variables="product"`: **required**, specify one column that stores the variable name. Using comma to separate if there are multiple variables.
     - `product="Integers"`: **optional**, specify the variable type for each variable, format like `variable="Type"`,  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc. The default variable type is `Integers`.
@@ -166,8 +166,8 @@ SELECT src.plants, src.markets, src.distance, plants.capacity, markets.demand FR
 LEFT JOIN plants ON src.plants = plants.plants
 LEFT JOIN markets ON src.markets = markets.markets
 TO MINIMIZE SUM(distance * 90 / 1000)
-CONSTRAINT SUM(markets) <= capacity GROUP BY plants
-CONSTRAINT SUM(plants) >= demand GROUP BY markets
+CONSTRAINT SUM(markets) <= capacity GROUP BY plants,
+           SUM(plants) >= demand GROUP BY markets
 WITH variables="plants,markets",
      plants="Integers",
      markets="Integers"
