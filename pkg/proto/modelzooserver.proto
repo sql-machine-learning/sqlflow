@@ -32,6 +32,8 @@ message TrainedModelRequest {
     string model_class_name = 6;
     // Model collection image used to train this model, can be empty.
     string model_collection_image_url = 7;
+    // content_tar is zipped trained model content.
+    bytes content_tar = 8;
 }
 
 message ModelResponse {
@@ -101,7 +103,7 @@ service ModelZooServer {
     rpc DropModelDef (ModelDefRequest) returns (ModelResponse);
 
     // Release your trained model.
-    rpc ReleaseTrainedModel (TrainedModelRequest) returns (ModelResponse);
+    rpc ReleaseTrainedModel (stream TrainedModelRequest) returns (ModelResponse);
     // Drop a trained model, TrainedModelRequest should contain name and tag.
     rpc DropTrainedModel (TrainedModelRequest) returns (ModelResponse);
 }
