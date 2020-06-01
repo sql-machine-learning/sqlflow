@@ -56,7 +56,7 @@ def evaluate(datasource,
              is_pai=False,
              pai_table=""):
     # import custom model package
-    model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
 
     if isinstance(estimator_cls, types.FunctionType):

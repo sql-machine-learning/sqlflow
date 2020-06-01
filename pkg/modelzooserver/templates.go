@@ -15,6 +15,11 @@ package modelzooserver
 
 const sampleInitCode = `from .my_test_model import DNNClassifier`
 
+const sampleDockerfile = `FROM sqlflow/sqlflow
+ADD my_test_models /models/my_test_models/
+ENV PYTHONPATH=/models:/usr/local/sqlflow/python
+`
+
 const sampleModelCode = `import tensorflow as tf
 
 class DNNClassifier(tf.keras.Model):

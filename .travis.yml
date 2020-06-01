@@ -54,6 +54,7 @@ jobs:
       -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
     - docker run --rm
       -v $TRAVIS_BUILD_DIR:/work -w /work
+      -v /var/run/docker.sock:/var/run/docker.sock
       --net=host
       -e SQLFLOW_TEST_DB=mysql
       -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"
@@ -68,6 +69,7 @@ jobs:
     - docker run --rm -it --net=container:hive
       -v $TRAVIS_BUILD_DIR:/work -w /work
       -v $GOPATH:/root/go
+      -v /var/run/docker.sock:/var/run/docker.sock
       sqlflow:ci scripts/test/hive.sh
   - env: SQLFLOW_TEST_DB=maxcompute
     script:
@@ -116,19 +118,23 @@ jobs:
       -v $TRAVIS_BUILD_DIR:/work -w /work
       sqlflow:ci scripts/test/workflow.sh
   - stage: Deploy
-    env: DESC="Deploy macOS client"
-    os: osx
+    env: DESC="Deploy server Docker image"
     script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  - env: DESC="Deploy Linux client"
-    os: linux
-    dist: bionic
-    script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  - env: DESC="Deploy Windows client"
-    os: windows
-    script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-  - env: DESC="Deploy server Docker image"
-    script:
-    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_server.sh
+    - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
+    # We temporarily disable the deployment of client to Qiniu because the
+    # qshell upload feature is unstable and often fails the CI, c.f.,
+    # https://github.com/sql-machine-learning/sqlflow/issues/2305
+    #
+    # - env: DESC="Deploy macOS client"
+    #   os: osx
+    #   script:
+    #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+    # - env: DESC="Deploy Linux client"
+    #   os: linux
+    #   dist: bionic
+    #   script:
+    #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
+    # - env: DESC="Deploy Windows client"
+    #   os: windows
+    #   script:
+    #   - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh

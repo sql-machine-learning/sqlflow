@@ -13,12 +13,41 @@
 
 package modelzooserver
 
+import (
+	"fmt"
+	"regexp"
+)
+
 // checkName checks model definition and trained model is valid.
-func checkName(name string) bool {
-	return true
+func checkName(name string) error {
+	if len(name) < 6 {
+		return fmt.Errorf("model name should have at least 6 characters")
+	}
+	match, err := regexp.MatchString(`^[a-zA-Z0-9_-]{6,256}$`, name)
+	if err != nil {
+		return err
+	}
+	if !match {
+		return fmt.Errorf("model name should be constist of letters, numbers, underscroll, dash, and must start with a letter")
+	}
+	return nil
 }
 
 // checkImageURL checks a Docker image URL is valid
-func checkImageURL(imageURL string) bool {
-	return true
+func checkImageURL(imageURL string) error {
+	if len(imageURL) < 6 {
+		return fmt.Errorf("imageURL should have at least 6 characters")
+	}
+
+	match, err := regexp.MatchString(`^[a-zA-Z0-9\._\/\-]{6,256}$`, imageURL)
+	if err != nil {
+		return err
+	}
+
+	if !match {
+		return fmt.Errorf("docker image URL should be format like [hub.your-registry.com/group/]your_image_name")
+	}
+	// TODO(typhoonzero): check if the Docker image can be pulled.
+
+	return nil
 }

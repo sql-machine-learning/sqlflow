@@ -176,6 +176,13 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 	}
 	// close and flush the tar.gz file
 	fd.Close()
+	if err := checkImageURL(reqName); err != nil {
+		return err
+	}
+	imgExists := imageExistsOnRegistry(reqName, reqTag)
+	if imgExists {
+		return fmt.Errorf("current image %s:%s already exists on registry", reqName, reqTag)
+	}
 	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
 		return err
 	}
@@ -191,12 +198,15 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 		return fmt.Errorf("no model classes detected")
 	}
 
-	// TODO(typhoonzero): Check the reqName should be of the format:
-	// hub.docker.com/group/mymodel
-	// group/mymodel
-	// mymodel
-
-	// TODO(typhoonzero): validate the uploaded tar contains valid models.
+	// do Docker image build and push
+	dryrun := false
+	if os.Getenv("SQLFLOW_TEST_DB") != "" {
+		// do not push images when testing on CI
+		dryrun = true
+	}
+	if err := buildAndPushImage("./modelrepo", reqName, reqTag, dryrun); err != nil {
+		return err
+	}
 
 	// get model_collection id, if exists, return already existed error
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';", modelCollTable, reqName, reqTag)
@@ -259,14 +269,17 @@ func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefReque
 	}
 	// 3. delete model collection record
 	sql = fmt.Sprintf("DELETE FROM %s WHERE id=%d;", modelCollTable, id)
-	_, err = s.DB.Exec(sql)
-	if err != nil {
+	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
 	}
 	return &pb.ModelResponse{Success: true, Message: ""}, nil
 }
 
 func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+	if err := checkName(req.Name); err != nil {
+		return nil, err
+	}
+
 	// Get model_def_id from model_definition table
 	imageAndTag := strings.Split(req.ModelCollectionImageUrl, ":")
 	if len(imageAndTag) != 2 {
@@ -280,7 +293,7 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 	defer rowsImageID.Close()
 	end := rowsImageID.Next()
 	if !end {
-		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+		return nil, fmt.Errorf("when release trained model, no model collection %s found", req.GetName())
 	}
 	var modelCollID int
 	if err = rowsImageID.Scan(&modelCollID); err != nil {
@@ -296,10 +309,10 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 	defer rowsModelDefID.Close()
 	end = rowsModelDefID.Next()
 	if !end {
-		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+		return nil, fmt.Errorf("when release trained model, no model definition %s found", req.GetName())
 	}
 	var modelDefID int
-	if err = rowsModelDefID.Scan(&modelDefID); err != nil {
+	if err := rowsModelDefID.Scan(&modelDefID); err != nil {
 		return nil, err
 	}
 	// TODO(typhoonzero): let trained model name + version be unique across the table.
@@ -313,9 +326,9 @@ func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.Traine
 }
 
 func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+	// TODO(typhoonzero): do not delete rows, set an deletion flag.
 	sql := fmt.Sprintf("DELETE FROM %s WHERE name='%s' AND version='%s'", trainedModelTable, req.Name, req.Tag)
-	_, err := s.DB.Exec(sql)
-	if err != nil {
+	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
 	}
 	return &pb.ModelResponse{Success: true, Message: ""}, nil

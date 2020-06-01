@@ -14,22 +14,14 @@
 
 set -e
 
-echo "Start SQLFlow server ..."
-sqlflowserver &
-
 # Wait for the creation of file /work/mysql-inited.  The entrypoint
 # of sqlflow:mysql should create this file on a bind mount of the host
 # filesystem.  So, the container running this script should also bind
 # mount the same host directory to /work.
+# shellcheck disable=SC2162
 while read i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
     < <(inotifywait  -e create,open --format '%f' --quiet /work --monitor)
 
-echo "Setup Jupyter notebook connecting to $DS ..."
-# The following data source URL implies that the MySQL server runs in
-# a container, and the container running this script must have the
-# option --net=container:mysql_server_container, so this script can
-# access the MySQL server running in another container as it runs in
-# the same container.
-SQLFLOW_DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0" \
-SQLFLOW_SERVER="localhost:50051" \
-  jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --NotebookApp.token=''
+echo "Start SQLFlow server ..."
+sqlflowserver
+
