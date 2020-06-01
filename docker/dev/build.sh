@@ -73,7 +73,7 @@ fi
 cd models
 git checkout master # The residual local repo might not be on a branch.
 git pull  # Pull the most recent commits, which might include the one we want.
-git checkout 26ba78f7dbe9f55a53193ca68a47a528fe5e6977
+git checkout v0.0.1 -b v0.0.1
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."
