@@ -40,4 +40,5 @@ go install ./...
 # set test timeout to 900s since travis CI may be slow to run the case TestParse
 # gotest -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.txt
 
+pip install -U scikit-learn==0.23.0
 python -m unittest discover -v python "*_test.py"
