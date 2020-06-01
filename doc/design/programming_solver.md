@@ -172,6 +172,11 @@ WITH variables="plants,markets",
 INTO result_table;
 ```
 
+- In the above SQL statement, the syntax is quite the same as the single variable example, yet
+- The `CONSTRAINT` including a `GROUP BY` clause is a "partial aggregation constraint", take `CONSTRAINT SUM(markets) <= capacity GROUP BY plants` as an example, it means:
+    1. for each plant,
+    2. the sum of "transportaion amount to each market from current plant" should be less than the current plant's capacity.
+
 Then after the solving job has completed, we should have below contents in the `result_table` (the result column is a fake result for demonstration):
 
 | plants  | markets | result |
