@@ -58,11 +58,18 @@ def pred(datasource,
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
     print("Start predicting XGBoost model...")
+
+    if is_pai:
+        selected_cols = db.pai_selected_cols(
+            "odps://{}/tables/{}".format(*pai_table.split(".")))
+    else:
+        selected_cols = db.selected_cols(conn.driver, conn, select)
+
     feature_file_id = 0
     for pred_dmatrix in dpred:
         predict_and_store_result(bst, pred_dmatrix, feature_file_id,
-                                 model_params, feature_column_names,
-                                 label_name, is_pai, conn, result_table,
+                                 model_params, selected_cols, label_name,
+                                 is_pai, conn, result_table,
                                  hdfs_namenode_addr, hive_location, hdfs_user,
                                  hdfs_pass)
         feature_file_id += 1
@@ -70,7 +77,7 @@ def pred(datasource,
 
 
 def predict_and_store_result(bst, dpred, feature_file_id, model_params,
-                             feature_column_names, label_name, is_pai, conn,
+                             selected_cols, label_name, is_pai, conn,
                              result_table, hdfs_namenode_addr, hive_location,
                              hdfs_user, hdfs_pass):
     preds = bst.predict(dpred)
@@ -98,8 +105,20 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
         feature_file_read = open(
             "predict.raw.dir/predict.txt_%d" % feature_file_id, "r")
 
-    result_column_names = feature_column_names
-    result_column_names.append(label_name)
+    result_column_names = selected_cols
+
+    # Users may use "SELECT ..., label ... TO PREDICT new_table.new_label" to
+    # write both the actual label and the prediction label into the result
+    # table for comparision. So if "new_label == label", we should use
+    # "INSERT INTO new_table (..., label) VALUES ..." to write the result table,
+    # and if new_label != label, we should use
+    # "INSERT INTO new_table (..., label, new_label) VALUES..." to write the result table.
+    # "new_label == label" is equivalent to "label_name in selected_cols" .
+    label_index = selected_cols.index(
+        label_name) if label_name in selected_cols else None
+    if label_index is None:
+        result_column_names.append(label_name)
+
     line_no = 0
     if is_pai:
         driver = "pai_maxcompute"
@@ -121,6 +140,7 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             row = [
                 item.split(":")[1]
                 for i, item in enumerate(line.strip().split("\t"))
+                if i != label_index
             ]
             row.append(str(preds[line_no]))
             w.write(row)

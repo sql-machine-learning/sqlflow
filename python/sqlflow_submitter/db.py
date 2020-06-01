@@ -296,16 +296,16 @@ def pai_maxcompute_db_generator(table,
                                 fetch_size=128,
                                 slice_id=0,
                                 slice_count=1):
-    import paiio
-    pai_reader = paiio.TableReader(table,
-                                   slice_id=slice_id,
-                                   slice_count=slice_count)
-
-    selected_cols = [item['colname'] for item in pai_reader.get_schema()]
-    label_index = selected_cols.index(
-        label_column_name) if label_column_name else None
-
     def reader():
+        import paiio
+        pai_reader = paiio.TableReader(table,
+                                       slice_id=slice_id,
+                                       slice_count=slice_count)
+
+        selected_cols = [item['colname'] for item in pai_reader.get_schema()]
+        label_index = selected_cols.index(
+            label_column_name) if label_column_name else None
+
         while True:
             try:
                 row = pai_reader.read(num_records=1)[0]
@@ -317,7 +317,6 @@ def pai_maxcompute_db_generator(table,
                 pai_reader.close()
                 break
 
-    reader.column_names = selected_cols
     return reader
 
 

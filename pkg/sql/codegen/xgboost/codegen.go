@@ -341,6 +341,12 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCode(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
 
+	// NOTE(sneaxiy): The label name when predicting may be different from the label
+	// name when training, and users may select the actual label when predicting to
+	// compare them with the model prediction. So the label field desc of codegen
+	// must be the label name in prediction select statement.
+	labelFieldDesc.Name = predStmt.ResultColumn
+
 	if err != nil {
 		return "", err
 	}

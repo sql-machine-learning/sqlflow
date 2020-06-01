@@ -1616,7 +1616,7 @@ func getUniqueID() int {
 	return uniqueID
 }
 
-func CaseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool) {
+func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool) {
 	tableSplits := strings.SplitN(table, ".", 2)
 	dbPrefix := ""
 	if len(tableSplits) == 2 {
@@ -1698,20 +1698,20 @@ func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 	}
 
 	t.Run("CaseXGBoostNoFeatureColumn", func(*testing.T) {
-		CaseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai)
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai)
 	})
 
 	t.Run("CaseXGBoostBucketFeatureColumn", func(*testing.T) {
-		CaseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai)
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai)
 	})
 
 	t.Run("CaseXGBoostCategoryFeatureColumn", func(*testing.T) {
-		CaseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
+		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
 			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai)
 	})
 
 	t.Run("CaseXGBoostCrossFeatureColumn", func(*testing.T) {
-		CaseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
+		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
 			`CROSS([customerid, gender], 10)`, 2, numWorkers, isPai)
 	})
 }

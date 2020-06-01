@@ -33,7 +33,9 @@ func toModuleDataType(dtype int, module string) (string, error) {
 	}
 }
 
-// TODO(sneaxiy): should find a better way to distinguish whether the module is TensorFlow
+// TODO(sneaxiy): XGBoost does not support some feature columns, such as EMBEDDING.
+// For better error message, we should find a better way to distinguish whether the
+// module is TensorFlow or XGBoost.
 func isTensorFlowModule(module string) bool {
 	return module == "tf" || module == "tensorflow"
 }

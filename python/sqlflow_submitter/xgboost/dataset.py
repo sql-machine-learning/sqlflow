@@ -43,6 +43,12 @@ def xgb_dataset(datasource,
                 feature_column_code="",
                 raw_data_dir=None):
     if raw_data_dir:
+        # raw_data_dir is needed when predicting. Because we
+        # should write the raw data from the source db into
+        # the dest db, instead of the transformed data after
+        # `transform_fn(features)` . If raw_data_dir is not
+        # None, the raw data from the source db would be written
+        # into another file.
         if os.path.exists(raw_data_dir):
             shutil.rmtree(raw_data_dir, ignore_errors=True)
 
@@ -100,11 +106,6 @@ def xgb_dataset(datasource,
                                         raw_data_dir=raw_data_dir)
 
 
-def join_path_and_file(dir, file):
-    index = file.rindex('/') + 1 if '/' in file else 0
-    return os.path.join(dir, file[index:])
-
-
 def dump_dmatrix(filename,
                  generator,
                  feature_column_names,
@@ -118,7 +119,8 @@ def dump_dmatrix(filename,
     row_id = 0
 
     if raw_data_dir:
-        raw_data_fid = open(join_path_and_file(raw_data_dir, filename), 'a')
+        index = filename.rindex('/') + 1 if '/' in filename else 0
+        raw_data_fid = open(os.path.join(raw_data_dir, filename[index:]), 'a')
     else:
         raw_data_fid = None
 

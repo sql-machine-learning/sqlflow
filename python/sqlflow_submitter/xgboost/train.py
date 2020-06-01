@@ -26,6 +26,7 @@ from sqlflow_submitter.xgboost.pai_rabit import (PaiXGBoostTracker,
 try:
     from xgboost.compat import XGBoostLabelEncoder
 except:
+    # xgboost==0.82.0 does not have XGBoostLabelEncoder in xgboost.compat.py
     from xgboost.sklearn import XGBLabelEncoder as XGBoostLabelEncoder
 
 
@@ -210,6 +211,9 @@ def save_local_file(booster, model_params, model_name):
             num_class = model_params.get("num_class")
             assert num_class is not None and num_class > 0, "num_class should not be None"
 
+        # To fake a trained XGBClassifier, there must be "_le", "classes_", inside
+        # XGBClassifier. See here:
+        # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
         model = xgb.XGBClassifier()
         label_encoder = XGBoostLabelEncoder()
         label_encoder.fit(list(range(num_class)))
@@ -230,6 +234,8 @@ def save_local_file(booster, model_params, model_name):
     meta["type"] = model_type
     meta = json.dumps(meta)
 
+    # Meta data is needed for saving sklearn pipeline. See here:
+    # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
     booster.set_attr(scikit_learn=meta)
     booster.save_model(model_name)
     booster.set_attr(scikit_learn=None)
