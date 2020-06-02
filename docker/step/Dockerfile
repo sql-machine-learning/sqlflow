@@ -3,9 +3,12 @@ FROM ubuntu:18.04
 # This script assume we are at sqlflow root directory and the directory is already built by sqlflow:dev
 # The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/find_fastest_resources.sh
-COPY docker/step/choose_fastest_apt_pip_sources.sh /choose_fastest_apt_pip_sources.sh
 
-RUN /choose_fastest_apt_pip_sources.sh
+RUN /bin/bash -c 'source find_fastest_resources.sh \
+  && echo "Choose the fastest APT source ..." \
+  && choose_fastest_apt_source \
+  && echo "Choose the fastest PIP source ..." \
+  && choose_fastest_pip_source'
 
 RUN apt-get install -y openjdk-8-jre-headless wget unzip > /dev/null
 
