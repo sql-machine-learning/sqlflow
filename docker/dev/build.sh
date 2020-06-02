@@ -83,3 +83,5 @@ for file in $SQLFLOWPATH/doc/tutorial/*.md; do
     echo "Generate $output ..."
     cat $file | markdown-to-ipynb --code-block-type=sql > $output
 done
+
+echo "Build Finished!"
