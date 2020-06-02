@@ -111,7 +111,7 @@ func fieldType(dbms, typeName string) (string, error) {
 	} else if dbms == "hive" {
 		const hiveCTypeSuffix = "_TYPE" // Hive field type names ends with _TYPE
 		if strings.HasSuffix(typeName, hiveCTypeSuffix) {
-			return typeName[:len(typeName)-len(hiveCTypeSuffix)], nil
+			typeName = typeName[:len(typeName)-len(hiveCTypeSuffix)]
 		}
 		// In hive, capacity is also needed when define a VARCHAR field, so we replace it with STRING.
 		if typeName == "VARCHAR" {

@@ -21,9 +21,9 @@ CREATE TABLE feature_derivation_case.train (
        c2 float,
        c3 TEXT,
        c4 TEXT,
-       c5 TEXT,
-       c6 TEXT,
-       class int);
+       c5 VARCHAR(255),
+       c6 CHAR(255),
+       class TINYINT);
 INSERT INTO feature_derivation_case.train VALUES
 (6.4,2.8, '1,4,2,3', '1,3,2,6', '3,140', 'MALE', 0),
 (5.0,2.3, '1,3,8,3', '3,2,5,3', '93,12,1,392,49,13,398', 'FEMALE', 1),
