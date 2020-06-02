@@ -31,8 +31,8 @@ An example is *sliding-window*.
 A [user told us](https://github.com/sql-machine-learning/sqlflow/issues/2238)
 that he wants to extract temporal features from time-series data by calling the
 well-known Python package [`tsfresh`](https://tsfresh.readthedocs.io), which
-runs a sliding-window over the time-series data and convert each step into a new
-row.
+runs a sliding-window over the time-series data, convert each step into a new
+row and then calculate many statistaical values on it to derive features.
 
 This requirement intrigues us to support a general way to call arbitrary
 programs from SQL, hence the idea of the `TO RUN` clause.
@@ -48,37 +48,53 @@ current SQLFlow deployment.  Let us dive deep into the no-compromise design.
 The subject to run is a program.  A program needs versioning and releasing.  As
 always, we assume Docker images are released form.  Therefore, the user needs to
 provide a Docker image as the subject of the `TO RUN` clause.  The SQLFlow
-compiler translates the TO RUN statement into a Tekton step that runs this
+compiler translates the `TO RUN` statement into a Tekton step that runs this
 Docker image, or more specificially, the entrypoint program of the Docker image.
 
-Consider the following example.
+The following is an example to run an executable built from a program written in Go/C++/.etc.
 
-```sql
+```SQL
 SELECT * FROM source_table ORDER BY creation_date
-TO RUN a_data_scientist/extract_ts_features:1.0
+TO RUN a_data_scientist/ts_data_processor:1.0
 CMD
+  "slide_window_to_row",
   "--verbose",
+  "--time_column=t",
+  "--value_column=v",
   "--window_width=120"
 INTO output_table_name;
 ```
 
 The SQLFlow compiler translates it into a Tekton step that
-executes the Docker image `a_data_scientist/extract_ts_features:1.0` with the
+executes the Docker image `a_data_scientist/ts_data_processor:1.0` with the
 command-line options
 
-- `"feature_extractor.py"`
-- `"--verbose"`
-- `"--window_width=120"`,
+- `"slide_window_to_row"`
+- `"--time_column=t"`
+- `"--value_column=v"`
+- `"--window_width=120"`
 
-and environment varaibles
+and environment variables
 
-- `SQLFLOW_TO_RUN_PATH=feature_extractor.py`,
 - `SQLFLOW_TO_RUN_SELECT=SELECT * FROM source_table ORDER BY creation_date`
 - `SQLFLOW_TO_RUN_INTO=output_table_name`
 - `SQLFLOW_TO_RUN_IMAGE=a_data_scientist/extract_ts_features:1.0`
 
 We will talk more about the command-line options and environment variables
 later in this document.
+
+The following is an example to run a program written in script language such as Python.
+
+```SQL
+SELECT * FROM source_table ORDER BY creation_date
+TO RUN a_data_scientist/extract_ts_features:1.0
+CMD
+  "ts_feature_extractor.py",
+  "--time_column=t",
+  "--value_column=x",
+  "--window_width=120"
+INTO output_table_name;
+```
 
 ### The SELECT Prefix
 
