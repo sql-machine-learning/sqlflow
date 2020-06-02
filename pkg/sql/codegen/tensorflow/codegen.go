@@ -25,7 +25,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
-	"sqlflow.org/sqlflow/pkg/util"
 )
 
 var commonAttributes = attribute.Dictionary{
@@ -69,10 +68,6 @@ var distributedTrainingAttributes = attribute.Dictionary{
 	"train.evaluator_gpu": {attribute.Int, 0, "", nil},
 }
 
-func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
-	return codegen.GenerateFeatureColumnCode(fc, "tf")
-}
-
 func attrToPythonValue(attr interface{}) string {
 	switch attr.(type) {
 	case bool:
@@ -86,7 +81,7 @@ func attrToPythonValue(attr interface{}) string {
 	case float64: // FIXME(typhoonzero): may never use
 		return fmt.Sprintf("%f", attr.(float64))
 	case []int:
-		return util.IntArrayToJSONString(attr.([]int))
+		return codegen.IntArrayToJSONString(attr.([]int))
 		// TODO(typhoonzero): support []float etc.
 	case []interface{}:
 		tmplist := attr.([]interface{})
@@ -96,7 +91,7 @@ func attrToPythonValue(attr interface{}) string {
 				for _, v := range tmplist {
 					intlist = append(intlist, v.(int))
 				}
-				return util.IntArrayToJSONString(intlist)
+				return codegen.IntArrayToJSONString(intlist)
 			}
 		}
 		// TODO(typhoonzero): support []float etc.
@@ -278,12 +273,12 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 	return trainParams, validateParams, modelParams
 }
 
-func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
+func deriveFeatureColumnCodeAndFieldDescs(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
 	fieldDescs = make(map[string][]*ir.FieldDesc)
 	for target, fcList := range trainStmt.Features {
 		perTargetFeatureColumnsCode := []string{}
 		for _, fc := range fcList {
-			fcCode, err := generateFeatureColumnCode(fc)
+			fcCode, err := codegen.GenerateFeatureColumnCode(fc, "tf")
 			if err != nil {
 				return nil, nil, err
 			}
@@ -307,7 +302,7 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 // Train generates a Python program for train a TensorFlow model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
-	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCode(trainStmt)
+	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCodeAndFieldDescs(trainStmt)
 	if err != nil {
 		return "", err
 	}
@@ -338,7 +333,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
-		"intArrayToJSONString": util.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfTrainTemplateText))
@@ -391,7 +386,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
-		"intArrayToJSONString": util.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfPredTemplateText))
@@ -435,7 +430,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
-		"intArrayToJSONString": util.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
@@ -476,7 +471,7 @@ func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
-		"intArrayToJSONString": util.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.IntArrayToJSONString,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfEvaluateTemplateText))
@@ -495,11 +490,7 @@ func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featu
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
 	}
-
-	featureColumnsCode, fieldDescs, err = deriveFeatureColumnCode(stmt)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	featureColumnsCode, fieldDescs, err = deriveFeatureColumnCodeAndFieldDescs(stmt)
 	return
 }
 

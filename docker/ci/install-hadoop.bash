@@ -16,9 +16,25 @@
 set -e
 
 # NOTE: require external exported HADOOP_VERSION.
-HADOOP_SITE="https://archive.apache.org/dist/hadoop/common"
-axel --quiet --output /tmp/hadoop.tar.gz \
-     $HADOOP_SITE/hadoop-"$HADOOP_VERSION"/hadoop-"$HADOOP_VERSION".tar.gz
+
+# NOTE: Hadoop provides an official website to choose a proper URL for fast
+# downloading. The recommended URL is inside the website $HADOOP_DYN_SITE.
+# Here we use a spider-like code to retrieve the recommended URL from the
+# website $HADOOP_DYN_SITE. The URL is inside something like:
+# <a href="https://mirror.bit.edu.cn/apache/hadoop/common/hadoop-3.2.1/
+#  hadoop-3.2.1.tar.gz">...</a>
+
+HADOOP_DYN_SITE="https://www.apache.org/dyn/closer.cgi/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz"
+
+HADOOP_HREF_PATTERN="href\=\"https:\/\/.*\/hadoop-$HADOOP_VERSION.tar.gz\""
+
+HADOOP_URL="$(curl -s "$HADOOP_DYN_SITE" | \
+    grep -m 1 -o -E "$HADOOP_HREF_PATTERN" | \
+    awk -F'"' '{print $2}')"
+
+echo "Download Hadoop from $HADOOP_URL ..."
+
+axel --quiet --output /tmp/hadoop.tar.gz "$HADOOP_URL"
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-"$HADOOP_VERSION"/share/doc

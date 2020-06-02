@@ -16,7 +16,6 @@ package codegen
 import (
 	"fmt"
 	"sqlflow.org/sqlflow/pkg/ir"
-	"sqlflow.org/sqlflow/pkg/util"
 	"strings"
 )
 
@@ -36,8 +35,13 @@ func toModuleDataType(dtype int, module string) (string, error) {
 // TODO(sneaxiy): XGBoost does not support some feature columns, such as EMBEDDING.
 // For better error message, we should find a better way to distinguish whether the
 // module is TensorFlow or XGBoost.
-func isTensorFlowModule(module string) bool {
-	return module == "tf" || module == "tensorflow"
+func isXGBoostModule(module string) bool {
+	return strings.HasPrefix(module, "xgboost")
+}
+
+// IntArrayToJSONString converts int array to json string
+func IntArrayToJSONString(intArray []int) string {
+	return strings.Join(strings.Split(fmt.Sprint(intArray), " "), ",")
 }
 
 // GenerateFeatureColumnCode generates feature column code for both TensorFlow and XGBoost models
@@ -47,7 +51,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
 			module,
 			c.FieldDesc.Name,
-			util.IntArrayToJSONString(c.FieldDesc.Shape)), nil
+			IntArrayToJSONString(c.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
@@ -57,7 +61,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			"%s.feature_column.bucketized_column(%s, boundaries=%s)",
 			module,
 			sourceCode,
-			util.IntArrayToJSONString(c.Boundaries)), nil
+			IntArrayToJSONString(c.Boundaries)), nil
 	case *ir.CategoryIDColumn:
 		fm := c.GetFieldDesc()[0]
 		if len(fm.Vocabulary) > 0 {
@@ -72,8 +76,8 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			module, c.FieldDesc.Name, c.BucketSize), nil
 	case *ir.SeqCategoryIDColumn:
-		if !isTensorFlowModule(module) {
-			return "", fmt.Errorf("SEQ_CATEGORY_ID is only supported in TensorFlow models")
+		if isXGBoostModule(module) {
+			return "", fmt.Errorf("SEQ_CATEGORY_ID is not supported in XGBoost models")
 		}
 		return fmt.Sprintf("%s.feature_column.sequence_categorical_column_with_identity(key=\"%s\", num_buckets=%d)",
 			module, c.FieldDesc.Name, c.BucketSize), nil
@@ -102,8 +106,8 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			"%s.feature_column.crossed_column([%s], hash_bucket_size=%d)",
 			module, strings.Join(keysGenerated, ","), c.HashBucketSize), nil
 	case *ir.EmbeddingColumn:
-		if !isTensorFlowModule(module) {
-			return "", fmt.Errorf("EMBEDDING is only supported in TensorFlow models")
+		if isXGBoostModule(module) {
+			return "", fmt.Errorf("EMBEDDING is not supported in XGBoost models")
 		}
 
 		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
@@ -113,8 +117,8 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
 			module, sourceCode, c.Dimension, c.Combiner), nil
 	case *ir.IndicatorColumn:
-		if !isTensorFlowModule(module) {
-			return "", fmt.Errorf("INDICATOR is only supported in TensorFlow models")
+		if isXGBoostModule(module) {
+			return "", fmt.Errorf("INDICATOR is not supported in XGBoost models")
 		}
 
 		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
