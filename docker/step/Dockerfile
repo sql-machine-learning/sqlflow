@@ -2,12 +2,12 @@ FROM ubuntu:18.04
 
 # This script assume we are at sqlflow root directory and the directory is already built by sqlflow:dev
 # The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
-COPY docker/step/set_up_env.sh /set_up_env.sh
-COPY docker/dev/find_fastest_resources.sh /find_fastest_resources.sh
+COPY docker/dev/find_fastest_resources.sh /usr/local/bin/find_fastest_resources.sh
+COPY docker/step/choose_fastest_apt_pip_sources.sh /choose_fastest_apt_pip_sources.sh
 
-RUN /set_up_env.sh
+RUN /choose_fastest_apt_pip_sources.sh
 
-RUN apt-get install -y openjdk-8-jre-headless wget unzip #> /dev/null
+RUN apt-get install -y openjdk-8-jre-headless wget unzip > /dev/null
 
 RUN wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip && \
 unzip -qq odpscmd_public.zip -d /usr/local/odpscmd && \

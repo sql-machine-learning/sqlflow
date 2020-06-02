@@ -27,6 +27,7 @@
 # function find_fastest_docker_mirror() echos fastest docker mirror url
 # function find_fastest_pip_mirror()  echos fastest pip mirror config
 
+
 # Returns the domain name of an URL.
 function get_domain_from_url() {
     # cut extract the domain, domain is the third field split by '/'
