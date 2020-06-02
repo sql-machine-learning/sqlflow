@@ -29,4 +29,5 @@ pip install --quiet \
     xgboost==0.90 \
     oss2==2.9.0 \
     plotille==3.7 \
-    seaborn==0.9.0
+    seaborn==0.9.0 \
+    scikit-learn==0.21.0
