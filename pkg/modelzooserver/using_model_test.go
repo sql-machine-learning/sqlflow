@@ -15,6 +15,7 @@ package modelzooserver
 
 import (
 	"context"
+	"io"
 	"net"
 	"os"
 	"testing"
@@ -58,6 +59,9 @@ func execStmt(client proto.SQLFlowClient, sql string) error {
 	// fetch stream to wait the statement execution finish
 	for {
 		_, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err
 		}
