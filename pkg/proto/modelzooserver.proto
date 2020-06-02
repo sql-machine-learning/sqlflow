@@ -1,7 +1,7 @@
 syntax = "proto3";
 package proto;
 
-message ModelDefRequest {
+message ReleaseModelRepoRequest {
     // Name of the model definition or trained model.
     // 1. For model definition, it could be a full Docker image URL like:
     //    hub.docker.com/my_group/model_image_name, or path of the image to use the default registry:
@@ -17,7 +17,7 @@ message ModelDefRequest {
     bytes content_tar = 3;
 }
 
-message TrainedModelRequest {
+message ReleaseModelRequest {
     // A unique name of the trained model.
     string name = 1;
     // A version tag string, like: "v0.1"
@@ -38,7 +38,7 @@ message TrainedModelRequest {
     string content_url = 8;
 }
 
-message ModelResponse {
+message ReleaseResponse {
     // success indicates whether the request is processed successfully.
     bool success = 1;
     // message describe the error details when error occurs.
@@ -53,7 +53,7 @@ message ListModelRequest {
     int64 size = 2;
 }
 
-message ModelDefResponse {
+message ModelRepoResponse {
     // Model definition Python class name or function name.
     string class_name = 1;
     // The model collection Docker image containing the class.
@@ -64,48 +64,48 @@ message ModelDefResponse {
     string arg_descs = 4;
 }
 
-message ListModelDefResponse {
+message ListModelRepoResponse {
     // Model definition Python class names or function names.
-    repeated ModelDefResponse model_def_list = 1;
+    repeated ModelRepoResponse model_def_list = 1;
     // Size of elements in the response lists.
     int64 size = 2;
 }
 
-message TrainedModelResponse {
-    // The trained model unique name
+message ModelResponse {
+    // The model's unique name
     string name = 1;
-    // The trained model version tag.
+    // The model's version tag.
     string tag = 2;
     // Actual place that stores the model, e.g. oss://bucket/path/to/your/model
     string model_store_url = 3;
     // Docker image used when train this model, should be like "hub.docker.com/image:v0.3".
     string image_url = 4;
-    // Description of the trained model.
+    // Description of the model.
     string description = 5;
     // Evaluation metrics of the model.
     string metric = 6;
 }
 
-message ListTrainedModelResponse {
-    repeated TrainedModelResponse trained_model_list = 1;
+message ListModelResponse {
+    repeated ModelResponse model_list = 1;
     // Size of elements in names.
     int64 size = 2;
 }
 
 service ModelZooServer {
     // Returns the list of public available model definitions.
-    rpc ListModelDefs (ListModelRequest) returns (ListModelDefResponse);
+    rpc ListModelRepos (ListModelRequest) returns (ListModelRepoResponse);
     // Returns the list of public available trained models.
-    rpc ListTrainedModels (ListModelRequest) returns (ListTrainedModelResponse);
+    rpc ListModels (ListModelRequest) returns (ListModelResponse);
 
-    // Release your model definition.
-    rpc ReleaseModelDef (stream ModelDefRequest) returns (ModelResponse);
-    // Drop your model definition.
+    // Release your model repo.
+    rpc ReleaseModelRepo (stream ReleaseModelRepoRequest) returns (ReleaseResponse);
+    // Drop your model repo.
     // ModelDefRequest should contain name and tag.
-    rpc DropModelDef (ModelDefRequest) returns (ModelResponse);
+    rpc DropModelRepo (ReleaseModelRepoRequest) returns (ReleaseResponse);
 
-    // Release your trained model.
-    rpc ReleaseTrainedModel (stream TrainedModelRequest) returns (ModelResponse);
+    // Release your model.
+    rpc ReleaseModel (stream ReleaseModelRequest) returns (ReleaseResponse);
     // Drop a trained model, TrainedModelRequest should contain name and tag.
-    rpc DropTrainedModel (TrainedModelRequest) returns (ModelResponse);
+    rpc DropModel (ReleaseModelRequest) returns (ReleaseResponse);
 }

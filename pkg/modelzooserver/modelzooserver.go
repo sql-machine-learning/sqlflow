@@ -26,33 +26,33 @@ import (
 	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
 
-const modelCollTable = "sqlflow_model_zoo.model_collection"
-const modelDefTable = "sqlflow_model_zoo.model_definition"
-const trainedModelTable = "sqlflow_model_zoo.trained_model"
+const modelCollTable = "sqlflow_model_zoo.model_repos"
+const modelDefTable = "sqlflow_model_zoo.model_definitions"
+const trainedModelTable = "sqlflow_model_zoo.models"
 
 // TODO(typhoonzero): create tables if these tables are not pre created?
 const createTableStmts = `CREATE DATABASE IF NOT EXISTS sqlflow_model_zoo;
-DROP TABLE IF EXISTS sqlflow_model_zoo.trained_model;
-DROP TABLE IF EXISTS sqlflow_model_zoo.model_definition;
-DROP TABLE IF EXISTS sqlflow_model_zoo.model_collection;
+DROP TABLE IF EXISTS sqlflow_model_zoo.models;
+DROP TABLE IF EXISTS sqlflow_model_zoo.model_definitions;
+DROP TABLE IF EXISTS sqlflow_model_zoo.model_repos;
 
-CREATE TABLE sqlflow_model_zoo.model_collection (
+CREATE TABLE sqlflow_model_zoo.model_repos (
     id INT AUTO_INCREMENT,
     name VARCHAR(255),
     version VARCHAR(255),
     PRIMARY KEY (id)
 );
 
-CREATE TABLE sqlflow_model_zoo.model_definition (
+CREATE TABLE sqlflow_model_zoo.model_definitions (
     id INT AUTO_INCREMENT,
     model_coll_id INT,
     class_name VARCHAR(255),
     args_desc TEXT,
     PRIMARY KEY (id),
-    FOREIGN KEY (model_coll_id) REFERENCES model_collection(id)
+    FOREIGN KEY (model_coll_id) REFERENCES model_repos(id)
 );
 
-CREATE TABLE sqlflow_model_zoo.trained_model (
+CREATE TABLE sqlflow_model_zoo.models (
     id INT AUTO_INCREMENT,
     model_def_id INT,
     name VARCHAR(255),
@@ -61,14 +61,14 @@ CREATE TABLE sqlflow_model_zoo.trained_model (
     description TEXT,
     metrics TEXT,
     PRIMARY KEY (id),
-    FOREIGN KEY (model_def_id) REFERENCES model_definition(id)
+    FOREIGN KEY (model_def_id) REFERENCES model_definitions(id)
 );`
 
 type modelZooServer struct {
 	DB *database.DB
 }
 
-func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelDefResponse, error) {
+func (s *modelZooServer) ListModelRepos(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelRepoResponse, error) {
 	// TODO(typhoonzero): join model_collection
 	var sql string
 	if req.Size <= 0 {
@@ -84,7 +84,7 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 	}
 	defer rows.Close()
 
-	responseList := &pb.ListModelDefResponse{Size: 0}
+	responseList := &pb.ListModelRepoResponse{Size: 0}
 	for rows.Next() {
 		n := ""
 		args := ""
@@ -93,7 +93,7 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 		if err := rows.Scan(&n, &args, &image, &imagetag); err != nil {
 			return nil, err
 		}
-		perResp := &pb.ModelDefResponse{
+		perResp := &pb.ModelRepoResponse{
 			ClassName: n,
 			ArgDescs:  args,
 			ImageUrl:  image,
@@ -107,7 +107,7 @@ func (s *modelZooServer) ListModelDefs(ctx context.Context, req *pb.ListModelReq
 	return responseList, nil
 }
 
-func (s *modelZooServer) ListTrainedModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListTrainedModelResponse, error) {
+func (s *modelZooServer) ListModels(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelResponse, error) {
 	var sql string
 	if req.Size <= 0 {
 		sql = fmt.Sprintf(`SELECT a.name, a.version, a.url, a.description, a.metrics, c.name, c.version FROM %s AS a
@@ -126,7 +126,7 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 	}
 	defer rows.Close()
 
-	trainedModelList := &pb.ListTrainedModelResponse{Size: 0}
+	trainedModelList := &pb.ListModelResponse{Size: 0}
 	for rows.Next() {
 		n := ""
 		v := ""
@@ -138,7 +138,7 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 		if err := rows.Scan(&n, &v, &url, &desc, &m, &imagename, &imagetag); err != nil {
 			return nil, err
 		}
-		perResp := &pb.TrainedModelResponse{
+		perResp := &pb.ModelResponse{
 			Name:          n,
 			Tag:           v,
 			ModelStoreUrl: url,
@@ -146,8 +146,8 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 			Metric:        m,
 			ImageUrl:      fmt.Sprintf("%s:%s", imagename, imagetag),
 		}
-		trainedModelList.TrainedModelList = append(
-			trainedModelList.TrainedModelList,
+		trainedModelList.ModelList = append(
+			trainedModelList.ModelList,
 			perResp,
 		)
 	}
@@ -155,7 +155,7 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 	return trainedModelList, nil
 }
 
-func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDefServer) error {
+func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelRepoServer) error {
 	reqName := ""
 	reqTag := ""
 
@@ -240,10 +240,10 @@ func (s *modelZooServer) ReleaseModelDef(stream pb.ModelZooServer_ReleaseModelDe
 		}
 	}
 
-	return stream.SendAndClose(&pb.ModelResponse{Success: true, Message: ""})
+	return stream.SendAndClose(&pb.ReleaseResponse{Success: true, Message: ""})
 }
 
-func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefRequest) (*pb.ModelResponse, error) {
+func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModelRepoRequest) (*pb.ReleaseResponse, error) {
 	// 1. find model collection id
 	// TODO(typhoonzero): verify request strings to avoid SQL injection
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';",
@@ -273,11 +273,11 @@ func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefReque
 	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
 	}
-	return &pb.ModelResponse{Success: true, Message: ""}, nil
+	return &pb.ReleaseResponse{Success: true, Message: ""}, nil
 }
 
-func (s *modelZooServer) ReleaseTrainedModel(stream pb.ModelZooServer_ReleaseTrainedModelServer) error {
-	var req *pb.TrainedModelRequest
+func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServer) error {
+	var req *pb.ReleaseModelRequest
 	var err error
 	var sqlf io.WriteCloser
 
@@ -361,14 +361,14 @@ func (s *modelZooServer) ReleaseTrainedModel(stream pb.ModelZooServer_ReleaseTra
 		return err
 	}
 
-	return stream.SendAndClose(&pb.ModelResponse{Success: true, Message: ""})
+	return stream.SendAndClose(&pb.ReleaseResponse{Success: true, Message: ""})
 }
 
-func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+func (s *modelZooServer) DropModel(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.ReleaseResponse, error) {
 	// TODO(typhoonzero): do not delete rows, set an deletion flag.
 	sql := fmt.Sprintf("DELETE FROM %s WHERE name='%s' AND version='%s'", trainedModelTable, req.Name, req.Tag)
 	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
 	}
-	return &pb.ModelResponse{Success: true, Message: ""}, nil
+	return &pb.ReleaseResponse{Success: true, Message: ""}, nil
 }
