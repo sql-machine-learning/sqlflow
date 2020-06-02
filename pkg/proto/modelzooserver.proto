@@ -22,16 +22,20 @@ message TrainedModelRequest {
     string name = 1;
     // A version tag string, like: "v0.1"
     string tag = 2;
-    // URL of the trained model, describes the detailed position where the model is actually stored.
-    string content_url = 3;
     // Description of the trained model, like what dataset was used to train this model etc.
-    string description = 4;
+    string description = 3;
     // Evaluation metric results in JSON format, e.g. {"Accuracy": 0.87, "AUC": 0.73}
-    string evaluation_metrics = 5;
+    string evaluation_metrics = 4;
     // Model class used to train this model.
-    string model_class_name = 6;
+    string model_class_name = 5;
     // Model collection image used to train this model, can be empty.
-    string model_collection_image_url = 7;
+    string model_collection_image_url = 6;
+    // content_tar is zipped trained model content.
+    bytes content_tar = 7;
+    // content_url is the place that stores the uploaded models, can be formated like:
+    // db.table : model stored in model zoo MySQL using sqlfs
+    // oss://bucket/path/to/model : model stored on OSS
+    string content_url = 8;
 }
 
 message ModelResponse {
@@ -101,7 +105,7 @@ service ModelZooServer {
     rpc DropModelDef (ModelDefRequest) returns (ModelResponse);
 
     // Release your trained model.
-    rpc ReleaseTrainedModel (TrainedModelRequest) returns (ModelResponse);
+    rpc ReleaseTrainedModel (stream TrainedModelRequest) returns (ModelResponse);
     // Drop a trained model, TrainedModelRequest should contain name and tag.
     rpc DropTrainedModel (TrainedModelRequest) returns (ModelResponse);
 }
