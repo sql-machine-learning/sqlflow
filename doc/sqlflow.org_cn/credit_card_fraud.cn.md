@@ -8,8 +8,8 @@
 ## 数据集简介
 
 对银行来说，能够识别欺诈性的信用卡交易是至关重要的，它可以帮助客户避免不必要的经济损失。
-[Kaggle信用卡欺诈数据集](https://www.kaggle.com/mlg-ulb/creditcardfraud)包含2013年9月欧洲持卡人通过信用卡进行的交易。此数据集显示两天内发生的交易，在284807笔交易中，共有492笔盗刷。数据集高度不平衡，正类（欺诈）占所有交易的0.172%，这要比正常的点击率预估数据的比例（一般在1%左右）还要低。
-这份数据集中，几乎所有特征都是PCA变换之后的数值。因为信用卡的真实数据涉及用户隐私，一般来说都是公司或银行的高度机密，所以该数据集并未提供原始特征和更多有关数据的背景信息。特征V1、V2…V28是通过PCA得到的主成分，只有time和amount两个特征没有被PCA转化。特征time表示每一笔交易与数据集中第一笔交易之间经过的秒数。特征amount是交易金额，此特征可用于设置样本权重。字段class是标签，如果存在欺诈，则该字段值为1，否则为0。
+[Kaggle信用卡欺诈数据集](https://www.kaggle.com/mlg-ulb/creditcardfraud)包含2013年9月欧洲持卡人通过信用卡进行的交易。此数据集显示两天内发生的交易，在284807笔交易中，共有492笔盗刷。数据集高度不平衡，正例（发生盗刷）占所有交易的0.172%，这要比常见的点击率预估数据集中正例所占的比例（一般在1%左右）还要低。
+在这份数据集中，几乎所有特征都是PCA变换之后的数值。因为信用卡的真实数据涉及用户隐私，一般来说都是公司或银行的高度机密，所以该数据集并未提供原始特征和更多有关数据的背景信息。特征V1、V2……V28是通过PCA得到的主成分，只有time和amount两个特征没有被PCA转化。特征time表示每笔交易与数据集中第一笔交易之间经过的时长（以秒为单位）。特征amount是交易金额，此特征可用于设置样本权重。字段class是标签，如果存在盗刷，则该字段值为1，否则为0。
 
 ### 导入到MySQL
 #### 下载
@@ -23,7 +23,7 @@ unzip creditcard.csv.zip
 ```sql
 CREATE DATABASE IF NOT EXISTS example;
 
-USE exmple;
+USE example;
 
 CREATE TABLE IF NOT EXISTS fraud_detection(
     time DOUBLE,v1 DOUBLE,v2 DOUBLE,v3 DOUBLE,
@@ -63,7 +63,7 @@ CREATE TABLE fraud_validate AS SELECT * FROM fraud_detection LIMIT 100000 OFFSET
 ```
 
 ## 训练
-导入数据后，可以通过标准SQL查看各字段的信息，其中time和amount两个字段的取值范围较大，如果用于DNN训练，需要做归一化处理，以下将简单介绍。而V1、V2...V28都是通过PCA生成，取值范围相对较小，可以直接使用，当然，如果能够对V2...V28也通过归一化处理，对模型效果会有益，读者可以自行练习，在此不做赘述。
+导入数据后，可以通过标准SQL查看各字段的信息，其中time和amount两个字段的取值范围较大，如果用于DNN训练，需要做归一化处理，下文将简单介绍如何进行归一化。而V1、V2...V28都是通过PCA生成，取值范围相对较小，可以直接使用，当然，如果能够对V2...V28也通过归一化处理，对模型效果会有益，读者可以自行练习，在此不做赘述。
 
 ### 归一化
 数据归一化的方法有很多种，在这个教程中，我们以最大/最小归一化为例。
@@ -115,7 +115,7 @@ INTO example.my_fraud_dnn_model;
 ```
 
 ### 语法简介
-在SQLFlow中，SQL语句以标准的`SELECT`开始，以`TO`为界，之后就是SQLFlow的扩展SQL语法。在上面的例子中，`TO TRAIN`表示这是一条训练语句，`DNNClassifier`表示我们使用TensorFlow Estimator中的`DNNClassifier`来针对信用卡欺诈检测数据集进行模型训练。
+在SQLFlow中，SQL语句以标准SQL中的`SELECT`开始，以`TO`为界，`TO`之后就是SQLFlow的扩展SQL语法。在上面的例子中，`TO TRAIN`表示这是一条训练语句，`DNNClassifier`表示我们使用TensorFlow canned estimators中的`DNNClassifier`来针对信用卡欺诈检测数据集进行模型训练。
 `LABEL`关键字指定标签字段为class。
 `INTO`关键字指定最终构建的模型的名称，同时也是模块存储的表名，这里指定的是my_fraud_dnn_model。训练完成之后我们可以在该表中查询到以Base64格式保存的模型数据。
 
@@ -257,7 +257,7 @@ TO EXPLAIN example.my_fraud_xgb_model WITH summary.plot_type=bar;
 在这条SQL语句里，`TO EXPLAIN`表示这是一条模型解释语句，`TO`之前的部分表示我们要通fraud_train中的所有正例（发生盗刷）来解释模型。之所以只选取正例，是因为信用卡欺诈检测的正负例极不均衡，对模型而言，正例的影响要比负例大得多，而如果选取较多负例，可能导致绘图时正例的数据被淹没。当然，如果使用正负例比较均衡的数据集，可以均匀选取正负例。
 和预测语句类似，`EXPLAIN`之后的部分指定需要解释的机器学习模型所存放的位置，这里我们指定了刚才训练好的`XGBoost`模型`my_fraud_xgb_model`。
 在`EXPLAIN`语句中，通过`WITH`子句可以指定图表类型，这里我们指定绘制柱状图。
-运行这条语句大概会花几分钟的时间，运行结束后，界面上会打印出分析图表的链接（如果您使用item2，或者Jupyter Notebook，图形将直接呈现在相应界面上），如下图：
+运行这条语句大概会花几分钟的时间，运行结束后，界面上会打印出分析图表的链接（如果您使用iTerm2，或者Jupyter Notebook，图形将直接呈现在相应界面上），如下图：
 
 ![](./figures/fraud_xgb_explain_bar.png)
 
@@ -293,20 +293,20 @@ WITH summary.plot_type=decision;
 # 总结
 在这篇文章中，我们介绍了Kaggle信用卡欺诈数据集，接着，我们以`DNNClassifier`、`LinearClassifier`和`XGBoost`等为例，介绍了如何使用SQLFlow来完成机器学习的主要任务：
 1. 训练：如何根据数据构建模型
-• `SELECT ... TO TRAIN`语法
+- `SELECT ... TO TRAIN`语法
 2. 调参：如何设置不同模型的不同参数：
-• `WITH`子句用于设置训练参数
-• `model.hidden_units`参数用于控制DNN模型的结构
-• `optimizer.learning_rate`参数用于控制DNN模型的学习速率
-• `model.n_batches_per_layer`参数用于控制TensorFlow树模型的层更新阈值
-• `model.center_bias`参数用于将TensorFlow树模型的预估值拉到平均值附近
-• `train.batch_size`参数用于控制模型批次使用数据时的分批大小
-• `train.epoch`参数用于控制模型的训练轮数
+- `WITH`子句用于设置训练参数
+- `model.hidden_units`参数用于控制DNN模型的结构
+- `optimizer.learning_rate`参数用于控制DNN模型的学习速率
+- `model.n_batches_per_layer`参数用于控制TensorFlow树模型的层更新阈值
+- `model.center_bias`参数用于将TensorFlow树模型的预估值拉到平均值附近
+- `train.batch_size`参数用于控制模型批次使用数据时的分批大小
+- `train.epoch`参数用于控制模型的训练轮数
 3. 预测：在新数据集上应用训练好的模型
-• `SELECT ... TO PREDICT`语法
+- `SELECT ... TO PREDICT`语法
 4. 解释
-• `SELECT ... TO EXPLAIN`语法
-• 柱状图告诉我们模型中哪些特征较为重要
-• 散点图告诉我们这些特征对结果的影响是正面还是负面
-• 决策图帮助我们了解组合特征对模型的影响，以及模型决策的过程。
+- `SELECT ... TO EXPLAIN`语法
+- 柱状图告诉我们模型中哪些特征较为重要
+- 散点图告诉我们这些特征对结果的影响是正面还是负面
+- 决策图帮助我们了解组合特征对模型的影响，以及模型决策的过程。
 了解了这些知识，您就可以在日常工作或学习中应用SQLFlow来解决问题。需要补充的是，除了文中提到的模型之外，SQLFlow还支持很多别的模型，它们适用于各种不同的问题，请参考SQLFlow的[模型文档](model_list.cn.md)来了解这些信息。

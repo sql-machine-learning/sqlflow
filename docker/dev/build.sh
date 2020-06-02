@@ -71,7 +71,8 @@ if [[ ! -d models ]]; then
     git clone https://github.com/sql-machine-learning/models
 fi
 cd models
-git checkout c897963f821d515651de79cb4ef1fbf6126ecaa5
+git fetch origin # The residual local repo might not be on a branch.
+git checkout v0.0.1 -b v0.0.1
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."
@@ -79,5 +80,6 @@ mkdir -p $SQLFLOW_BIN/tutorial
 for file in $SQLFLOWPATH/doc/tutorial/*.md; do
     base=$(basename -- "$file")
     output=$SQLFLOW_BIN/tutorial/${base%.*}."ipynb"
+    echo "Generate $output ..."
     cat $file | markdown-to-ipynb --code-block-type=sql > $output
 done
