@@ -90,6 +90,10 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=%s)",
 			module, c.FieldDesc.Name, c.BucketSize, dtype), nil
 	case *ir.CrossColumn:
+		if isXGBoostModule(module) {
+			return "", fmt.Errorf("CROSS is not supported in XGBoost models")
+		}
+
 		var keysGenerated = make([]string, len(c.Keys))
 		for idx, key := range c.Keys {
 			if c, ok := key.(ir.FeatureColumn); ok {

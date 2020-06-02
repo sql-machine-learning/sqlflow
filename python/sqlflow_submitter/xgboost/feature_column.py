@@ -19,7 +19,6 @@ __all__ = [
     'categorical_column_with_identity',
     'categorical_column_with_vocabulary_list',
     'categorical_column_with_hash_bucket',
-    'crossed_column',
 ]
 
 
@@ -29,9 +28,9 @@ def hashing(x):
 
 
 def apply_transform_on_value(feature, transform_fn):
-    if len(feature) == 1:  # dense
+    if len(feature) == 1:  # Dense input is like (value, )
         return transform_fn(feature[0]),
-    else:
+    else:  # Sparse input is like (indices, values, dense_shape)
         return feature[0], transform_fn(feature[1]), feature[2]
 
 
@@ -189,36 +188,6 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
 def categorical_column_with_hash_bucket(key, hash_bucket_size, dtype='string'):
     return CategoricalColumnWithHashBucketTransformer(key, hash_bucket_size,
                                                       dtype)
-
-
-class CrossedColumnTransformer(BaseColumnTransformer):
-    def __init__(self, keys, hash_bucket_size, hash_key=None):
-        self.columns = [
-            key if isinstance(key, BaseColumnTransformer) else
-            NumericColumnTransformer(key, (1, ), 'int64') for key in keys
-        ]
-        self.hash_bucket_size = hash_bucket_size
-        self.hash_key = hash_key
-
-    def _set_field_names(self, field_names):
-        BaseColumnTransformer._set_field_names(self, field_names)
-        for t in self.columns:
-            t._set_field_names(field_names)
-
-    def get_column_names(self):
-        return ['/'.join(column.get_column_names()) for column in self.columns]
-
-    def __call__(self, inputs):
-        slot_values = [
-            apply_transform_on_value(column(inputs), hashing)
-            for column in self.columns
-        ]
-        hash_values = [v[0] if len(v) == 1 else v[1] for v in slot_values]
-        return sum(hash_values) % self.hash_bucket_size,
-
-
-def crossed_column(keys, hash_bucket_size, hash_key=None):
-    return CrossedColumnTransformer(keys, hash_bucket_size, hash_key)
 
 
 class ComposedColumnTransformer(BaseColumnTransformer):

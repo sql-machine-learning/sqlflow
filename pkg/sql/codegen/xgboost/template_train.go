@@ -54,6 +54,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
+# NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
+# The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
 transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
 
 train(datasource='''{{.DataSource}}''',
@@ -93,6 +95,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
+# NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
+# The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
 transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
 
 dist_train(flags=FLAGS,

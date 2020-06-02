@@ -195,6 +195,13 @@ def load_dmatrix(filename):
     in detailed.
     '''
     if xgb.rabit.get_world_size() > 1:
+        # XGBoost DMatrix supports to load data from file path like
+        # "train.txt#train.txt.cache". The actual data path is
+        # "train.txt", while "train.txt.cache" is used as the
+        # external memory cache. But "train.txt#train.txt.cache"
+        # is not a valid file path, and it is not supported by
+        # load_svmlight_file(s). So we remove the suffix "#..."
+        # here before loading the data using load_svmlight_file(s).
         if '#' in filename:
             filename = filename[0:filename.index('#')]
 

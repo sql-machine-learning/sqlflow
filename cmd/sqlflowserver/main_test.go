@@ -1708,11 +1708,6 @@ func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
 			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai)
 	})
-
-	t.Run("CaseXGBoostCrossFeatureColumn", func(*testing.T) {
-		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
-			`CROSS([customerid, gender], 10)`, 2, numWorkers, isPai)
-	})
 }
 
 func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {
