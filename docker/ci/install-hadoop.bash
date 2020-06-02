@@ -32,7 +32,7 @@ HADOOP_URL="$(curl -s "$HADOOP_DYN_SITE" | \
     grep -m 1 -o -E "$HADOOP_HREF_PATTERN" | \
     awk -F'"' '{print $2}')"
 
-echo "Download hadoop from $HADOOP_URL..."
+echo "Download Hadoop from $HADOOP_URL ..."
 
 axel --quiet --output /tmp/hadoop.tar.gz "$HADOOP_URL"
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
