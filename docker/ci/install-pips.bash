@@ -30,5 +30,4 @@ pip install --quiet \
     oss2==2.9.0 \
     plotille==3.7 \
     seaborn==0.9.0 \
-    scikit-learn==0.21.0 \
-    sklearn2pmml==0.56.0
+    scikit-learn==0.21.0
