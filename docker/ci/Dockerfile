@@ -1,5 +1,8 @@
 # The CI image needs to build Go and Java tests and run Python tests,
 # so it must contain the bulding tools.
+#
+# NOTE: The docker build context directory must be the root of the source tree.
+# NOTE: To build the release image, SQLFlow must be built into ./build
 FROM sqlflow:dev
 
 RUN apt-get -qq update

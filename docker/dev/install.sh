@@ -15,15 +15,14 @@
 
 set -e
 
-# echo "Use Ubuntu apt-get source $APT_MIRROR ..."
-# cat > /etc/apt/sources.list <<EOF
-# deb $APT_MIRROR bionic main restricted universe multiverse
-# deb $APT_MIRROR bionic-security main restricted universe multiverse
-# deb $APT_MIRROR bionic-updates main restricted universe multiverse
-# deb $APT_MIRROR bionic-proposed main restricted universe multiverse
-# deb $APT_MIRROR bionic-backports main restricted universe multiverse
-# EOF
-apt-get -qq update
+export PATH="/home/travis/gopath/bin:/home/travis/.gimme/versions/go1.13.11.linux.amd64/bin:/home/travis/bin:/home/travis/bin:/home/travis/.local/bin:/usr/local/lib/jvm/openjdk11/bin:/opt/pyenv/shims:/home/travis/.phpenv/shims:/home/travis/perl5/perlbrew/bin:/home/travis/.nvm/versions/node/v10.16.0/bin:/home/travis/.kiex/elixirs/elixir-1.7.4/bin:/home/travis/.kiex/bin:/home/travis/.rvm/gems/ruby-2.6.5/bin:/home/travis/.rvm/gems/ruby-2.6.5@global/bin:/home/travis/.rvm/rubies/ruby-2.6.5/bin:/home/travis/gopath/bin:/home/travis/.gimme/versions/go1.11.1.linux.amd64/bin:/usr/local/maven-3.6.3/bin:/usr/local/cmake-3.12.4/bin:/usr/local/clang-7.0.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/home/travis/.rvm/bin:/home/travis/.phpenv/bin:/opt/pyenv/bin:/home/travis/.yarn/bin"
+
+# shellcheck disable=SC1091
+source find_fastest_resources.sh
+echo "Choose the fastest APT source ..."
+choose_fastest_apt_source
+echo "Choose the fastest PIP source ..."
+choose_fastest_pip_source
 
 
 echo "Install apt packages ..."

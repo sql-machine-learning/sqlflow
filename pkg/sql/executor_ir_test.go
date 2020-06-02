@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 )
 
@@ -70,7 +71,7 @@ FROM iris.test
 TO PREDICT iris.predict.class
 USING sqlflow_models.my_clustering_model;
 `
-	testXGBoostTrainSelectIris = ` 
+	testXGBoostTrainSelectIris = `
 SELECT *
 FROM iris.train
 TO TRAIN xgboost.gbtree
@@ -88,7 +89,7 @@ SELECT * FROM iris.train
 TO EXPLAIN sqlflow_models.my_xgboost_model
 USING TreeExplainer;
 `
-	testXGBoostPredictIris = ` 
+	testXGBoostPredictIris = `
 SELECT *
 FROM iris.test
 TO PREDICT iris.predict.class
@@ -104,7 +105,7 @@ WITH
 	validation.select="SELECT * FROM housing.train LIMIT 20"
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
-INTO sqlflow_models.my_xgb_regression_model;	
+INTO sqlflow_models.my_xgb_regression_model;
 `
 	testXGBoostPredictHousing = `
 SELECT *
@@ -262,4 +263,24 @@ func TestLogChanWriter_Write(t *testing.T) {
 	a.Equal("世界\n", <-c)
 	_, more := <-c
 	a.False(more)
+}
+
+func TestRewriteStatementsWithHints4Alisa(t *testing.T) {
+	if os.Getenv("SQLFLOW_submitter") != "alisa" {
+		t.Skip("Skip test case: submitter is not alisa.")
+	}
+	dialect := "alisa"
+	hint1, hint2 := `set odps.stage.mapper.num=1;`, `set odps.sql.mapper.split.size=4096;`
+	standardSQL, extendedSQL := `select 1;`, `select 1 to predict d.t.f using m;`
+	sqlProgram := hint1 + "\n" + standardSQL + hint2 + extendedSQL
+
+	a := assert.New(t)
+	stmts, err := parser.Parse(dialect, sqlProgram)
+	a.NoError(err)
+	a.Equal(len(stmts), 4)
+
+	sqls := RewriteStatementsWithHints(stmts, dialect)
+	a.Equal(len(sqls), 2)
+	a.Equal(sqls[0].Original, hint1+hint2+"\n"+standardSQL)
+	a.Equal(sqls[1].Original, extendedSQL)
 }

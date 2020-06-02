@@ -41,6 +41,8 @@ func (stmt *SQLFlowStmt) IsExtendedSyntax() bool {
 
 // ParseStatement parses a SQL program by calling Parse, and
 // asserts that this program contains one and only one statement.
+// Notice: If program contains more than one statement,
+// we should call sql.RewriteSQLWithHints
 func ParseStatement(dialect, program string) (*SQLFlowStmt, error) {
 	stmts, err := Parse(dialect, program)
 	if err != nil {
