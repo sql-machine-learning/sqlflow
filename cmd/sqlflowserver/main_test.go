@@ -226,9 +226,11 @@ func prepareTestData(dbStr string) error {
 			datasets = []string{
 				testdata.ODPSFeatureMapSQL,
 				testdata.ODPSSparseColumnSQL,
-				fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB)}
+				fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
+				fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB)}
 		} else {
-			datasets = []string{fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB)}
+			datasets = []string{fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
+				fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB)}
 		}
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
