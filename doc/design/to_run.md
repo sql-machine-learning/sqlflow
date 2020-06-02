@@ -128,7 +128,7 @@ The `TO RUN` clause can run any program in the Docker image. The program can
 output more than one table or don't output any table. Please check the following
 examples.
 
-Output two tables:
+Output two tables - multiple table names after `INTO`:
 
 ```SQL
 SELECT * FROM source_table ORDER BY creation_date
@@ -141,7 +141,7 @@ CMD
 INTO output_table_1, output_table_2;
 ```
 
-No output table:
+No output table - no `INTO` keyword:
 
 ```SQL
 SELECT * FROM source_table ORDER BY creation_date
@@ -171,8 +171,9 @@ environment variables prefixed with `SQLFLOW_`.
 
 - `SQLFLOW_RUN_SELECT`
 - `SQLFLOW_RUN_INTO`
-- `SQLFLOW_DB`: the type of DBMS.
 - `SQLFLOW_RUN_IMAGE`
+- `SQLFLOW_DB`: the type of DBMS.
+- `SQLFLOW_DEPLOYMENT_PLATFORM`
 
 ## Run a Python Program
 
