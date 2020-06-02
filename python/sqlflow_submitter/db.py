@@ -304,15 +304,17 @@ def pai_maxcompute_db_generator(table,
         label_index = selected_cols.index(
             label_column_name) if label_column_name else None
 
-        try:
-            while True:
+        while True:
+            try:
                 row = pai_reader.read(num_records=1)[0]
-                if label_index is not None:
-                    yield list(row), row[label_index]
-                else:
-                    yield list(row), None
-        finally:
-            pai_reader.close()
+            except:
+                pai_reader.close()
+                break
+
+            if label_index is not None:
+                yield list(row), row[label_index]
+            else:
+                yield list(row), None
 
     return reader
 
