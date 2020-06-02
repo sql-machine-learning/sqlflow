@@ -64,8 +64,6 @@ function find_fastest_apt_source() {
     # We need to specify \t as the terminate indicator character; otherwise, the
     # read command would return an non-zero exit code.
     read -r -d '\t' apt_sources <<EOM
-http://mirrors.aliyun.com
-http://mirrors.ustc.edu.cn
 http://mirrors.163.com
 http://archive.ubuntu.com
 \t
@@ -98,6 +96,7 @@ EOF
 function find_fastest_maven_repo() {
     read -r -d '\t' maven_repos <<EOM
 https://repo1.maven.org/maven2/
+https://maven-central.storage-download.googleapis.com/maven2/
 https://maven.aliyun.com/repository/central
 \t
 EOM
