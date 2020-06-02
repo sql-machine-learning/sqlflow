@@ -23,6 +23,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
 
 const modelCollTable = "sqlflow_model_zoo.model_collection"
@@ -275,54 +276,92 @@ func (s *modelZooServer) DropModelDef(ctx context.Context, req *pb.ModelDefReque
 	return &pb.ModelResponse{Success: true, Message: ""}, nil
 }
 
-func (s *modelZooServer) ReleaseTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {
+func (s *modelZooServer) ReleaseTrainedModel(stream pb.ModelZooServer_ReleaseTrainedModelServer) error {
+	var req *pb.TrainedModelRequest
+	var err error
+	var sqlf io.WriteCloser
+
+	// sqlf is a sqlfs writer, it will be created when the first stream request arrives.
+	// the uploaded model contents into MySQL using package sqlfs.
+	sqlf = nil
+
+	// Create database sqlflow_public_models to store public trained models.
+	if _, err := s.DB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_public_models;"); err != nil {
+		return err
+	}
+
+	for { // read stream request
+		// NOTE: other fields in req must be the same in every stream request.
+		streamReq, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		req = streamReq
+		if sqlf == nil {
+
+			modelTableName := fmt.Sprintf("sqlflow_public_models.%s", req.Name)
+			// FIXME(typhoonzero): only hive need to pass session
+			sqlf, err = sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
+			if err != nil {
+				return fmt.Errorf("cannot create sqlfs file %s: %v", modelTableName, err)
+			}
+			defer sqlf.Close()
+		}
+
+		_, err = sqlf.Write(req.GetContentTar())
+		if err != nil {
+			log.Printf("get user model source code error %v", err)
+		}
+	}
+
 	if err := checkName(req.Name); err != nil {
-		return nil, err
+		return err
 	}
 
 	// Get model_def_id from model_definition table
 	imageAndTag := strings.Split(req.ModelCollectionImageUrl, ":")
 	if len(imageAndTag) != 2 {
-		return nil, fmt.Errorf("model collection image should be like you_image_name:version")
+		return fmt.Errorf("model collection image should be like you_image_name:version")
 	}
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
 	rowsImageID, err := s.DB.Query(sql)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rowsImageID.Close()
 	end := rowsImageID.Next()
 	if !end {
-		return nil, fmt.Errorf("when release trained model, no model collection %s found", req.GetName())
+		return fmt.Errorf("when release trained model, no model collection %s found", req.GetName())
 	}
 	var modelCollID int
 	if err = rowsImageID.Scan(&modelCollID); err != nil {
-		return nil, err
+		return err
 	}
 
 	// TODO(typhoonzero): verify req.ModelClassName to avoid SQL injection.
 	sql = fmt.Sprintf("SELECT id FROM %s WHERE class_name='%s' AND model_coll_id='%d'", modelDefTable, req.ModelClassName, modelCollID)
 	rowsModelDefID, err := s.DB.Query(sql)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rowsModelDefID.Close()
 	end = rowsModelDefID.Next()
 	if !end {
-		return nil, fmt.Errorf("when release trained model, no model definition %s found", req.GetName())
+		return fmt.Errorf("when release trained model, no model definition %s found", req.GetName())
 	}
 	var modelDefID int
 	if err := rowsModelDefID.Scan(&modelDefID); err != nil {
-		return nil, err
+		return err
 	}
 	// TODO(typhoonzero): let trained model name + version be unique across the table.
 	sql = fmt.Sprintf("INSERT INTO %s (model_def_id, name, version, url, description, metrics) VALUES (%d, '%s', '%s', '%s', '%s', '%s')",
 		trainedModelTable, modelDefID, req.Name, req.Tag, req.ContentUrl, req.Description, req.EvaluationMetrics)
 	_, err = s.DB.Exec(sql)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &pb.ModelResponse{Success: true, Message: ""}, nil
+
+	return stream.SendAndClose(&pb.ModelResponse{Success: true, Message: ""})
 }
 
 func (s *modelZooServer) DropTrainedModel(ctx context.Context, req *pb.TrainedModelRequest) (*pb.ModelResponse, error) {

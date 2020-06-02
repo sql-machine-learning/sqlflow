@@ -15,6 +15,7 @@ package modelzooserver
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -96,76 +97,91 @@ func TestModelZooServer(t *testing.T) {
 		t.Fatalf("create client error: %v", err)
 	}
 	defer conn.Close()
-
 	client := pb.NewModelZooServerClient(conn)
 
-	dir, err := mockTmpModelRepo()
-	a.NoError(err)
-	defer os.RemoveAll(dir)
-	cwd, err := os.Getwd()
-	a.NoError(err)
-	err = os.Chdir(dir)
-	a.NoError(err)
+	t.Run("ReleaseModelDef", func(t *testing.T) {
+		dir, err := mockTmpModelRepo()
+		a.NoError(err)
+		defer os.RemoveAll(dir)
+		cwd, err := os.Getwd()
+		a.NoError(err)
+		err = os.Chdir(dir)
+		a.NoError(err)
 
-	// tar the mocked files and do release
-	err = tarGzDir(".", "modelrepo.tar.gz")
-	a.NoError(err)
-	stream, err := client.ReleaseModelDef(context.Background())
-	a.NoError(err)
-	buf, err := ioutil.ReadFile("modelrepo.tar.gz")
-	a.NoError(err)
-	modelDefReq := &pb.ModelDefRequest{
-		Name:       "sqlflow/my_test_model",
-		Tag:        "v0.1",
-		ContentTar: buf}
-	err = stream.Send(modelDefReq)
-	a.NoError(err)
+		err = tarGzDir(".", "modelrepo.tar.gz")
+		a.NoError(err)
+		stream, err := client.ReleaseModelDef(context.Background())
+		a.NoError(err)
+		buf, err := ioutil.ReadFile("modelrepo.tar.gz")
+		a.NoError(err)
+		modelDefReq := &pb.ModelDefRequest{
+			Name:       "sqlflow/my_test_model",
+			Tag:        "v0.1",
+			ContentTar: buf}
+		err = stream.Send(modelDefReq)
+		a.NoError(err)
 
-	reply, err := stream.CloseAndRecv()
-	a.NoError(err)
-	a.Equal(true, reply.Success)
+		reply, err := stream.CloseAndRecv()
+		a.NoError(err)
+		a.Equal(true, reply.Success)
 
-	err = os.Chdir(cwd)
-	a.NoError(err)
+		err = os.Chdir(cwd)
+		a.NoError(err)
 
-	res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
-	a.NoError(err)
-	a.Equal(1, len(res.ModelDefList))
-	a.Equal("sqlflow/my_test_model", res.ModelDefList[0].ImageUrl)
-	a.Equal("DNNClassifier", res.ModelDefList[0].ClassName)
-	a.Equal(307, len(res.ModelDefList[0].ArgDescs))
+		res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
+		a.NoError(err)
+		a.Equal(1, len(res.ModelDefList))
+		a.Equal("sqlflow/my_test_model", res.ModelDefList[0].ImageUrl)
+		a.Equal("DNNClassifier", res.ModelDefList[0].ClassName)
+		a.Equal(307, len(res.ModelDefList[0].ArgDescs))
+	})
 
-	trainedModelRes, err := client.ReleaseTrainedModel(context.Background(),
-		&pb.TrainedModelRequest{
+	t.Run("ReleaseTrainedModel", func(t *testing.T) {
+		stream, err := client.ReleaseTrainedModel(context.Background())
+		a.NoError(err)
+		// a random binary data to represent a trained model
+		token := make([]byte, 256)
+		rand.Read(token)
+		req := &pb.TrainedModelRequest{
 			Name:                    "my_regression_model",
 			Tag:                     "v0.1",
-			ContentUrl:              "oss://bucket/path/to/my/model",
 			Description:             "A linear regression model for house price predicting",
 			EvaluationMetrics:       "MSE: 0.02, MAPE: 10.32",
 			ModelClassName:          "DNNClassifier",
 			ModelCollectionImageUrl: "sqlflow/my_test_model:v0.1",
-		})
-	a.NoError(err)
-	a.Equal(true, trainedModelRes.Success)
+			ContentTar:              token,
+			ContentUrl:              "",
+		}
+		err = stream.Send(req)
+		a.NoError(err)
+		reply, err := stream.CloseAndRecv()
+		fmt.Printf("ReleaseTrainedModel error: %v\n", err)
+		fmt.Printf("Reply: %v\n", reply)
+		a.NoError(err)
+		a.Equal(true, reply.Success)
 
-	listTrainedModelRes, err := client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
-	a.NoError(err)
-	a.Equal(1, len(listTrainedModelRes.TrainedModelList))
-	a.Equal("my_regression_model", listTrainedModelRes.TrainedModelList[0].Name)
-	a.Equal("sqlflow/my_test_model:v0.1", listTrainedModelRes.TrainedModelList[0].ImageUrl)
-
-	_, err = client.DropTrainedModel(context.Background(), &pb.TrainedModelRequest{
-		Name: "my_regression_model", Tag: "v0.1",
+		listTrainedModelRes, err := client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
+		a.NoError(err)
+		a.Equal(1, len(listTrainedModelRes.TrainedModelList))
+		a.Equal("my_regression_model", listTrainedModelRes.TrainedModelList[0].Name)
+		a.Equal("sqlflow/my_test_model:v0.1", listTrainedModelRes.TrainedModelList[0].ImageUrl)
 	})
 
-	listTrainedModelRes, err = client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
-	a.NoError(err)
-	a.Equal(0, len(listTrainedModelRes.TrainedModelList))
+	t.Run("DropModels", func(t *testing.T) {
+		_, err = client.DropTrainedModel(context.Background(), &pb.TrainedModelRequest{
+			Name: "my_regression_model", Tag: "v0.1",
+		})
 
-	_, err = client.DropModelDef(context.Background(), modelDefReq)
-	a.NoError(err)
+		listTrainedModelRes, err := client.ListTrainedModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
+		a.NoError(err)
+		a.Equal(0, len(listTrainedModelRes.TrainedModelList))
 
-	res, err = client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
-	a.NoError(err)
-	a.Equal(0, len(res.ModelDefList))
+		_, err = client.DropModelDef(context.Background(),
+			&pb.ModelDefRequest{Name: "sqlflow/my_test_model", Tag: "v0.1"})
+		a.NoError(err)
+
+		res, err := client.ListModelDefs(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
+		a.NoError(err)
+		a.Equal(0, len(res.ModelDefList))
+	})
 }
