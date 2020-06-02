@@ -171,7 +171,7 @@ environment variables prefixed with `SQLFLOW_`.
 - `SQLFLOW_RUN_SELECT`
 - `SQLFLOW_RUN_INTO`
 - `SQLFLOW_RUN_IMAGE`
-- `SQLFLOW_DB`: the type of DBMS.
+- `SQLFLOW_DB_TYPE`: the type of DBMS.
 - `SQLFLOW_DEPLOYMENT_PLATFORM`: Kubernetes | MaxCompute | GoogleCloud | ...
 
 ## Run a Python Program
