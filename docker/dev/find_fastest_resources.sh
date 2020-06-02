@@ -65,7 +65,7 @@ function find_fastest_url() {
 function find_fastest_apt_source() {
     # Define a list of mirrors without using Bash arrays.
     # c.f. https://stackoverflow.com/a/23930212/724872
-    read -r -d '' apt_sources <<- EOM
+    read -r -d '' apt_sources <<EOM
 http://mirrors.aliyun.com
 http://mirrors.ustc.edu.cn
 http://mirrors.163.com
@@ -82,7 +82,7 @@ EOM
     codename=${ubuntu_codename-"bionic"}
 
     # Write APT source lists.
-    cat <<-EOF
+    cat <<EOF
 deb $fastest $codename main restricted universe multiverse
 deb $fastest $codename-security main restricted universe multiverse
 deb $fastest $codename-updates main restricted universe multiverse
@@ -97,10 +97,7 @@ EOF
 }
 
 function find_fastest_maven_repo() {
-    # c.f. https://unix.stackexchange.com/questions/353076
-    # we can indent EOM wiht tab if we use the "<<-" form
-    #
-    read -r -d '' maven_repos <<-EOM
+    read -r -d '' maven_repos <<EOM
 https://repo1.maven.org/maven2/
 https://maven.aliyun.com/repository/central
 EOM
@@ -111,7 +108,7 @@ EOM
     local domain
     domain=$(get_domain_from_url "$best_maven_repo")
 
-    cat <<-EOF
+    cat <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -120,8 +117,8 @@ EOM
         <mirror>
             <id>$domain</id>
             <mirrorOf>central</mirrorOf>
-            <name>$best_maven_repo</name>
-            <url>$domain</url>
+            <name>$domain</name>
+            <url>$best_maven_repo</url>
         </mirror>
     </mirrors>
 </settings>
@@ -133,7 +130,7 @@ function find_fastest_go_proxy() {
     # proxies like 'proxygo.cn', if it is faster, we do not even need a proxy
     local default
     default="https://pkg.go.dev/"
-    read -r -d '' go_proxies <<-EOM
+    read -r -d '' go_proxies <<EOM
 $default
 https://goproxy.cn/,direct
 EOM
@@ -152,7 +149,7 @@ EOM
 
 # Find fastest docker download URL
 function find_fastest_docker_url() {
-    read -r -d '' download_urls <<-EOM
+    read -r -d '' download_urls <<EOM
 https://get.daocloud.io/docker
 https://get.docker.com
 EOM
@@ -163,7 +160,7 @@ EOM
 # Find fastest docker mirror url
 function find_fastest_docker_mirror() {
     local url="https://www.docker.com/"
-    read -r -d '' mirror_urls <<-EOM
+    read -r -d '' mirror_urls <<EOM
 $url
 https://hub-mirror.c.163.com
 https://registry.docker-cn.com
@@ -182,7 +179,7 @@ EOM
 # Find pip mirror and echo a config if needed
 function find_fastest_pip_mirror() {
     local url="https://pypi.org/"
-    read -r -d '' mirror_urls <<-EOM
+    read -r -d '' mirror_urls <<EOM
 $url
 https://mirrors.aliyun.com/pypi/simple/
 EOM
@@ -192,7 +189,7 @@ EOM
     if [[ "$best" == "$url" ]]; then
         echo ""
     else
-        cat <<-EOF
+        cat <<EOF
 [global]
 index-url = https://mirrors.aliyun.com/pypi/simple/
 [install]
