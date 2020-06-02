@@ -281,15 +281,24 @@ func (s *modelZooServer) ReleaseTrainedModel(stream pb.ModelZooServer_ReleaseTra
 	var err error
 	var sqlf io.WriteCloser
 
+	// sqlf is a sqlfs writer, it will be created when the first stream request arrives.
+	// the uploaded model contents into MySQL using package sqlfs.
 	sqlf = nil
 
-	for {
+	// Create database sqlflow_public_models to store public trained models.
+	if _, err := s.DB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_public_models;"); err != nil {
+		return err
+	}
+
+	for { // read stream request
 		// NOTE: other fields in req must be the same in every stream request.
-		req, err = stream.Recv()
+		streamReq, err := stream.Recv()
 		if err == io.EOF {
 			break
 		}
+		req = streamReq
 		if sqlf == nil {
+
 			modelTableName := fmt.Sprintf("sqlflow_public_models.%s", req.Name)
 			// FIXME(typhoonzero): only hive need to pass session
 			sqlf, err = sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
@@ -308,8 +317,6 @@ func (s *modelZooServer) ReleaseTrainedModel(stream pb.ModelZooServer_ReleaseTra
 	if err := checkName(req.Name); err != nil {
 		return err
 	}
-
-	// Save uploaded model contents into MySQL using package sqlfs
 
 	// Get model_def_id from model_definition table
 	imageAndTag := strings.Split(req.ModelCollectionImageUrl, ":")
