@@ -15,10 +15,6 @@
 
 set -e
 
-# We have mirrored some software on QiNiu cloud
-# which is used to speed up the build process.
-QI_NIU_CLOUD=http://qaaz0kmmt.bkt.clouddn.com
-
 # shellcheck disable=SC1091
 source find_fastest_resources.sh
 echo "Choose the fastest APT source ..."
@@ -86,7 +82,7 @@ export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 echo "Install goyacc, protoc-gen-go, linters, etc. ..."
 # Set the env system-wide for later usage, e.g. build source
 go env -w GO111MODULE=on
-go env -w GOPROXY=$(find_fastest_go_proxy)
+go env -w GOPROXY="$(find_fastest_go_proxy)"
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/lint/golint \
@@ -137,4 +133,3 @@ axel --quiet --output /usr/local/bin/google_checks.xml \
 axel --quiet --output /usr/local/bin/checkstyle-8.29-all.jar \
     "$QINIU_BUCKET/checkstyle/checkstyle-8.29-all.jar" \
     "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar"
-
