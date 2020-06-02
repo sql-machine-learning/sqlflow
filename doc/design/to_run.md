@@ -51,7 +51,8 @@ provide a Docker image as the subject of the `TO RUN` clause.  The SQLFlow
 compiler translates the `TO RUN` statement into a Tekton step that runs this
 Docker image, or more specificially, the entrypoint program of the Docker image.
 
-The following is an example to run an executable built from a program written in Go/C++/.etc.
+The following is an example to run an executable built from a program written
+in Go/C++/.etc.
 
 ```SQL
 SELECT * FROM source_table ORDER BY creation_date
@@ -78,12 +79,13 @@ and environment variables
 
 - `SQLFLOW_TO_RUN_SELECT=SELECT * FROM source_table ORDER BY creation_date`
 - `SQLFLOW_TO_RUN_INTO=output_table_name`
-- `SQLFLOW_TO_RUN_IMAGE=a_data_scientist/extract_ts_features:1.0`
+- `SQLFLOW_TO_RUN_IMAGE=a_data_scientist/ts_data_processor:1.0`
 
 We will talk more about the command-line options and environment variables
 later in this document.
 
-The following is an example to run a program written in script language such as Python.
+The following is an example to run a program written in a script language
+such as Python.
 
 ```SQL
 SELECT * FROM source_table ORDER BY creation_date
@@ -98,30 +100,60 @@ INTO output_table_name;
 
 ### The SELECT Prefix
 
+The semantics of `SELECT input_table TO RUN function_image CMD parameters INTO output_table`
+is that retrieve the data from `input_table`, process the data using the
+executable in the `function_image` with `parameters` and then output the
+result into `output_table`.  
 As the `TO RUN` clause can run any program in the Docker image, it is not
-necessary to have the SELECT statement as a prefix.  Instead, we can change the
-above syntax design to make the SELECT prefix a command-line option to the
-entrypoint program, which then calls the DBMS API to execute it.
+necessary to have an input table.  From the SQL users' point of view, it's
+more user friendly to keep the syntax SQL style.  As a result, we always
+keep the SELECT prefix in `TO RUN` statement. If there is no input table,
+user can write `SELECT 1` as a prefix.
 
-```sql
-SELECT ...
-TO RUN a_data_scientist/extract_ts_features:1.0
+```SQL
+SELECT 1
+TO RUN a_data_scientist/ts_data_processor:1.0
 CMD
-  "--verbose",
+  "process_without_input_table",
+  "--time_column=t",
+  "--value_column=v",
   "--window_width=120"
 INTO output_table_name;
 ```
 
-However, we still prefer the SELECT statement as a prefix, but the SQLFlow
-compiler doesn't run it as a step container; instead, the compiler passes the
-SELECT statement to the entrypoint program as part of the context.
-
 ### The INTO Suffix
 
-Like the way it handles the SELECT prefix, the compiler passes the INTO suffix
-to the entrypoint program as part of the context.
+Just mentioned in the last section, `INTO` represents the output table of `TO RUN`.
+The `TO RUN` clause can run any program in the Docker image. The program can
+output more than one table or don't output any table. Please check the following
+examples.
 
-## The Context
+Output two tables:
+
+```SQL
+SELECT * FROM source_table ORDER BY creation_date
+TO RUN a_data_scientist/ts_data_processor:1.0
+CMD
+  "process_with_two_output_tables",
+  "--time_column=t",
+  "--value_column=v",
+  "--window_width=120"
+INTO output_table_1, output_table_2;
+```
+
+No output table:
+
+```SQL
+SELECT * FROM source_table ORDER BY creation_date
+TO RUN a_data_scientist/ts_data_processor:1.0
+CMD
+  "process_without_output_table",
+  "--time_column=t",
+  "--value_column=v",
+  "--window_width=120";
+```
+
+### The Context
 
 In the above example, the entrypoint program takes three command-line options:
 `--verbose`, `--window_width=120`, and `output_table_name`.  Also, the program
