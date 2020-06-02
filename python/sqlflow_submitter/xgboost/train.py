@@ -167,17 +167,18 @@ def train(datasource,
 
     if rank == 0:
         # TODO(sneaxiy): save pmml as well
-        bst.save_model("my_model")
+        model_name = "my_model"
+        bst.save_model(model_name)
 
         if is_pai and len(oss_model_dir) > 0:
-            save_model(oss_model_dir, model_params, train_params,
+            save_model(oss_model_dir, model_name, model_params, train_params,
                        feature_metas, feature_column_names, label_meta,
                        feature_column_code)
 
 
-def save_model(model_dir, model_params, train_params, feature_metas,
-               feature_column_names, label_meta, feature_column_code):
-    model_name = "my_model"
+def save_model(model_dir, model_name, model_params, train_params,
+               feature_metas, feature_column_names, label_meta,
+               feature_column_code):
     model.save_file(model_dir, model_name)
     # TODO(sneaxiy): save pmml as well
     model.save_metas(
