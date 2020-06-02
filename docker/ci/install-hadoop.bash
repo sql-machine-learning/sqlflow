@@ -16,9 +16,14 @@
 set -e
 
 # NOTE: require external exported HADOOP_VERSION.
-HADOOP_SITE="https://archive.apache.org/dist/hadoop/common"
-axel --quiet --output /tmp/hadoop.tar.gz \
-     $HADOOP_SITE/hadoop-"$HADOOP_VERSION"/hadoop-"$HADOOP_VERSION".tar.gz
+
+HADOOP_DYN_SITE="https://www.apache.org/dyn/closer.cgi/hadoop/common/hadoop-$HADOOP_VERSION/hadoop-$HADOOP_VERSION.tar.gz"
+
+hadoop_url=`curl -s $HADOOP_DYN_SITE | grep -o -E "href\=\"https:\/\/.*\/hadoop-$HADOOP_VERSION.tar.gz\"" | head -n 1 | awk -F'"' '{print $2}'`
+
+echo "Download hadoop from $hadoop_url"
+
+axel --quiet --output /tmp/hadoop.tar.gz $hadoop_url
 tar -xzf /tmp/hadoop.tar.gz -C /opt/
 rm -rf /tmp/hadoop.tar.gz
 rm -rf /opt/hadoop-"$HADOOP_VERSION"/share/doc
