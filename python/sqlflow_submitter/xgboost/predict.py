@@ -60,8 +60,8 @@ def pred(datasource,
     print("Start predicting XGBoost model...")
 
     if is_pai:
-        selected_cols = db.pai_selected_cols(
-            "odps://{}/tables/{}".format(*pai_table.split(".")))
+        pai_table = "odps://{}/tables/{}".format(*pai_table.split("."))
+        selected_cols = db.pai_selected_cols(pai_table)
     else:
         selected_cols = db.selected_cols(conn.driver, conn, select)
 

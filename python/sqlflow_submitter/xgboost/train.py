@@ -157,7 +157,6 @@ def train(datasource,
             watchlist.append((dvalidate, "validate"))
 
         re = dict()
-
         bst = xgb.train(model_params,
                         per_batch_dmatrix,
                         evals=watchlist,
@@ -167,7 +166,8 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        save_local_file(bst, "my_model")
+        # TODO(sneaxiy): save pmml as well
+        bst.save_model("my_model")
 
         if is_pai and len(oss_model_dir) > 0:
             save_model(oss_model_dir, model_params, train_params,
@@ -191,8 +191,3 @@ def save_model(model_dir, model_params, train_params, feature_metas,
         feature_column_names,
         label_meta,
         feature_column_code)
-
-
-def save_local_file(booster, model_name):
-    # TODO(sneaxiy): save pmml as well
-    booster.save_model(model_name)

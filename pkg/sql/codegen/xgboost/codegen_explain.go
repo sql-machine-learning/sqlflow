@@ -35,7 +35,7 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		return "", err
 	}
 
-	featureColumnCode, xs, y, err := deriveFeatureColumnCode(explainStmt.TrainStmt.Features["feature_columns"], explainStmt.TrainStmt.Label)
+	featureColumnCode, xs, y, err := deriveFeatureColumnCodeAndFieldDescs(explainStmt.TrainStmt.Features["feature_columns"], explainStmt.TrainStmt.Label)
 	if err != nil {
 		return "", err
 	}

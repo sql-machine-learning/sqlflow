@@ -269,7 +269,6 @@ def db_generator(driver,
                         label = np.fromstring(label,
                                               dtype=int,
                                               sep=label_spec["delimiter"])
-
                 if label_idx is None:
                     yield list(row), None
                 else:
@@ -285,7 +284,6 @@ def db_generator(driver,
     if driver == "hive":
         # trip the suffix ';' to avoid the ParseException in hive
         statement = statement.rstrip(';')
-
     return reader
 
 
@@ -306,16 +304,15 @@ def pai_maxcompute_db_generator(table,
         label_index = selected_cols.index(
             label_column_name) if label_column_name else None
 
-        while True:
-            try:
+        try:
+            while True:
                 row = pai_reader.read(num_records=1)[0]
                 if label_index is not None:
                     yield list(row), row[label_index]
                 else:
                     yield list(row), None
-            except:
-                pai_reader.close()
-                break
+        finally:
+            pai_reader.close()
 
     return reader
 

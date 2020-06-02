@@ -1665,8 +1665,7 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 
 	if !isPai { // PAI does not support evaluate now
 		evaluateTableName := fmt.Sprintf("%sxgb_fc_test_evaluate_table_%d", dbPrefix, uniqueID)
-		evaluateSQL := fmt.Sprintf(`
-SELECT %s FROM %s TO EVALUATE %s WITH validation.metrics="accuracy_score" LABEL %s INTO %s;`,
+		evaluateSQL := fmt.Sprintf(`SELECT %s FROM %s TO EVALUATE %s WITH validation.metrics="accuracy_score" LABEL %s INTO %s;`,
 			selectColumns, table, modelName, label, evaluateTableName)
 		executeSQLFunc(evaluateSQL)
 	}

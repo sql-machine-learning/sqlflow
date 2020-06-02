@@ -126,7 +126,6 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			return "", err
 		}
 		return fmt.Sprintf("%s.feature_column.indicator_column(%s)", module, sourceCode), nil
-
 	default:
 		return "", fmt.Errorf("unsupported feature column type %T on %v", c, c)
 	}

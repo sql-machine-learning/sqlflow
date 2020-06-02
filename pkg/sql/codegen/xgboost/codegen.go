@@ -204,18 +204,18 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 	return f, featureNames, e
 }
 
-func generateFeatureColumnCode(fc ir.FeatureColumn) (string, error) {
-	return codegen.GenerateFeatureColumnCode(fc, "xgboost_extended")
-}
-
-func deriveFeatureColumnCode(fcs []ir.FeatureColumn, labelFc ir.FeatureColumn) (featureColumnsCode string, fieldDescs []ir.FieldDesc, label ir.FieldDesc, err error) {
+// deriveFeatureColumnCodeAndFieldDescs generates the feature column codes and feature descs, which are used for
+// codegen in Python codes.
+// The returned feature column code is like "xgboost_extended.feature_column.numeric(...)".
+// The returned feature descs contain all field descs used in feature column code.
+func deriveFeatureColumnCodeAndFieldDescs(fcs []ir.FeatureColumn, labelFc ir.FeatureColumn) (featureColumnsCode string, fieldDescs []ir.FieldDesc, label ir.FieldDesc, err error) {
 	if fcs == nil {
 		return "", nil, ir.FieldDesc{}, fmt.Errorf("feature_columns should not be nil")
 	}
 
 	fcCodes := make([]string, 0, len(fcs))
 	for _, fc := range fcs {
-		code, err := generateFeatureColumnCode(fc)
+		code, err := codegen.GenerateFeatureColumnCode(fc, "xgboost_extended")
 		if err != nil {
 			return "", nil, ir.FieldDesc{}, err
 		}
@@ -290,7 +290,7 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 		return nil, fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
 	}
 
-	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCode(trainStmt.Features["feature_columns"], trainStmt.Label)
+	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(trainStmt.Features["feature_columns"], trainStmt.Label)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +339,7 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 
 // Pred generates a Python program for predict a xgboost model.
 func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
-	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCode(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
+	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
 
 	// NOTE(sneaxiy): The label name when predicting may be different from the label
 	// name when training, and users may select the actual label when predicting to
@@ -390,7 +390,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 
 // Evaluate generates a Python program for evaluating a xgboost model.
 func Evaluate(evalStmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
-	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCode(evalStmt.TrainStmt.Features["feature_columns"], evalStmt.TrainStmt.Label)
+	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(evalStmt.TrainStmt.Features["feature_columns"], evalStmt.TrainStmt.Label)
 
 	if err != nil {
 		return "", err
