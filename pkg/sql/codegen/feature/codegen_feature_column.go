@@ -118,7 +118,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			module, sourceCode, c.Dimension, c.Combiner), nil
 	case *ir.IndicatorColumn:
 		if isXGBoostModule(module) {
-			return "", fmt.Errorf("INDICATOR is only supported in XGBoost models")
+			return "", fmt.Errorf("INDICATOR is not supported in XGBoost models")
 		}
 
 		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
