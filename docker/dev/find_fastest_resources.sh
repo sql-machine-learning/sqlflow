@@ -217,11 +217,12 @@ function choose_fastest_apt_source() {
     install_requirement_if_not
     echo "Find fastest apt-get mirror ..."
     find_fastest_apt_source > /etc/apt/sources.list
+    apt-get -qq update
 }
 
 function choose_fastest_pip_source() {
     install_requirement_if_not
     echo "Find fastest apt-get mirror ..."
-    mkdir -p ~/.pip
-    find_fastest_pip_mirror > ~/.pip/pip.conf
+    mkdir -p "$HOME"/.pip
+    find_fastest_pip_mirror > "$HOME"/.pip/pip.conf
 }

@@ -1,5 +1,7 @@
 FROM ubuntu:18.04
 
+COPY find_fastest_resources.sh /usr/local/bin/
+
 # The default Ubuntu apt-get source archive.ubuntu.com is usually busy
 # and slow.  If you are in the U.S., you might want to use
 # http://us.archive.ubuntu.com/ubuntu/, or if you are in China, you
