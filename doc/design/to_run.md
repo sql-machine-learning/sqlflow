@@ -59,7 +59,6 @@ SELECT * FROM source_table ORDER BY creation_date
 TO RUN a_data_scientist/ts_data_processor:1.0
 CMD
   "slide_window_to_row",
-  "--verbose",
   "--time_column=t",
   "--value_column=v",
   "--window_width=120"
@@ -155,10 +154,10 @@ CMD
 
 ### The Context
 
-In the above example, the entrypoint program takes three command-line options:
-`--verbose`, `--window_width=120`, and `output_table_name`.  Also, the program
-needs context information, including the DBMS endpoints, credential information
-to access the data, and the SELECT prefix.
+In the above example, the entrypoint program takes four command-line options:
+`slide_window_to_row`, `--time_column=t`, `--value_column=v`, `--window_width=120`.
+Also, the program needs context information, including the DBMS endpoints,
+credential information to access the data, and the SELECT prefix.
 
 The SQLFlow compiler has to pass context in the form of environment variables
 other than command-line options because some command-line parsing frameworks
@@ -173,7 +172,7 @@ environment variables prefixed with `SQLFLOW_`.
 - `SQLFLOW_RUN_INTO`
 - `SQLFLOW_RUN_IMAGE`
 - `SQLFLOW_DB`: the type of DBMS.
-- `SQLFLOW_DEPLOYMENT_PLATFORM`
+- `SQLFLOW_DEPLOYMENT_PLATFORM`: Kubernetes | MaxCompute | GoogleCloud | ...
 
 ## Run a Python Program
 
