@@ -273,7 +273,7 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 	return trainParams, validateParams, modelParams
 }
 
-func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
+func deriveFeatureColumnCodeAndFieldDescs(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
 	fieldDescs = make(map[string][]*ir.FieldDesc)
 	for target, fcList := range trainStmt.Features {
 		perTargetFeatureColumnsCode := []string{}
@@ -302,7 +302,7 @@ func deriveFeatureColumnCode(trainStmt *ir.TrainStmt) (featureColumnsCode []stri
 // Train generates a Python program for train a TensorFlow model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
-	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCode(trainStmt)
+	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCodeAndFieldDescs(trainStmt)
 	if err != nil {
 		return "", err
 	}
@@ -490,7 +490,7 @@ func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featu
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
 	}
-	featureColumnsCode, fieldDescs, err = deriveFeatureColumnCode(stmt)
+	featureColumnsCode, fieldDescs, err = deriveFeatureColumnCodeAndFieldDescs(stmt)
 	return
 }
 
