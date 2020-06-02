@@ -15,6 +15,10 @@
 
 set -e
 
+# We have mirrored some software on QiNiu cloud
+# which is used to speed up the build process.
+QI_NIU_CLOUD=http://qaaz0kmmt.bkt.clouddn.com
+
 # shellcheck disable=SC1091
 source find_fastest_resources.sh
 echo "Choose the fastest APT source ..."
