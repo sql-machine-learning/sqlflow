@@ -15,10 +15,11 @@
 
 set -e
 
-echo "Choose the fastest software packages source ..."
 # shellcheck disable=SC1091
 source find_fastest_resources.sh
+echo "Choose the fastest APT source ..."
 choose_fastest_apt_source
+echo "Choose the fastest PIP source ..."
 choose_fastest_pip_source
 
 

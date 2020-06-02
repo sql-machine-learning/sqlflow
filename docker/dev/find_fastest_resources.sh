@@ -44,13 +44,11 @@ function find_fastest_url() {
 
         # c.f. https://stackoverflow.com/a/9634982/724872
         # redirect log output to stderr
-        echo "Testig speed of $domain ..." >&2
         local cur_speed
         cur_speed=$(ping -c 4 -W 2 "$domain" | tail -1 \
                            | grep "/avg/" | awk '{print $4}'\
                            | cut -d '/' -f 2)
         cur_speed=${cur_speed:-99999.9}
-        echo "$cur_speed" >&2
 
         # c.f. https://stackoverflow.com/a/31087503/724872
         if (( $(echo "$cur_speed < $speed" | bc -l) )); then
@@ -63,13 +61,14 @@ function find_fastest_url() {
 
 # Find fastest apt-get source, you can add mirrors in the 'apt_sources'
 function find_fastest_apt_source() {
-    # Define a list of mirrors without using Bash arrays.
-    # c.f. https://stackoverflow.com/a/23930212/724872
-    read -r -d '' apt_sources <<EOM
+    # We need to specify \t as the terminate indicator character; otherwise, the
+    # read command would return an non-zero exit code.
+    read -r -d '\t' apt_sources <<EOM
 http://mirrors.aliyun.com
 http://mirrors.ustc.edu.cn
 http://mirrors.163.com
 http://archive.ubuntu.com
+\t
 EOM
 
     # Find the fastest APT source using ping.
@@ -97,9 +96,10 @@ EOF
 }
 
 function find_fastest_maven_repo() {
-    read -r -d '' maven_repos <<EOM
+    read -r -d '\t' maven_repos <<EOM
 https://repo1.maven.org/maven2/
 https://maven.aliyun.com/repository/central
+\t
 EOM
 
     local best_maven_repo
@@ -130,9 +130,10 @@ function find_fastest_go_proxy() {
     # proxies like 'proxygo.cn', if it is faster, we do not even need a proxy
     local default
     default="https://pkg.go.dev/"
-    read -r -d '' go_proxies <<EOM
+    read -r -d '\t' go_proxies <<EOM
 $default
 https://goproxy.cn/,direct
+\t
 EOM
 
     local best
@@ -149,9 +150,10 @@ EOM
 
 # Find fastest docker download URL
 function find_fastest_docker_url() {
-    read -r -d '' download_urls <<EOM
+    read -r -d '\t' download_urls <<EOM
 https://get.daocloud.io/docker
 https://get.docker.com
+\t
 EOM
     # shellcheck disable=SC2086
     find_fastest_url $download_urls
@@ -160,11 +162,12 @@ EOM
 # Find fastest docker mirror url
 function find_fastest_docker_mirror() {
     local url="https://www.docker.com/"
-    read -r -d '' mirror_urls <<EOM
+    read -r -d '\t' mirror_urls <<EOM
 $url
 https://hub-mirror.c.163.com
 https://registry.docker-cn.com
 https://docker.mirrors.ustc.edu.cn
+\t
 EOM
     local best
     # shellcheck disable=SC2086
@@ -179,9 +182,10 @@ EOM
 # Find pip mirror and echo a config if needed
 function find_fastest_pip_mirror() {
     local url="https://pypi.org/"
-    read -r -d '' mirror_urls <<EOM
+    read -r -d '\t' mirror_urls <<EOM
 $url
 https://mirrors.aliyun.com/pypi/simple/
+\t
 EOM
     local best
     # shellcheck disable=SC2086
@@ -200,28 +204,29 @@ EOF
 
 # All find_xxx functions need ping and some needs bc.
 function install_requirements_if_not() {
-    which ping >/dev/null
-    r1="$?"
-    which bc >/dev/null
-    r2="$?"
+    install="false"
+    if ! which ping >/dev/null; then
+        install="true"
+    fi
+    if ! which bc >/dev/null; then
+        install="true"
+    fi
 
-    if [[ "$r1" && "$r2" ]]; then
-        echo "Found ping and bc"
-    else
+    if [[ "$install" == "true" ]]; then
         apt-get -qq update
         apt-get -qq install -y iputils-ping bc > /dev/null
     fi
 }
 
 function choose_fastest_apt_source() {
-    install_requirement_if_not
+    install_requirements_if_not
     echo "Find fastest apt-get mirror ..."
     find_fastest_apt_source > /etc/apt/sources.list
     apt-get -qq update
 }
 
 function choose_fastest_pip_source() {
-    install_requirement_if_not
+    install_requirements_if_not
     echo "Find fastest apt-get mirror ..."
     mkdir -p "$HOME"/.pip
     find_fastest_pip_mirror > "$HOME"/.pip/pip.conf
