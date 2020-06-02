@@ -15,10 +15,6 @@
 
 set -e
 
-# We have mirrored some software on QiNiu cloud
-# which is used to speed up the build process.
-QI_NIU_CLOUD=http://qaaz0kmmt.bkt.clouddn.com
-
 # shellcheck disable=SC1091
 source find_fastest_resources.sh
 echo "Choose the fastest APT source ..."
@@ -54,7 +50,7 @@ ln -s /usr/bin/pip3 /usr/local/bin/pip
 echo "Upgrade pip and setuptools creates /usr/local/bin/pip ..."
 # Update setuptools because
 # https://github.com/red-hat-storage/ocs-ci/pull/971/files
-pip install --quiet --upgrade pip setuptools six
+python -m pip install --quiet --upgrade pip setuptools six
 
 
 echo "Install pip packages ..."
@@ -64,7 +60,7 @@ JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort pylint flake8"
 WHEEL="wheel"
 # shellcheck disable=SC2086
-pip install --quiet \
+python -m pip install --quiet \
     $WHEEL \
     $PRE_COMMIT \
     $PY_TEST \
@@ -107,17 +103,21 @@ unzip -qq p.zip -d /usr/local
 rm p.zip
 
 
+# We have mirrored some software on QiNiu cloud
+# which is used to speed up the build process.
+QINIU_BUCKET=http://qaaz0kmmt.bkt.clouddn.com
+
 echo "Install gRPC for Java as a protobuf-compiler ..."
 # c.f. https://stackoverflow.com/a/53982507/724872.
-PROTOC_JAVA_SITE_1="$QI_NIU_CLOUD/protoc/protoc-gen-grpc-java-1.21.0-linux-x86_64"
+PROTOC_JAVA_SITE_1="$QINIU_BUCKET/protoc/protoc-gen-grpc-java-1.21.0-linux-x86_64"
 PROTOC_JAVA_SITE_2="https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe"
 axel --quiet --output /usr/local/bin/protoc-gen-grpc-java \
      $PROTOC_JAVA_SITE_1 $PROTOC_JAVA_SITE_2
 chmod +x /usr/local/bin/protoc-gen-grpc-java
 
 
-echo "Choose fastest maven mirror ..."
-# Travis CI occasionally fails on the default maven central repo.
+echo "Choose fastest Maven mirror ..."
+# Travis CI occasionally fails on the default Maven central repo.
 # Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
 mkdir -p "$HOME/.m2"
 find_fastest_maven_repo >"$HOME/.m2/settings.xml"
@@ -125,12 +125,12 @@ find_fastest_maven_repo >"$HOME/.m2/settings.xml"
 
 echo "Install Java linter ..."
 axel --quiet --output /usr/local/bin/google-java-format-1.6-all-deps.jar \
-    "$QI_NIU_CLOUD/checkstyle/google-java-format-1.6-all-deps.jar" \
+    "$QINIU_BUCKET/checkstyle/google-java-format-1.6-all-deps.jar" \
     "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar"
 axel --quiet --output /usr/local/bin/google_checks.xml \
-    "$QI_NIU_CLOUD/checkstyle/google_checks.xml" \
+    "$QINIU_BUCKET/checkstyle/google_checks.xml" \
     "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml"
 axel --quiet --output /usr/local/bin/checkstyle-8.29-all.jar \
-    "$QI_NIU_CLOUD/checkstyle/checkstyle-8.29-all.jar" \
+    "$QINIU_BUCKET/checkstyle/checkstyle-8.29-all.jar" \
     "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar"
 
