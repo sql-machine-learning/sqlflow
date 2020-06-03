@@ -125,10 +125,10 @@ func TestUsingModelZooModel(t *testing.T) {
 	go startSqlflowServer()
 	server.WaitPortReady("localhost:50052", 0)
 	// start model zoo server
-	go startServer()
-	server.WaitPortReady("localhost:50055", 0)
+	go startServer(50056)
+	server.WaitPortReady("localhost:50056", 0)
 
-	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
+	conn, err := grpc.Dial(":50056", grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("create client error: %v", err)
 	}
@@ -189,7 +189,7 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 
 	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train
 TO PREDICT iris.modelzoo_predict.class
-USING localhost:50055/modelzoo_model_iris;`)
+USING localhost:50056/modelzoo_model_iris;`)
 	a.NoError(err)
 
 	_, err = modelZooClient.DropModel(context.Background(), &proto.ReleaseModelRequest{

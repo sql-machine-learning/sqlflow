@@ -31,8 +31,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/server"
 )
 
-func startServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 50055))
+func startServer(port int) {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -89,7 +89,7 @@ func mockTmpModelRepo() (string, error) {
 
 func TestModelZooServer(t *testing.T) {
 	a := assert.New(t)
-	go startServer()
+	go startServer(50055)
 	server.WaitPortReady("localhost:50055", 0)
 
 	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
@@ -155,8 +155,6 @@ func TestModelZooServer(t *testing.T) {
 		err = stream.Send(req)
 		a.NoError(err)
 		reply, err := stream.CloseAndRecv()
-		fmt.Printf("ReleaseTrainedModel error: %v\n", err)
-		fmt.Printf("Reply: %v\n", reply)
 		a.NoError(err)
 		a.Equal(true, reply.Success)
 
