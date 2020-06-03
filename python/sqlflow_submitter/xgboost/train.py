@@ -167,7 +167,7 @@ def train(datasource,
 
     if rank == 0:
         filename = "my_model"
-        save_local_file(bst, model_params, filename)
+        save_model_to_local_file(bst, model_params, filename)
 
         if is_pai and len(oss_model_dir) > 0:
             save_model(oss_model_dir, filename, model_params, train_params,
@@ -175,7 +175,7 @@ def train(datasource,
                        feature_column_code)
 
 
-def save_local_file(booster, model_params, filename):
+def save_model_to_local_file(booster, model_params, filename):
     from sklearn2pmml import PMMLPipeline, sklearn2pmml
     try:
         from xgboost.compat import XGBoostLabelEncoder

@@ -19,7 +19,7 @@ import pandas as pd
 import xgboost
 from jpmml_evaluator import make_evaluator
 from jpmml_evaluator.pyjnius import PyJNIusBackend, jnius_configure_classpath
-from sqlflow_submitter.xgboost.train import save_local_file
+from sqlflow_submitter.xgboost.train import save_model_to_local_file
 
 # Configure JVM
 jnius_configure_classpath()
@@ -50,7 +50,7 @@ class TestXGBoostModelSavingBase(unittest.TestCase):
         return 32
 
     def save_and_load_model(self, booster, params):
-        save_local_file(booster, params, self.filename())
+        save_model_to_local_file(booster, params, self.filename())
         self.assertTrue(os.path.exists(self.filename()))
         self.assertTrue(os.path.exists(self.pmml_filename()))
 
