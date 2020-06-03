@@ -25,9 +25,10 @@ cd $(git rev-parse --show-toplevel)
 
 The following command bind mounts the source tree into the container
 and builds SQLFlow.  The generated binary executables are put in
-sub-directory `build`.  Please be aware that it also bind mounts
-`$HOME/.m2`, the Maven local repository, into the container to reuse
-Maven cache and reduce the building time of Java code.
+sub-directory `build`.  This output dir then can be used to build
+sqlflow:server, sqlflow:jupyter, etc. Please be aware that it also
+bind mounts `$HOME/.m2`, the Maven local repository, into the container
+to reuse Maven cache and reduce the building time of Java code.
 
 ```bash
 docker run --rm -it \
@@ -37,3 +38,4 @@ docker run --rm -it \
   -v $PWD:/work -w /work \
   sqlflow:dev
 ```
+

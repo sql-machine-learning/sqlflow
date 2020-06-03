@@ -15,6 +15,10 @@
 
 set -e
 
+# We have mirrored some software on QiNiu cloud
+# which is used to speed up the build process.
+QI_NIU_CLOUD=http://qaaz0kmmt.bkt.clouddn.com
+
 # shellcheck disable=SC1091
 source find_fastest_resources.sh
 echo "Choose the fastest APT source ..."
@@ -45,11 +49,12 @@ apt-get -qq clean -y
 
 echo "Make Python 3 the the default ..."
 ln -s /usr/bin/python3 /usr/local/bin/python
+ln -s /usr/bin/pip3 /usr/local/bin/pip
 
 echo "Upgrade pip and setuptools creates /usr/local/bin/pip ..."
 # Update setuptools because
 # https://github.com/red-hat-storage/ocs-ci/pull/971/files
-pip3 install --quiet --upgrade pip setuptools six
+pip install --quiet --upgrade pip setuptools six
 
 
 echo "Install pip packages ..."
@@ -69,8 +74,8 @@ rm -rf "$HOME"/.cache/pip/*
 
 
 echo "Install Go compiler ..."
-GO_MIRROR_0="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
-GO_MIRROR_1="http://mirrors.ustc.edu.cn/golang/go1.13.4.linux-amd64.tar.gz"
+GO_MIRROR_0="http://mirrors.ustc.edu.cn/golang/go1.13.4.linux-amd64.tar.gz"
+GO_MIRROR_1="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
 axel --quiet --output go.tar.gz $GO_MIRROR_0 $GO_MIRROR_1
 tar -C /usr/local -xzf go.tar.gz
 rm go.tar.gz
@@ -79,8 +84,9 @@ export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 
 
 echo "Install goyacc, protoc-gen-go, linters, etc. ..."
-# TODO(yi): Use Go mirror to speed up pacakge downloading.
-export GO111MODULE=on
+# Set the env system-wide for later usage, e.g. build source
+go env -w GO111MODULE=on
+go env -w GOPROXY=$(find_fastest_go_proxy)
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/lint/golint \
@@ -103,32 +109,28 @@ rm p.zip
 
 echo "Install gRPC for Java as a protobuf-compiler ..."
 # c.f. https://stackoverflow.com/a/53982507/724872.
-PROTOC_JAVA_SITE="https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java"
+PROTOC_JAVA_SITE_1="$QI_NIU_CLOUD/protoc/protoc-gen-grpc-java-1.21.0-linux-x86_64"
+PROTOC_JAVA_SITE_2="https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe"
 axel --quiet --output /usr/local/bin/protoc-gen-grpc-java \
-     $PROTOC_JAVA_SITE"/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe"
+     $PROTOC_JAVA_SITE_1 $PROTOC_JAVA_SITE_2
 chmod +x /usr/local/bin/protoc-gen-grpc-java
 
 
-echo "Use GCS based Maven-central mirror ..."
+echo "Choose fastest maven mirror ..."
 # Travis CI occasionally fails on the default maven central repo.
 # Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
 mkdir -p "$HOME/.m2"
-echo '<settings>
-  <mirrors>
-    <mirror>
-      <id>google-maven-central</id>
-      <name>GCS Maven Central mirror</name>
-      <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
-      <mirrorOf>central</mirrorOf>
-    </mirror>
-  </mirrors>
-</settings>' > "$HOME/.m2/settings.xml"
+find_fastest_maven_repo >"$HOME/.m2/settings.xml"
 
 
 echo "Install Java linter ..."
 axel --quiet --output /usr/local/bin/google-java-format-1.6-all-deps.jar \
-     "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar"
+    "$QI_NIU_CLOUD/checkstyle/google-java-format-1.6-all-deps.jar" \
+    "https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar"
 axel --quiet --output /usr/local/bin/google_checks.xml \
-     "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml"
+    "$QI_NIU_CLOUD/checkstyle/google_checks.xml" \
+    "https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml"
 axel --quiet --output /usr/local/bin/checkstyle-8.29-all.jar \
-     "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar"
+    "$QI_NIU_CLOUD/checkstyle/checkstyle-8.29-all.jar" \
+    "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar"
+
