@@ -22,4 +22,4 @@ chmod a+x minikube
 sudo mv minikube /usr/local/bin/minikube
 
 # Kubernetes 1.18.2 requires conntrack.
-sudo apt-get -qq install -y conntrack
+sudo apt-get -qq install -y conntrack socat

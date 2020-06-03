@@ -3,6 +3,14 @@
 
 FROM ubuntu:18.04
 
+# Choose fastest mirrors for apt-get and pip
+COPY docker/dev/find_fastest_resources.sh /usr/local/bin/find_fastest_resources.sh
+RUN /bin/bash -c 'source find_fastest_resources.sh \
+  && echo "Choose the fastest APT source ..." \
+  && choose_fastest_apt_source \
+  && echo "Choose the fastest PIP source ..." \
+  && choose_fastest_pip_source'
+
 # Install dependencies.
 COPY docker/jupyter/js /jupyter/js
 

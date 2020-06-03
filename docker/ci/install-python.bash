@@ -17,6 +17,7 @@ set -e
 
 apt-get -qq install -y python3 python3-pip > /dev/null
 ln -s /usr/bin/python3 /usr/local/bin/python
+ln -s /usr/bin/pip3 /usr/local/bin/pip
 
 # Upgrade pip would creates /usr/local/bin/pip.  Update setuptools
 # because https://github.com/red-hat-storage/ocs-ci/pull/971/files

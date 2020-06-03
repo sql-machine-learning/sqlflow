@@ -23,6 +23,8 @@
 # running tests.
 FROM ubuntu:18.04
 
+COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
+
 COPY docker/mysql/install-mysql-server.bash /
 RUN /install-mysql-server.bash
 
