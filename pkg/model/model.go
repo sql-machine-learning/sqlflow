@@ -15,14 +15,17 @@ package model
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
 
+	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 
@@ -90,8 +93,75 @@ func Load(modelURI, dst string, db *database.DB) (*Model, error) {
 		} else {
 			return nil, fmt.Errorf("error modelURI format: %s", modelURI)
 		}
+	} else if strings.Contains(modelURI, "/") {
+		// general model zoo urls like some-domain.com:port/model_name:tag
+		// download traind model and extract to dst
+		return loadModelFromModelZoo(modelURI, dst)
 	}
 	return loadDB(db, modelURI, dst)
+}
+
+func loadModelFromModelZoo(modelURI, dst string) (*Model, error) {
+	// modelURI is formated like some-domain.com:port/model_name:tag
+	uriParts := strings.Split(modelURI, "/")
+	// previous checks asserted that uriParts must have two parts
+	modelZooServerAddr := uriParts[0]
+	modelNameAndTag := strings.Join(uriParts[1:], "/")
+	parts := strings.Split(modelNameAndTag, ":")
+	var modelName string
+	var modelTag string
+	if len(parts) == 1 {
+		modelName = modelNameAndTag
+		modelTag = "" // default use empty tag
+	} else if len(parts) == 2 {
+		modelName = parts[0]
+		modelTag = parts[1]
+	} else {
+		return nil, fmt.Errorf("model name after USING must be like [model-zoo.com:port/]model_name[:tag]")
+	}
+	// TODO(typhoonzero): use SSL connection
+	conn, err := grpc.Dial(modelZooServerAddr, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	modelZooClient := pb.NewModelZooServerClient(conn)
+	stream, err := modelZooClient.DownloadModel(context.Background(), &pb.ReleaseModelRequest{
+		Name: modelName,
+		Tag:  modelTag,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		_, err = buf.Write(resp.ContentTar)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	m := &Model{}
+	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
+		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
+	}
+
+	if dst != "" { // empty in invalid param for tar -C
+		cmd := exec.Command("tar", "xzf", "-", "-C", dst)
+		cmd.Stdin = &buf
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("tar %v", string(output))
+		}
+	}
+	return m, nil
 }
 
 // saveDB creates a sqlfs table if it doesn't yet exist, and writes the
@@ -164,6 +234,8 @@ func loadDB(db *database.DB, table, cwd string) (m *Model, e error) {
 	defer sqlf.Close()
 
 	var buf bytes.Buffer
+	// FIXME(typhoonzero): ReadFrom may panic with ErrTooLarge
+	// need to put the "Model" struct under extracted model files
 	if _, e := buf.ReadFrom(sqlf); e != nil {
 		return nil, fmt.Errorf("buf.ReadFrom %v", e)
 	}

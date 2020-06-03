@@ -143,14 +143,14 @@ func TestModelZooServer(t *testing.T) {
 		token := make([]byte, 256)
 		rand.Read(token)
 		req := &pb.ReleaseModelRequest{
-			Name:                    "my_regression_model",
-			Tag:                     "v0.1",
-			Description:             "A linear regression model for house price predicting",
-			EvaluationMetrics:       "MSE: 0.02, MAPE: 10.32",
-			ModelClassName:          "DNNClassifier",
-			ModelCollectionImageUrl: "sqlflow/my_test_model:v0.1",
-			ContentTar:              token,
-			ContentUrl:              "",
+			Name:              "my_regression_model",
+			Tag:               "v0.1",
+			Description:       "A linear regression model for house price predicting",
+			EvaluationMetrics: "MSE: 0.02, MAPE: 10.32",
+			ModelClassName:    "DNNClassifier",
+			ModelRepoImageUrl: "sqlflow/my_test_model:v0.1",
+			ContentTar:        token,
+			ContentUrl:        "",
 		}
 		err = stream.Send(req)
 		a.NoError(err)

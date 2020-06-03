@@ -14,8 +14,10 @@
 package modelzooserver
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -25,8 +27,10 @@ import (
 	"google.golang.org/grpc/reflection"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/proto"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
+	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
 
 func startSqlflowServer() error {
@@ -70,6 +74,49 @@ func execStmt(client proto.SQLFlowClient, sql string) error {
 	return nil
 }
 
+func releaseDemoModelRepo(client proto.ModelZooServerClient) error {
+	dir, err := mockTmpModelRepo()
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if err := os.Chdir(dir); err != nil {
+		return err
+	}
+	if err := tarGzDir(".", "modelrepo.tar.gz"); err != nil {
+		return err
+	}
+	buf, err := ioutil.ReadFile("modelrepo.tar.gz")
+	if err != nil {
+		return err
+	}
+
+	stream, err := client.ReleaseModelRepo(context.Background())
+	if err != nil {
+		return err
+	}
+
+	// release model repo with no content files will skip build and push docker image
+	modelDefReq := &pb.ReleaseModelRepoRequest{
+		Name:       "sqlflow/sqlflow",
+		Tag:        "latest",
+		ContentTar: buf}
+	err = stream.Send(modelDefReq)
+	if err != nil {
+		return err
+	}
+
+	_, err = stream.CloseAndRecv()
+	if err != nil {
+		return err
+	}
+	return os.Chdir(cwd)
+}
+
 func TestUsingModelZooModel(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
@@ -110,23 +157,50 @@ LABEL class
 INTO sqlflow_models.modelzoo_model_iris;`)
 	a.NoError(err)
 
+	// read trained model in sqlflow_models.modelzoo_model_iris
+	db, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
+	a.NoError(err)
+	sqlf, err := sqlfs.Open(db.DB, "sqlflow_models.modelzoo_model_iris")
+	a.NoError(err)
+	defer sqlf.Close()
+	// Note that modelBuf is a gob encoded struct
+	var modelBuf bytes.Buffer
+	_, err = modelBuf.ReadFrom(sqlf)
+	a.NoError(err)
+	// release the model repo "sqlflow/sqlflow:latest" beforehand
+	err = releaseDemoModelRepo(modelZooClient)
+	a.NoError(err)
+
 	stream, err := modelZooClient.ReleaseModel(context.Background())
 	a.NoError(err)
 	err = stream.Send(&proto.ReleaseModelRequest{
-		Name:                    "modelzoo_model_iris",
-		Tag:                     "v0.1",
-		Description:             "a test release model trained by iris dataset",
-		EvaluationMetrics:       "", // TODO(typhoonzero): need to support find metrics in the trained model
-		ModelClassName:          "DNNClassifier",
-		ModelCollectionImageUrl: "sqlflow/sqlflow",
-		ContentTar:              []byte{},
-		ContentUrl:              "", // not used
+		Name:              "modelzoo_model_iris",
+		Tag:               "v0.1",
+		Description:       "a test release model trained by iris dataset",
+		EvaluationMetrics: "", // TODO(typhoonzero): need to support find metrics in the trained model
+		ModelClassName:    "DNNClassifier",
+		ModelRepoImageUrl: "sqlflow/sqlflow:latest",
+		ContentTar:        modelBuf.Bytes(),
+		ContentUrl:        "", // not used
 	})
 	a.NoError(err)
 	_, err = stream.CloseAndRecv()
+	a.NoError(err)
 
 	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train
 TO PREDICT iris.modelzoo_predict.class
 USING localhost:50055/modelzoo_model_iris;`)
+	a.NoError(err)
+
+	_, err = modelZooClient.DropModel(context.Background(), &proto.ReleaseModelRequest{
+		Name: "modelzoo_model_iris",
+		Tag:  "v0.1",
+	})
+	a.NoError(err)
+
+	_, err = modelZooClient.DropModelRepo(context.Background(), &proto.ReleaseModelRepoRequest{
+		Name: "sqlflow/sqlflow",
+		Tag:  "latest",
+	})
 	a.NoError(err)
 }
