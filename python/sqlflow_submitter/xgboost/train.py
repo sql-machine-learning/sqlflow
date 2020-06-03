@@ -166,21 +166,72 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        # TODO(sneaxiy): save pmml as well
-        model_name = "my_model"
-        bst.save_model(model_name)
+        filename = "my_model"
+        save_local_file(bst, model_params, filename)
 
         if is_pai and len(oss_model_dir) > 0:
-            save_model(oss_model_dir, model_name, model_params, train_params,
+            save_model(oss_model_dir, filename, model_params, train_params,
                        feature_metas, feature_column_names, label_meta,
                        feature_column_code)
 
 
-def save_model(model_dir, model_name, model_params, train_params,
-               feature_metas, feature_column_names, label_meta,
-               feature_column_code):
-    model.save_file(model_dir, model_name)
-    # TODO(sneaxiy): save pmml as well
+def save_local_file(booster, model_params, filename):
+    from sklearn2pmml import PMMLPipeline, sklearn2pmml
+    try:
+        from xgboost.compat import XGBoostLabelEncoder
+    except:
+        # xgboost==0.82.0 does not have XGBoostLabelEncoder in xgboost.compat.py
+        from xgboost.sklearn import XGBLabelEncoder as XGBoostLabelEncoder
+
+    objective = model_params.get("objective")
+
+    meta = dict()
+    if objective.startswith("binary:") or objective.startswith("multi:"):
+        if objective.startswith("binary:"):
+            num_class = 2
+        else:
+            num_class = model_params.get("num_class")
+            assert num_class is not None and num_class > 0, "num_class should not be None"
+
+        # To fake a trained XGBClassifier, there must be "_le", "classes_", inside
+        # XGBClassifier. See here:
+        # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
+        model = xgb.XGBClassifier()
+        label_encoder = XGBoostLabelEncoder()
+        label_encoder.fit(list(range(num_class)))
+        model._le = label_encoder
+        model.classes_ = model._le.classes_
+
+        meta["_le"] = {"classes_": model.classes_.tolist()}
+        meta["classes_"] = model.classes_.tolist()
+    elif objective.startswith("reg:"):
+        model = xgb.XGBRegressor()
+    elif objective.startswith("rank:"):
+        model = xgb.XGBRanker()
+    else:
+        raise ValueError(
+            "Not supported objective {} for saving PMML".format(objective))
+
+    model_type = type(model).__name__
+    meta["type"] = model_type
+    meta = json.dumps(meta)
+
+    # Meta data is needed for saving sklearn pipeline. See here:
+    # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
+    booster.set_attr(scikit_learn=meta)
+    booster.save_model(filename)
+    booster.set_attr(scikit_learn=None)
+    model.load_model(filename)
+
+    pipeline = PMMLPipeline([(model_type, model)])
+    sklearn2pmml(pipeline, "{}.pmml".format(filename))
+
+
+def save_model(model_dir, filename, model_params, train_params, feature_metas,
+               feature_column_names, label_meta, feature_column_code):
+    model.save_file(model_dir, filename)
+    model.save_file(model_dir, "{}.pmml".format(filename))
+
     model.save_metas(
         model_dir,
         1,
