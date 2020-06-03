@@ -31,9 +31,19 @@ RUN apt-get install -y python3 python3-pip
 RUN ln -s /usr/bin/python3 /usr/bin/python
 RUN ln -s /usr/bin/pip3 /usr/bin/pip
 
-RUN bash -c "pip install numpy==1.16.1 tensorflow==2.0.0b1 mysqlclient==1.4.4 impyla==0.16.0 pyodps==0.8.3"
-ADD python/sqlflow_submitter /opt/sqlflow/python/
-ADD build/models/sqlflow_models /opt/sqlflow/python/
+RUN bash -c "pip install numpy==1.16.1 \
+    tensorflow==2.0.0b1 \
+    mysqlclient==1.4.4 \
+    impyla==0.16.0 \
+    pyodps==0.8.3 \
+    oss2==2.9.0 \
+    xgboost==0.90 \
+    shap==0.30.1 \
+    plotille==3.7 \
+    seaborn==0.9.0"
+
+ADD python/sqlflow_submitter /opt/sqlflow/python/sqlflow_submitter/
+ADD build/models/sqlflow_models /opt/sqlflow/python/sqlflow_models/
 
 ENV PYTHONPATH /opt/sqlflow/python
 
