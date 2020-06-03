@@ -103,7 +103,7 @@ func releaseDemoModelRepo(client proto.ModelZooServerClient) error {
 	// release model repo with no content files will skip build and push docker image
 	modelDefReq := &pb.ReleaseModelRepoRequest{
 		Name:       "sqlflow/sqlflow",
-		Tag:        "latest",
+		Tag:        "modelzootest",
 		ContentTar: buf}
 	err = stream.Send(modelDefReq)
 	if err != nil {
@@ -121,6 +121,7 @@ func TestUsingModelZooModel(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
+	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY", "hub.docker.com")
 	// start sqlflow server
 	go startSqlflowServer()
 	server.WaitPortReady("localhost:50052", 0)
@@ -167,7 +168,7 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 	var modelBuf bytes.Buffer
 	_, err = modelBuf.ReadFrom(sqlf)
 	a.NoError(err)
-	// release the model repo "sqlflow/sqlflow:latest" beforehand
+	// release the model repo "sqlflow/sqlflow:modelzootest" beforehand
 	err = releaseDemoModelRepo(modelZooClient)
 	a.NoError(err)
 
@@ -179,7 +180,7 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 		Description:       "a test release model trained by iris dataset",
 		EvaluationMetrics: "", // TODO(typhoonzero): need to support find metrics in the trained model
 		ModelClassName:    "DNNClassifier",
-		ModelRepoImageUrl: "sqlflow/sqlflow:latest",
+		ModelRepoImageUrl: "sqlflow/sqlflow:modelzootest",
 		ContentTar:        modelBuf.Bytes(),
 		ContentUrl:        "", // not used
 	})
@@ -200,7 +201,7 @@ USING localhost:50056/modelzoo_model_iris;`)
 
 	_, err = modelZooClient.DropModelRepo(context.Background(), &proto.ReleaseModelRepoRequest{
 		Name: "sqlflow/sqlflow",
-		Tag:  "latest",
+		Tag:  "modelzootest",
 	})
 	a.NoError(err)
 }

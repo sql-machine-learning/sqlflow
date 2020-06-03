@@ -70,7 +70,7 @@ type modelZooServer struct {
 }
 
 func (s *modelZooServer) ListModelRepos(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelRepoResponse, error) {
-	// TODO(typhoonzero): join model_collection
+	// TODO(typhoonzero): join model_repos
 	var sql string
 	if req.Size <= 0 {
 		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_coll_id=b.id;",
@@ -216,7 +216,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		return err
 	}
 
-	// get model_collection id, if exists, return already existed error
+	// get model_repo id, if exists, return already existed error
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';", modelCollTable, reqName, reqTag)
 	rows, err := s.DB.Query(sql)
 	if err != nil {
@@ -225,10 +225,10 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	defer rows.Close()
 	hasNext := rows.Next()
 	if hasNext {
-		return fmt.Errorf("model collection %s:%s already exists", reqName, reqTag)
+		return fmt.Errorf("model repo %s:%s already exists", reqName, reqTag)
 	}
 
-	// write model_collection
+	// write model_repo
 	sql = fmt.Sprintf("INSERT INTO %s (name, version) VALUES ('%s', '%s');", modelCollTable, reqName, reqTag)
 	modelCollInsertRes, err := s.DB.Exec(sql)
 	if err != nil {
@@ -251,7 +251,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 }
 
 func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModelRepoRequest) (*pb.ReleaseResponse, error) {
-	// 1. find model collection id
+	// 1. find model repo id
 	// TODO(typhoonzero): verify request strings to avoid SQL injection
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';",
 		modelCollTable, req.GetName(), req.GetTag())
@@ -263,7 +263,7 @@ func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModel
 	var id int
 	end := rows.Next()
 	if !end {
-		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+		return nil, fmt.Errorf("no model repo %s found", req.GetName())
 	}
 	err = rows.Scan(&id)
 	if err != nil {
@@ -275,7 +275,7 @@ func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModel
 	if err != nil {
 		return nil, err
 	}
-	// 3. delete model collection record
+	// 3. delete model repo record
 	sql = fmt.Sprintf("DELETE FROM %s WHERE id=%d;", modelCollTable, id)
 	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
@@ -339,7 +339,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	defer rowsImageID.Close()
 	end := rowsImageID.Next()
 	if !end {
-		return fmt.Errorf("when release trained model, no model repo %s found", req.ModelRepoImageUrl)
+		return fmt.Errorf("when release model, no model repo %s found", req.ModelRepoImageUrl)
 	}
 	var modelCollID int
 	if err = rowsImageID.Scan(&modelCollID); err != nil {
@@ -355,7 +355,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	defer rowsModelDefID.Close()
 	end = rowsModelDefID.Next()
 	if !end {
-		return fmt.Errorf("when release trained model, no model definition %s found", req.GetName())
+		return fmt.Errorf("when release model, no model definition %s found", req.GetName())
 	}
 	var modelDefID int
 	if err := rowsModelDefID.Scan(&modelDefID); err != nil {
