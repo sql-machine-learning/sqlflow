@@ -34,7 +34,8 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	xs, y, err := getFieldDesc(explainStmt.TrainStmt.Features["feature_columns"], explainStmt.TrainStmt.Label)
+
+	featureColumnCode, xs, y, err := deriveFeatureColumnCodeAndFieldDescs(explainStmt.TrainStmt.Features["feature_columns"], explainStmt.TrainStmt.Label)
 	if err != nil {
 		return "", err
 	}
@@ -54,6 +55,7 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		ShapSummaryParams:    string(jsonSummary),
 		FeatureFieldMetaJSON: string(f),
 		FeatureColumnNames:   fs,
+		FeatureColumnCode:    featureColumnCode,
 		LabelJSON:            string(l),
 		IsPAI:                tf.IsPAI(),
 		PAIExplainTable:      explainStmt.TmpExplainTable,

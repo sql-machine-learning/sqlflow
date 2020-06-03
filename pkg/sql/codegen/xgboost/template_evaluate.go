@@ -23,6 +23,7 @@ type evalFiller struct {
 	FeatureMetaJSON    string
 	LabelMetaJSON      string
 	FeatureColumnNames []string
+	FeatureColumnCode  string
 	MetricNames        string
 	ResultTable        string
 	HDFSNameNodeAddr   string
@@ -34,6 +35,7 @@ type evalFiller struct {
 }
 
 const evalTemplateText = `
+import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.evaluate import evaluate
 import json
 
@@ -43,6 +45,8 @@ label_meta = json.loads('''{{.LabelMetaJSON}}''')
 feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
+
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
 
 evaluate(datasource='''{{.DataSource}}''',
          select='''{{.PredSelect}}''',
@@ -56,7 +60,9 @@ evaluate(datasource='''{{.DataSource}}''',
          hdfs_user='''{{.HDFSUser}}''',
          hdfs_pass='''{{.HDFSPass}}''',
          is_pai="{{.IsPAI}}" == "true",
-         pai_table="{{.PAITable}}")
+         pai_table="{{.PAITable}}",
+         transform_fn=transform_fn,
+         feature_column_code='''{{.FeatureColumnCode}}''')
 `
 
 var evalTemplate = template.Must(template.New("Eval").Parse(evalTemplateText))

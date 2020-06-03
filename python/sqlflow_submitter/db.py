@@ -295,32 +295,26 @@ def pai_maxcompute_db_generator(table,
                                 slice_id=0,
                                 slice_count=1):
     def reader():
-        selected_cols = copy.copy(feature_column_names)
-        if label_column_name:
-            selected_cols.append(label_column_name)
-            try:
-                label_idx = selected_cols.index(label_column_name)
-            except ValueError:
-                # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
-                label_idx = None
-        else:
-            label_idx = None
-
         import paiio
-        reader = paiio.TableReader(table,
-                                   slice_id=slice_id,
-                                   slice_count=slice_count)
+        pai_reader = paiio.TableReader(table,
+                                       slice_id=slice_id,
+                                       slice_count=slice_count)
+
+        selected_cols = [item['colname'] for item in pai_reader.get_schema()]
+        label_index = selected_cols.index(
+            label_column_name) if label_column_name else None
+
         while True:
             try:
-                row = reader.read(num_records=1)[0]
-                label = row[label_idx] if label_idx is not None else -1
-                if label_column_name:
-                    yield list(row), label
-                else:
-                    yield list(row), None
-            except Exception as e:
-                reader.close()
+                row = pai_reader.read(num_records=1)[0]
+            except:
+                pai_reader.close()
                 break
+
+            if label_index is not None:
+                yield list(row), row[label_index]
+            else:
+                yield list(row), None
 
     return reader
 

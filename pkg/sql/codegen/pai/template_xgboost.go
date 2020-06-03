@@ -27,6 +27,7 @@ type xgbPredictFiller struct {
 
 const xgbPredTemplateText = `
 import json
+import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.predict import pred
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
@@ -41,7 +42,11 @@ model_params,
 train_params,
 feature_metas,
 feature_column_names,
-label_meta) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+label_meta,
+feature_column_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+
+feature_column_transformers = eval('[{}]'.format(feature_column_code))
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
 
 pred(datasource='''{{.DataSource}}''',
     select='''{{.PredSelect}}''',
@@ -56,7 +61,9 @@ pred(datasource='''{{.DataSource}}''',
     hdfs_pass='''{{.HDFSPass}}''',
     pai_table='''{{.PAIPredictTable}}''',
     model_params=model_params,
-    train_params=train_params)
+    train_params=train_params,
+    transform_fn=transform_fn,
+    feature_column_code=feature_column_code)
 `
 
 type xgbExplainFiller struct {
@@ -81,6 +88,8 @@ const xgbExplainTemplateText = `
 # Running on PAI
 import os
 import matplotlib
+import sqlflow_submitter.xgboost as xgboost_extended
+
 if os.environ.get('DISPLAY', '') == '':
     print('no display found. Using non-interactive Agg backend')
     matplotlib.use('Agg')
@@ -101,7 +110,11 @@ model_params,
 train_params,
 feature_field_meta,
 feature_column_names,
-label_field_meta) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+label_field_meta,
+feature_column_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+
+feature_column_transformers = eval('[{}]'.format(feature_column_code))
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
 
 explain(
     datasource='''{{.DataSource}}''',
@@ -121,7 +134,9 @@ explain(
 	oss_ak='''{{.ResultOSSAK}}''',
 	oss_sk='''{{.ResultOSSSK}}''',
 	oss_endpoint='''{{.ResultOSSEndpoint}}''',
-	oss_bucket_name='''{{.ResultOSSBucket}}''')
+	oss_bucket_name='''{{.ResultOSSBucket}}''',
+	transform_fn=transform_fn,
+	feature_column_code=feature_column_code)
 `
 
 type xgbEvaluateFiller struct {
@@ -139,6 +154,7 @@ type xgbEvaluateFiller struct {
 
 const xgbEvalTemplateText = `
 import json
+import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.evaluate import evaluate
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
@@ -153,7 +169,11 @@ model_params,
 train_params,
 feature_metas,
 feature_column_names,
-label_meta) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+label_meta,
+feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+
+feature_column_transformers = eval('[{}]'.format(feature_column_code))
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
 
 evaluate(datasource='''{{.DataSource}}''',
          select='''{{.PredSelect}}''',
@@ -168,5 +188,7 @@ evaluate(datasource='''{{.DataSource}}''',
          hdfs_pass='''{{.HDFSPass}}''',
          is_pai=True,
          pai_table="{{.PAIEvaluateTable}}",
-         model_params=model_params)
+         model_params=model_params,
+         transform_fn=transform_fn,
+         feature_column_code=feature_column_code)
 `
