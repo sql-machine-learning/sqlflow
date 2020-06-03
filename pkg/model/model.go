@@ -153,7 +153,7 @@ func loadModelFromModelZoo(modelURI, dst string) (*Model, error) {
 		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
 	}
 
-	if dst != "" { // empty in invalid param for tar -C
+	if dst != "" { // empty is invalid param for tar -C
 		cmd := exec.Command("tar", "xzf", "-", "-C", dst)
 		cmd.Stdin = &buf
 		output, err := cmd.CombinedOutput()
@@ -244,7 +244,7 @@ func loadDB(db *database.DB, table, cwd string) (m *Model, e error) {
 		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
 	}
 
-	if cwd != "" { // empty in invalid param for tar -C
+	if cwd != "" { // empty is invalid param for tar -C
 		cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
 		cmd.Stdin = &buf
 		output, err := cmd.CombinedOutput()
