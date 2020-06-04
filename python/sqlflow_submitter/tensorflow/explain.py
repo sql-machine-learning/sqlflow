@@ -73,7 +73,7 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
     # import custom model package
-    model_import_name = sqlflow_submitter.import_model_def(estimator_string)
+    sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
 
     if is_pai:

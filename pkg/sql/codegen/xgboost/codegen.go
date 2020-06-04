@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/ir"
@@ -203,6 +204,41 @@ func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
 	return f, featureNames, e
 }
 
+// deriveFeatureColumnCodeAndFieldDescs generates the feature column codes and feature descs, which are used for
+// codegen in Python codes.
+// The returned feature column code is like "xgboost_extended.feature_column.numeric(...)".
+// The returned feature descs contain all field descs used in feature column code.
+func deriveFeatureColumnCodeAndFieldDescs(fcs []ir.FeatureColumn, labelFc ir.FeatureColumn) (featureColumnsCode string, fieldDescs []ir.FieldDesc, label ir.FieldDesc, err error) {
+	if fcs == nil {
+		return "", nil, ir.FieldDesc{}, fmt.Errorf("feature_columns should not be nil")
+	}
+
+	fcCodes := make([]string, 0, len(fcs))
+	for _, fc := range fcs {
+		code, err := codegen.GenerateFeatureColumnCode(fc, "xgboost_extended")
+		if err != nil {
+			return "", nil, ir.FieldDesc{}, err
+		}
+
+		fcCodes = append(fcCodes, code)
+
+		for _, desc := range fc.GetFieldDesc() {
+			fieldDescs = append(fieldDescs, *desc)
+		}
+	}
+
+	featureColumnsCode = strings.Join(fcCodes, ",")
+
+	switch c := labelFc.(type) {
+	case *ir.NumericColumn:
+		label = *c.FieldDesc
+	default:
+		return "", nil, ir.FieldDesc{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
+	}
+
+	return featureColumnsCode, fieldDescs, label, err
+}
+
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	return DistTrain(trainStmt, session, 1, "")
@@ -253,7 +289,8 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 	if len(trainStmt.Features) != 1 {
 		return nil, fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
 	}
-	featureFieldDesc, labelFieldDesc, err := getFieldDesc(trainStmt.Features["feature_columns"], trainStmt.Label)
+
+	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(trainStmt.Features["feature_columns"], trainStmt.Label)
 	if err != nil {
 		return nil, err
 	}
@@ -291,6 +328,7 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 		FieldDescJSON:      string(f),
 		FeatureColumnNames: fs,
 		LabelJSON:          string(l),
+		FeatureColumnCode:  featureColumnCode,
 		DiskCache:          diskCache,
 		BatchSize:          batchSize,
 		Epoch:              epoch,
@@ -301,7 +339,14 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 
 // Pred generates a Python program for predict a xgboost model.
 func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
-	featureFieldDesc, labelFieldDesc, err := getFieldDesc(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
+	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
+
+	// NOTE(sneaxiy): The label name when predicting may be different from the label
+	// name when training, and users may select the actual label when predicting to
+	// compare them with the model prediction. So the label field desc of codegen
+	// must be the label name in prediction select statement.
+	labelFieldDesc.Name = predStmt.ResultColumn
+
 	if err != nil {
 		return "", err
 	}
@@ -324,6 +369,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		PredSelect:         predStmt.Select,
 		FeatureMetaJSON:    string(f),
 		FeatureColumnNames: fs,
+		FeatureColumnCode:  featureColumnCode,
 		LabelMetaJSON:      string(l),
 		ResultTable:        predStmt.ResultTable,
 		HDFSNameNodeAddr:   session.HdfsNamenodeAddr,
@@ -344,7 +390,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 
 // Evaluate generates a Python program for evaluating a xgboost model.
 func Evaluate(evalStmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
-	featureFieldDesc, labelFieldDesc, err := getFieldDesc(evalStmt.TrainStmt.Features["feature_columns"], evalStmt.TrainStmt.Label)
+	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(evalStmt.TrainStmt.Features["feature_columns"], evalStmt.TrainStmt.Label)
+
 	if err != nil {
 		return "", err
 	}
@@ -373,6 +420,7 @@ func Evaluate(evalStmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 		PredSelect:         evalStmt.Select,
 		FeatureMetaJSON:    string(f),
 		FeatureColumnNames: fs,
+		FeatureColumnCode:  featureColumnCode,
 		LabelMetaJSON:      string(l),
 		MetricNames:        metricNames,
 		ResultTable:        evalStmt.Into,

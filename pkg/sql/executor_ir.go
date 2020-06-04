@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -97,6 +98,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 			return nil, err
 		}
 		r.SetOriginalSQL(sql.Original)
+		logger.Infof("Original SQL is:%s", r.GetOriginalSQL())
 		spIRs = append(spIRs, r)
 	}
 	return spIRs, nil
@@ -115,7 +117,8 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	//
 	// The IR generation on the second statement would fail since it requires inspection the schema of some_table,
 	// which depends on the execution of create table some_table as (select ...);.
-	for _, sql := range stmts {
+	sqls := RewriteStatementsWithHints(stmts, db.DriverName)
+	for _, sql := range sqls {
 		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session); err != nil {
 			return err
 		}
@@ -172,6 +175,44 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	submitter := GetSubmitter(session.Submitter)
 	submitter.Setup(wr, db, modelDir, cwd, session)
 	return r.Execute(submitter)
+}
+
+// RewriteStatementsWithHints combines the hints into the standard SQL(s)
+func RewriteStatementsWithHints(stmts []*parser.SQLFlowStmt, dialect string) []*parser.SQLFlowStmt {
+	hints, sqls := splitHints(stmts, dialect)
+	if len(hints) > 0 {
+		for _, sql := range sqls {
+			if !sql.IsExtendedSyntax() {
+				sql.Original = hints + sql.Original
+			}
+		}
+	}
+	return sqls
+}
+
+func splitHints(stmts []*parser.SQLFlowStmt, dialect string) (string, []*parser.SQLFlowStmt) {
+	hints, sqls := "", []*parser.SQLFlowStmt{}
+	for _, stmt := range stmts {
+		if isHint(stmt, dialect) {
+			hints += stmt.Original
+		} else {
+			sqls = append(sqls, stmt)
+		}
+	}
+	return hints, sqls
+}
+
+func isHint(stmt *parser.SQLFlowStmt, dialect string) bool {
+	if !stmt.IsExtendedSyntax() {
+		if dialect == "alisa" {
+			s := strings.ToLower(strings.TrimSpace(stmt.Original))
+			if strings.HasPrefix(s, "set ") {
+				return true
+			}
+		}
+		// TODO(weiguoz) handle if submitter is "maxcompute" or "hive"
+	}
+	return false
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns

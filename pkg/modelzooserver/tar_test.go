@@ -28,12 +28,20 @@ func TestTarUntar(t *testing.T) {
 	a.NoError(err)
 	defer os.RemoveAll(dir)
 
+	modelRepoDir := fmt.Sprintf("%s/my_test_models", dir)
+	err = os.Mkdir(modelRepoDir, os.ModeDir)
+
 	err = ioutil.WriteFile(
-		fmt.Sprintf("%s/my_test_model.py", dir),
+		fmt.Sprintf("%s/Dockerfile", dir),
+		[]byte(sampleDockerfile), 0644)
+	a.NoError(err)
+
+	err = ioutil.WriteFile(
+		fmt.Sprintf("%s/my_test_model.py", modelRepoDir),
 		[]byte(sampleModelCode), 0644)
 	a.NoError(err)
 	err = ioutil.WriteFile(
-		fmt.Sprintf("%s/__init__.py", dir),
+		fmt.Sprintf("%s/__init__.py", modelRepoDir),
 		[]byte(sampleInitCode), 0644)
 	a.NoError(err)
 	err = tarGzDir(dir, "mytar.tar.gz")
@@ -43,11 +51,11 @@ func TestTarUntar(t *testing.T) {
 	if err != nil {
 		a.FailNow("%v", err)
 	}
-	content, err := ioutil.ReadFile(fmt.Sprintf(".%s/my_test_model.py", dir))
+	content, err := ioutil.ReadFile(fmt.Sprintf(".%s/my_test_model.py", modelRepoDir))
 	if err != nil {
 		a.FailNow("%v", err)
 	}
-	descs, err := getModelClasses("./tmp")
+	descs, err := getModelClasses(fmt.Sprintf(".%s", dir))
 	a.NoError(err)
 	a.Equal(1, len(descs))
 	a.Equal("DNNClassifier", descs[0].Name)

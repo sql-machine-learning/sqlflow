@@ -14,10 +14,20 @@
 
 set -e
 
+# If argo already installed, skip
+if kubectl get namespace argo>/dev/null 2>&1; then
+	echo "Argo is already installed."
+	exit 0
+fi
+
 echo "Install Argo on minikube cluster ..."
 kubectl create namespace argo
-kubectl apply -n argo -f \
-  https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml
+
+# Get argo config from QiNiu or github
+wget -q -O /tmp/argo-v2.7.7.yaml \
+	http://qaaz0kmmt.bkt.clouddn.com/argo-v2.7.7.yaml
+kubectl apply -n argo -f /tmp/argo-v2.7.7.yaml
 kubectl create rolebinding default-admin \
-  --clusterrole=admin \
-  --serviceaccount=default:default
+	--clusterrole=admin \
+	--serviceaccount=default:default
+

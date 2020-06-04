@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"io"
 	"io/ioutil"
 	"log"
@@ -26,11 +28,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -226,9 +226,11 @@ func prepareTestData(dbStr string) error {
 			datasets = []string{
 				testdata.ODPSFeatureMapSQL,
 				testdata.ODPSSparseColumnSQL,
-				fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB)}
+				fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
+				fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB)}
 		} else {
-			datasets = []string{fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB)}
+			datasets = []string{fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
+				fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB)}
 		}
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
@@ -338,6 +340,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 
 	// Cases for diagnosis
 	t.Run("CaseDiagnosisMissingModelParams", CaseDiagnosisMissingModelParams)
+
+	CaseXGBoostFeatureColumn(t, false)
 }
 
 func CaseDiagnosisMissingModelParams(t *testing.T) {
@@ -491,6 +495,8 @@ func TestEnd2EndHive(t *testing.T) {
 	t.Run("CasePredictXGBoostRegression", CasePredictXGBoostRegression)
 	t.Run("CaseTrainFeatureDerivation", CaseTrainFeatureDerivation)
 	t.Run("CaseShowTrain", CaseShowTrain)
+
+	CaseXGBoostFeatureColumn(t, false)
 }
 
 func TestEnd2EndMaxCompute(t *testing.T) {
@@ -527,6 +533,8 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	}
 
 	t.Run("TestTrainSQL", CaseTrainSQL)
+
+	CaseXGBoostFeatureColumn(t, true)
 }
 
 func TestEnd2EndMaxComputeALPS(t *testing.T) {
@@ -1596,6 +1604,110 @@ FROM housing.xgb_predict LIMIT 5;`)
 		}
 		a.False(nilCount == 13)
 	}
+}
+
+var uniqueIDMutex sync.Mutex
+var uniqueID = 0
+
+func getUniqueID() int {
+	uniqueIDMutex.Lock()
+	defer uniqueIDMutex.Unlock()
+	uniqueID++
+	return uniqueID
+}
+
+func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool) {
+	tableSplits := strings.SplitN(table, ".", 2)
+	dbPrefix := ""
+	if len(tableSplits) == 2 {
+		dbPrefix = tableSplits[0] + "."
+	}
+
+	a := assert.New(t)
+	if columnClauses != "" {
+		columnClauses = "COLUMN " + columnClauses
+	}
+
+	trainSQLTemplate := `
+	SELECT %s FROM %s TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 1,
+		train.num_workers = %d,
+		eta = 0.4,
+		num_class = %d,
+		validation.select="select %s from %s"
+	%s
+	LABEL %s
+	INTO %s;`
+
+	executeSQLFunc := func(sql string) {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err, fmt.Sprintf("SQL execution failure\n%s", sql))
+	}
+
+	// a unique id to avoid name conflict when run parallel
+	uniqueID := getUniqueID()
+
+	var modelName string
+	if isPai {
+		modelName = fmt.Sprintf("xgb_fc_test_model_%d", uniqueID)
+	} else {
+		modelName = fmt.Sprintf("%sxgb_fc_test_model_%d", dbPrefix, uniqueID)
+	}
+
+	trainSQL := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table, columnClauses, label, modelName)
+	executeSQLFunc(trainSQL)
+
+	predictTableName := fmt.Sprintf("%sxgb_fc_test_predict_table_%d", dbPrefix, uniqueID)
+	predictSQL := fmt.Sprintf(`SELECT %s FROM %s TO PREDICT %s.%s_new USING %s;`, selectColumns, table, predictTableName, label, modelName)
+	executeSQLFunc(predictSQL)
+
+	if !isPai { // PAI does not support evaluate now
+		evaluateTableName := fmt.Sprintf("%sxgb_fc_test_evaluate_table_%d", dbPrefix, uniqueID)
+		evaluateSQL := fmt.Sprintf(`SELECT %s FROM %s TO EVALUATE %s WITH validation.metrics="accuracy_score" LABEL %s INTO %s;`,
+			selectColumns, table, modelName, label, evaluateTableName)
+		executeSQLFunc(evaluateSQL)
+	}
+
+	paiExplainExtra := ""
+	if isPai {
+		paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
+	}
+	explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
+	executeSQLFunc(explainSQL)
+
+	if !isPai { // PAI does not support SHOW TRAIN, because the model is not saved into database
+		showTrainSQL := fmt.Sprintf(`SHOW TRAIN %s;`, modelName)
+		executeSQLFunc(showTrainSQL)
+	}
+}
+
+func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
+	irisTrainTable := "iris.train"
+	churnTrainTable := "churn.train"
+	if isPai {
+		irisTrainTable = "alifin_jtest_dev.sqlflow_test_iris_train"
+		churnTrainTable = "alifin_jtest_dev.sqlflow_test_churn_train"
+	}
+
+	numWorkers := 1
+	if isPai {
+		numWorkers = 2
+	}
+
+	t.Run("CaseXGBoostNoFeatureColumn", func(*testing.T) {
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai)
+	})
+
+	t.Run("CaseXGBoostBucketFeatureColumn", func(*testing.T) {
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai)
+	})
+
+	t.Run("CaseXGBoostCategoryFeatureColumn", func(*testing.T) {
+		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
+			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai)
+	})
 }
 
 func CasePAIMaxComputeTrainPredictCategoricalFeature(t *testing.T) {

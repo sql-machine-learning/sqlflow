@@ -19,6 +19,8 @@ set -e
 # NOTE: shap == 0.30.1 depends on dill but not include dill as it's dependency,
 #       need to install manually.
 # NOTE: mysqlclient depends on apt package mysqlclient from install-mysql.bash.
+# NOTE: Currently, jpmml-evaluator is only needed in unittest to verify whether
+#       the saved PMML file is right.
 pip install --quiet \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
@@ -29,4 +31,8 @@ pip install --quiet \
     xgboost==0.90 \
     oss2==2.9.0 \
     plotille==3.7 \
-    seaborn==0.9.0
+    seaborn==0.9.0 \
+    scikit-learn==0.21.0 \
+    sklearn2pmml==0.56.0 \
+    jpmml-evaluator==0.3.1
+

@@ -15,6 +15,9 @@
 
 set -e
 
+source find_fastest_resources.sh
+choose_fastest_apt_source
+
 echo "Install MySQL server without a password prompt ..."
 echo 'mysql-server mysql-server/root_password password root' | \
     debconf-set-selections
