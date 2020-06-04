@@ -240,18 +240,15 @@ Please check the following example code using Dask:
 ```Python
 from dask_kubernetes import KubeCluster
 
+# Create a cluster with 2 worker pods.
 cluster = KubeCluster.from_yaml("worker-spec.yaml")
-print(cluster)
-
 cluster.scale(2)
 
-# Example usage
 from dask.distributed import Client
 import dask.array as da
 
 # Connect Dask to the cluster
 client = Client(cluster)
-client.get_versions(check=True)
 
 # Create a large array and calculate the mean
 array = da.ones((10000, 1000, 1000))
