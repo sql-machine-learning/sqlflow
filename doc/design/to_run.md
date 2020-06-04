@@ -189,13 +189,11 @@ it can accept the command line parameters from `TO RUN` statement, the program
 need a `main` function, parse the arguments and then execute with the args.
 Because Python program has dependencies, the author needs to provide a
 Dockerfile.  They can use a standard base image that contains the standard
-entrypoint program.  The base image could be defined as follows.
+entrypoint program `sqlflow.runner`.  The base image could be defined as follows.
 
 ```dockerfile
 FROM ubuntu:18.04
 COPY . /src
-ENV PYTHONPATH /src/python_eval.py
-ENTRYPOINT ["/src/python_eval.py"]
 ```
 
 Given the above base Docker image, say, `sqlflow/run:base`, contributors can
@@ -203,8 +201,13 @@ derive their images by adding their Python code.
 
 ```dockerfile
 FROM sqlflow/run:base
-COPY . /opt/python
-ENV PYTHONPATH /opt/python
+# Install dependent python packages
+RUN pip install tsfresh
+RUN pip install pymars
+RUN pip install ...
+# Copy users' Python programs into image
+COPY . /opt/sqlflow_run/python
+ENV PYTHONPATH /opt/sqlflow_run/python
 ```
 
 Suppose that the above Dockerfile builds into image
@@ -215,15 +218,48 @@ statement.
 SELECT * FROM input_table
 TO RUN a_data_scientist/my_python_zoo
 CMD
-  "a_python_func(parameters)"
+  "ts_feature_extractor.py",
+  "--time_column=t",
+  "--value_column=x",
+  "--window_width=120"
 INTO output_table;
 ```
 
 ## Distributed Data Processing
 
 The above abstraction enables `TO RUN` to execute a Python program locally in a
-Tekton step container.  This function can call Kubernetes API to start some
-jobs.  For example, it can launch a Dask job on Kubernetes to have multiple
-workers running the same Python function to pre-process the data in parallel.
+Tekton step container.  For distributed data preprocessing, we can use some
+powerful python packages such as [Dask](https://github.com/dask/dask),
+[Mars](https://github.com/mars-project/mars) in our program.  The program can
+call Kubernetes API to launch some pods and build a specific and ephemeral
+cluster for this distributed job at first.  And then it will build a computing
+task DAG using [Dask](https://docs.dask.org/en/latest/) or Mars API and submit
+the DAG into the cluster to execute the distribtued processing.  
+Please check the following example code using Dask:
+
+```Python
+from dask_kubernetes import KubeCluster
+
+cluster = KubeCluster.from_yaml("worker-spec.yaml")
+print(cluster)
+
+cluster.scale(2)
+
+# Example usage
+from dask.distributed import Client
+import dask.array as da
+
+# Connect Dask to the cluster
+client = Client(cluster)
+client.get_versions(check=True)
+
+# Create a large array and calculate the mean
+array = da.ones((1000, 1000, 1000))
+sum = array.sum()
+
+# Wait for the computing task DAG completion
+# and get the result value
+result_value = sum.compute()
+```
 
 ## Execution Platforms
