@@ -41,14 +41,13 @@ func isXGBoostModule(module string) bool {
 	return strings.HasPrefix(module, "xgboost")
 }
 
-// IntArrayToJSONString converts int array to JSON string
-func IntArrayToJSONString(intArray []int) string {
-	str, err := json.Marshal(intArray)
+// MarshalOrDie converts int array to JSON string
+func MarshalOrDie(in interface{}) string {
+	bytes, err := json.Marshal(in)
 	if err != nil {
-		// Convert in array to JSON string should never raise error.
-		log.Fatalf("convert int array %v to JSON string error", intArray)
+		log.Fatal(err)
 	}
-	return string(str)
+	return string(bytes)
 }
 
 // GenerateFeatureColumnCode generates feature column code for both TensorFlow and XGBoost models
@@ -58,7 +57,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
 			module,
 			c.FieldDesc.Name,
-			IntArrayToJSONString(c.FieldDesc.Shape)), nil
+			MarshalOrDie(c.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
@@ -68,7 +67,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			"%s.feature_column.bucketized_column(%s, boundaries=%s)",
 			module,
 			sourceCode,
-			IntArrayToJSONString(c.Boundaries)), nil
+			MarshalOrDie(c.Boundaries)), nil
 	case *ir.CategoryIDColumn:
 		fm := c.GetFieldDesc()[0]
 		if len(fm.Vocabulary) > 0 {

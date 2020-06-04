@@ -81,7 +81,7 @@ func attrToPythonValue(attr interface{}) string {
 	case float64: // FIXME(typhoonzero): may never use
 		return fmt.Sprintf("%f", attr.(float64))
 	case []int:
-		return codegen.IntArrayToJSONString(attr.([]int))
+		return codegen.MarshalOrDie(attr.([]int))
 		// TODO(typhoonzero): support []float etc.
 	case []interface{}:
 		tmplist := attr.([]interface{})
@@ -91,7 +91,7 @@ func attrToPythonValue(attr interface{}) string {
 				for _, v := range tmplist {
 					intlist = append(intlist, v.(int))
 				}
-				return codegen.IntArrayToJSONString(intlist)
+				return codegen.MarshalOrDie(intlist)
 			}
 		}
 		// TODO(typhoonzero): support []float etc.
@@ -333,7 +333,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.MarshalOrDie,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfTrainTemplateText))
@@ -386,7 +386,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.MarshalOrDie,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfPredTemplateText))
@@ -430,7 +430,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.MarshalOrDie,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
@@ -471,7 +471,7 @@ func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.IntArrayToJSONString,
+		"intArrayToJSONString": codegen.MarshalOrDie,
 		"attrToPythonValue":    attrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfEvaluateTemplateText))

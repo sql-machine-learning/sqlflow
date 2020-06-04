@@ -1616,6 +1616,8 @@ func getUniqueID() int {
 	return uniqueID
 }
 
+// NOTE(sneaxiy): INDICATOR of XGBoost model does not support "TO EXPLAIN" yet
+// We set skipExplain = true in INDICATOR unittest
 func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool,
 	skipExplain bool) {
 	tableSplits := strings.SplitN(table, ".", 2)
@@ -1700,21 +1702,19 @@ func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 	}
 
 	t.Run("CaseXGBoostNoFeatureColumn", func(*testing.T) {
-		return
 		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai, false)
 	})
 
 	t.Run("CaseXGBoostBucketFeatureColumn", func(*testing.T) {
-		return
 		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai, false)
 	})
 
 	t.Run("CaseXGBoostCategoryFeatureColumn", func(*testing.T) {
-		return
 		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
 			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai, false)
 	})
 
+	// NOTE(sneaxiy): INDICATOR of XGBoost model does not support "TO EXPLAIN" yet
 	t.Run("CaseXGBoostCategoryFeatureColumnWithIndicator", func(*testing.T) {
 		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
 			`CATEGORY_HASH(customerid, 10), INDICATOR(CATEGORY_ID(gender, 2))`, 2, numWorkers, isPai, true)
