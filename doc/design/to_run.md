@@ -265,8 +265,8 @@ SQLFlow can be deployed to various platforms such as Vanilla Kubernetes,
 MaxCompute, Google Cloud, Amazon AWS and so on. These platforms may have
 different requirements on the executing environment of the program to
 access the data and computing resource. As a result The execution detail of
-`TO RUN` statement can be different on these platform.  
-Currently we have completed the deployment on Vanilla Kubernetes and
+`TO RUN` statement can be different on these platforms.  
+Currently we have already deployed SQLFlow on Vanilla Kubernetes and
 MaxCompute, let's focus on these two platformas in this article.
 
 ### Vanilla Kubernetes
