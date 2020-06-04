@@ -62,7 +62,7 @@ CMD
   "--time_column=t",
   "--value_column=v",
   "--window_width=120"
-INTO output_table_name;
+INTO output_table;
 ```
 
 The SQLFlow compiler translates it into a Tekton step that
@@ -94,7 +94,7 @@ CMD
   "--time_column=t",
   "--value_column=x",
   "--window_width=120"
-INTO output_table_name;
+INTO output_table;
 ```
 
 ### The SELECT Prefix
@@ -117,7 +117,7 @@ CMD
   "--time_column=t",
   "--value_column=v",
   "--window_width=120"
-INTO output_table_name;
+INTO output_table;
 ```
 
 ### The INTO Suffix
@@ -178,7 +178,7 @@ environment variables prefixed with `SQLFLOW_`.
 
 Just as the beginning of this article, the original intention of `TO RUN`
 statement is data transformation in end-to-end machine learning.  Besides
-SQL, data scientists usually write Python program to process the data.
+SQL, data scientists primarily write Python programs to process the data.
 And there are quite a few mature python packages to leverage for data
 processing such as numpy, pandas, sklearn, etc.  We are focusing on how to run
 a Python program in `TO RUN` statement in this section.
@@ -186,7 +186,7 @@ a Python program in `TO RUN` statement in this section.
 The subject of `TO RUN` is a docker image. The author provides an executable
 built from any language. For Python, it's a complete Python program.  Since
 it can accept the command line parameters from `TO RUN` statement, the program
-need a `main` function, parse the arguments and then execute with these args.
+need a `main` function, parse the arguments and then execute with the args.
 Because Python program has dependencies, the author needs to provide a
 Dockerfile.  They can use a standard base image that contains the standard
 entrypoint program.  The base image could be defined as follows.
@@ -198,11 +198,11 @@ ENV PYTHONPATH /src/python_eval.py
 ENTRYPOINT ["/src/python_eval.py"]
 ```
 
-Given the above base Docker image, say, `sqlflow/run:python`, contributors can
+Given the above base Docker image, say, `sqlflow/run:base`, contributors can
 derive their images by adding their Python code.
 
 ```dockerfile
-FROM sqlflow/run:python
+FROM sqlflow/run:base
 COPY . /opt/python
 ENV PYTHONPATH /opt/python
 ```
@@ -212,11 +212,11 @@ Suppose that the above Dockerfile builds into image
 statement.
 
 ```sql
-SELECT ...
+SELECT * FROM input_table
 TO RUN a_data_scientist/my_python_zoo
 CMD
-  "a_python_func(parameters)",
-  "another_python_func(params)";
+  "a_python_func(parameters)"
+INTO output_table;
 ```
 
 ## Distributed Data Processing
