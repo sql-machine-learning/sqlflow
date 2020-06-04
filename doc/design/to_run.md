@@ -275,7 +275,7 @@ The python program is executed directly in the step container. This step use
 the docker image after `TO RUN` keyword and run the following command:
 
 ```BASH
-python -m /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
+python /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
 ```
 
 ### MaxCompute
