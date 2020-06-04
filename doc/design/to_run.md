@@ -271,8 +271,8 @@ MaxCompute, let's focus on these two platformas in this article.
 
 ### Vanilla Kubernetes
 
-The python program is executed directly in the step container. This step use
-the docker image after `TO RUN` keyword and run the following command:
+The python program is executed directly in the step container. This step uses
+the docker image after `TO RUN` keyword and runs the following command:
 
 ```BASH
 python /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
@@ -289,7 +289,7 @@ PyODPS task to MaxCompute in the way of sending a web request. The python
 program content and its arguments are the payload of the request.
 - Fetch the execution log and wait for the task done.
 
-This step execute the following command in the container:
+This step executes the following command in the container:
 
 ```BASH
 alisa.submitter /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
