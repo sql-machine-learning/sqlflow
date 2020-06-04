@@ -97,12 +97,19 @@ CMD
 INTO output_table;
 ```
 
+### TO RUN Semantics
+
+SQLFlow will translate both the SQL statement above into two workflow steps:  
+
+1. Retrive the data from `source_table`, execute the transformation in SELECT
+statement and write the result into a temporary table.
+2. `docker run a_data_scientist/ts_data_processor:1.0` with the command line
+parameters after the `CMD` keyword.  It will retrieve the data from the
+temporary table, process the data using the executable in the image and output
+the result into `output_table`.
+
 ### The SELECT Prefix
 
-The semantics of `SELECT input_table TO RUN function_image CMD parameters INTO output_table`
-is that retrieve the data from `input_table`, process the data using the
-executable in the `function_image` with `parameters` and then output the
-result into `output_table`.  
 As the `TO RUN` clause can run any program in the Docker image, it is not
 necessary to have an input table.  From the SQL users' point of view, it's
 more user friendly to keep the syntax SQL style.  As a result, we always
@@ -190,7 +197,7 @@ need a `main` function, parse the arguments and then execute with the args.
 Because Python program has dependencies, the author needs to provide a
 Dockerfile.  They can use a standard base image that contains the standard
 entrypoint program `sqlflow.runner`. We will discuss more about this program
-in the [Execution Platforms](#Execution-Platforms).
+in the [Execution Platforms section](#Execution-Platforms).
 
 Given the above base Docker image, say, `sqlflow/run:base`, contributors can
 derive their images by adding their Python code.
