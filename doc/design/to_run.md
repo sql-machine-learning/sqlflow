@@ -261,5 +261,34 @@ result_value = sum.compute()
 
 ## Execution Platforms
 
-SQLFlow can be deployed to various Platforms. vanilla kubernetes, MaxCompute, Google
-Cloud and Amazon AWS.  
+SQLFlow can be deployed to various platforms such as Vanilla Kubernetes,
+MaxCompute, Google Cloud, Amazon AWS and so on. These platforms may have
+different requirements on the executing environment of the program to
+access the data and computing resource. As a result The execution detail of
+`TO RUN` statement can be different on these platform.  
+Currently we have completed the deployment on Vanilla Kubernetes and
+MaxCompute, let's focus on these two platformas in this article.
+
+### Vanilla Kubernetes
+
+The python program is executed directly in the step container. This step use
+the docker image after `TO RUN` keyword and run the following command:
+
+```BASH
+python -m /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
+```
+
+### MaxCompute
+
+Because MaxCompute requires that the Python program should be executed inside the
+PyODPS task node, we cannot execute the program in the step container just like
+above.
+
+- Use [goalisa](https://github.com/sql-machine-learning/goalisa) to submit a
+PyODPS task to MaxCompute in the way of sending a web request. The python
+program content and its arguments are the payload of the request.
+- Fetch the execution log and wait for the task done.
+
+```BASH
+alisa.submitter /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
+```
