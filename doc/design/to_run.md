@@ -254,7 +254,7 @@ client = Client(cluster)
 client.get_versions(check=True)
 
 # Create a large array and calculate the mean
-array = da.ones((1000, 1000, 1000))
+array = da.ones((10000, 1000, 1000))
 sum = array.sum()
 
 # Wait for the computing task DAG completion
