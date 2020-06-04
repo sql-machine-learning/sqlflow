@@ -96,12 +96,45 @@ func Load(modelURI, dst string, db *database.DB) (*Model, error) {
 	} else if strings.Contains(modelURI, "/") {
 		// general model zoo urls like some-domain.com:port/model_name:tag
 		// download traind model and extract to dst
-		return loadModelFromModelZoo(modelURI, dst)
+		return loadModelFromZoo(modelURI, dst)
 	}
 	return loadDB(db, modelURI, dst)
 }
 
-func loadModelFromModelZoo(modelURI, dst string) (*Model, error) {
+func downloadModelToBuf(modelZooServerAddr, modelName, modelTag string) (bytes.Buffer, error) {
+	var buf bytes.Buffer
+	// TODO(typhoonzero): use SSL connection
+	conn, err := grpc.Dial(modelZooServerAddr, grpc.WithInsecure())
+	if err != nil {
+		return buf, err
+	}
+	defer conn.Close()
+	modelZooClient := pb.NewModelZooServerClient(conn)
+	stream, err := modelZooClient.DownloadModel(context.Background(), &pb.ReleaseModelRequest{
+		Name: modelName,
+		Tag:  modelTag,
+	})
+	if err != nil {
+		return buf, err
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return buf, err
+		}
+		_, err = buf.Write(resp.ContentTar)
+		if err != nil {
+			return buf, err
+		}
+	}
+	return buf, nil
+}
+
+func loadModelFromZoo(modelURI, dst string) (*Model, error) {
 	// modelURI is formated like some-domain.com:port/model_name:tag
 	uriParts := strings.Split(modelURI, "/")
 	// previous checks asserted that uriParts must have two parts
@@ -119,33 +152,10 @@ func loadModelFromModelZoo(modelURI, dst string) (*Model, error) {
 	} else {
 		return nil, fmt.Errorf("model name after USING must be like [model-zoo.com:port/]model_name[:tag]")
 	}
-	// TODO(typhoonzero): use SSL connection
-	conn, err := grpc.Dial(modelZooServerAddr, grpc.WithInsecure())
+
+	buf, err := downloadModelToBuf(modelZooServerAddr, modelName, modelTag)
 	if err != nil {
 		return nil, err
-	}
-	defer conn.Close()
-	modelZooClient := pb.NewModelZooServerClient(conn)
-	stream, err := modelZooClient.DownloadModel(context.Background(), &pb.ReleaseModelRequest{
-		Name: modelName,
-		Tag:  modelTag,
-	})
-	if err != nil {
-		return nil, err
-	}
-	var buf bytes.Buffer
-	for {
-		resp, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		_, err = buf.Write(resp.ContentTar)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	m := &Model{}
@@ -154,14 +164,22 @@ func loadModelFromModelZoo(modelURI, dst string) (*Model, error) {
 	}
 
 	if dst != "" { // empty is invalid param for tar -C
-		cmd := exec.Command("tar", "xzf", "-", "-C", dst)
-		cmd.Stdin = &buf
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("tar %v", string(output))
+		if err := untarBuf(buf, dst); err != nil {
+			return nil, err
 		}
 	}
 	return m, nil
+}
+
+// untarBuf extracts a tar.gz buffer from stdin and write the extracted files to dst
+func untarBuf(buf bytes.Buffer, dst string) error {
+	cmd := exec.Command("tar", "xzf", "-", "-C", dst)
+	cmd.Stdin = &buf
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("tar %v", string(output))
+	}
+	return nil
 }
 
 // saveDB creates a sqlfs table if it doesn't yet exist, and writes the
@@ -245,11 +263,8 @@ func loadDB(db *database.DB, table, cwd string) (m *Model, e error) {
 	}
 
 	if cwd != "" { // empty is invalid param for tar -C
-		cmd := exec.Command("tar", "xzf", "-", "-C", cwd)
-		cmd.Stdin = &buf
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("tar %v", string(output))
+		if err := untarBuf(buf, cwd); err != nil {
+			return nil, err
 		}
 	}
 	return m, nil
