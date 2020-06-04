@@ -289,7 +289,7 @@ PyODPS task to MaxCompute in the way of sending a web request. The python
 program content and its arguments are the payload of the request.
 - Fetch the execution log and wait for the task done.
 
-This step executes the following command in the container:
+This step executes the following command in the step container:
 
 ```BASH
 alisa.submitter /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
