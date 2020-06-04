@@ -231,10 +231,10 @@ The above abstraction enables `TO RUN` to execute a Python program locally in a
 Tekton step container.  For distributed data preprocessing, we can use some
 powerful python packages such as [Dask](https://github.com/dask/dask),
 [Mars](https://github.com/mars-project/mars) in our program.  The program can
-call Kubernetes API to launch some pods and build a specific and ephemeral
-cluster for this distributed job at first.  And then it will build a computing
-task DAG using [Dask](https://docs.dask.org/en/latest/) or Mars API and submit
-the DAG into the cluster to execute the distribtued processing.  
+call Kubernetes API to launch some pods, build a specific and ephemeral
+cluster for this distributed job at first.  And then it will construct
+a computing task DAG using [Dask](https://docs.dask.org/en/latest/) or Mars API
+and submit the DAG into the cluster to execute the distribtued processing.  
 Please check the following example code using Dask:
 
 ```Python
@@ -247,7 +247,7 @@ cluster.scale(2)
 from dask.distributed import Client
 import dask.array as da
 
-# Connect Dask to the cluster
+# Connect Dask client to the cluster
 client = Client(cluster)
 
 # Create a large array and calculate the mean
@@ -260,3 +260,6 @@ result_value = sum.compute()
 ```
 
 ## Execution Platforms
+
+SQLFlow can be deployed to various Platforms. vanilla kubernetes, MaxCompute, Google
+Cloud and Amazon AWS.  
