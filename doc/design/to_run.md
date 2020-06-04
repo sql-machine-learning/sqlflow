@@ -189,12 +189,8 @@ it can accept the command line parameters from `TO RUN` statement, the program
 need a `main` function, parse the arguments and then execute with the args.
 Because Python program has dependencies, the author needs to provide a
 Dockerfile.  They can use a standard base image that contains the standard
-entrypoint program `sqlflow.runner`.  The base image could be defined as follows.
-
-```dockerfile
-FROM ubuntu:18.04
-COPY . /src
-```
+entrypoint program `sqlflow.runner`. We will discuss more about this program
+in the [Execution Platforms](#Execution-Platforms).
 
 Given the above base Docker image, say, `sqlflow/run:base`, contributors can
 derive their images by adding their Python code.
@@ -204,7 +200,6 @@ FROM sqlflow/run:base
 # Install dependent python packages
 RUN pip install tsfresh
 RUN pip install pymars
-RUN pip install ...
 # Copy users' Python programs into image
 COPY . /opt/sqlflow_run/python
 ENV PYTHONPATH /opt/sqlflow_run/python
@@ -275,7 +270,7 @@ This step uses the docker image after `TO RUN` keyword, runs the following
 command and executes the Python program directly in this step container:
 
 ```BASH
-python /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
+python /opt/sqlflow_run/python/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
 ```
 
 ### MaxCompute
@@ -292,5 +287,15 @@ program content and its arguments are the payload of the request.
 This step executes the following command in the step container:
 
 ```BASH
-alisa.submitter /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
+alisa.submitter /opt/sqlflow_run/python/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
 ```
+
+From the users' perspective, submitting PyODPS task using goalisa is the
+private protocol between SQLFlow and MaxCompute and expose too many details.
+And users only want to focus on the data processing logic in the Python
+program and don't want to pay attention to the execution different among
+various platforms. To cover these details, we propose to add a module
+`sqlflow.runner` and set it as the entry point of the docker image for `TO RUN`.
+This module will get the platform type from the environment variable and decide
+how to execute the python program such as `python a_python_file.py` for Vanilla
+Kubernetes and `alisa.submitter a_python_file.py` for MaxCompute.
