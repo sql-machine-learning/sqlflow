@@ -5,18 +5,18 @@ metadata:
 spec:
   containers:
   - name: server
-    image: sqlflow:server
+    image: sqlflow/sqlflow:server
     imagePullPolicy: IfNotPresent
     env:
     - name: SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT
       value: "http://localhost:9001"
     - name: SQLFLOW_WORKFLOW_STEP_IMAGE
-      value: sqlflow:step
+      value: sqlflow/sqlflow:step
     command:
       - sqlflowserver
       - --argo-mode
   - name: notebook
-    image: sqlflow:jupyter
+    image: sqlflow/sqlflow:jupyter
     imagePullPolicy: IfNotPresent
     ports:
     - containerPort: 8888
@@ -41,7 +41,7 @@ spec:
         fieldRef:
           fieldPath: status.podIP
   - name: mysql
-    image: sqlflow:mysql
+    image: sqlflow/sqlflow:mysql
     imagePullPolicy: IfNotPresent
     ports:
     - containerPort: 3306
