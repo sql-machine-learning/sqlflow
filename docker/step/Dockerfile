@@ -40,7 +40,8 @@ RUN bash -c "pip install numpy==1.16.1 \
     xgboost==0.90 \
     shap==0.30.1 \
     plotille==3.7 \
-    seaborn==0.9.0"
+    seaborn==0.9.0 \
+    dill==0.3.0"
 
 ADD python/sqlflow_submitter /opt/sqlflow/python/sqlflow_submitter/
 ADD build/models/sqlflow_models /opt/sqlflow/python/sqlflow_models/
