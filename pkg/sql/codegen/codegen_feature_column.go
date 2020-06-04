@@ -41,7 +41,8 @@ func isXGBoostModule(module string) bool {
 	return strings.HasPrefix(module, "xgboost")
 }
 
-// MarshalOrDie converts int array to JSON string
+// MarshalOrDie converts any data to JSON string.
+// Exit the process if there is any error.
 func MarshalOrDie(in interface{}) string {
 	bytes, err := json.Marshal(in)
 	if err != nil {
