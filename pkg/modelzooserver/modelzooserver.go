@@ -29,6 +29,7 @@ import (
 const modelCollTable = "sqlflow_model_zoo.model_repos"
 const modelDefTable = "sqlflow_model_zoo.model_definitions"
 const trainedModelTable = "sqlflow_model_zoo.models"
+const publicModelDB = "sqlflow_public_models"
 
 // TODO(typhoonzero): create tables if these tables are not pre created?
 const createTableStmts = `CREATE DATABASE IF NOT EXISTS sqlflow_model_zoo;
@@ -69,7 +70,7 @@ type modelZooServer struct {
 }
 
 func (s *modelZooServer) ListModelRepos(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelRepoResponse, error) {
-	// TODO(typhoonzero): join model_collection
+	// TODO(typhoonzero): join model_repos
 	var sql string
 	if req.Size <= 0 {
 		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_coll_id=b.id;",
@@ -163,6 +164,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	if err != nil {
 		return err
 	}
+	totalSize := 0
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -170,10 +172,12 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		}
 		reqName = req.GetName()
 		reqTag = req.GetTag()
-		_, err = fd.Write(req.GetContentTar())
+		n, err := fd.Write(req.GetContentTar())
 		if err != nil {
+			fmt.Printf("write content error: %s\n", err)
 			log.Printf("get user model source code error %v", err)
 		}
+		totalSize = totalSize + n
 	}
 	// close and flush the tar.gz file
 	fd.Close()
@@ -183,6 +187,9 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	imgExists := imageExistsOnRegistry(reqName, reqTag)
 	if imgExists {
 		return fmt.Errorf("current image %s:%s already exists on registry", reqName, reqTag)
+	}
+	if totalSize <= 0 {
+		return fmt.Errorf("no model repo content uploaded")
 	}
 	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
 		return err
@@ -209,7 +216,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		return err
 	}
 
-	// get model_collection id, if exists, return already existed error
+	// get model_repo id, if exists, return already existed error
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';", modelCollTable, reqName, reqTag)
 	rows, err := s.DB.Query(sql)
 	if err != nil {
@@ -218,10 +225,10 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	defer rows.Close()
 	hasNext := rows.Next()
 	if hasNext {
-		return fmt.Errorf("model collection %s:%s already exists", reqName, reqTag)
+		return fmt.Errorf("model repo %s:%s already exists", reqName, reqTag)
 	}
 
-	// write model_collection
+	// write model_repo
 	sql = fmt.Sprintf("INSERT INTO %s (name, version) VALUES ('%s', '%s');", modelCollTable, reqName, reqTag)
 	modelCollInsertRes, err := s.DB.Exec(sql)
 	if err != nil {
@@ -244,7 +251,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 }
 
 func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModelRepoRequest) (*pb.ReleaseResponse, error) {
-	// 1. find model collection id
+	// 1. find model repo id
 	// TODO(typhoonzero): verify request strings to avoid SQL injection
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';",
 		modelCollTable, req.GetName(), req.GetTag())
@@ -256,7 +263,7 @@ func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModel
 	var id int
 	end := rows.Next()
 	if !end {
-		return nil, fmt.Errorf("no model collection %s found", req.GetName())
+		return nil, fmt.Errorf("no model repo %s found", req.GetName())
 	}
 	err = rows.Scan(&id)
 	if err != nil {
@@ -268,7 +275,7 @@ func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModel
 	if err != nil {
 		return nil, err
 	}
-	// 3. delete model collection record
+	// 3. delete model repo record
 	sql = fmt.Sprintf("DELETE FROM %s WHERE id=%d;", modelCollTable, id)
 	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
@@ -286,9 +293,10 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	sqlf = nil
 
 	// Create database sqlflow_public_models to store public trained models.
-	if _, err := s.DB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_public_models;"); err != nil {
+	if _, err := s.DB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", publicModelDB)); err != nil {
 		return err
 	}
+	// TODO(typhoonzero): save model to sqlfs with version tag
 
 	for { // read stream request
 		// NOTE: other fields in req must be the same in every stream request.
@@ -299,7 +307,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 		req = streamReq
 		if sqlf == nil {
 
-			modelTableName := fmt.Sprintf("sqlflow_public_models.%s", req.Name)
+			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, req.Name)
 			// FIXME(typhoonzero): only hive need to pass session
 			sqlf, err = sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
 			if err != nil {
@@ -319,9 +327,9 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	}
 
 	// Get model_def_id from model_definition table
-	imageAndTag := strings.Split(req.ModelCollectionImageUrl, ":")
+	imageAndTag := strings.Split(req.ModelRepoImageUrl, ":")
 	if len(imageAndTag) != 2 {
-		return fmt.Errorf("model collection image should be like you_image_name:version")
+		return fmt.Errorf("model repo image should be like you_image_name:version")
 	}
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
 	rowsImageID, err := s.DB.Query(sql)
@@ -331,7 +339,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	defer rowsImageID.Close()
 	end := rowsImageID.Next()
 	if !end {
-		return fmt.Errorf("when release trained model, no model collection %s found", req.GetName())
+		return fmt.Errorf("when release model, no model repo %s found", req.ModelRepoImageUrl)
 	}
 	var modelCollID int
 	if err = rowsImageID.Scan(&modelCollID); err != nil {
@@ -347,7 +355,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	defer rowsModelDefID.Close()
 	end = rowsModelDefID.Next()
 	if !end {
-		return fmt.Errorf("when release trained model, no model definition %s found", req.GetName())
+		return fmt.Errorf("when release model, no model definition %s found", req.GetName())
 	}
 	var modelDefID int
 	if err := rowsModelDefID.Scan(&modelDefID); err != nil {
@@ -371,4 +379,47 @@ func (s *modelZooServer) DropModel(ctx context.Context, req *pb.ReleaseModelRequ
 		return nil, err
 	}
 	return &pb.ReleaseResponse{Success: true, Message: ""}, nil
+}
+
+func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream pb.ModelZooServer_DownloadModelServer) error {
+	modelName := req.Name
+	modelTag := req.Tag
+	modelClassName := req.ModelClassName
+	modelRepoImageURL := req.ModelRepoImageUrl
+
+	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s", publicModelDB, modelName))
+	if err != nil {
+		return err
+	}
+	defer sqlf.Close()
+	// Note that modelBuf is a gob encoded struct
+	eof := false
+	for {
+		buf := make([]byte, 4096)
+		n, err := sqlf.Read(buf)
+		if err == io.EOF {
+			eof = true
+		} else if err != nil {
+			return err
+		}
+
+		if n > 0 {
+			err = respStream.Send(&pb.DownloadModelResponse{
+				Name:              modelName,
+				Tag:               modelTag,
+				ModelClassName:    modelClassName,
+				ModelRepoImageUrl: modelRepoImageURL,
+				ContentTar:        buf,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		// Need to write the last read bytes to streamResp when EOF
+		if eof {
+			break
+		}
+	}
+
+	return nil
 }

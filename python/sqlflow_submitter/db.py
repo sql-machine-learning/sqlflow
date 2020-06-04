@@ -24,7 +24,7 @@ import tensorflow as tf
 def parseMySQLDSN(dsn):
     # [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
     user, passwd, host, port, database, config_str = re.findall(
-        "^(\w*):(\w*)@tcp\(([.a-zA-Z0-9]*):([0-9]*)\)/(\w*)(\?.*)?$", dsn)[0]
+        "^(\w*):(\w*)@tcp\(([.a-zA-Z0-9\-]*):([0-9]*)\)/(\w*)(\?.*)?$", dsn)[0]
     config = {}
     if len(config_str) > 1:
         for c in config_str[1:].split("&"):

@@ -31,8 +31,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/server"
 )
 
-func startServer() {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 50055))
+func startServer(port int) {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
@@ -89,7 +89,7 @@ func mockTmpModelRepo() (string, error) {
 
 func TestModelZooServer(t *testing.T) {
 	a := assert.New(t)
-	go startServer()
+	go startServer(50055)
 	server.WaitPortReady("localhost:50055", 0)
 
 	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
@@ -143,20 +143,18 @@ func TestModelZooServer(t *testing.T) {
 		token := make([]byte, 256)
 		rand.Read(token)
 		req := &pb.ReleaseModelRequest{
-			Name:                    "my_regression_model",
-			Tag:                     "v0.1",
-			Description:             "A linear regression model for house price predicting",
-			EvaluationMetrics:       "MSE: 0.02, MAPE: 10.32",
-			ModelClassName:          "DNNClassifier",
-			ModelCollectionImageUrl: "sqlflow/my_test_model:v0.1",
-			ContentTar:              token,
-			ContentUrl:              "",
+			Name:              "my_regression_model",
+			Tag:               "v0.1",
+			Description:       "A linear regression model for house price predicting",
+			EvaluationMetrics: "MSE: 0.02, MAPE: 10.32",
+			ModelClassName:    "DNNClassifier",
+			ModelRepoImageUrl: "sqlflow/my_test_model:v0.1",
+			ContentTar:        token,
+			ContentUrl:        "",
 		}
 		err = stream.Send(req)
 		a.NoError(err)
 		reply, err := stream.CloseAndRecv()
-		fmt.Printf("ReleaseTrainedModel error: %v\n", err)
-		fmt.Printf("Reply: %v\n", reply)
 		a.NoError(err)
 		a.Equal(true, reply.Success)
 
