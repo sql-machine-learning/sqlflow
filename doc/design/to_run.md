@@ -271,8 +271,8 @@ MaxCompute, let's focus on these two platformas in this article.
 
 ### Vanilla Kubernetes
 
-The python program is executed directly in the step container. This step uses
-the docker image after `TO RUN` keyword and runs the following command:
+This step uses the docker image after `TO RUN` keyword, runs the following
+command and executes the Python program directly in this step container:
 
 ```BASH
 python /opt/sqlflow_run/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
