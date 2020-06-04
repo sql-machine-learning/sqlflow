@@ -197,7 +197,7 @@ need a `main` function, parse the arguments and then execute with the args.
 Because Python program has dependencies, the author needs to provide a
 Dockerfile.  They can use a standard base image that contains the standard
 entrypoint program `sqlflow.runner`. We will discuss more about this program
-in the [Execution Platforms section](#Execution-Platforms).
+in the [Execution Platforms](#Execution-Platforms) section.
 
 Given the above base Docker image, say, `sqlflow/run:base`, contributors can
 derive their images by adding their Python code.
@@ -269,12 +269,14 @@ different requirements on the executing environment of the program to
 access the data and computing resource. As a result The execution detail of
 `TO RUN` statement can be different on these platforms.  
 Currently we have already deployed SQLFlow on Vanilla Kubernetes and
-MaxCompute, let's focus on these two platformas in this article.
+MaxCompute, let's focus on these two platforms in this article.
 
 ### Vanilla Kubernetes
 
-This step uses the docker image after `TO RUN` keyword, runs the following
-command and executes the Python program directly in this step container:
+Just mentioned in the [TO RUN semantics](#TO-RUN-Semantics) section, SQLFlow
+translates the `TO RUN` statement into two steps. The second step uses the
+docker image after `TO RUN` keyword, runs the following command and executes
+the Python program directly in this step container:
 
 ```BASH
 python /opt/sqlflow_run/python/ts_feature_extractor.py --time_column=t --value_column=x --window_width=120
