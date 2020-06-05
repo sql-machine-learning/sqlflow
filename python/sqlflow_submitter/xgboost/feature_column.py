@@ -39,6 +39,11 @@ else:
         return int(hashlib.sha1(x.encode('utf-8')).hexdigest(), 16)
 
 
+def elementwise_transform(array, transform_fn):
+    vfunc = np.vectorize(transform_fn)
+    return vfunc(array)
+
+
 def apply_transform_on_value(feature, transform_fn):
     if len(feature) == 1:  # Dense input is like (value, )
         return transform_fn(feature[0]),
@@ -127,25 +132,23 @@ class CategoricalColumnWithIdentityTransformer(CategoricalColumnTransformer):
 
     def __call__(self, inputs):
         def transform_fn(slot_value):
+            def elementwise_transform_fn(x):
+                if x >= 0 and x < self.num_buckets:
+                    return x
+
+                if self.default_value is not None:
+                    return self.default_value
+                else:
+                    raise ValueError(
+                        'The categorical value of column {} out of range [0, {})'
+                        .format(self.key, self.num_buckets))
+
             if isinstance(slot_value, np.ndarray):
-                invalid_index = np.logical_or(slot_value < 0,
-                                              slot_value >= self.num_buckets)
-                if invalid_index.any():
-                    if self.default_value is not None:
-                        slot_value[invalid_index] = self.default_value
-                    else:
-                        raise ValueError(
-                            'The categorical value of column {} out of range [0, {})'
-                            .format(self.key, self.num_buckets))
+                output = elementwise_transform(
+                    slot_value, elementwise_transform_fn).astype(np.int64)
             else:
-                if slot_value < 0 or slot_value >= self.num_buckets:
-                    if self.default_value is not None:
-                        slot_value = self.default_value
-                    else:
-                        raise ValueError(
-                            'The categorical value of column {} out of range [0, {})'
-                            .format(self.key, self.num_buckets))
-            return slot_value
+                output = elementwise_transform_fn(slot_value)
+            return output
 
         return apply_transform_on_value(inputs[self.column_idx], transform_fn)
 
@@ -171,14 +174,13 @@ class CategoricalColumnWithVocabularyList(CategoricalColumnTransformer):
         return len(self.vocabulary_list)
 
     def __call__(self, inputs):
+        fn = lambda x: self.vocabulary_list.index(x)
+
         def transform_fn(slot_value):
             if isinstance(slot_value, np.ndarray):
-                output = np.ndarray(slot_value.shape, dtype=np.int64)
-                for i in six.moves.range(slot_value.size):
-                    output.put(i,
-                               self.vocabulary_list.index(slot_value.take(i)))
+                output = elementwise_transform(slot_value, fn).astype(np.int64)
             else:
-                output = self.vocabulary_list.index(slot_value)
+                output = fn(slot_value)
 
             return output
 
@@ -206,15 +208,14 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
         return self.hash_bucket_size
 
     def __call__(self, inputs):
+        fn = lambda x: hashing(x) % self.hash_bucket_size
+
         def transform_fn(slot_value):
             if isinstance(slot_value, np.ndarray):
-                output = np.ndarray(slot_value.shape, dtype=np.int64)
-                for i in six.moves.range(slot_value.size):
-                    output.put(
-                        i,
-                        hashing(slot_value.take(i)) % self.hash_bucket_size)
+                output = elementwise_transform(slot_value, fn).astype(np.int64)
+                output = output.astype(np.int64)
             else:
-                output = int(hashing(slot_value) % self.hash_bucket_size)
+                output = fn(slot_value)
 
             return output
 
