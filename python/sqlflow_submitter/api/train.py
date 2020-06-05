@@ -11,25 +11,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_submitter import tensorflow
+from sqlflow_submitter import db, tensorflow
+from sqlflow_submitter.api import API_DB_CONN_CONF
+from sqlflow_submitter.api.field_types import mysql_field_types
 
-from .. import db
-from . import API_DB_CONN_STR
 
-
-def train(sql, model, into, attrs={}, columns=[], validation_select=""):
+def train(sql, model, into, label, attrs={}, columns=[], validation_select=""):
     model_type = "tf"
     if model.startswith("xgboost"):
         model_type = "xgboost"
 
     # derive feature columns from sql statement and columns settings.
-    conn = db.connect_with_data_source(API_DB_CONN_STR)
+    conn = db.connect_with_data_source(API_DB_CONN_CONF["conn_str"])
     cur = conn.cursor()
     cur.execute(sql)
     field_names = []
+    field_types = []
     for desc in cur.description:
         field_names.append(desc[0])
+        field_types.append(mysql_field_types[desc[1]])
         # get field types
+    print(field_names)
+    print(field_types)
+    if label not in field_names:
+        raise ValueError("label (%s) is not appeared in your selected fields" %
+                         label)
 
-    # if model_type == "tf":
-    #     tensorflow.train.train(API_DB_CONN_STR, model, sql, validation_select)
+    if model_type == "tf":
+        tensorflow.train.train(API_DB_CONN_CONF["conn_str"], model, sql,
+                               validation_select)
+    else:
+        raise ValueError("not supported mode type: %s" % model)

@@ -11,14 +11,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# See https://stackoverflow.com/a/3400584 for why should use a dict
-API_DB_CONN_CONF = {}
-
-
-def init(db_conn_str):
-    global API_DB_CONN_CONF
-    if not db_conn_str.startswith("mysql://"):
-        raise ValueError("only support mysql currently")
-
-    API_DB_CONN_CONF["conn_str"] = db_conn_str
-    API_DB_CONN_CONF["driver"] = "mysql"
+mysql_field_types = {
+    0: 'DECIMAL',
+    1: 'TINY',
+    2: 'SHORT',
+    3: 'LONG',
+    4: 'FLOAT',
+    5: 'DOUBLE',
+    6: 'NULL',
+    7: 'TIMESTAMP',
+    8: 'LONGLONG',
+    9: 'INT24',
+    10: 'DATE',
+    11: 'TIME',
+    12: 'DATETIME',
+    13: 'YEAR',
+    14: 'NEWDATE',
+    15: 'VARCHAR',
+    16: 'BIT',
+    246: 'NEWDECIMAL',
+    247: 'INTERVAL',
+    248: 'SET',
+    249: 'TINY_BLOB',
+    250: 'MEDIUM_BLOB',
+    251: 'LONG_BLOB',
+    252: 'BLOB',
+    253: 'VAR_STRING',
+    254: 'STRING',
+    255: 'GEOMETRY'
+}
