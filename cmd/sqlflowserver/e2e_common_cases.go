@@ -99,40 +99,33 @@ func caseSelect(t *testing.T) {
 	}
 }
 
-func caseTrainSQLWithMetrics(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := `SELECT * FROM iris.train WHERE class!=2
+func caseCoverageCommon(t *testing.T) {
+	cases := []string{
+		`SELECT * FROM iris.train WHERE class!=2
 TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 2,
 	model.hidden_units = [10, 10],
 	train.batch_size = 4,
 	validation.select = "SELECT * FROM iris.test WHERE class!=2",
-	validation.metrics = "Accuracy,AUC"
+	validation.metrics = "Accuracy,AUC",
+	model.optimizer=RMSprop
 LABEL class
-INTO sqlflow_models.mytest_model;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
-
-	// TODO(shendiaomo): sqlflow_models.DNNClassifier.eval_metrics_fn only works when batch_size is 1
-	kerasTrainSQL := `SELECT * FROM iris.train WHERE class!=2
+INTO sqlflow_models.mytest_model;`, // train with metrics, with optimizer
+		`SELECT * FROM iris.train WHERE class!=2
 TO TRAIN sqlflow_models.DNNClassifier
 WITH
 	model.n_classes = 2,
 	model.hidden_units = [10, 10],
 	train.batch_size = 1,
 	validation.select = "SELECT * FROM iris.test WHERE class!=2",
-	validation.metrics = "Accuracy,AUC,Precision,Recall"
+	validation.metrics = "Accuracy,AUC,Precision,Recall",
+	model.optimizer=RMSprop, optimizer.learning_rate=0.1,
+	model.loss=SparseCategoricalCrossentropy
 LABEL class
-INTO sqlflow_models.mytest_model;`
-	_, _, _, err = connectAndRunSQL(kerasTrainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
-
-	regressionTrainSQL := `SELECT * FROM housing.train
+INTO sqlflow_models.mytest_model;`, // train keras with metrics, with optimizer
+		// TODO(shendiaomo): sqlflow_models.DNNClassifier.eval_metrics_fn only works when batch_size is 1
+		`SELECT * FROM housing.train
 TO TRAIN DNNRegressor
 WITH
 	model.hidden_units = [10, 10],
@@ -140,171 +133,53 @@ WITH
 	validation.select = "SELECT * FROM housing.test",
 	validation.metrics = "MeanAbsoluteError,MeanAbsolutePercentageError,MeanSquaredError"
 LABEL target
-INTO sqlflow_models.myreg_model;`
-	_, _, _, err = connectAndRunSQL(regressionTrainSQL)
-	if err != nil {
-		a.Fail("Run trainSQL error: %v", err)
-	}
-}
-
-func caseTrainFeatureDerivation(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := `SELECT *
-FROM iris.train
-TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20]
-LABEL class
-INTO sqlflow_models.my_dnn_model;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	a.NoError(err)
-
-	predSQL := `SELECT *
-FROM iris.test
-TO PREDICT iris.predict.class
-USING sqlflow_models.my_dnn_model;`
-	_, _, _, err = connectAndRunSQL(predSQL)
-	a.NoError(err)
-
-	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
-	// NOTE(typhoonzero): this test also tests saving to the same model name when saving to model zoo table (sqlflow.trained_models)
-	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
-TO TRAIN DNNClassifier
-WITH model.n_classes=3, model.hidden_units=[10,10]
-COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
-LABEL class
-INTO sqlflow_models.my_dnn_model;`
-	_, _, _, err = connectAndRunSQL(trainVaryColumnTypes)
-	a.NoError(err)
-
-	trainVaryColumnTypes = `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
-TO TRAIN DNNClassifier
-WITH model.n_classes=3, model.hidden_units=[10,10]
-COLUMN INDICATOR(c3), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
-LABEL class
-INTO sqlflow_models.my_dnn_model;`
-	_, _, _, err = connectAndRunSQL(trainVaryColumnTypes)
-	a.NoError(err)
-}
-
-func caseTrainOptimizer(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := `SELECT *
-FROM iris.train
-TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSprop
-LABEL class
-INTO sqlflow_models.my_dnn_model;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	a.NoError(err)
-
-	predSQL := `SELECT *
-FROM iris.test
-TO PREDICT iris.predict.class
-USING sqlflow_models.my_dnn_model;`
-	_, _, _, err = connectAndRunSQL(predSQL)
-	a.NoError(err)
-
-	trainKerasSQL := `SELECT *
-FROM iris.train
-TO TRAIN sqlflow_models.DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20],
-	 model.optimizer=RMSprop, optimizer.learning_rate=0.1,
-	 model.loss=SparseCategoricalCrossentropy
-LABEL class
-INTO sqlflow_models.my_dnn_model;`
-	_, _, _, err = connectAndRunSQL(trainKerasSQL)
-	a.NoError(err)
-}
-
-func caseTrainCustomModel(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN sqlflow_models.DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20], validation.select="select * from %s", validation.steps=2
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO %s;`, caseTrainTable, caseTestTable, caseInto)
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("run trainSQL error: %v", err)
-	}
-
-	predSQL := fmt.Sprintf(`SELECT * FROM %s
-TO PREDICT %s.class
-USING %s;`, caseTestTable, casePredictTable, caseInto)
-	_, _, _, err = connectAndRunSQL(predSQL)
-	if err != nil {
-		a.Fail("run predSQL error: %v", err)
-	}
-
-	showPred := fmt.Sprintf(`SELECT * FROM %s LIMIT 5;`, casePredictTable)
-	_, rows, _, err := connectAndRunSQL(showPred)
-	if err != nil {
-		a.Fail("run showPred error: %v", err)
-	}
-
-	for _, row := range rows {
-		// NOTE: predict result maybe random, only check predicted
-		// class >=0, need to change to more flexible checks than
-		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
-		AssertGreaterEqualAny(a, row[4], int64(0))
-	}
-
-	trainSQL = fmt.Sprintf(`SELECT * FROM %s
-TO TRAIN sqlflow_models.dnnclassifier_functional_model
-WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
-COLUMN sepal_length, sepal_width, petal_length, petal_width
-LABEL class
-INTO %s;`, caseTrainTable, caseInto)
-	_, _, _, err = connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("run trainSQL error: %v", err)
-	}
-}
-
-func caseTrainDeepWideModel(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := `SELECT *
-FROM iris.train
-TO TRAIN DNNLinearCombinedClassifier
-WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
-COLUMN sepal_length, sepal_width FOR linear_feature_columns
-COLUMN petal_length, petal_width FOR dnn_feature_columns
-LABEL class
-INTO sqlflow_models.my_dnn_linear_model;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("run trainSQL error: %v", err)
-	}
-}
-
-func caseTrainAdaNetAndExplain(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := `SELECT * FROM iris.train
-TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3 LABEL class INTO sqlflow_models.my_adanet_model;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("run trainSQL error: %v", err)
-	}
-	explainSQL := `SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`
-	_, _, _, err = connectAndRunSQL(explainSQL)
-	a.NoError(err)
-}
-
-func caseTrainDeepWideModelOptimizer(t *testing.T) {
-	a := assert.New(t)
-	trainSQL := `SELECT *
-FROM iris.train
+INTO sqlflow_models.myreg_model;`, // train regression model with metrics
+		`SELECT * FROM iris.train
 TO TRAIN DNNLinearCombinedClassifier
 WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2,
 model.dnn_optimizer=RMSprop, dnn_optimizer.learning_rate=0.01
 COLUMN sepal_length, sepal_width FOR linear_feature_columns
 COLUMN petal_length, petal_width FOR dnn_feature_columns
 LABEL class
-INTO sqlflow_models.my_dnn_linear_model;`
-	_, _, _, err := connectAndRunSQL(trainSQL)
-	if err != nil {
-		a.Fail("run trainSQL error: %v", err)
+INTO sqlflow_models.my_dnn_linear_model;`, // train deep wide model
+
+	}
+	a := assert.New(t)
+	for _, sql := range cases {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err)
+	}
+}
+
+func caseCoverageCustomModel(t *testing.T) {
+	cases := []string{
+		`SELECT * FROM iris.train
+TO TRAIN sqlflow_models.DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20],
+	 validation.select="select * from iris.test", validation.steps=2,
+	 train.batch_size = 10, train.epoch=2
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;`, // custom model train
+		`SELECT * FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`, // custom model predict
+		`SELECT * FROM iris.predict LIMIT 5;`, // get predict result
+		`SELECT * FROM iris.train
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO sqlflow_models.my_dnn_model;`, // train functional keras model
+		`SELECT * FROM iris.train
+TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3
+LABEL class INTO sqlflow_models.my_adanet_model;`, // train adanet
+		`SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`, // explain adanet
+	}
+	a := assert.New(t)
+	for _, sql := range cases {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err)
 	}
 }
 
@@ -352,11 +227,10 @@ FROM housing.predict LIMIT 5;`)
 	}
 }
 
-func caseTrainXGBoostRegression(t *testing.T) {
+func caseTrainXGBoostRegressionConvergence(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
-SELECT *
-FROM housing.train
+SELECT * FROM housing.train
 TO TRAIN xgboost.gbtree
 WITH
 	objective="reg:squarederror",
@@ -445,7 +319,7 @@ func caseShowTrain(t *testing.T) {
 	INTO sqlflow_models.my_xgb_model_for_show_train;`
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
-		a.Fail("Train model failed: %v", err)
+		a.FailNow("Train model failed: %v", err)
 	}
 	showSQL := `SHOW TRAIN sqlflow_models.my_xgb_model_for_show_train;`
 	cols, _, _, err := connectAndRunSQL(showSQL)

@@ -40,20 +40,17 @@ func TestEnd2EndHive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
-	t.Run("TestShowDatabases", caseShowDatabases)
-	t.Run("TestSelect", caseSelect)
-	t.Run("TestTrainSQL", caseTrainSQL)
-	t.Run("CaseTrainSQLWithMetrics", caseTrainSQLWithMetrics)
-	t.Run("CaseTrainRegression", caseTrainRegression)
-	t.Run("CaseTrainCustomModel", caseTrainCustomModel)
-	t.Run("CaseTrainAdaNetAndExplain", caseTrainAdaNetAndExplain)
-	t.Run("CaseTrainOptimizer", caseTrainOptimizer)
-	t.Run("CaseTrainDeepWideModel", caseTrainDeepWideModel)
-	t.Run("CaseTrainDeepWideModelOptimizer", caseTrainDeepWideModelOptimizer)
-	t.Run("CaseTrainXGBoostRegression", caseTrainXGBoostRegression)
-	t.Run("CasePredictXGBoostRegression", casePredictXGBoostRegression)
-	t.Run("CaseTrainFeatureDerivation", caseTrainFeatureDerivation)
-	t.Run("CaseShowTrain", caseShowTrain)
+	t.Run("caseShowDatabases", caseShowDatabases)
+	t.Run("caseSelect", caseSelect)
+	t.Run("caseTrainSQL", caseTrainSQL)
+	t.Run("caseCoverageCommon", caseCoverageCommon)
+	t.Run("caseCoverageCustomModel", caseCoverageCustomModel)
+	// cases that need to check results:
+	t.Run("caseTrainRegression", caseTrainRegression)
+	t.Run("caseTrainXGBoostRegressionConvergence", caseTrainXGBoostRegressionConvergence)
+	t.Run("casePredictXGBoostRegression", casePredictXGBoostRegression)
+	// t.Run("CaseTrainFeatureDerivation", caseTrainFeatureDerivation)
+	t.Run("caseShowTrain", caseShowTrain)
 
 	caseXGBoostFeatureColumn(t, false)
 }
