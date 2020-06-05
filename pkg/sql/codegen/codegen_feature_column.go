@@ -41,9 +41,9 @@ func isXGBoostModule(module string) bool {
 	return strings.HasPrefix(module, "xgboost")
 }
 
-// MarshalOrDie converts any data to JSON string.
+// MarshalToJSONOrDie converts any data to JSON string.
 // Exit the process if there is any error.
-func MarshalOrDie(in interface{}) string {
+func MarshalToJSONOrDie(in interface{}) string {
 	bytes, err := json.Marshal(in)
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +58,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
 			module,
 			c.FieldDesc.Name,
-			MarshalOrDie(c.FieldDesc.Shape)), nil
+			MarshalToJSONOrDie(c.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
@@ -68,7 +68,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			"%s.feature_column.bucketized_column(%s, boundaries=%s)",
 			module,
 			sourceCode,
-			MarshalOrDie(c.Boundaries)), nil
+			MarshalToJSONOrDie(c.Boundaries)), nil
 	case *ir.CategoryIDColumn:
 		fm := c.GetFieldDesc()[0]
 		if len(fm.Vocabulary) > 0 {

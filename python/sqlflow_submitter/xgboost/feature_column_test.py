@@ -51,9 +51,6 @@ class TestFeatureColumnBase(unittest.TestCase):
         self.assertEqual(len(inputs), len(outputs))
 
         if isinstance(outputs[0], np.ndarray):
-            if not np.array_equal(outputs[0], expected_outputs[0]):
-                print(outputs[0], expected_outputs[0])
-
             self.assertTrue(np.array_equal(outputs[0], expected_outputs[0]))
         else:
             self.assertEqual(outputs[0], expected_outputs[0])
