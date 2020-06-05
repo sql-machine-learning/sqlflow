@@ -154,25 +154,34 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
-	ossModelPath, e := getModelPath(cl.Into, s.Session)
+	ossModelPathToSave, e := getModelPath(cl.Into, s.Session)
 	if e != nil {
 		return e
+	}
+
+	ossModelPathToLoadPreTrained := ""
+	if cl.PreTrainedModel != "" {
+		ossModelPathToLoadPreTrained, e = getModelPath(cl.PreTrainedModel, s.Session)
+		if e != nil {
+			return e
+		}
 	}
 
 	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
 	if e != nil {
 		return e
 	}
-	e = cleanOSSModelPath(ossModelPath+"/", currProject)
+	e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
 	if e != nil {
 		return e
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); err != nil {
 		return err
 	}
-	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPath, s.Cwd)
+	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPathToSave,
+		ossModelPathToLoadPreTrained, s.Cwd)
 	if e != nil {
 		return e
 	}

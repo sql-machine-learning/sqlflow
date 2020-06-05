@@ -62,6 +62,8 @@ type TrainStmt struct {
 	Features map[string][]FeatureColumn
 	// Label specifies the feature column in the LABEL clause.
 	Label FeatureColumn
+	// Trained model for incremental training
+	PreTrainedModel string
 	// Into specifies the table name in the INTO clause.
 	Into string
 	// When SQLFLOW_submitter == "pai", tmp tables will be created for training task

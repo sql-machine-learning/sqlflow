@@ -45,7 +45,8 @@ const (
 	negative      = "-"
 )
 
-func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, verifyLabel bool) (*ir.TrainStmt, error) {
+func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string,
+	cwd string, loadPreTrainedModel bool, verifyLabel bool) (*ir.TrainStmt, error) {
 	trainStmt, err := generateTrainStmt(slct, true)
 	if err != nil {
 		return nil, err
@@ -64,6 +65,13 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	err = verifyTrainStmt(trainStmt, db, verifyLabel)
 	if err != nil {
 		return nil, err
+	}
+
+	if loadPreTrainedModel && slct.PreTrainedModel != "" {
+		_, _, err = loadModelMeta(slct, db, cwd, modelDir, slct.PreTrainedModel)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return trainStmt, nil
@@ -132,6 +140,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, attrInitAndTypeCheck bool
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
+		PreTrainedModel:  tc.PreTrainedModel,
 		Into:             slct.Save,
 	}
 	if attrInitAndTypeCheck {
@@ -163,8 +172,6 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir,
 		return nil, nil, fmt.Errorf("VerifyColumnNameAndType: %v", e)
 	}
 
-	pr.TrainClause = tr.TrainClause
-
 	return pr, tr.SQLFlowSelectStmt, nil
 }
 
@@ -176,10 +183,12 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	defer db.Close()
 
 	_, trainSlct, err := loadModelMeta(slct, db, cwd, modelDir, model)
+	slct.TrainClause = trainSlct.TrainClause
+
 	if err != nil {
 		return nil, err
 	}
-	return generateTrainStmtWithInferredColumns(trainSlct, connStr, false)
+	return generateTrainStmtWithInferredColumns(trainSlct, connStr, "", "", false, false)
 }
 
 func verifyTrainStmt(trainStmt *ir.TrainStmt, db *database.DB, verifyLabel bool) error {

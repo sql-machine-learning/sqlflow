@@ -104,7 +104,7 @@ func genRequirements(isXGBoost bool) (string, error) {
 }
 
 // Train generates a Python program a PAI command arguments to train a Tensorflow model.
-func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPath, cwd string) (code, paiCmd, requirements string, e error) {
+func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPathToSave, ossModelPathToLoadPreTrained, cwd string) (code, paiCmd, requirements string, e error) {
 	cc, e := GetClusterConfig(ir.Attributes)
 	if e != nil {
 		return "", "", "", e
@@ -122,20 +122,24 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName
 			return
 		}
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
-		ossURI := OSSModelURL(ossModelPath)
-		if code, e = xgboost.DistTrain(ir, session, cc.Worker.Count, ossURI); e != nil {
+		ossURIToSave := OSSModelURL(ossModelPathToSave)
+		ossURIToLoadPreTrainedModel := ""
+		if ossModelPathToLoadPreTrained != "" {
+			ossURIToLoadPreTrainedModel = OSSModelURL(ossModelPathToLoadPreTrained)
+		}
+		if code, e = xgboost.DistTrain(ir, session, cc.Worker.Count, ossURIToSave, ossURIToLoadPreTrainedModel); e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPathToSave, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
 			return
 		}
 		requirements, e = genRequirements(true)
 	} else {
-		code, e = TFTrainAndSave(ir, session, ossModelPath, cc)
+		code, e = TFTrainAndSave(ir, session, ossModelPathToSave, cc)
 		if e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
+		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPathToSave, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {
 			return
 		}
 		requirements, e = genRequirements(false)

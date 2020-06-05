@@ -16,22 +16,24 @@ package xgboost
 import "text/template"
 
 type trainFiller struct {
-	OSSModelDir        string
-	DataSource         string
-	TrainSelect        string
-	ValidationSelect   string
-	ModelParamsJSON    string
-	TrainParamsJSON    string
-	FieldDescJSON      string
-	FeatureColumnNames []string
-	LabelJSON          string
-	FeatureColumnCode  string
-	DiskCache          bool
-	BatchSize          int
-	Epoch              int
-	IsPAI              bool
-	PAITrainTable      string
-	PAIValidateTable   string
+	OSSModelDirToSave           string
+	OSSModelDirToLoadPreTrained string
+	DataSource                  string
+	TrainSelect                 string
+	ValidationSelect            string
+	ModelParamsJSON             string
+	TrainParamsJSON             string
+	FieldDescJSON               string
+	FeatureColumnNames          []string
+	LabelJSON                   string
+	FeatureColumnCode           string
+	DiskCache                   bool
+	BatchSize                   int
+	Epoch                       int
+	LoadPreTrainedModel         bool
+	IsPAI                       bool
+	PAITrainTable               string
+	PAIValidateTable            string
 }
 
 const trainTemplateText = `
@@ -44,6 +46,9 @@ import json
 if "{{.IsPAI}}" == "true":
     FLAGS = define_tf_flags()
     set_oss_environs(FLAGS)
+
+    if "{{.LoadPreTrainedModel}}" == "true":
+        model.load_file("{{.OSSModelDirToLoadPreTrained}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
@@ -69,10 +74,11 @@ train(datasource='''{{.DataSource}}''',
       disk_cache="{{.DiskCache}}" == "true",
       batch_size={{.BatchSize}},
       epoch={{.Epoch}},
+      load_pretrained_model="{{.LoadPreTrainedModel}}" == "true",
       is_pai="{{.IsPAI}}" == "true",
       pai_train_table="{{.PAITrainTable}}",
       pai_validate_table="{{.PAIValidateTable}}",
-      oss_model_dir="{{.OSSModelDir}}",
+      oss_model_dir="{{.OSSModelDirToSave}}",
       transform_fn=transform_fn,
       feature_column_code='''{{.FeatureColumnCode}}''')
 `
@@ -111,10 +117,11 @@ dist_train(flags=FLAGS,
       disk_cache="{{.DiskCache}}" == "true",
       batch_size={{.BatchSize}},
       epoch={{.Epoch}},
+      load_pretrained_model="{{.LoadPreTrainedModel}}" == "true",
       is_pai="{{.IsPAI}}" == "true",
       pai_train_table="{{.PAITrainTable}}",
       pai_validate_table="{{.PAIValidateTable}}",
-      oss_model_dir="{{.OSSModelDir}}",
+      oss_model_dir="{{.OSSModelDirToSave}}",
       transform_fn=transform_fn,
       feature_column_code='''{{.FeatureColumnCode}}''')
 `

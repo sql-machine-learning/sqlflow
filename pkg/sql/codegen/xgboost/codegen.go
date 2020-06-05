@@ -241,13 +241,14 @@ func deriveFeatureColumnCodeAndFieldDescs(fcs []ir.FeatureColumn, labelFc ir.Fea
 
 // Train generates a Python program for train a XgBoost model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	return DistTrain(trainStmt, session, 1, "")
+	return DistTrain(trainStmt, session, 1, "", "")
 }
 
 // DistTrain generates a Python program for distributed train a XGBoost model.
 // TODO(weiguoz): make DistTrain to be an implementation of the interface.
-func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURI string) (string, error) {
-	r, err := newTrainFiller(trainStmt, session, ossURI)
+func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURIToSave, ossURIToLoadPreTrainedModel string) (string, error) {
+	fmt.Print("starts to execute")
+	r, err := newTrainFiller(trainStmt, session, ossURIToSave, ossURIToLoadPreTrainedModel)
 	if err != nil {
 		return "", err
 	}
@@ -263,7 +264,7 @@ func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossUR
 	return program.String(), nil
 }
 
-func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string) (*trainFiller, error) {
+func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURIToSave, ossURIToLoadPreTrainedModel string) (*trainFiller, error) {
 	if err := resolveModelParams(trainStmt); err != nil {
 		return nil, err
 	}
@@ -319,22 +320,24 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURI string)
 	}
 
 	return &trainFiller{
-		OSSModelDir:        ossURI,
-		DataSource:         session.DbConnStr,
-		TrainSelect:        trainStmt.Select,
-		ValidationSelect:   trainStmt.ValidationSelect,
-		ModelParamsJSON:    string(mp),
-		TrainParamsJSON:    string(tp),
-		FieldDescJSON:      string(f),
-		FeatureColumnNames: fs,
-		LabelJSON:          string(l),
-		FeatureColumnCode:  featureColumnCode,
-		DiskCache:          diskCache,
-		BatchSize:          batchSize,
-		Epoch:              epoch,
-		IsPAI:              tf.IsPAI(),
-		PAITrainTable:      paiTrainTable,
-		PAIValidateTable:   paiValidateTable}, nil
+		OSSModelDirToSave:           ossURIToSave,
+		OSSModelDirToLoadPreTrained: ossURIToLoadPreTrainedModel,
+		DataSource:                  session.DbConnStr,
+		TrainSelect:                 trainStmt.Select,
+		ValidationSelect:            trainStmt.ValidationSelect,
+		ModelParamsJSON:             string(mp),
+		TrainParamsJSON:             string(tp),
+		FieldDescJSON:               string(f),
+		FeatureColumnNames:          fs,
+		LabelJSON:                   string(l),
+		FeatureColumnCode:           featureColumnCode,
+		DiskCache:                   diskCache,
+		BatchSize:                   batchSize,
+		Epoch:                       epoch,
+		LoadPreTrainedModel:         trainStmt.PreTrainedModel != "",
+		IsPAI:                       tf.IsPAI(),
+		PAITrainTable:               paiTrainTable,
+		PAIValidateTable:            paiValidateTable}, nil
 }
 
 // Pred generates a Python program for predict a xgboost model.

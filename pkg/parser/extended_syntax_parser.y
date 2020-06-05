@@ -76,11 +76,12 @@ type StandardSelect struct {
 }
 
 type TrainClause struct {
-	Estimator  string
-	TrainAttrs Attributes
-	Columns    columnClause
-	Label      string
-	Save       string
+	Estimator       string
+	TrainAttrs      Attributes
+	Columns         columnClause
+	Label           string
+	PreTrainedModel string
+	Save            string
 }
 
 /* If no FOR in the COLUMN, the key is "" */
@@ -210,34 +211,39 @@ end_of_stmt
 ;
 
 train_clause
-: TO TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
+: TO TRAIN IDENT WITH attrs column_clause label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Columns = $6
 	$$.Label = $7
-	$$.Save = $9
+	$$.PreTrainedModel = $8
+	$$.Save = $10
   }
-| TO TRAIN IDENT WITH attrs column_clause INTO IDENT {
+| TO TRAIN IDENT WITH attrs column_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Columns = $6
-	$$.Save = $8
+	$$.PreTrainedModel = $7
+	$$.Save = $9
 }
-| TO TRAIN IDENT WITH attrs label_clause INTO IDENT {
+| TO TRAIN IDENT WITH attrs label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Label = $6
-	$$.Save = $8
+	$$.PreTrainedModel = $7
+	$$.Save = $9
 }
-| TO TRAIN IDENT label_clause INTO IDENT {
+| TO TRAIN IDENT label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.Label = $4
-	$$.Save = $6
+	$$.PreTrainedModel = $5
+	$$.Save = $7
 }
-| TO TRAIN IDENT WITH attrs INTO IDENT {
+| TO TRAIN IDENT WITH attrs optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
-	$$.Save = $7
+	$$.PreTrainedModel = $6
+	$$.Save = $8
 }
 ;
 
@@ -263,7 +269,7 @@ show_train_clause
 ;
 
 optional_using
-: /* empty */  {}
+: /* empty */  { $$ = "" }
 | USING IDENT  { $$ = $2 }
 ;
 
