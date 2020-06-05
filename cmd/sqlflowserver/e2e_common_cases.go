@@ -1,0 +1,607 @@
+// Copyright 2020 The SQLFlow Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"fmt"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/database"
+)
+
+func caseShowDatabases(t *testing.T) {
+	a := assert.New(t)
+	cmd := "show databases;"
+	head, resp, _, err := connectAndRunSQL(cmd)
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+		a.Equal("database_name", head[0])
+	} else {
+		a.Equal("Database", head[0])
+	}
+
+	expectedDBs := map[string]string{
+		"information_schema":      "",
+		"boston":                  "",
+		"churn":                   "",
+		"creditcard":              "",
+		"feature_derivation_case": "",
+		"housing":                 "",
+		"iris":                    "",
+		"mysql":                   "",
+		"performance_schema":      "",
+		"sqlflow_models":          "",
+		"sf_home":                 "", // default auto train&val database
+		"sqlfs_test":              "",
+		"sys":                     "",
+		"text_cn":                 "",
+		"standard_join_test":      "",
+		"sanity_check":            "",
+		"iris_e2e":                "", // created by Python e2e test
+		"hive":                    "", // if current mysql is also used for hive
+		"default":                 "", // if fetching default hive databases
+		"sqlflow":                 "", // to save model zoo trained models
+		"imdb":                    "",
+	}
+	for i := 0; i < len(resp); i++ {
+		AssertContainsAny(a, expectedDBs, resp[i][0])
+	}
+}
+
+func caseSelect(t *testing.T) {
+	a := assert.New(t)
+	cmd := fmt.Sprintf("select * from %s limit 2;", caseTrainTable)
+	head, rows, _, err := connectAndRunSQL(cmd)
+	if err != nil {
+		a.Fail("Check if the server started successfully. %v", err)
+	}
+	expectedHeads := []string{
+		"sepal_length",
+		"sepal_width",
+		"petal_length",
+		"petal_width",
+		"class",
+	}
+	for idx, headCell := range head {
+		if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+			a.Equal("train."+expectedHeads[idx], headCell)
+		} else {
+			a.Equal(expectedHeads[idx], headCell)
+		}
+	}
+	expectedRows := [][]interface{}{
+		{6.4, 2.8, 5.6, 2.2, int64(2)},
+		{5.0, 2.3, 3.3, 1.0, int64(1)},
+	}
+	for rowIdx, row := range rows {
+		for colIdx, rowCell := range row {
+			AssertEqualAny(a, expectedRows[rowIdx][colIdx], rowCell)
+		}
+	}
+}
+
+func caseTrainSQLWithMetrics(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train WHERE class!=2
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 2,
+	model.hidden_units = [10, 10],
+	train.batch_size = 4,
+	validation.select = "SELECT * FROM iris.test WHERE class!=2",
+	validation.metrics = "Accuracy,AUC"
+LABEL class
+INTO sqlflow_models.mytest_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	// TODO(shendiaomo): sqlflow_models.DNNClassifier.eval_metrics_fn only works when batch_size is 1
+	kerasTrainSQL := `SELECT * FROM iris.train WHERE class!=2
+TO TRAIN sqlflow_models.DNNClassifier
+WITH
+	model.n_classes = 2,
+	model.hidden_units = [10, 10],
+	train.batch_size = 1,
+	validation.select = "SELECT * FROM iris.test WHERE class!=2",
+	validation.metrics = "Accuracy,AUC,Precision,Recall"
+LABEL class
+INTO sqlflow_models.mytest_model;`
+	_, _, _, err = connectAndRunSQL(kerasTrainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	regressionTrainSQL := `SELECT * FROM housing.train
+TO TRAIN DNNRegressor
+WITH
+	model.hidden_units = [10, 10],
+	train.batch_size = 4,
+	validation.select = "SELECT * FROM housing.test",
+	validation.metrics = "MeanAbsoluteError,MeanAbsolutePercentageError,MeanSquaredError"
+LABEL target
+INTO sqlflow_models.myreg_model;`
+	_, _, _, err = connectAndRunSQL(regressionTrainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
+func caseTrainFeatureDerivation(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := `SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
+
+	// TODO(typhoonzero): also support string column type for training and prediction (column c6)
+	// NOTE(typhoonzero): this test also tests saving to the same model name when saving to model zoo table (sqlflow.trained_models)
+	trainVaryColumnTypes := `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,10]
+COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err = connectAndRunSQL(trainVaryColumnTypes)
+	a.NoError(err)
+
+	trainVaryColumnTypes = `SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,10]
+COLUMN INDICATOR(c3), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err = connectAndRunSQL(trainVaryColumnTypes)
+	a.NoError(err)
+}
+
+func caseTrainOptimizer(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], model.optimizer=RMSprop
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := `SELECT *
+FROM iris.test
+TO PREDICT iris.predict.class
+USING sqlflow_models.my_dnn_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
+
+	trainKerasSQL := `SELECT *
+FROM iris.train
+TO TRAIN sqlflow_models.DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20],
+	 model.optimizer=RMSprop, optimizer.learning_rate=0.1,
+	 model.loss=SparseCategoricalCrossentropy
+LABEL class
+INTO sqlflow_models.my_dnn_model;`
+	_, _, _, err = connectAndRunSQL(trainKerasSQL)
+	a.NoError(err)
+}
+
+func caseTrainCustomModel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20], validation.select="select * from %s", validation.steps=2
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseTestTable, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO PREDICT %s.class
+USING %s;`, caseTestTable, casePredictTable, caseInto)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+
+	showPred := fmt.Sprintf(`SELECT * FROM %s LIMIT 5;`, casePredictTable)
+	_, rows, _, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("run showPred error: %v", err)
+	}
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[4], int64(0))
+	}
+
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.dnnclassifier_functional_model
+WITH model.n_classes = 3, validation.metrics="CategoricalAccuracy"
+COLUMN sepal_length, sepal_width, petal_length, petal_width
+LABEL class
+INTO %s;`, caseTrainTable, caseInto)
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func caseTrainDeepWideModel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2
+COLUMN sepal_length, sepal_width FOR linear_feature_columns
+COLUMN petal_length, petal_width FOR dnn_feature_columns
+LABEL class
+INTO sqlflow_models.my_dnn_linear_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func caseTrainAdaNetAndExplain(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train
+TO TRAIN sqlflow_models.AutoClassifier WITH model.n_classes = 3 LABEL class INTO sqlflow_models.my_adanet_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+	explainSQL := `SELECT * FROM iris.test LIMIT 10 TO EXPLAIN sqlflow_models.my_adanet_model;`
+	_, _, _, err = connectAndRunSQL(explainSQL)
+	a.NoError(err)
+}
+
+func caseTrainDeepWideModelOptimizer(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := `SELECT *
+FROM iris.train
+TO TRAIN DNNLinearCombinedClassifier
+WITH model.n_classes = 3, model.dnn_hidden_units = [10, 20], train.batch_size = 10, train.epoch = 2,
+model.dnn_optimizer=RMSprop, dnn_optimizer.learning_rate=0.01
+COLUMN sepal_length, sepal_width FOR linear_feature_columns
+COLUMN petal_length, petal_width FOR dnn_feature_columns
+LABEL class
+INTO sqlflow_models.my_dnn_linear_model;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
+func caseTrainRegression(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT *
+FROM housing.train
+TO TRAIN LinearRegressor
+WITH model.label_dimension=1
+COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
+LABEL target
+INTO sqlflow_models.my_regression_model;`)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT *
+FROM housing.test
+TO PREDICT housing.predict.result
+USING sqlflow_models.my_regression_model;`)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+
+	showPred := fmt.Sprintf(`SELECT *
+FROM housing.predict LIMIT 5;`)
+	_, rows, _, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("run showPred error: %v", err)
+	}
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[13], float64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 13 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 13)
+	}
+}
+
+func caseTrainXGBoostRegression(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+SELECT *
+FROM housing.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective="reg:squarederror",
+	scale_pos_weight=2,
+	train.num_boost_round = 30,
+	validation.select="SELECT * FROM housing.train LIMIT 20"
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model;
+`)
+	_, _, messages, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	isConvergence := false
+	reLog := regexp.MustCompile(`.*29.*train-rmse:(.+)?validate-rmse\:(.+)?`)
+	for _, msg := range messages {
+		sub := reLog.FindStringSubmatch(msg)
+		if len(sub) == 3 {
+			trainRmse, e := strconv.ParseFloat(strings.TrimSpace(sub[1]), 32)
+			a.NoError(e)
+			valRmse, e := strconv.ParseFloat(strings.TrimSpace(sub[2]), 32)
+			a.NoError(e)
+			a.Greater(trainRmse, 0.0)            // no overfitting
+			a.LessOrEqual(trainRmse, 0.5)        // less the baseline
+			a.GreaterOrEqual(valRmse, trainRmse) // verify the validation
+			isConvergence = true
+		}
+	}
+	a.Truef(isConvergence, strings.Join(messages, "\n"))
+
+	evalSQL := fmt.Sprintf(`
+SELECT * FROM housing.train
+TO EVALUATE sqlflow_models.my_xgb_regression_model
+WITH validation.metrics="mean_absolute_error,mean_squared_error"
+LABEL target
+INTO sqlflow_models.my_xgb_regression_model_eval_result;
+`)
+	_, _, messages, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("run evalSQL error: %v", err)
+	}
+}
+
+func casePredictXGBoostRegression(t *testing.T) {
+	a := assert.New(t)
+	predSQL := fmt.Sprintf(`SELECT *
+FROM housing.test
+TO PREDICT housing.xgb_predict.target
+USING sqlflow_models.my_xgb_regression_model;`)
+	_, _, _, err := connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+
+	showPred := fmt.Sprintf(`SELECT *
+FROM housing.xgb_predict LIMIT 5;`)
+	_, rows, _, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("run showPred error: %v", err)
+	}
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[13], float64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 13 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 13)
+	}
+}
+
+func caseShowTrain(t *testing.T) {
+	driverName, _, _ := database.ParseURL(dbConnStr)
+	if driverName != "mysql" && driverName != "hive" {
+		t.Skip("Skipping non mysql/hive test.")
+	}
+	a := assert.New(t)
+	trainSQL := `SELECT * FROM iris.train TO TRAIN xgboost.gbtree
+	WITH objective="reg:squarederror"
+	LABEL class 
+	INTO sqlflow_models.my_xgb_model_for_show_train;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Train model failed: %v", err)
+	}
+	showSQL := `SHOW TRAIN sqlflow_models.my_xgb_model_for_show_train;`
+	cols, _, _, err := connectAndRunSQL(showSQL)
+	a.NoError(err)
+	a.Equal(2, len(cols))
+	a.Equal("Table", cols[0])
+	a.Equal("Train Statement", cols[1])
+}
+
+func caseTrainSQL(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10, 20],
+		validation.select = "SELECT * FROM %s LIMIT 30"
+	COLUMN sepal_length, sepal_width, petal_length, petal_width
+	LABEL class
+	INTO %s;
+	`, caseTrainTable, caseTrainTable, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT *
+FROM %s
+TO PREDICT %s.class
+USING %s;`, caseTestTable, casePredictTable, caseInto)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run predSQL error: %v", err)
+	}
+
+	showPred := fmt.Sprintf(`SELECT *
+FROM %s LIMIT 5;`, casePredictTable)
+	_, rows, _, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("Run showPred error: %v", err)
+	}
+
+	for _, row := range rows {
+		// NOTE: predict result maybe random, only check predicted
+		// class >=0, need to change to more flexible checks than
+		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		AssertGreaterEqualAny(a, row[4], int64(0))
+
+		// avoiding nil features in predict result
+		nilCount := 0
+		for ; nilCount < 4 && row[nilCount] == nil; nilCount++ {
+		}
+		a.False(nilCount == 4)
+	}
+}
+
+var uniqueIDMutex sync.Mutex
+var uniqueID = 0
+
+func getUniqueID() int {
+	uniqueIDMutex.Lock()
+	defer uniqueIDMutex.Unlock()
+	uniqueID++
+	return uniqueID
+}
+
+func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool) {
+	tableSplits := strings.SplitN(table, ".", 2)
+	dbPrefix := ""
+	if len(tableSplits) == 2 {
+		dbPrefix = tableSplits[0] + "."
+	}
+
+	a := assert.New(t)
+	if columnClauses != "" {
+		columnClauses = "COLUMN " + columnClauses
+	}
+
+	trainSQLTemplate := `
+	SELECT %s FROM %s TO TRAIN xgboost.gbtree
+	WITH
+		objective="multi:softprob",
+		train.num_boost_round = 1,
+		train.num_workers = %d,
+		eta = 0.4,
+		num_class = %d,
+		validation.select="select %s from %s"
+	%s
+	LABEL %s
+	INTO %s;`
+
+	executeSQLFunc := func(sql string) {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err, fmt.Sprintf("SQL execution failure\n%s", sql))
+	}
+
+	// a unique id to avoid name conflict when run parallel
+	uniqueID := getUniqueID()
+
+	var modelName string
+	if isPai {
+		modelName = fmt.Sprintf("xgb_fc_test_model_%d", uniqueID)
+	} else {
+		modelName = fmt.Sprintf("%sxgb_fc_test_model_%d", dbPrefix, uniqueID)
+	}
+
+	trainSQL := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table, columnClauses, label, modelName)
+	executeSQLFunc(trainSQL)
+
+	predictTableName := fmt.Sprintf("%sxgb_fc_test_predict_table_%d", dbPrefix, uniqueID)
+	predictSQL := fmt.Sprintf(`SELECT %s FROM %s TO PREDICT %s.%s_new USING %s;`, selectColumns, table, predictTableName, label, modelName)
+	executeSQLFunc(predictSQL)
+
+	if !isPai { // PAI does not support evaluate now
+		evaluateTableName := fmt.Sprintf("%sxgb_fc_test_evaluate_table_%d", dbPrefix, uniqueID)
+		evaluateSQL := fmt.Sprintf(`SELECT %s FROM %s TO EVALUATE %s WITH validation.metrics="accuracy_score" LABEL %s INTO %s;`,
+			selectColumns, table, modelName, label, evaluateTableName)
+		executeSQLFunc(evaluateSQL)
+	}
+
+	paiExplainExtra := ""
+	if isPai {
+		paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
+	}
+	explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
+	executeSQLFunc(explainSQL)
+
+	if !isPai { // PAI does not support SHOW TRAIN, because the model is not saved into database
+		showTrainSQL := fmt.Sprintf(`SHOW TRAIN %s;`, modelName)
+		executeSQLFunc(showTrainSQL)
+	}
+}
+
+func caseXGBoostFeatureColumn(t *testing.T, isPai bool) {
+	irisTrainTable := "iris.train"
+	churnTrainTable := "churn.train"
+	if isPai {
+		irisTrainTable = "alifin_jtest_dev.sqlflow_test_iris_train"
+		churnTrainTable = "alifin_jtest_dev.sqlflow_test_churn_train"
+	}
+
+	numWorkers := 1
+	if isPai {
+		numWorkers = 2
+	}
+
+	t.Run("CaseXGBoostNoFeatureColumn", func(*testing.T) {
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai)
+	})
+
+	t.Run("CaseXGBoostBucketFeatureColumn", func(*testing.T) {
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai)
+	})
+
+	t.Run("CaseXGBoostCategoryFeatureColumn", func(*testing.T) {
+		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
+			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai)
+	})
+}
