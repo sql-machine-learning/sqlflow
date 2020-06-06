@@ -1659,6 +1659,19 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 	trainSQL := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table, columnClauses, label, modelName)
 	executeSQLFunc(trainSQL)
 
+	incrementalTrainSQLWithOverwriting := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
+		columnClauses,
+		fmt.Sprintf("%s USING %s ", label, modelName), modelName)
+	executeSQLFunc(incrementalTrainSQLWithOverwriting)
+
+	newModelName := modelName + "_new"
+	incrementalTrainSQLWithoutOverwriting := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
+		columnClauses,
+		fmt.Sprintf("%s USING %s ", label, modelName), newModelName)
+	executeSQLFunc(incrementalTrainSQLWithoutOverwriting)
+
+	modelName = newModelName
+
 	predictTableName := fmt.Sprintf("%sxgb_fc_test_predict_table_%d", dbPrefix, uniqueID)
 	predictSQL := fmt.Sprintf(`SELECT %s FROM %s TO PREDICT %s.%s_new USING %s;`, selectColumns, table, predictTableName, label, modelName)
 	executeSQLFunc(predictSQL)

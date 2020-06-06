@@ -183,11 +183,13 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	defer db.Close()
 
 	_, trainSlct, err := loadModelMeta(slct, db, cwd, modelDir, model)
-	slct.TrainClause = trainSlct.TrainClause
 
 	if err != nil {
 		return nil, err
 	}
+
+	slct.TrainClause = trainSlct.TrainClause
+
 	return generateTrainStmtWithInferredColumns(trainSlct, connStr, "", "", false, false)
 }
 

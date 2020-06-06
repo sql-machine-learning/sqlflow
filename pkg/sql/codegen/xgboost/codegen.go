@@ -247,7 +247,6 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 // DistTrain generates a Python program for distributed train a XGBoost model.
 // TODO(weiguoz): make DistTrain to be an implementation of the interface.
 func DistTrain(trainStmt *ir.TrainStmt, session *pb.Session, nworkers int, ossURIToSave, ossURIToLoadPreTrainedModel string) (string, error) {
-	fmt.Print("starts to execute")
 	r, err := newTrainFiller(trainStmt, session, ossURIToSave, ossURIToLoadPreTrainedModel)
 	if err != nil {
 		return "", err
