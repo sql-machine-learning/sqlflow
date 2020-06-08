@@ -531,7 +531,7 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	return nil
 }
 
-func copyPythonPacakge(packageName, toCwd string) error {
+func copyPythonPackage(packageName, toCwd string) error {
 	path, e := findPyModulePath(packageName)
 	if e != nil {
 		return fmt.Errorf("Can not find Python pacakge: %s", packageName)
@@ -544,11 +544,11 @@ func copyPythonPacakge(packageName, toCwd string) error {
 	return nil
 }
 
-func copyCustomPacakge(estimator, toCwd string) error {
+func copyCustomPackage(estimator, toCwd string) error {
 	modelNameParts := strings.Split(estimator, ".")
 	pkgName := modelNameParts[0]
 	if len(modelNameParts) == 2 && pkgName != "sqlflow_models" && pkgName != "xgboost" {
-		return copyPythonPacakge(pkgName, toCwd)
+		return copyPythonPackage(pkgName, toCwd)
 	}
 	return nil
 }
@@ -561,15 +561,15 @@ func achieveResource(cwd, entryCode, requirements, tarball, estimator string) er
 		return err
 	}
 	// sqlflow_submitter and sqlflow_models are built-in packages.
-	if err := copyPythonPacakge("sqlflow_submitter", cwd); err != nil {
+	if err := copyPythonPackage("sqlflow_submitter", cwd); err != nil {
 		return err
 	}
-	if err := copyPythonPacakge("sqlflow_models", cwd); err != nil {
+	if err := copyPythonPackage("sqlflow_models", cwd); err != nil {
 		return err
 	}
 
 	// add custom package if needed
-	if err := copyCustomPacakge(estimator, cwd); err != nil {
+	if err := copyCustomPackage(estimator, cwd); err != nil {
 		return err
 	}
 

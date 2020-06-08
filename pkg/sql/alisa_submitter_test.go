@@ -27,7 +27,6 @@ func TestAlisaSubmitter(t *testing.T) {
 
 func TestFindPyModulePath(t *testing.T) {
 	a := assert.New(t)
-	path, err := findPyModulePath("xgboost")
-	a.Equal(path, "/usr/local/lib/python3.6/dist-packages/xgboost")
+	_, err := findPyModulePath("sqlflow_submitter")
 	a.NoError(err)
 }
