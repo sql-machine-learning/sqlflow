@@ -101,27 +101,26 @@ func caseSelect(t *testing.T) {
 
 func caseCoverageCommon(t *testing.T) {
 	cases := []string{
-		`SELECT * FROM iris.train WHERE class!=2
+		`SELECT * FROM iris.train WHERE class<>2
 TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 2,
 	model.hidden_units = [10, 10],
 	train.batch_size = 4,
-	validation.select = "SELECT * FROM iris.test WHERE class!=2",
+	validation.select = "SELECT * FROM iris.test WHERE class<>2",
 	validation.metrics = "Accuracy,AUC",
 	model.optimizer=RMSprop
 LABEL class
 INTO sqlflow_models.mytest_model;`, // train with metrics, with optimizer
-		`SELECT * FROM iris.train WHERE class!=2
+		`SELECT * FROM iris.train WHERE class<>2
 TO TRAIN sqlflow_models.DNNClassifier
 WITH
 	model.n_classes = 2,
 	model.hidden_units = [10, 10],
 	train.batch_size = 1,
-	validation.select = "SELECT * FROM iris.test WHERE class!=2",
+	validation.select = "SELECT * FROM iris.test WHERE class<>2",
 	validation.metrics = "Accuracy,AUC,Precision,Recall",
-	model.optimizer=RMSprop, optimizer.learning_rate=0.1,
-	model.loss=SparseCategoricalCrossentropy
+	model.optimizer=RMSprop, optimizer.learning_rate=0.1
 LABEL class
 INTO sqlflow_models.mytest_model;`, // train keras with metrics, with optimizer
 		// TODO(shendiaomo): sqlflow_models.DNNClassifier.eval_metrics_fn only works when batch_size is 1
