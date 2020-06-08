@@ -57,10 +57,10 @@ func TestTarUnTarDir(t *testing.T) {
 		[]byte(pythonFile), 0644)
 	a.NoError(err)
 
-	GzDir(testDir, tarName)
+	ZipDir(testDir, tarName)
 	a.FileExists(tarName)
 
-	err = UntarGzDir(tarName, "out")
+	err = UnzipDir(tarName, "out")
 	a.NoError(err)
 	a.DirExists("out/" + testDir)
 	a.DirExists(fmt.Sprintf("out/%s/%s", testDir, testSubDir))

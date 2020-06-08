@@ -195,7 +195,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
 		return err
 	}
-	if err := tar.UntarGzDir("servergot.tar.gz", "./modelrepo"); err != nil {
+	if err := tar.UnzipDir("servergot.tar.gz", "./modelrepo"); err != nil {
 		return err
 	}
 
