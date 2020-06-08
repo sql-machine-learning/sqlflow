@@ -14,5 +14,6 @@
 //go:generate protoc --go_out=plugins=grpc:. sqlflow.proto
 //go:generate protoc --go_out=plugins=grpc:. parser.proto
 //go:generate protoc --go_out=plugins=grpc:. modelzooserver.proto
+//go:generate protoc --go_out=. ir.proto
 
 package proto
