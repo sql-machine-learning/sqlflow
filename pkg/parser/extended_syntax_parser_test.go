@@ -215,6 +215,41 @@ func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 
 }
 
+func TestExtendedSyntaxMathProg(t *testing.T) {
+	a := assert.New(t)
+	s := `TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
+CONSTRAINT SUM(finishing * product) <= 100,
+           SUM(carpentry * product) <= 80,
+		   product <= max_num
+WITH variables="product",
+	 product="Integers"
+USING glpk
+INTO db.table;`
+	r, idx, e := parseSQLFlowStmt(s)
+	a.NoError(e)
+	a.Equal(len(s), idx)
+	a.True(r.Extended)
+	a.True(r.Mathp)
+	a.Equal("MAXIMIZE", r.Sense)
+	a.Equal("SUM((price - materials_cost - other_cost) * product)", r.Objective.String())
+	a.Equal("SUM(finishing * product) <= 100", r.Constrants.Strings()[0])
+	a.Equal("db.table", r.SolveResult)
+	a.Equal("glpk", r.Solver)
+
+	s = `TO MINIMIZE SUM((price - materials_cost - other_cost) * product)
+CONSTRAINT SUM(finishing * product) <= 100,
+           SUM(carpentry * product) <= 80,
+		   product <= max_num
+WITH variables="product",
+	 product="Integers"
+INTO db.table;`
+	r, idx, e = parseSQLFlowStmt(s)
+	a.NoError(e)
+	a.Equal("MINIMIZE", r.Sense)
+	a.Equal("db.table", r.SolveResult)
+	a.Equal("", r.Solver)
+}
+
 func TestExtendedShowTrainStmt(t *testing.T) {
 	a := assert.New(t)
 	{

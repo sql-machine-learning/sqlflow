@@ -62,12 +62,14 @@ type SQLFlowSelectStmt struct {
 	Predict  bool
 	Explain  bool
 	Evaluate bool
+	Mathp    bool
 	ShowTrain bool
 	StandardSelect
 	TrainClause
 	PredictClause
 	ExplainClause
 	EvaluateClause
+	MathProgClause
 	ShowTrainClause
 }
 
@@ -110,6 +112,16 @@ type EvaluateClause struct {
 	EvaluateInto  string
 }
 
+type MathProgClause struct {
+	// Sense can be MAXIMIZE or MINIMIZE
+	Sense string
+	Objective *Expr
+	Constrants ExprList
+	SolveAttrs Attributes
+	Solver string
+	SolveResult string
+}
+
 type ShowTrainClause struct {
 	ModelName string
 }
@@ -142,6 +154,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   infr PredictClause
   expln ExplainClause
   evalt EvaluateClause
+  mathp MathProgClause
   shwtran ShowTrainClause
 }
 
@@ -153,13 +166,14 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <infr> predict_clause
 %type  <expln> explain_clause
 %type  <evalt> evaluate_clause
+%type <mathp> mathprog_clause
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE WITH COLUMN LABEL USING INTO FOR AS TO SHOW
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE MAXIMIZE MINIMIZE CONSTRAINT WITH COLUMN LABEL USING INTO FOR AS TO SHOW
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -196,6 +210,12 @@ sqlflow_select_stmt
 		Extended: true,
 		Evaluate: true,
 		EvaluateClause: $1}
+}
+| mathprog_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Mathp: true,
+		MathProgClause: $1}
 }
 | show_train_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
@@ -257,6 +277,38 @@ evaluate_clause
 : TO EVALUATE IDENT WITH attrs label_clause INTO IDENT { $$.ModelToEvaluate = $3; $$.EvaluateAttrs = $5; $$.EvaluateLabel = $6; $$.EvaluateInto = $8 }
 | TO EVALUATE IDENT label_clause INTO IDENT { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4; $$.EvaluateInto = $6 }
 ;
+
+mathprog_clause
+: TO MAXIMIZE expr CONSTRAINT ExprList WITH attrs USING IDENT INTO IDENT {
+	$$.Sense = "MAXIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.SolveAttrs = $7;
+	$$.Solver = $9;
+	$$.SolveResult = $11;
+}
+| TO MAXIMIZE expr CONSTRAINT ExprList WITH attrs INTO IDENT {
+	$$.Sense = "MAXIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.SolveAttrs = $7;
+	$$.SolveResult = $9;
+}
+| TO MINIMIZE expr CONSTRAINT ExprList WITH attrs USING IDENT INTO IDENT {
+	$$.Sense = "MINIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.SolveAttrs = $7;
+	$$.Solver = $9;
+	$$.SolveResult = $11;
+}
+| TO MINIMIZE expr CONSTRAINT ExprList WITH attrs INTO IDENT {
+	$$.Sense = "MINIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.SolveAttrs = $7;
+	$$.SolveResult = $9;
+};
 
 show_train_clause
 : SHOW TRAIN IDENT { $$.ModelName = $3; }
