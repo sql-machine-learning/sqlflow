@@ -47,8 +47,9 @@ if "{{.IsPAI}}" == "true":
     FLAGS = define_tf_flags()
     set_oss_environs(FLAGS)
 
-    if "{{.LoadPreTrainedModel}}" == "true":
-        model.load_file("{{.OSSModelDirToLoadPreTrained}}", "my_model")
+if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
+	from sqlflow_submitter.pai import model
+	model.load_file("{{.OSSModelDirToLoadPreTrained}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
@@ -91,6 +92,10 @@ import json
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
+
+if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
+	from sqlflow_submitter.pai import model
+	model.load_file("{{.OSSModelDirToLoadPreTrained}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
