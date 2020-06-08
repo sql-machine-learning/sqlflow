@@ -62,7 +62,7 @@ type TrainStmt struct {
 	Features map[string][]FeatureColumn
 	// Label specifies the feature column in the LABEL clause.
 	Label FeatureColumn
-	// Trained model for incremental training
+	// PreTrainedModel specifies the model name to be loaded for incremental training.
 	PreTrainedModel string
 	// Into specifies the table name in the INTO clause.
 	Into string
