@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/tar"
 )
 
 func TestTarUntar(t *testing.T) {
@@ -44,10 +45,10 @@ func TestTarUntar(t *testing.T) {
 		fmt.Sprintf("%s/__init__.py", modelRepoDir),
 		[]byte(sampleInitCode), 0644)
 	a.NoError(err)
-	err = tarGzDir(dir, "mytar.tar.gz")
+	err = tar.TarGzDir(dir, "mytar.tar.gz")
 	a.NoError(err)
 
-	err = untarGzDir("mytar.tar.gz", ".")
+	err = tar.UntarGzDir("mytar.tar.gz", ".")
 	if err != nil {
 		a.FailNow("%v", err)
 	}

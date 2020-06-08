@@ -24,6 +24,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
+	"sqlflow.org/sqlflow/pkg/tar"
 )
 
 const modelCollTable = "sqlflow_model_zoo.model_repos"
@@ -194,7 +195,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
 		return err
 	}
-	if err := untarGzDir("servergot.tar.gz", "./modelrepo"); err != nil {
+	if err := tar.UntarGzDir("servergot.tar.gz", "./modelrepo"); err != nil {
 		return err
 	}
 
