@@ -29,6 +29,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
+	"sqlflow.org/sqlflow/pkg/tar"
 )
 
 func startServer(port int) {
@@ -108,7 +109,7 @@ func TestModelZooServer(t *testing.T) {
 		err = os.Chdir(dir)
 		a.NoError(err)
 
-		err = tarGzDir(".", "modelrepo.tar.gz")
+		err = tar.ZipDir(".", "modelrepo.tar.gz")
 		a.NoError(err)
 		stream, err := client.ReleaseModelRepo(context.Background())
 		a.NoError(err)

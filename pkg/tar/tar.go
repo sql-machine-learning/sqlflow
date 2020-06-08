@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package modelzooserver
+package tar
 
 import (
 	"archive/tar"
@@ -22,7 +22,8 @@ import (
 	"path/filepath"
 )
 
-func tarGzDir(dir string, output string) error {
+// ZipDir tar a given directory into file 'output'
+func ZipDir(dir string, output string) error {
 	var buf bytes.Buffer
 	if err := compress(dir, &buf); err != nil {
 		return err
@@ -39,7 +40,8 @@ func tarGzDir(dir string, output string) error {
 	return nil
 }
 
-func untarGzDir(tarball string, output string) error {
+// UnzipDir untar a compressed file into directory 'output'
+func UnzipDir(tarball string, output string) error {
 	_, err := os.Stat(tarball)
 	if os.IsNotExist(err) {
 		return err
