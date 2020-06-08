@@ -57,5 +57,5 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 
 	t.Run("TestTrainSQL", caseTrainSQL)
 
-	caseXGBoostFeatureColumn(t, true)
+	CaseXGBoostFeatureColumn(t, true)
 }

@@ -52,5 +52,5 @@ func TestEnd2EndHive(t *testing.T) {
 	// t.Run("CaseTrainFeatureDerivation", caseTrainFeatureDerivation)
 	t.Run("caseShowTrain", caseShowTrain)
 
-	caseXGBoostFeatureColumn(t, false)
+	CaseXGBoostFeatureColumn(t, false)
 }

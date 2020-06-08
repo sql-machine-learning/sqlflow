@@ -63,7 +63,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// xgboost cases
 	t.Run("caseTrainXGBoostRegressionConvergence", caseTrainXGBoostRegressionConvergence)
 	t.Run("CasePredictXGBoostRegression", casePredictXGBoostRegression)
-	caseXGBoostFeatureColumn(t, false)
+	CaseXGBoostFeatureColumn(t, false)
 
 	t.Run("CaseShowTrain", caseShowTrain)
 

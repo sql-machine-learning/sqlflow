@@ -385,7 +385,10 @@ func getUniqueID() int {
 	return uniqueID
 }
 
-func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool) {
+// NOTE(sneaxiy): INDICATOR of XGBoost model does not support "TO EXPLAIN" yet
+// We set skipExplain = true in INDICATOR unittest
+func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, selectColumns string, columnClauses string, nclasses int, nworkers int, isPai bool,
+	skipExplain bool) {
 	tableSplits := strings.SplitN(table, ".", 2)
 	dbPrefix := ""
 	if len(tableSplits) == 2 {
@@ -439,12 +442,14 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 		executeSQLFunc(evaluateSQL)
 	}
 
-	paiExplainExtra := ""
-	if isPai {
-		paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
+	if !skipExplain {
+		paiExplainExtra := ""
+		if isPai {
+			paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
+		}
+		explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
+		executeSQLFunc(explainSQL)
 	}
-	explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
-	executeSQLFunc(explainSQL)
 
 	if !isPai { // PAI does not support SHOW TRAIN, because the model is not saved into database
 		showTrainSQL := fmt.Sprintf(`SHOW TRAIN %s;`, modelName)
@@ -452,7 +457,8 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 	}
 }
 
-func caseXGBoostFeatureColumn(t *testing.T, isPai bool) {
+// CaseXGBoostFeatureColumn is cases to run xgboost e2e tests using feature columns
+func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 	irisTrainTable := "iris.train"
 	churnTrainTable := "churn.train"
 	if isPai {
@@ -466,15 +472,21 @@ func caseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 	}
 
 	t.Run("CaseXGBoostNoFeatureColumn", func(*testing.T) {
-		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai)
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "", 3, numWorkers, isPai, false)
 	})
 
 	t.Run("CaseXGBoostBucketFeatureColumn", func(*testing.T) {
-		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai)
+		caseXGBoostFeatureColumnImpl(t, irisTrainTable, "class", "*", "BUCKET(petal_length, [0, 1, 2, 3, 4, 5])", 3, numWorkers, isPai, false)
 	})
 
 	t.Run("CaseXGBoostCategoryFeatureColumn", func(*testing.T) {
 		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
-			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai)
+			`CATEGORY_HASH(customerid, 10), CATEGORY_ID(gender, 2)`, 2, numWorkers, isPai, false)
+	})
+
+	// NOTE(sneaxiy): INDICATOR of XGBoost model does not support "TO EXPLAIN" yet
+	t.Run("CaseXGBoostCategoryFeatureColumnWithIndicator", func(*testing.T) {
+		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
+			`CATEGORY_HASH(customerid, 10), INDICATOR(CATEGORY_ID(gender, 2))`, 2, numWorkers, isPai, true)
 	})
 }
