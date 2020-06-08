@@ -16,7 +16,6 @@ package codegen
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"strings"
 )
@@ -41,34 +40,37 @@ func isXGBoostModule(module string) bool {
 	return strings.HasPrefix(module, "xgboost")
 }
 
-// MarshalToJSONOrDie converts any data to JSON string.
-// Exit the process if there is any error.
-func MarshalToJSONOrDie(in interface{}) string {
+// MarshalToJSONString converts any data to JSON string.
+func MarshalToJSONString(in interface{}) (string, error) {
 	bytes, err := json.Marshal(in)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(bytes)
+	return string(bytes), err
 }
 
 // GenerateFeatureColumnCode generates feature column code for both TensorFlow and XGBoost models
 func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, error) {
 	switch c := fc.(type) {
 	case *ir.NumericColumn:
+		shapeStr, err := MarshalToJSONString(c.FieldDesc.Shape)
+		if err != nil {
+			return "", err
+		}
 		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
 			module,
 			c.FieldDesc.Name,
-			MarshalToJSONOrDie(c.FieldDesc.Shape)), nil
+			shapeStr), nil
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
 			return "", err
 		}
+		boundariesStr, err := MarshalToJSONString(c.Boundaries)
+		if err != nil {
+			return "", nil
+		}
 		return fmt.Sprintf(
 			"%s.feature_column.bucketized_column(%s, boundaries=%s)",
 			module,
-			sourceCode,
-			MarshalToJSONOrDie(c.Boundaries)), nil
+			sourceCode, boundariesStr), nil
 	case *ir.CategoryIDColumn:
 		fm := c.GetFieldDesc()[0]
 		if len(fm.Vocabulary) > 0 {
