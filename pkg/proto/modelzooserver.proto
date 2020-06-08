@@ -28,14 +28,24 @@ message ReleaseModelRequest {
     string evaluation_metrics = 4;
     // Model class used to train this model.
     string model_class_name = 5;
-    // Model collection image used to train this model, can be empty.
-    string model_collection_image_url = 6;
+    // Model repo image used to train this model, can be empty.
+    string model_repo_image_url = 6;
     // content_tar is zipped trained model content.
     bytes content_tar = 7;
     // content_url is the place that stores the uploaded models, can be formated like:
     // db.table : model stored in model zoo MySQL using sqlfs
     // oss://bucket/path/to/model : model stored on OSS
     string content_url = 8;
+}
+
+// SQLFlow download model from model zoo server to do prediction, explain etc.
+// The fields in DownloadModelResponse have the same meaning to ReleaseModelRequest.
+message DownloadModelResponse {
+    string name = 1;
+    string tag = 2;
+    string model_class_name = 3;
+    string model_repo_image_url = 4;
+    bytes content_tar = 5;
 }
 
 message ReleaseResponse {
@@ -56,7 +66,7 @@ message ListModelRequest {
 message ModelRepoResponse {
     // Model definition Python class name or function name.
     string class_name = 1;
-    // The model collection Docker image containing the class.
+    // The model repo Docker image containing the class.
     string image_url = 2;
     // Docker image tag.
     string tag = 3;
@@ -108,4 +118,6 @@ service ModelZooServer {
     rpc ReleaseModel (stream ReleaseModelRequest) returns (ReleaseResponse);
     // Drop a trained model, TrainedModelRequest should contain name and tag.
     rpc DropModel (ReleaseModelRequest) returns (ReleaseResponse);
+    // Download a model
+    rpc DownloadModel (ReleaseModelRequest) returns (stream DownloadModelResponse);
 }

@@ -14,7 +14,9 @@
 package codegen
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"strings"
 )
@@ -39,9 +41,14 @@ func isXGBoostModule(module string) bool {
 	return strings.HasPrefix(module, "xgboost")
 }
 
-// IntArrayToJSONString converts int array to json string
-func IntArrayToJSONString(intArray []int) string {
-	return strings.Join(strings.Split(fmt.Sprint(intArray), " "), ",")
+// MarshalToJSONOrDie converts any data to JSON string.
+// Exit the process if there is any error.
+func MarshalToJSONOrDie(in interface{}) string {
+	bytes, err := json.Marshal(in)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return string(bytes)
 }
 
 // GenerateFeatureColumnCode generates feature column code for both TensorFlow and XGBoost models
@@ -51,7 +58,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
 			module,
 			c.FieldDesc.Name,
-			IntArrayToJSONString(c.FieldDesc.Shape)), nil
+			MarshalToJSONOrDie(c.FieldDesc.Shape)), nil
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
@@ -61,7 +68,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 			"%s.feature_column.bucketized_column(%s, boundaries=%s)",
 			module,
 			sourceCode,
-			IntArrayToJSONString(c.Boundaries)), nil
+			MarshalToJSONOrDie(c.Boundaries)), nil
 	case *ir.CategoryIDColumn:
 		fm := c.GetFieldDesc()[0]
 		if len(fm.Vocabulary) > 0 {
@@ -121,10 +128,6 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		return fmt.Sprintf("%s.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
 			module, sourceCode, c.Dimension, c.Combiner), nil
 	case *ir.IndicatorColumn:
-		if isXGBoostModule(module) {
-			return "", fmt.Errorf("INDICATOR is not supported in XGBoost models")
-		}
-
 		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
 		if err != nil {
 			return "", err

@@ -50,6 +50,10 @@ def xgb_shap_dataset(datasource,
     else:
         column_names = feature_column_names
 
+    # NOTE(sneaxiy): pandas.DataFrame does not support Tensor whose rank is larger than 2.
+    # But `INDICATOR` would generate one hot vector for each element, and pandas.DataFrame
+    # would not accept `INDICATOR` results as its input. In a word, we do not support
+    # `TO EXPLAIN` when using `INDICATOR`.
     xs = pd.DataFrame(columns=column_names)
 
     dtypes = []
@@ -62,7 +66,7 @@ def xgb_shap_dataset(datasource,
         if transform_fn:
             features = transform_fn(features)
 
-        # TODO(sneaxiy): support sparse features in `TO Explain`
+        # TODO(sneaxiy): support sparse features in `TO EXPLAIN`
         features = [item[0] for item in features]
         xs.loc[i] = features
 

@@ -24,7 +24,7 @@
 # function find_fastest_maven_repo()  echos fastest maven repo
 # function find_fastest_go_proxy()    echos fastest go proxy
 # function find_fastest_docker_url()  echos fastest docker download url
-# function find_fastest_docker_mirror() echos fastest docker mirror url
+# function find_fastest_docker_registry() echos fastest docker mirror url
 # function find_fastest_pip_mirror()  echos fastest pip mirror config
 
 
@@ -148,6 +148,7 @@ EOM
 }
 
 # Find fastest docker download URL
+# through which we get the install script
 function find_fastest_docker_url() {
     read -r -d '\t' download_urls <<EOM
 https://get.daocloud.io/docker
@@ -158,8 +159,19 @@ EOM
     find_fastest_url $download_urls
 }
 
+# Find docker-ce install apt mirror
+function find_fastest_docker_ce_mirror() {
+    read -r -d '\t' download_urls <<EOM
+https://mirrors.aliyun.com/docker-ce
+https://download.docker.com
+\t
+EOM
+    # shellcheck disable=SC2086
+    find_fastest_url $download_urls
+}
+
 # Find fastest docker mirror url
-function find_fastest_docker_mirror() {
+function find_fastest_docker_registry() {
     local url="https://www.docker.com/"
     read -r -d '\t' mirror_urls <<EOM
 $url
@@ -204,9 +216,11 @@ EOF
 # All find_xxx functions need ping and some needs bc.
 function install_requirements_if_not() {
     install="false"
+    # shellcheck disable=SC2230
     if ! which ping >/dev/null; then
         install="true"
     fi
+    # shellcheck disable=SC2230
     if ! which bc >/dev/null; then
         install="true"
     fi
@@ -230,3 +244,4 @@ function choose_fastest_pip_source() {
     mkdir -p "$HOME"/.pip
     find_fastest_pip_mirror > "$HOME"/.pip/pip.conf
 }
+

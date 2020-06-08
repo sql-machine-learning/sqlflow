@@ -11,7 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
+
 import numpy as np
+import six
 
 __all__ = [
     'numeric_column',
@@ -19,12 +22,26 @@ __all__ = [
     'categorical_column_with_identity',
     'categorical_column_with_vocabulary_list',
     'categorical_column_with_hash_bucket',
+    'indicator_column',
 ]
 
-
 # TODO(sneaxiy): implement faster and proper hash algorithm
-def hashing(x):
-    return hash(x)  # use builtin hash function
+# We cannot use Python builtin hash here, because it would
+# generate random results. See
+# https://stackoverflow.com/questions/27522626/hash-function-in-python-3-3-returns-different-results-between-sessions
+if six.PY2:
+
+    def hashing(x):
+        return long(hashlib.sha1(x).hexdigest(), 16)
+else:
+
+    def hashing(x):
+        return int(hashlib.sha1(x.encode('utf-8')).hexdigest(), 16)
+
+
+def elementwise_transform(array, transform_fn):
+    vfunc = np.vectorize(transform_fn)
+    return vfunc(array)
 
 
 def apply_transform_on_value(feature, transform_fn):
@@ -46,11 +63,12 @@ class BaseColumnTransformer(object):
 
 
 class CategoricalColumnTransformer(BaseColumnTransformer):
-    pass
+    def num_classes(self):
+        raise NotImplementedError()
 
 
 class NumericColumnTransformer(BaseColumnTransformer):
-    def __init__(self, key, shape):
+    def __init__(self, key, shape=(1, )):
         self.key = key
         self.shape = shape
 
@@ -65,7 +83,7 @@ class NumericColumnTransformer(BaseColumnTransformer):
         return [self.key]
 
 
-def numeric_column(key, shape):
+def numeric_column(key, shape=(1, )):
     return NumericColumnTransformer(key, shape)
 
 
@@ -83,10 +101,13 @@ class BucketizedColumnTransformer(CategoricalColumnTransformer):
     def get_column_names(self):
         return self.source_column.get_column_names()
 
+    def num_classes(self):
+        return len(self.boundaries) + 1
+
     def __call__(self, inputs):
         return apply_transform_on_value(
             self.source_column(inputs),
-            lambda x: np.searchsorted(self.boundaries, x))
+            lambda x: np.searchsorted(self.boundaries, x, side='right'))
 
 
 def bucketized_column(source_column, boundaries):
@@ -106,18 +127,28 @@ class CategoricalColumnWithIdentityTransformer(CategoricalColumnTransformer):
     def get_column_names(self):
         return [self.key]
 
+    def num_classes(self):
+        return self.num_buckets
+
     def __call__(self, inputs):
         def transform_fn(slot_value):
-            invalid_index = slot_value < 0 or slot_value >= self.num_buckets
-            if any(invalid_index):
+            def elementwise_transform_fn(x):
+                if x >= 0 and x < self.num_buckets:
+                    return x
+
                 if self.default_value is not None:
-                    slot_value[invalid_index] = self.default_value
+                    return self.default_value
                 else:
                     raise ValueError(
                         'The categorical value of column {} out of range [0, {})'
-                        .format(self.field_names[self.column_idx],
-                                self.num_buckets))
-            return slot_value
+                        .format(self.key, self.num_buckets))
+
+            if isinstance(slot_value, np.ndarray):
+                output = elementwise_transform(
+                    slot_value, elementwise_transform_fn).astype(np.int64)
+            else:
+                output = elementwise_transform_fn(slot_value)
+            return output
 
         return apply_transform_on_value(inputs[self.column_idx], transform_fn)
 
@@ -139,14 +170,17 @@ class CategoricalColumnWithVocabularyList(CategoricalColumnTransformer):
     def get_column_names(self):
         return [self.key]
 
+    def num_classes(self):
+        return len(self.vocabulary_list)
+
     def __call__(self, inputs):
+        fn = lambda x: self.vocabulary_list.index(x)
+
         def transform_fn(slot_value):
             if isinstance(slot_value, np.ndarray):
-                output = np.ndarray(slot_value.shape)
-                for i in six.moves.range(slot_value.size):
-                    output[i] = self.vocabulary_list.index(slot_value[i])
+                output = elementwise_transform(slot_value, fn).astype(np.int64)
             else:
-                output = self.vocabulary_list.index(slot_value)
+                output = fn(slot_value)
 
             return output
 
@@ -170,16 +204,19 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
     def get_column_names(self):
         return [self.key]
 
+    def num_classes(self):
+        return self.hash_bucket_size
+
     def __call__(self, inputs):
+        fn = lambda x: hashing(x) % self.hash_bucket_size
+
         def transform_fn(slot_value):
             if isinstance(slot_value, np.ndarray):
-                output = np.ndarray(slot_value.shape)
-                for i in six.moves.range(slot_value.size):
-                    output[i] = hashing(slot_value[i])
+                output = elementwise_transform(slot_value, fn).astype(np.int64)
+                output = output.astype(np.int64)
             else:
-                output = hashing(slot_value)
+                output = fn(slot_value)
 
-            output %= self.hash_bucket_size
             return output
 
         return apply_transform_on_value(inputs[self.column_idx], transform_fn)
@@ -188,6 +225,46 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
 def categorical_column_with_hash_bucket(key, hash_bucket_size, dtype='string'):
     return CategoricalColumnWithHashBucketTransformer(key, hash_bucket_size,
                                                       dtype)
+
+
+class IndicatorColumnTransformer(BaseColumnTransformer):
+    def __init__(self, categorical_column):
+        assert isinstance(categorical_column, CategoricalColumnTransformer), \
+            "categorical_column must be type of CategoricalColumnTransformer but got {}".format(type(categorical_column))
+        self.categorical_column = categorical_column
+
+    def _set_field_names(self, field_names):
+        BaseColumnTransformer._set_field_names(self, field_names)
+        self.categorical_column._set_field_names(field_names)
+
+    def get_column_names(self):
+        return self.categorical_column.get_column_names()
+
+    def __call__(self, inputs):
+        slot = self.categorical_column(inputs)
+        assert len(
+            slot
+        ) == 1, "indicator_column does not accept sparse categorical feature"
+
+        def transform_fn(slot_value):
+            num_classes = self.categorical_column.num_classes()
+            if isinstance(slot_value, np.ndarray):
+                output = np.zeros([slot_value.size, num_classes],
+                                  dtype=np.int64)
+                for i in six.moves.range(slot_value.size):
+                    output[i][slot_value.take(i)] = 1
+                output = output.reshape(slot_value.shape + (num_classes, ))
+            else:
+                output = np.zeros((num_classes, ), dtype=np.int64)
+                output[slot_value] = 1
+
+            return output
+
+        return apply_transform_on_value(slot, transform_fn)
+
+
+def indicator_column(categorical_column):
+    return IndicatorColumnTransformer(categorical_column)
 
 
 class ComposedColumnTransformer(BaseColumnTransformer):

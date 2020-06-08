@@ -182,6 +182,9 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 }
 
 // RewriteStatementsWithHints combines the hints into the standard SQL(s)
+//
+// FIXME(weiguoz): I'm not happy with such an implementation.
+// I mean it is not clean that sqlflow handles such database relative details.
 func RewriteStatementsWithHints(stmts []*parser.SQLFlowStmt, dialect string) []*parser.SQLFlowStmt {
 	hints, sqls := splitHints(stmts, dialect)
 	if len(hints) > 0 {
@@ -198,7 +201,7 @@ func splitHints(stmts []*parser.SQLFlowStmt, dialect string) (string, []*parser.
 	hints, sqls := "", []*parser.SQLFlowStmt{}
 	for _, stmt := range stmts {
 		if isHint(stmt, dialect) {
-			hints += stmt.Original
+			hints += stmt.Original + "\n" // alisa's requirements
 		} else {
 			sqls = append(sqls, stmt)
 		}

@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -254,12 +255,14 @@ func (s *alisaSubmitter) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
 
 func findPyModulePath(pyModuleName string) (string, error) {
+	var b bytes.Buffer
+	wStdout := bufio.NewWriter(&b)
 	cmd := exec.Command("python", "-c", fmt.Sprintf(`import %s;print(%s.__path__[0])`, pyModuleName, pyModuleName))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed %s, %v", cmd, err)
+	cmd.Stdout = wStdout
+	if e := cmd.Run(); e != nil {
+		return "", fmt.Errorf("failed %s, %v", cmd, e)
 	}
-	return strings.TrimSpace(string(out)), nil
+	return strings.TrimSpace(b.String()), nil
 }
 
 // FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models
