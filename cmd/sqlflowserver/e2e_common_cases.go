@@ -455,12 +455,14 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 		executeSQLFunc(evaluateSQL)
 	}
 
-	paiExplainExtra := ""
-	if isPai {
-		paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
+	if !skipExplain {
+		paiExplainExtra := ""
+		if isPai {
+			paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
+		}
+		explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
+		executeSQLFunc(explainSQL)
 	}
-	explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
-	executeSQLFunc(explainSQL)
 
 	if !isPai { // PAI does not support SHOW TRAIN, because the model is not saved into database
 		showTrainSQL := fmt.Sprintf(`SHOW TRAIN %s;`, modelName)
