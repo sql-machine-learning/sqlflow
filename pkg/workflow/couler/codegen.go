@@ -168,7 +168,6 @@ func GenFiller(programIR *pb.Program, session *pb.Session) (*Filler, error) {
 // GenCode generates a Couler program
 func (cg *Codegen) GenCode(programIR *pb.Program, session *pb.Session) (string, error) {
 	r, e := GenFiller(programIR, session)
-	fmt.Println(r)
 	if e != nil {
 		return "", e
 	}
@@ -203,8 +202,9 @@ func (cg *Codegen) GenYAML(coulerProgram string) (string, error) {
 // MockSQLProgramIR mock a SQLFLow program which contains multiple statements
 func MockSQLProgramIR() *pb.Program {
 	queryStmt := &pb.Statement{
-		Select: "SELECT * FROM iris.train limit 10;",
-		Type:   pb.Statement_QUERY,
+		Select:      "SELECT * FROM iris.train limit 10;",
+		Type:        pb.Statement_QUERY,
+		OriginalSql: "SELECT * FROM iris.train limit 10;",
 	}
 	trainStmt := ir.MockTrainStmt(true)
 	return &pb.Program{Statements: []*pb.Statement{queryStmt, trainStmt}}

@@ -114,7 +114,11 @@ func TestCoulerCodegen(t *testing.T) {
 
 func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a := assert.New(t)
-	specialCharsStmt := pb.Statement{Select: "`$\"\\;", Type: pb.Statement_QUERY}
+	specialCharsStmt := pb.Statement{
+		Select:      "`$\"\\;",
+		Type:        pb.Statement_QUERY,
+		OriginalSql: "`$\"\\;",
+	}
 	sqlIR := pb.Program{Statements: []*pb.Statement{&specialCharsStmt}}
 	cg := &Codegen{}
 	code, err := cg.GenCode(&sqlIR, &pb.Session{})
@@ -127,8 +131,9 @@ func TestCoulerCodegenSpecialChars(t *testing.T) {
 
 func mockSQLProgramIR() *pb.Program {
 	queryStmt := &pb.Statement{
-		Select: "SELECT * FROM iris.train limit 10;",
-		Type:   pb.Statement_QUERY,
+		Select:      "SELECT * FROM iris.train limit 10;",
+		Type:        pb.Statement_QUERY,
+		OriginalSql: "SELECT * FROM iris.train limit 10;",
 	}
 	trainStmt := ir.MockTrainStmt(false)
 	return &pb.Program{Statements: []*pb.Statement{queryStmt, trainStmt}}
@@ -157,8 +162,9 @@ func TestKatibCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_submitter", "katib")
 
 	queryStmt := &pb.Statement{
-		Select: "SELECT * FROM iris.train limit 10;",
-		Type:   pb.Statement_QUERY,
+		Select:      "SELECT * FROM iris.train limit 10;",
+		Type:        pb.Statement_QUERY,
+		OriginalSql: "SELECT * FROM iris.train limit 10;",
 	}
 	trainStmt := MockKatibTrainStmt(database.GetTestingMySQLURL())
 
