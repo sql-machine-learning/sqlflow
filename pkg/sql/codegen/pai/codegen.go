@@ -123,11 +123,11 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName
 		}
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
 		ossURIToSave := OSSModelURL(ossModelPathToSave)
-		ossURIToLoadPreTrainedModel := ""
+		ossURIToLoad := ""
 		if ossModelPathToLoadPreTrained != "" {
-			ossURIToLoadPreTrainedModel = OSSModelURL(ossModelPathToLoadPreTrained)
+			ossURIToLoad = OSSModelURL(ossModelPathToLoadPreTrained)
 		}
-		if code, e = xgboost.DistTrain(ir, session, cc.Worker.Count, ossURIToSave, ossURIToLoadPreTrainedModel); e != nil {
+		if code, e = xgboost.DistTrain(ir, session, cc.Worker.Count, ossURIToSave, ossURIToLoad); e != nil {
 			return
 		}
 		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPathToSave, ir.TmpTrainTable, ir.TmpValidateTable, "", currProject, cwd); e != nil {

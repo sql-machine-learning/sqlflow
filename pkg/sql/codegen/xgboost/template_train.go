@@ -16,24 +16,24 @@ package xgboost
 import "text/template"
 
 type trainFiller struct {
-	OSSModelDirToSave           string
-	OSSModelDirToLoadPreTrained string
-	DataSource                  string
-	TrainSelect                 string
-	ValidationSelect            string
-	ModelParamsJSON             string
-	TrainParamsJSON             string
-	FieldDescJSON               string
-	FeatureColumnNames          []string
-	LabelJSON                   string
-	FeatureColumnCode           string
-	DiskCache                   bool
-	BatchSize                   int
-	Epoch                       int
-	LoadPreTrainedModel         bool
-	IsPAI                       bool
-	PAITrainTable               string
-	PAIValidateTable            string
+	OSSModelDirToSave   string
+	OSSModelDirToLoad   string
+	DataSource          string
+	TrainSelect         string
+	ValidationSelect    string
+	ModelParamsJSON     string
+	TrainParamsJSON     string
+	FieldDescJSON       string
+	FeatureColumnNames  []string
+	LabelJSON           string
+	FeatureColumnCode   string
+	DiskCache           bool
+	BatchSize           int
+	Epoch               int
+	LoadPreTrainedModel bool
+	IsPAI               bool
+	PAITrainTable       string
+	PAIValidateTable    string
 }
 
 const trainTemplateText = `
@@ -49,7 +49,7 @@ if "{{.IsPAI}}" == "true":
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
 	from sqlflow_submitter.pai import model
-	model.load_file("{{.OSSModelDirToLoadPreTrained}}", "my_model")
+	model.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')
@@ -95,7 +95,7 @@ set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
 	from sqlflow_submitter.pai import model
-	model.load_file("{{.OSSModelDirToLoadPreTrained}}", "my_model")
+	model.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')

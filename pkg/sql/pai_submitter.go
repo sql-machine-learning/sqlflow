@@ -159,29 +159,34 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		return e
 	}
 
-	ossModelPathToLoadPreTrained := ""
+	ossModelPathToLoad := ""
 	if cl.PreTrainedModel != "" {
-		ossModelPathToLoadPreTrained, e = getModelPath(cl.PreTrainedModel, s.Session)
+		ossModelPathToLoad, e = getModelPath(cl.PreTrainedModel, s.Session)
 		if e != nil {
 			return e
 		}
 	}
 
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
-	if e != nil {
-		return e
+	// NOTE(sneaxiy): should be careful whether there would be file conflict
+	// if we do not remove the original OSS files.
+	if ossModelPathToLoad == "" || ossModelPathToSave != ossModelPathToLoad {
+		currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+		if e != nil {
+			return e
+		}
+		e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
+		if e != nil {
+			return e
+		}
 	}
-	e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
-	if e != nil {
-		return e
-	}
+
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
 	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); err != nil {
 		return err
 	}
 	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPathToSave,
-		ossModelPathToLoadPreTrained, s.Cwd)
+		ossModelPathToLoad, s.Cwd)
 	if e != nil {
 		return e
 	}

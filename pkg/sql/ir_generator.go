@@ -183,7 +183,6 @@ func generateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	defer db.Close()
 
 	_, trainSlct, err := loadModelMeta(slct, db, cwd, modelDir, model)
-
 	if err != nil {
 		return nil, err
 	}
