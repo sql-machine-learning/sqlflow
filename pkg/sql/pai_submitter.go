@@ -531,24 +531,24 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	return nil
 }
 
-func copyPythonPackage(packageName, toCwd string) error {
+func copyPythonPackage(packageName, dst string) error {
 	path, e := findPyModulePath(packageName)
 	if e != nil {
 		return fmt.Errorf("Can not find Python pacakge: %s", packageName)
 	}
 	cmd := exec.Command("cp", "-r", path, ".")
-	cmd.Dir = toCwd
+	cmd.Dir = dst
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)
 	}
 	return nil
 }
 
-func copyCustomPackage(estimator, toCwd string) error {
+func copyCustomPackage(estimator, dst string) error {
 	modelNameParts := strings.Split(estimator, ".")
 	pkgName := modelNameParts[0]
 	if len(modelNameParts) == 2 && pkgName != "sqlflow_models" && pkgName != "xgboost" {
-		return copyPythonPackage(pkgName, toCwd)
+		return copyPythonPackage(pkgName, dst)
 	}
 	return nil
 }
