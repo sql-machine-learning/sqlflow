@@ -22,7 +22,8 @@ import (
 	"path/filepath"
 )
 
-func TarGzDir(dir string, output string) error {
+// GzDir tar a given directory into file 'output'
+func GzDir(dir string, output string) error {
 	var buf bytes.Buffer
 	if err := compress(dir, &buf); err != nil {
 		return err
@@ -39,6 +40,7 @@ func TarGzDir(dir string, output string) error {
 	return nil
 }
 
+// UntarGzDir untar a compressed file into directory 'output'
 func UntarGzDir(tarball string, output string) error {
 	_, err := os.Stat(tarball)
 	if os.IsNotExist(err) {

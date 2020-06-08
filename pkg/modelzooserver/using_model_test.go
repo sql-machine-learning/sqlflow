@@ -88,7 +88,7 @@ func releaseDemoModelRepo(client proto.ModelZooServerClient) error {
 	if err := os.Chdir(dir); err != nil {
 		return err
 	}
-	if err := tar.TarGzDir(".", "modelrepo.tar.gz"); err != nil {
+	if err := tar.GzDir(".", "modelrepo.tar.gz"); err != nil {
 		return err
 	}
 	buf, err := ioutil.ReadFile("modelrepo.tar.gz")

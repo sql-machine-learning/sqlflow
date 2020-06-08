@@ -57,7 +57,7 @@ func TestTarUnTarDir(t *testing.T) {
 		[]byte(pythonFile), 0644)
 	a.NoError(err)
 
-	TarGzDir(testDir, tarName)
+	GzDir(testDir, tarName)
 	a.FileExists(tarName)
 
 	err = UntarGzDir(tarName, "out")

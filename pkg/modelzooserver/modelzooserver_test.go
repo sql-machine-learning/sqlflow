@@ -109,7 +109,7 @@ func TestModelZooServer(t *testing.T) {
 		err = os.Chdir(dir)
 		a.NoError(err)
 
-		err = tar.TarGzDir(".", "modelrepo.tar.gz")
+		err = tar.GzDir(".", "modelrepo.tar.gz")
 		a.NoError(err)
 		stream, err := client.ReleaseModelRepo(context.Background())
 		a.NoError(err)
