@@ -35,3 +35,5 @@ The most straight forward method is that the model developers simply run `pip in
 ## Conclusion
 
 We prefer the [Python only method](https://github.com/sql-machine-learning/sqlflow/blob/develop/doc/design/contribute_models_new.md) for model contributors to develop and test SQLFlow models, to give the best experience to model contributors.
+
+To let SQLFlow not to have redundent code for different user roles, we need to refactor currnet code to support Python APIs like `sqlflow.train`, and the code genrators generate code to call the Python API in each workflow step.
