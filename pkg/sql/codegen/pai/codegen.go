@@ -104,7 +104,7 @@ func genRequirements(isXGBoost bool) (string, error) {
 }
 
 // Train generates a Python program a PAI command arguments to train a Tensorflow model.
-func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPathToSave, ossModelPathToLoadPreTrained, cwd string) (code, paiCmd, requirements string, e error) {
+func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPathToSave, ossModelPathToLoad, cwd string) (code, paiCmd, requirements string, e error) {
 	cc, e := GetClusterConfig(ir.Attributes)
 	if e != nil {
 		return "", "", "", e
@@ -124,8 +124,8 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName
 	} else if strings.HasPrefix(strings.ToLower(ir.Estimator), "xgboost") {
 		ossURIToSave := OSSModelURL(ossModelPathToSave)
 		ossURIToLoad := ""
-		if ossModelPathToLoadPreTrained != "" {
-			ossURIToLoad = OSSModelURL(ossModelPathToLoadPreTrained)
+		if ossModelPathToLoad != "" {
+			ossURIToLoad = OSSModelURL(ossModelPathToLoad)
 		}
 		if code, e = xgboost.DistTrain(ir, session, cc.Worker.Count, ossURIToSave, ossURIToLoad); e != nil {
 			return
