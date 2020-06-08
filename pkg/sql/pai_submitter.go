@@ -531,6 +531,28 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	return nil
 }
 
+func copyPythonPackage(packageName, dst string) error {
+	path, e := findPyModulePath(packageName)
+	if e != nil {
+		return fmt.Errorf("Can not find Python pacakge: %s", packageName)
+	}
+	cmd := exec.Command("cp", "-r", path, ".")
+	cmd.Dir = dst
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+	return nil
+}
+
+func copyCustomPackage(estimator, dst string) error {
+	modelNameParts := strings.Split(estimator, ".")
+	pkgName := modelNameParts[0]
+	if len(modelNameParts) == 2 && pkgName != "sqlflow_models" && pkgName != "xgboost" {
+		return copyPythonPackage(pkgName, dst)
+	}
+	return nil
+}
+
 func achieveResource(cwd, entryCode, requirements, tarball, estimator string) error {
 	if err := writeFile(filepath.Join(cwd, entryFile), entryCode); err != nil {
 		return err
@@ -538,48 +560,20 @@ func achieveResource(cwd, entryCode, requirements, tarball, estimator string) er
 	if err := writeFile(filepath.Join(cwd, "requirements.txt"), requirements); err != nil {
 		return err
 	}
-
-	// add sqlflow_submitter
-	path, err := findPyModulePath("sqlflow_submitter")
-	if err != nil {
+	// sqlflow_submitter and sqlflow_models are built-in packages.
+	if err := copyPythonPackage("sqlflow_submitter", cwd); err != nil {
 		return err
 	}
-	cmd := exec.Command("cp", "-r", path, ".")
-	cmd.Dir = cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
-	}
-
-	// add sqlflow_models
-	path, err = findPyModulePath("sqlflow_models")
-	if err != nil {
+	if err := copyPythonPackage("sqlflow_models", cwd); err != nil {
 		return err
 	}
-	cmd = exec.Command("cp", "-r", path, ".")
-	cmd.Dir = cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
+
+	// add custom package if needed
+	if err := copyCustomPackage(estimator, cwd); err != nil {
+		return err
 	}
 
-	// add any other custom model packages
-	if estimator != "" {
-		modelNameParts := strings.Split(estimator, ".")
-		if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {
-			customModelPkg := modelNameParts[0]
-			fmt.Printf("adding %s\n", customModelPkg)
-			path, err = findPyModulePath(customModelPkg)
-			if err != nil {
-				return err
-			}
-			cmd = exec.Command("cp", "-r", path, ".")
-			cmd.Dir = cwd
-			if _, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("failed %s, %v", cmd, err)
-			}
-		}
-	}
-
-	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", "./sqlflow_models", entryFile, "requirements.txt")
+	cmd := exec.Command("tar", "czf", tarball, "./sqlflow_submitter", "./sqlflow_models", entryFile, "requirements.txt")
 	cmd.Dir = cwd
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)
