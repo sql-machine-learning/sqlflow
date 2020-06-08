@@ -63,3 +63,10 @@ if docker pull sqlflow/sqlflow:jupyter 2> /dev/null; then
 fi
 docker build -t sqlflow/sqlflow:jupyter \
        -f docker/jupyter/Dockerfile "$TRAVIS_BUILD_DIR"
+
+echo "Build sqlflow:step ..."
+if docker pull sqlflow/sqlflow:step 2> /dev/null; then
+    echo "  using sqlflow/sqlflow:step as the cache image"
+fi
+docker build -t sqlflow/sqlflow:step \
+       -f docker/step/Dockerfile "$TRAVIS_BUILD_DIR"
