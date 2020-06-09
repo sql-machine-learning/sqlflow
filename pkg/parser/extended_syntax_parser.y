@@ -80,7 +80,7 @@ type TrainClause struct {
 	TrainAttrs      Attributes
 	Columns         columnClause
 	Label           string
-	PreTrainedModel string
+	TrainUsing      string
 	Save            string
 }
 
@@ -216,33 +216,33 @@ train_clause
 	$$.TrainAttrs = $5
 	$$.Columns = $6
 	$$.Label = $7
-	$$.PreTrainedModel = $8
+	$$.TrainUsing = $8
 	$$.Save = $10
   }
 | TO TRAIN IDENT WITH attrs column_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Columns = $6
-	$$.PreTrainedModel = $7
+	$$.TrainUsing = $7
 	$$.Save = $9
 }
 | TO TRAIN IDENT WITH attrs label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Label = $6
-	$$.PreTrainedModel = $7
+	$$.TrainUsing = $7
 	$$.Save = $9
 }
 | TO TRAIN IDENT label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.Label = $4
-	$$.PreTrainedModel = $5
+	$$.TrainUsing = $5
 	$$.Save = $7
 }
 | TO TRAIN IDENT WITH attrs optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
-	$$.PreTrainedModel = $6
+	$$.TrainUsing = $6
 	$$.Save = $8
 }
 ;

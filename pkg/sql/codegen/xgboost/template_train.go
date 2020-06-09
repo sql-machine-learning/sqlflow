@@ -48,8 +48,8 @@ if "{{.IsPAI}}" == "true":
     set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
-	from sqlflow_submitter.pai import model
-	model.load_file("{{.OSSModelDirToLoad}}", "my_model")
+    from sqlflow_submitter.pai import model
+    model.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
 train_params = json.loads('''{{.TrainParamsJSON}}''')

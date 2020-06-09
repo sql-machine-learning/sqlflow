@@ -67,8 +67,8 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 		return nil, err
 	}
 
-	if loadPreTrainedModel && slct.PreTrainedModel != "" {
-		_, _, err = loadModelMeta(slct, db, cwd, modelDir, slct.PreTrainedModel)
+	if loadPreTrainedModel && slct.TrainUsing != "" {
+		_, _, err = loadModelMeta(slct, db, cwd, modelDir, slct.TrainUsing)
 		if err != nil {
 			return nil, err
 		}
@@ -140,7 +140,7 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, attrInitAndTypeCheck bool
 		Attributes:       attrList,
 		Features:         fcMap,
 		Label:            label,
-		PreTrainedModel:  tc.PreTrainedModel,
+		PreTrainedModel:  tc.TrainUsing,
 		Into:             slct.Save,
 	}
 	if attrInitAndTypeCheck {
