@@ -276,6 +276,7 @@ evaluate_clause
 
 run_clause
 : TO RUN IDENT { $$.ImageName = $3; }
+| TO RUN IDENT CMD IDENT { $$.ImageName = $3; $$.Parameters = $5 }
 ;
 
 show_train_clause
