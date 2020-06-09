@@ -446,7 +446,7 @@ func main() {
 	}
 	optionData := &options{}
 	if err := opts.Bind(optionData); err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	var envFilePath string
 	if optionData.EnvFile != "" {
