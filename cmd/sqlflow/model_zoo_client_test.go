@@ -33,7 +33,6 @@ import (
 const modelZooServerPort = 50055
 
 func startTestModelZooServer() {
-	os.Setenv("SQLFLOW_TEST_DB", "mysql")
 	addr := fmt.Sprintf("localhost:%d", modelZooServerPort)
 	if serverIsReady(addr, time.Second) {
 		return
