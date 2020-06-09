@@ -145,7 +145,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(estimator)
+is_estimator = is_tf_estimator(eval(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
@@ -210,7 +210,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(estimator)
+is_estimator = is_tf_estimator(eval(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
@@ -279,7 +279,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(estimator)
+is_estimator = is_tf_estimator(eval(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
