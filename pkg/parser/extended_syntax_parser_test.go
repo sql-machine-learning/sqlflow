@@ -248,12 +248,51 @@ func TestExtendedShowTrainStmt(t *testing.T) {
 func TestExtendedSyntaxParseToRun(t *testing.T) {
 	a := assert.New(t)
 	{
-		testToRun := `TO RUN a_data_scientist;`
-		fmt.Println(testToRun)
-		a.True(true)
-		r, _, e := parseSQLFlowStmt(testToRun)
-		fmt.Println(e)
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Equal(nil, e)
+		a.True(r.Extended)
+		a.True(r.Run)
+		a.Equal(`a_data_scientist/ts_data_processor:1.0`, r.ImageName)
+		fmt.Println(r.Parameters)
+		// a.Equal(``, r.Parameters)
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "abc";`
+		r, idx, e := parseSQLFlowStmt(testToRun)
 		a.Equal(nil, e)
 		a.True(r.Run)
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "abc"
+INTO output_table;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Equal(nil, e)
+		a.True(r.Run)
+		fmt.Println(r.Parameters)
+		fmt.Println(r.OutputTables)
+		// a.Equal(`abc`, r.Parameters)
+		// a.Equal(`output_table`, r.OutputTables)
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "abc"
+INTO output_table_1, output_table_2;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Equal(nil, e)
+		a.True(r.Run)
+		fmt.Println(r.Parameters)
+		fmt.Println(r.OutputTables)
+		// a.Equal(`abc`, r.Parameters)
+		// a.Equal(`output_table`, r.OutputTables)
+		a.Equal(len(testToRun), idx)
 	}
 }

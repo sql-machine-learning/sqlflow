@@ -114,8 +114,8 @@ type EvaluateClause struct {
 
 type RunClause struct {
 	ImageName		string
-	Parameters		string
-	OutputTables	string
+	Parameters		[]string
+	OutputTables	[]string
 }
 
 type ShowTrainClause struct {
@@ -168,6 +168,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <expl> ExprList pythonlist columns
 %type  <atrs> attr
 %type  <atrs> attrs
+%type  <tbls> stringlist, identlist
 
 %token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE RUN WITH COLUMN LABEL USING INTO FOR AS TO SHOW CMD
 %token <val> IDENT NUMBER STRING
@@ -276,7 +277,8 @@ evaluate_clause
 
 run_clause
 : TO RUN IDENT { $$.ImageName = $3; }
-| TO RUN IDENT CMD IDENT { $$.ImageName = $3; $$.Parameters = $5 }
+| TO RUN IDENT CMD stringlist { $$.ImageName = $3; $$.Parameters = $5 }
+| TO RUN IDENT CMD stringlist INTO identlist { $$.ImageName = $3; $$.Parameters = $5; $$.OutputTables = $7 }
 ;
 
 show_train_clause
@@ -333,6 +335,15 @@ pythonlist
 : '[' ']'           { $$ = nil }
 | '[' ExprList ']'  { $$ = $2  }
 ;
+
+stringlist
+: STRING                 { $$ = []string{$1[1:len($1)-1]} }
+| stringlist ',' STRING  { $$ = append($1, $3[1:len($3)-1]) }
+;
+
+identlist
+: IDENT                  { $$ = []string{$1}}
+| identlist ',' IDENT    { $$ = append($1, $3) }
 
 expr
 : NUMBER         { $$ = atomic(NUMBER, $1) }
