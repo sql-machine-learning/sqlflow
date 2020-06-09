@@ -229,11 +229,11 @@ INTO db.table;`
 	a.NoError(e)
 	a.Equal(len(s), idx)
 	a.True(r.Extended)
-	a.True(r.Mathp)
-	a.Equal("MAXIMIZE", r.Sense)
+	a.True(r.Optimize)
+	a.Equal("MAXIMIZE", r.Direction)
 	a.Equal("SUM((price - materials_cost - other_cost) * product)", r.Objective.String())
 	a.Equal("SUM(finishing * product) <= 100", r.Constrants.Strings()[0])
-	a.Equal("db.table", r.SolveResult)
+	a.Equal("db.table", r.OptimizeInto)
 	a.Equal("glpk", r.Solver)
 
 	s = `TO MINIMIZE SUM((price - materials_cost - other_cost) * product)
@@ -245,8 +245,8 @@ WITH variables="product",
 INTO db.table;`
 	r, idx, e = parseSQLFlowStmt(s)
 	a.NoError(e)
-	a.Equal("MINIMIZE", r.Sense)
-	a.Equal("db.table", r.SolveResult)
+	a.Equal("MINIMIZE", r.Direction)
+	a.Equal("db.table", r.OptimizeInto)
 	a.Equal("", r.Solver)
 }
 

@@ -62,14 +62,14 @@ type SQLFlowSelectStmt struct {
 	Predict  bool
 	Explain  bool
 	Evaluate bool
-	Mathp    bool
+	Optimize    bool
 	ShowTrain bool
 	StandardSelect
 	TrainClause
 	PredictClause
 	ExplainClause
 	EvaluateClause
-	MathProgClause
+	OptimizeClause
 	ShowTrainClause
 }
 
@@ -112,14 +112,14 @@ type EvaluateClause struct {
 	EvaluateInto  string
 }
 
-type MathProgClause struct {
-	// Sense can be MAXIMIZE or MINIMIZE
-	Sense string
+type OptimizeClause struct {
+	// Direction can be MAXIMIZE or MINIMIZE
+	Direction string
 	Objective *Expr
 	Constrants ExprList
-	SolveAttrs Attributes
+	OptimizeAttrs Attributes
 	Solver string
-	SolveResult string
+	OptimizeInto string
 }
 
 type ShowTrainClause struct {
@@ -154,7 +154,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   infr PredictClause
   expln ExplainClause
   evalt EvaluateClause
-  mathp MathProgClause
+  optim OptimizeClause
   shwtran ShowTrainClause
 }
 
@@ -166,7 +166,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <infr> predict_clause
 %type  <expln> explain_clause
 %type  <evalt> evaluate_clause
-%type <mathp> mathprog_clause
+%type  <optim> optimize_clause
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
@@ -211,11 +211,11 @@ sqlflow_select_stmt
 		Evaluate: true,
 		EvaluateClause: $1}
 }
-| mathprog_clause end_of_stmt {
+| optimize_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
-		Mathp: true,
-		MathProgClause: $1}
+		Optimize: true,
+		OptimizeClause: $1}
 }
 | show_train_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
@@ -278,36 +278,36 @@ evaluate_clause
 | TO EVALUATE IDENT label_clause INTO IDENT { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4; $$.EvaluateInto = $6 }
 ;
 
-mathprog_clause
+optimize_clause
 : TO MAXIMIZE expr CONSTRAINT ExprList WITH attrs USING IDENT INTO IDENT {
-	$$.Sense = "MAXIMIZE";
+	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
-	$$.SolveAttrs = $7;
+	$$.OptimizeAttrs = $7;
 	$$.Solver = $9;
-	$$.SolveResult = $11;
+	$$.OptimizeInto = $11;
 }
 | TO MAXIMIZE expr CONSTRAINT ExprList WITH attrs INTO IDENT {
-	$$.Sense = "MAXIMIZE";
+	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
-	$$.SolveAttrs = $7;
-	$$.SolveResult = $9;
+	$$.OptimizeAttrs = $7;
+	$$.OptimizeInto = $9;
 }
 | TO MINIMIZE expr CONSTRAINT ExprList WITH attrs USING IDENT INTO IDENT {
-	$$.Sense = "MINIMIZE";
+	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
-	$$.SolveAttrs = $7;
+	$$.OptimizeAttrs = $7;
 	$$.Solver = $9;
-	$$.SolveResult = $11;
+	$$.OptimizeInto = $11;
 }
 | TO MINIMIZE expr CONSTRAINT ExprList WITH attrs INTO IDENT {
-	$$.Sense = "MINIMIZE";
+	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
-	$$.SolveAttrs = $7;
-	$$.SolveResult = $9;
+	$$.OptimizeAttrs = $7;
+	$$.OptimizeInto = $9;
 };
 
 show_train_clause
