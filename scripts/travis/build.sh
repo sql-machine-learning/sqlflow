@@ -46,20 +46,39 @@ docker build -t sqlflow:ci \
 echo "Build sqlflow:server by loading $TRAVIS_BUILD_DIR/build ..."
 if docker pull sqlflow/sqlflow:server 2> /dev/null; then
     echo "  using sqlflow/sqlflow:server as the cache image"
+    docker build --cache-from sqlflow/sqlflow:server -t sqlflow/sqlflow:server \
+           -f docker/server/Dockerfile "$TRAVIS_BUILD_DIR"
+else
+    docker build -t sqlflow/sqlflow:server \
+           -f docker/server/Dockerfile "$TRAVIS_BUILD_DIR"
 fi
-docker build -t sqlflow/sqlflow:server \
-       -f docker/server/Dockerfile "$TRAVIS_BUILD_DIR"
 
 echo "Build sqlflow:mysql ..."
 if docker pull sqlflow/sqlflow:mysql 2> /dev/null; then
     echo "  using sqlflow/sqlflow:mysql as the cache image"
+    docker build --cache-from sqlflow/sqlflow:mysql -t sqlflow/sqlflow:mysql \
+           -f docker/mysql/Dockerfile "$TRAVIS_BUILD_DIR"
+else
+    docker build -t sqlflow/sqlflow:mysql \
+           -f docker/mysql/Dockerfile "$TRAVIS_BUILD_DIR"
 fi
-docker build -t sqlflow/sqlflow:mysql \
-       -f docker/mysql/Dockerfile "$TRAVIS_BUILD_DIR"
 
 echo "Build sqlflow:jupyter ..."
 if docker pull sqlflow/sqlflow:jupyter 2> /dev/null; then
     echo "  using sqlflow/sqlflow:jupyter as the cache image"
+    docker build --cache-from sqlflow/sqlflow:jupyter -t sqlflow/sqlflow:jupyter \
+           -f docker/jupyter/Dockerfile "$TRAVIS_BUILD_DIR"
+else
+    docker build -t sqlflow/sqlflow:jupyter \
+           -f docker/jupyter/Dockerfile "$TRAVIS_BUILD_DIR"
 fi
-docker build -t sqlflow/sqlflow:jupyter \
-       -f docker/jupyter/Dockerfile "$TRAVIS_BUILD_DIR"
+
+echo "Build sqlflow:step ..."
+if docker pull sqlflow/sqlflow:step 2> /dev/null; then
+    echo "  using sqlflow/sqlflow:step as the cache image"
+    docker build --cache-from sqlflow/sqlflow:step -t sqlflow/sqlflow:step \
+           -f docker/step/Dockerfile "$TRAVIS_BUILD_DIR"
+else
+    docker build -t sqlflow/sqlflow:step \
+           -f docker/step/Dockerfile "$TRAVIS_BUILD_DIR"
+fi
