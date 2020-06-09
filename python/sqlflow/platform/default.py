@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import copy
 import io
 import json
@@ -19,9 +20,11 @@ import pickle
 import tarfile
 import tempfile
 
+import grpc
 from sqlflow_submitter import db
 
-from .. import features, ir_pb2
+from .. import features
+from ..proto import ir_pb2, modelzooserver_pb2, modelzooserver_pb2_grpc
 
 
 def eval_attr(attr):
@@ -100,37 +103,63 @@ def save_model(conn, table, *meta):
     cursor.execute(f'DROP TABLE IF EXISTS {table}')
     cursor.execute(
         f'''CREATE TABLE {table} (id INT NOT NULL AUTO_INCREMENT KEY,
-                                             chunk LONGBLOB NOT NULL)''')
-    cursor.execute(f'INSERT INTO {table} (chunk)  VALUES (%s)',
-                   (pickle.dumps(meta), ))
+                                             block TEXT NOT NULL)''')
+    pickle.dump(meta, open("meta.pkl", "wb"))
     f = io.BytesIO()
     archive = tarfile.open(None, "w|gz", f)
     archive.add(".")
     archive.close()
     f.seek(0)
-    for chunk in iter(lambda: f.read(8000000), b''):
-        cursor.execute(f'INSERT INTO {table} (chunk) VALUES (%s)', (chunk, ))
+    for block in iter(lambda: f.read(30000), b''):
+        cursor.execute(f'INSERT INTO {table} (block) VALUES (%s)',
+                       (base64.encodebytes(block), ))
     conn.commit()
 
 
-def load_model(conn, table):
+def load_model(conn, model):
     '''
-    Load and restore a directory and metadata that are saved in the table `model_name`
+    Load and restore a directory and metadata that are saved in `model`
     '''
+    if '/' in model:
+        return load_model_from_zoo(model)
+
     cursor = conn.cursor()
-    db_name, tbl_name = map(lambda s: s.strip(), table.split("."))
-    cursor.execute(f'SELECT chunk FROM {table} ORDER BY id')
-    ret = pickle.loads(cursor.fetchone()[0])
+    db_name, tbl_name = map(lambda s: s.strip(), model.split("."))
+    cursor.execute(f'SELECT block FROM {model} ORDER BY id')
     with tempfile.TemporaryFile() as f:
         row = cursor.fetchone()
         while row:
-            f.write(row[0])
+            f.write(base64.b64decode(row[0]))
             row = cursor.fetchone()
         f.seek(0)
         archive = tarfile.open(None, "r|gz", f)
         archive.extractall()
         archive.close()
-    return ret
+    return pickle.load(open("meta.pkl", "rb"))
+
+
+def load_model_from_zoo(uri):
+    '''
+    Load and restore a directory and metadata that are saved in `uri`
+    '''
+    addr, name = map(lambda s: s.strip(), uri.rsplit("/", 1))
+    tag = ''
+    if ':' in name:
+        name, tag = name.split(':')
+
+    channel = grpc.insecure_channel(addr)
+    client = modelzooserver_pb2_grpc.ModelZooServerStub(channel)
+    request = modelzooserver_pb2.ReleaseModelRequest(name=name, tag=tag)
+    stream = client.DownloadModel(request)
+    with tempfile.TemporaryFile() as f:
+        for row in stream:
+            print(row)
+            f.write(row.content_tar)
+        f.seek(0)
+        archive = tarfile.open(None, "r|gz", f)
+        archive.extractall()
+        archive.close()
+    return pickle.load(open("meta.pkl", "rb"))
 
 
 def train(statement, datasource, feature_metas, label_meta, **kwargs):

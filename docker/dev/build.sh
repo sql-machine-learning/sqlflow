@@ -28,7 +28,13 @@ echo "Build $SQLFLOWPATH into $SQLFLOW_BIN ..."
 echo "Build sqlflowserver, sqlflow, and step into $SQLFLOW_BIN ..."
 go generate ./...
 GOBIN=$SQLFLOW_BIN go install ./...
-protoc -I pkg/proto/ ir.proto --python_out=python/sqlflow
+
+
+echo "Build ir, model zoo gRPC client in Python  ..."
+protoc -I pkg/proto/ ir.proto --python_out=python/sqlflow/proto/
+cp pkg/proto/modelzooserver.proto python/sqlflow/proto
+python -m grpc_tools.protoc -I python/ --python_out=python --grpc_python_out=python sqlflow/proto/modelzooserver.proto
+rm python/sqlflow/proto/modelzooserver.proto
 
 echo "Build $SQLFLOWPATH/python/couler into $SQLFLOW_BIN ..."
 cd $SQLFLOWPATH/python/couler

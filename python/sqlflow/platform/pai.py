@@ -16,12 +16,13 @@ import json
 from google.protobuf import text_format
 from sqlflow_submitter import db
 
-from .. import features, ir_pb2
+from .. import features
+from ..proto import ir_pb2
 from . import default
 
 
 def submit(statement, datasource, feature_specs, label_spec):
-    with open("specs.json", "w") as fpkl, open("/stmt.pb", "w") as fpb:
+    with open("specs.json", "w") as fpkl, open("stmt.pb", "w") as fpb:
         json.dump((datasource, feature_specs, label_spec), fpkl)
         fpb.write(str(statement))
 
