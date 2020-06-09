@@ -113,9 +113,9 @@ type EvaluateClause struct {
 }
 
 type RunClause struct {
-	Function	string
-	RunAttrs	Attributes
-	ResultTable	string
+	ImageName		string
+	Parameters		string
+	OutputTables	string
 }
 
 type ShowTrainClause struct {
@@ -169,7 +169,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <atrs> attr
 %type  <atrs> attrs
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE RUN WITH COLUMN LABEL USING INTO FOR AS TO SHOW
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE RUN WITH COLUMN LABEL USING INTO FOR AS TO SHOW CMD
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -275,9 +275,7 @@ evaluate_clause
 ;
 
 run_clause
-: TO RUN IDENT { $$.Function = $3 }
-| TO RUN IDENT WITH attrs { $$.Function = $3; $$.RunAttrs = $5 }
-| TO RUN IDENT WITH attrs INTO IDENT { $$.Function = $3; $$.RunAttrs = $5; $$.ResultTable = $7 }
+: TO RUN IDENT { $$.ImageName = $3; }
 ;
 
 show_train_clause

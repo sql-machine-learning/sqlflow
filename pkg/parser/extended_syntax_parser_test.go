@@ -15,6 +15,7 @@
 package parser
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -241,5 +242,18 @@ func TestExtendedShowTrainStmt(t *testing.T) {
 		a.Nil(r)
 		a.NotNil(e)
 		a.Equal(11, idx)
+	}
+}
+
+func TestExtendedSyntaxParseToRun(t *testing.T) {
+	a := assert.New(t)
+	{
+		testToRun := `TO RUN a_data_scientist;`
+		fmt.Println(testToRun)
+		a.True(true)
+		r, _, e := parseSQLFlowStmt(testToRun)
+		fmt.Println(e)
+		a.Equal(nil, e)
+		a.True(r.Run)
 	}
 }
