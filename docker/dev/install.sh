@@ -59,13 +59,15 @@ PY_TEST="pytest==5.3.0"
 JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort pylint flake8"
 WHEEL="wheel"
+GRPC="grpcio grpcio-tools"
 # shellcheck disable=SC2086
 python -m pip install --quiet \
     $WHEEL \
     $PRE_COMMIT \
     $PY_TEST \
     $JS_LINTER \
-    $PYTHON_LINTER
+    $PYTHON_LINTER \
+	$GRPC
 rm -rf "$HOME"/.cache/pip/*
 
 
