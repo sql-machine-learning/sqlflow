@@ -127,7 +127,7 @@ func TestUsingModelZooModel(t *testing.T) {
 	go startSqlflowServer()
 	server.WaitPortReady("localhost:50052", 0)
 	// start model zoo server
-	go startServer(50056)
+	go StartModelZooServer(50056, database.GetTestingMySQLURL())
 	server.WaitPortReady("localhost:50056", 0)
 
 	conn, err := grpc.Dial(":50056", grpc.WithInsecure())
