@@ -93,7 +93,9 @@ func TestModelZooServer(t *testing.T) {
 		a.NoError(err)
 
 		reply, err := stream.CloseAndRecv()
-		a.NoError(err)
+		if err != nil {
+			a.FailNow("%v", err)
+		}
 		a.Equal(true, reply.Success)
 
 		err = os.Chdir(cwd)
