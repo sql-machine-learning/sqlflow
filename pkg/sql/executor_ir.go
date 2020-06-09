@@ -143,7 +143,11 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, modelDi
 			return fmt.Errorf("%s", sub[1])
 		}
 		// if no diagnostic message, return the full stack trace
-		return fmt.Errorf("failed: %v\n%sGenerated Code:%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", t.Text(&program), stdout.String()+stderr.String())
+		return fmt.Errorf("failed: %v\n%sGenerated Code:%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v",
+			e, "==========", t.Text(&program), stdout.String()+stderr.String())
+	}
+	if stmt.Type == pb.Statement_EXPLAIN {
+		return readExplainResult(cwd, wr)
 	}
 	scn := bufio.NewScanner(bufio.NewReader(&stdout))
 	isTable := false

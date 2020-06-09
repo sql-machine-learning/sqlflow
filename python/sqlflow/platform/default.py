@@ -364,7 +364,6 @@ def execute(program):
             stmt.estimator, _, specs, meta = load_model(conn, stmt.model_save)
             create_explain_table(conn, stmt, *specs)
             explain(stmt, program.datasource, *specs, *meta)
-            # os.system('img2sixel summary.png')
         elif stmt.type == ir_pb2.Statement.EVALUATE:
             create_evaluate_table(conn, stmt)
             stmt.estimator, _, specs, meta = load_model(conn, stmt.model_save)

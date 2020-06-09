@@ -15,6 +15,10 @@ package sql
 
 import (
 	"bytes"
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
+	"path"
 	"regexp"
 	"sync"
 
@@ -66,4 +70,18 @@ func (cw *logChanWriter) Close() {
 		cw.wr.Write(cw.prev)
 		cw.prev = ""
 	}
+}
+
+func readExplainResult(cwd string, wr *pipe.Writer) error {
+	content, err := ioutil.ReadFile(path.Join(cwd, "summary.png"))
+	if err != nil {
+		return err
+	}
+	img := fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>",
+		base64.StdEncoding.EncodeToString(content))
+	txt, err := ioutil.ReadFile(path.Join(cwd, "summary.txt"))
+	if err != nil {
+		return err
+	}
+	return wr.Write(Figures{img, string(txt)})
 }

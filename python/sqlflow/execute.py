@@ -14,7 +14,9 @@
 import os
 import sys
 
+import MySQLdb
 from google.protobuf import text_format
+from sqlflow_submitter.tensorflow import diag
 
 from .proto import ir_pb2
 
@@ -26,8 +28,11 @@ def get_platform_module(name):
 
 
 def step(program):
-    platform = get_platform_module(os.getenv("SQLFLOW_submitter"))
-    platform.execute(program)
+    try:
+        platform = get_platform_module(os.getenv("SQLFLOW_submitter"))
+        platform.execute(program)
+    except MySQLdb.OperationalError as e:
+        raise diag.SQLFlowDiagnostic(f"Error {e.args[0]}: {e.args[1]}")
 
 
 if __name__ == "__main__":
