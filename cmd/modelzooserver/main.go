@@ -20,7 +20,9 @@ import (
 )
 
 func main() {
-	mysqlDBStr := flag.String("mysql-addr", "mysql://root:root@tcp(127.0.0.1:3306)/?", "MySQL database connection string for the model zoo server, e.g. mysql://tcp(127.0.0.1:3306)/?")
+	mysqlDBStr := flag.String("mysql-addr",
+		"mysql://root:root@tcp(127.0.0.1:3306)/?",
+		"MySQL database connection string for the model zoo server, e.g. mysql://root:root@tcp(127.0.0.1:3306)/?")
 	port := flag.Int("port", 50055, "TCP port to listen on.")
 	flag.Parse()
 
