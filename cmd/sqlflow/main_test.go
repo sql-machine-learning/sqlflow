@@ -225,7 +225,7 @@ func TestMain(t *testing.T) {
 
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
-	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-sqlflow_server", serverAddr)
+	os.Args = []string{"sqlflow", "-d", dbConnStr, "-e", "use iris; show tables", "-s", serverAddr}
 	output, _ := step.GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
@@ -968,7 +968,7 @@ func TestGetServerAddrFromEnv(t *testing.T) {
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	os.Args = []string{"", "-e", "use iris; show tables"}
+	os.Args = []string{"sqlflow", "-e", "use iris; show tables"}
 	output, _ := step.GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
