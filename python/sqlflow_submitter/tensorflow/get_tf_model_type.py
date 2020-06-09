@@ -24,7 +24,7 @@ def is_tf_estimator(model):
     if isinstance(model, types.FunctionType):
         return False
     else:
-        return isinstance(
+        return issubclass(
             model,
             (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
              tf.estimator.BoostedTreesRegressor))
