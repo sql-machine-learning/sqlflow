@@ -61,6 +61,9 @@ func caseShowDatabases(t *testing.T) {
 		"default":                 "", // if fetching default hive databases
 		"sqlflow":                 "", // to save model zoo trained models
 		"imdb":                    "",
+		"sqlflow_model_zoo":       "",
+		"sqlflow_public_models":   "",
+		"test_model_db":           "", // cli use this db to test model zoo
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])

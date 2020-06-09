@@ -98,7 +98,7 @@ func prepareModel() error {
 	return nil
 }
 
-func CaseReleaseRepo(t *testing.T) {
+func caseReleaseRepo(t *testing.T) {
 	a := assert.New(t)
 	path, err := prepareModelRepo()
 	a.NoError(err)
@@ -111,7 +111,7 @@ func CaseReleaseRepo(t *testing.T) {
 	a.NoError(releaseRepo(opts))
 }
 
-func CaseDeleteRepo(t *testing.T) {
+func caseDeleteRepo(t *testing.T) {
 	a := assert.New(t)
 	cmd := fmt.Sprintf("--model-zoo-server=localhost:%d delete repo test/my_repo v1.0",
 		modelZooServerPort)
@@ -120,7 +120,7 @@ func CaseDeleteRepo(t *testing.T) {
 	a.NoError(deleteRepo(opts))
 }
 
-func CaseReleaseModel(t *testing.T) {
+func caseReleaseModel(t *testing.T) {
 	a := assert.New(t)
 	a.NoError(prepareModel())
 	cmd := fmt.Sprintf(
@@ -143,8 +143,8 @@ func CaseDeleteModel(t *testing.T) {
 
 func TestModelZooOperation(t *testing.T) {
 	startTestModelZooServer()
-	t.Run("CaseReleaseRepo", CaseReleaseRepo)
-	t.Run("CaseReleaseModel", CaseReleaseModel)
-	t.Run("CaseDeleteModel", CaseDeleteModel)
-	t.Run("CaseDeleteRepo", CaseDeleteRepo)
+	t.Run("caseReleaseRepo", caseReleaseRepo)
+	t.Run("caseReleaseModel", caseReleaseModel)
+	t.Run("caseDeleteModel", CaseDeleteModel)
+	t.Run("caseDeleteRepo", caseDeleteRepo)
 }
