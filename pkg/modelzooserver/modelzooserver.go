@@ -227,7 +227,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		return fmt.Errorf("no model repo content uploaded")
 	}
 	modelExtractDir := fmt.Sprintf("%s/modelrepo", dir)
-	if err := os.Mkdir(modelExtractDir, os.ModeDir); err != nil {
+	if err := os.Mkdir(modelExtractDir, 0755); err != nil {
 		return err
 	}
 	if err := tar.UnzipDir(fmt.Sprintf("%s/servergot.tar.gz", dir), modelExtractDir); err != nil {
