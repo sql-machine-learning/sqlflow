@@ -312,7 +312,7 @@ INTO output_table_1, output_table_2;`
 			[]string {
 				`slide_window_to_row`,
 				`--param_a=value_a`,
-				`--param_b=value_b`
+				`--param_b=value_b`,
 			}))
 		a.True(reflect.DeepEqual(
 			r.OutputTables,
