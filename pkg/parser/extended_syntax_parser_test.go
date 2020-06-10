@@ -320,3 +320,33 @@ INTO output_table_1, output_table_2;`
 		a.Equal(len(testToRun), idx)
 	}
 }
+
+func TestExtendedSyntaxParseToRunInvalid(t *testing.T) {
+	a := assert.New(t)
+	{
+		testToRun := `TO RUN "a_data_scientist/ts_data_processor:1.0";`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Nil(r)
+		a.Equal(7, idx)
+		a.Error(e)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD slide_window_to_row;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Nil(r)
+		a.Equal(50, idx)
+		a.Error(e)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row"
+INTO "output_table_1";`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Nil(r)
+		a.Equal(77, idx)
+		a.Error(e)
+	}
+}
