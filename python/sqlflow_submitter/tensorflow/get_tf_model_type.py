@@ -11,4 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
+import types
+
+import tensorflow as tf
+
+__all__ = [
+    'is_tf_estimator',
+]
+
+
+def is_tf_estimator(model):
+    if isinstance(model, types.FunctionType):
+        return False
+    else:
+        return issubclass(
+            model,
+            (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
+             tf.estimator.BoostedTreesRegressor))

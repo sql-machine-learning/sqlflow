@@ -150,17 +150,21 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 		}
 	}(cwd)
 	var r ir.SQLFlowStmt
+
+	generateTrainStmtFromModel := GetSubmitter(session.Submitter).GetTrainStmtFromModel()
+
 	if sql.IsExtendedSyntax() {
 		if sql.Train {
-			r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, true)
+			loadPreTrainModel := generateTrainStmtFromModel
+			r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, loadPreTrainModel, true)
 		} else if sql.ShowTrain {
 			r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
-			r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
+			r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Predict {
-			r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
+			r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Evaluate {
-			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, GetSubmitter(session.Submitter).GetTrainStmtFromModel())
+			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		}
 	} else {
 		standardSQL := ir.NormalStmt(sql.Original)

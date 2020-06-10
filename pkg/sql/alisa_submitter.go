@@ -70,7 +70,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)
 
-	ossModelPath, e := getModelPath(ts.Into, s.Session)
+	ossModelPathToSave, e := getModelPath(ts.Into, s.Session)
 	if e != nil {
 		return e
 	}
@@ -83,7 +83,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	if e != nil {
 		return e
 	}
-	if e := deleteDirRecursive(modelBucket, ossModelPath+"/"); e != nil {
+	if e := deleteDirRecursive(modelBucket, ossModelPathToSave+"/"); e != nil {
 		return e
 	}
 
@@ -93,10 +93,11 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 	paramsPath := fmt.Sprintf("file://@@%s", paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); err != nil {
 		return err
 	}
-	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, paramsPath, ts.Into, ossModelPath, s.Cwd)
+
+	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, paramsPath, ts.Into, ossModelPathToSave, ts.PreTrainedModel, s.Cwd)
 	if e != nil {
 		return e
 	}

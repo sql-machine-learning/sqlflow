@@ -60,17 +60,12 @@ type requirementsFiller struct {
 
 const tfSaveModelTmplText = `
 from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow import is_tf_estimator
 from shutil import copyfile
 import types
 
 estimator = {{.Estimator}}
-if isinstance(estimator, types.FunctionType):
-    is_estimator = False
-else:
-    is_estimator = issubclass(
-        estimator,
-        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-            tf.estimator.BoostedTreesRegressor))
+is_estimator = is_tf_estimator(estimator)
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
@@ -123,6 +118,8 @@ from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, 
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 from sqlflow_submitter.tensorflow import predict
+from sqlflow_submitter.tensorflow import is_tf_estimator
+
 try:
     import sqlflow_models
 except Exception as e:
@@ -148,13 +145,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-if isinstance(estimator, types.FunctionType):
-    is_estimator = False
-else:
-    is_estimator = issubclass(
-        eval(estimator),
-        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-            tf.estimator.BoostedTreesRegressor))
+is_estimator = is_tf_estimator(eval(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
@@ -196,6 +187,8 @@ from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, 
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 from sqlflow_submitter.tensorflow import explain
+from sqlflow_submitter.tensorflow import is_tf_estimator
+
 try:
     tf.enable_eager_execution()
 except Exception as e:
@@ -217,13 +210,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-if isinstance(estimator, types.FunctionType):
-    is_estimator = False
-else:
-    is_estimator = issubclass(
-        eval(estimator),
-        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-            tf.estimator.BoostedTreesRegressor))
+is_estimator = is_tf_estimator(eval(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
@@ -269,6 +256,8 @@ from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, 
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 from sqlflow_submitter.tensorflow import evaluate
+from sqlflow_submitter.tensorflow import is_tf_estimator
+
 try:
     tf.enable_eager_execution()
 except Exception as e:
@@ -290,13 +279,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-if isinstance(estimator, types.FunctionType):
-    is_estimator = False
-else:
-    is_estimator = issubclass(
-        eval(estimator),
-        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-            tf.estimator.BoostedTreesRegressor))
+is_estimator = is_tf_estimator(eval(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
