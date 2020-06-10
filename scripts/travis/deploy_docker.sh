@@ -75,3 +75,6 @@ docker push sqlflow/sqlflow:server
 
 echo "docker push sqlflow/sqlflow:step"
 docker push sqlflow/sqlflow:step
+
+echo "docker push sqlflow/sqlflow:modelzooserver"
+docker push sqlflow/sqlflow:modelzooserver
