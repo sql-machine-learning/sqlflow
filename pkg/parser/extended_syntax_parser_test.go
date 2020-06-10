@@ -265,7 +265,7 @@ CMD "slide_window_to_row";`
 		r, idx, e := parseSQLFlowStmt(testToRun)
 		a.NoError(e)
 		a.True(r.Run)
-		a.True(reflect.DeepEqual(r.Parameters, []string {`slide_window_to_row`}))
+		a.True(reflect.DeepEqual(r.Parameters, []string{`slide_window_to_row`}))
 		a.Equal(len(r.OutputTables), 0)
 		a.Equal(len(testToRun), idx)
 	}
@@ -279,8 +279,8 @@ INTO output_table;`
 		a.True(r.Run)
 		a.True(reflect.DeepEqual(
 			r.Parameters,
-			[]string {`slide_window_to_row`}))
-		a.True(reflect.DeepEqual(r.OutputTables, []string {`output_table`}))
+			[]string{`slide_window_to_row`}))
+		a.True(reflect.DeepEqual(r.OutputTables, []string{`output_table`}))
 		a.Equal(len(testToRun), idx)
 	}
 
@@ -293,10 +293,10 @@ INTO output_table_1, output_table_2;`
 		a.True(r.Run)
 		a.True(reflect.DeepEqual(
 			r.Parameters,
-			[]string {`slide_window_to_row`}))
+			[]string{`slide_window_to_row`}))
 		a.True(reflect.DeepEqual(
 			r.OutputTables,
-			[]string {`output_table_1`, `output_table_2`}))
+			[]string{`output_table_1`, `output_table_2`}))
 		a.Equal(len(testToRun), idx)
 	}
 
@@ -309,14 +309,14 @@ INTO output_table_1, output_table_2;`
 		a.True(r.Run)
 		a.True(reflect.DeepEqual(
 			r.Parameters,
-			[]string {
+			[]string{
 				`slide_window_to_row`,
 				`--param_a=value_a`,
 				`--param_b=value_b`,
 			}))
 		a.True(reflect.DeepEqual(
 			r.OutputTables,
-			[]string {`output_table_1`, `output_table_2`}))
+			[]string{`output_table_1`, `output_table_2`}))
 		a.Equal(len(testToRun), idx)
 	}
 }
