@@ -18,10 +18,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
-	"log"
-	"net"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,34 +26,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/server"
+	"sqlflow.org/sqlflow/pkg/tar"
 )
-
-func startServer(port int) {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	grpcServer := grpc.NewServer()
-	mysqlConn, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
-	if err != nil {
-		log.Fatalf("failed to connect to mysql: %v", err)
-	}
-	splitedStmts := strings.Split(createTableStmts, ";")
-	for idx, stmt := range splitedStmts {
-		if idx == len(splitedStmts)-1 {
-			// the last stmt is empty
-			break
-		}
-		_, err = mysqlConn.Exec(stmt)
-		if err != nil {
-			log.Fatalf("failed to create model zoo tables: %v", err)
-		}
-	}
-
-	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
-
-	grpcServer.Serve(lis)
-}
 
 func mockTmpModelRepo() (string, error) {
 	dir, err := ioutil.TempDir("/tmp", "tmp-sqlflow-repo")
@@ -64,7 +35,7 @@ func mockTmpModelRepo() (string, error) {
 		return "", err
 	}
 	modelRepoDir := fmt.Sprintf("%s/my_test_models", dir)
-	if err := os.Mkdir(modelRepoDir, os.ModeDir); err != nil {
+	if err := os.Mkdir(modelRepoDir, 0755); err != nil {
 		return "", err
 	}
 
@@ -89,7 +60,7 @@ func mockTmpModelRepo() (string, error) {
 
 func TestModelZooServer(t *testing.T) {
 	a := assert.New(t)
-	go startServer(50055)
+	go StartModelZooServer(50055, database.GetTestingMySQLURL())
 	server.WaitPortReady("localhost:50055", 0)
 
 	conn, err := grpc.Dial(":50055", grpc.WithInsecure())
@@ -108,7 +79,7 @@ func TestModelZooServer(t *testing.T) {
 		err = os.Chdir(dir)
 		a.NoError(err)
 
-		err = tarGzDir(".", "modelrepo.tar.gz")
+		err = tar.ZipDir(".", "modelrepo.tar.gz")
 		a.NoError(err)
 		stream, err := client.ReleaseModelRepo(context.Background())
 		a.NoError(err)
@@ -122,7 +93,9 @@ func TestModelZooServer(t *testing.T) {
 		a.NoError(err)
 
 		reply, err := stream.CloseAndRecv()
-		a.NoError(err)
+		if err != nil {
+			a.FailNow("%v", err)
+		}
 		a.Equal(true, reply.Success)
 
 		err = os.Chdir(cwd)

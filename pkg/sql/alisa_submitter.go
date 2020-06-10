@@ -14,6 +14,7 @@
 package sql
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -69,7 +70,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)
 
-	ossModelPath, e := getModelPath(ts.Into, s.Session)
+	ossModelPathToSave, e := getModelPath(ts.Into, s.Session)
 	if e != nil {
 		return e
 	}
@@ -82,7 +83,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	if e != nil {
 		return e
 	}
-	if e := deleteDirRecursive(modelBucket, ossModelPath+"/"); e != nil {
+	if e := deleteDirRecursive(modelBucket, ossModelPathToSave+"/"); e != nil {
 		return e
 	}
 
@@ -92,10 +93,11 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 	paramsPath := fmt.Sprintf("file://@@%s", paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); err != nil {
 		return err
 	}
-	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, paramsPath, ts.Into, ossModelPath, s.Cwd)
+
+	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, paramsPath, ts.Into, ossModelPathToSave, ts.PreTrainedModel, s.Cwd)
 	if e != nil {
 		return e
 	}
@@ -253,12 +255,14 @@ func (s *alisaSubmitter) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
 
 func findPyModulePath(pyModuleName string) (string, error) {
+	var b bytes.Buffer
+	wStdout := bufio.NewWriter(&b)
 	cmd := exec.Command("python", "-c", fmt.Sprintf(`import %s;print(%s.__path__[0])`, pyModuleName, pyModuleName))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed %s, %v", cmd, err)
+	cmd.Stdout = wStdout
+	if e := cmd.Run(); e != nil {
+		return "", fmt.Errorf("failed %s, %v", cmd, e)
 	}
-	return strings.TrimSpace(string(out)), nil
+	return strings.TrimSpace(b.String()), nil
 }
 
 // FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models

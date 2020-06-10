@@ -17,13 +17,17 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 
+	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/log"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
+	"sqlflow.org/sqlflow/pkg/tar"
 )
 
 const modelCollTable = "sqlflow_model_zoo.model_repos"
@@ -33,18 +37,15 @@ const publicModelDB = "sqlflow_public_models"
 
 // TODO(typhoonzero): create tables if these tables are not pre created?
 const createTableStmts = `CREATE DATABASE IF NOT EXISTS sqlflow_model_zoo;
-DROP TABLE IF EXISTS sqlflow_model_zoo.models;
-DROP TABLE IF EXISTS sqlflow_model_zoo.model_definitions;
-DROP TABLE IF EXISTS sqlflow_model_zoo.model_repos;
 
-CREATE TABLE sqlflow_model_zoo.model_repos (
+CREATE TABLE IF NOT EXISTS sqlflow_model_zoo.model_repos (
     id INT AUTO_INCREMENT,
     name VARCHAR(255),
     version VARCHAR(255),
     PRIMARY KEY (id)
 );
 
-CREATE TABLE sqlflow_model_zoo.model_definitions (
+CREATE TABLE IF NOT EXISTS sqlflow_model_zoo.model_definitions (
     id INT AUTO_INCREMENT,
     model_coll_id INT,
     class_name VARCHAR(255),
@@ -53,7 +54,7 @@ CREATE TABLE sqlflow_model_zoo.model_definitions (
     FOREIGN KEY (model_coll_id) REFERENCES model_repos(id)
 );
 
-CREATE TABLE sqlflow_model_zoo.models (
+CREATE TABLE IF NOT EXISTS sqlflow_model_zoo.models (
     id INT AUTO_INCREMENT,
     model_def_id INT,
     name VARCHAR(255),
@@ -65,6 +66,36 @@ CREATE TABLE sqlflow_model_zoo.models (
     FOREIGN KEY (model_def_id) REFERENCES model_definitions(id)
 );`
 
+// StartModelZooServer start the model zoo grpc server
+func StartModelZooServer(port int, dbConnStr string) {
+	logger := log.GetDefaultLogger()
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		logger.Fatalf("failed to listen: %v", err)
+	}
+	grpcServer := grpc.NewServer()
+	mysqlConn, err := database.OpenAndConnectDB(dbConnStr)
+	if err != nil {
+		logger.Fatalf("failed to connect to mysql: %v", err)
+	}
+	splitedStmts := strings.Split(createTableStmts, ";")
+	for idx, stmt := range splitedStmts {
+		if idx == len(splitedStmts)-1 {
+			// the last stmt is empty
+			break
+		}
+		_, err = mysqlConn.Exec(stmt)
+		if err != nil {
+			logger.Fatalf("failed to create model zoo tables: %v", err)
+		}
+	}
+
+	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
+
+	grpcServer.Serve(lis)
+}
+
+// modelZooServer is the gRPC model zoo server implementation
 type modelZooServer struct {
 	DB *database.DB
 }
@@ -160,7 +191,12 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	reqName := ""
 	reqTag := ""
 
-	fd, err := os.Create("servergot.tar.gz")
+	dir, err := ioutil.TempDir("/tmp", "sqlflow-zoo-repo")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	fd, err := os.Create(fmt.Sprintf("%s/servergot.tar.gz", dir))
 	if err != nil {
 		return err
 	}
@@ -174,8 +210,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		reqTag = req.GetTag()
 		n, err := fd.Write(req.GetContentTar())
 		if err != nil {
-			fmt.Printf("write content error: %s\n", err)
-			log.Printf("get user model source code error %v", err)
+			return err
 		}
 		totalSize = totalSize + n
 	}
@@ -191,17 +226,15 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	if totalSize <= 0 {
 		return fmt.Errorf("no model repo content uploaded")
 	}
-	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
+	modelExtractDir := fmt.Sprintf("%s/modelrepo", dir)
+	if err := os.Mkdir(modelExtractDir, 0755); err != nil {
 		return err
 	}
-	if err := untarGzDir("servergot.tar.gz", "./modelrepo"); err != nil {
+	if err := tar.UnzipDir(fmt.Sprintf("%s/servergot.tar.gz", dir), modelExtractDir); err != nil {
 		return err
 	}
 
-	defer os.RemoveAll("./modelrepo")
-	defer os.Remove("servergot.tar.gz")
-
-	modelDescs, err := getModelClasses("./modelrepo")
+	modelDescs, err := getModelClasses(modelExtractDir)
 	if len(modelDescs) == 0 {
 		return fmt.Errorf("no model classes detected")
 	}
@@ -212,7 +245,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		// do not push images when testing on CI
 		dryrun = true
 	}
-	if err := buildAndPushImage("./modelrepo", reqName, reqTag, dryrun); err != nil {
+	if err := buildAndPushImage(modelExtractDir, reqName, reqTag, dryrun); err != nil {
 		return err
 	}
 
@@ -318,7 +351,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 
 		_, err = sqlf.Write(req.GetContentTar())
 		if err != nil {
-			log.Printf("get user model source code error %v", err)
+			return fmt.Errorf("get user model source code error %v", err)
 		}
 	}
 

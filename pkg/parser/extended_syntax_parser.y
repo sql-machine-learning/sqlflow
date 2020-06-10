@@ -63,12 +63,15 @@ type SQLFlowSelectStmt struct {
 	Explain   bool
 	Evaluate  bool
 	Run       bool
+	Optimize  bool
 	ShowTrain bool
+
 	StandardSelect
 	TrainClause
 	PredictClause
 	ExplainClause
 	EvaluateClause
+	OptimizeClause
 	ShowTrainClause
 	RunClause
 }
@@ -78,11 +81,12 @@ type StandardSelect struct {
 }
 
 type TrainClause struct {
-	Estimator  string
-	TrainAttrs Attributes
-	Columns    columnClause
-	Label      string
-	Save       string
+	Estimator       string
+	TrainAttrs      Attributes
+	Columns         columnClause
+	Label           string
+	TrainUsing      string
+	Save            string
 }
 
 /* If no FOR in the COLUMN, the key is "" */
@@ -118,6 +122,16 @@ type RunClause struct {
 	OutputTables    []string
 }
 
+type OptimizeClause struct {
+	// Direction can be MAXIMIZE or MINIMIZE
+	Direction string
+	Objective *Expr
+	Constrants ExprList
+	OptimizeAttrs Attributes
+	Solver string
+	OptimizeInto string
+}
+
 type ShowTrainClause struct {
 	ModelName string
 }
@@ -151,6 +165,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   expln ExplainClause
   evalt EvaluateClause
   runc  RunClause
+  optim OptimizeClause
   shwtran ShowTrainClause
 }
 
@@ -163,6 +178,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <expln> explain_clause
 %type  <evalt> evaluate_clause
 %type  <runc> run_clause
+%type  <optim> optimize_clause
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
@@ -170,7 +186,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <atrs> attrs
 %type  <tbls> stringlist, identlist
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE RUN WITH COLUMN LABEL USING INTO FOR AS TO SHOW CMD
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE RUN MAXIMIZE MINIMIZE CONSTRAINT WITH COLUMN LABEL USING INTO FOR AS TO SHOW CMD
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -214,6 +230,12 @@ sqlflow_select_stmt
 		Run: true,
 		RunClause: $1}
   }
+| optimize_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Optimize: true,
+		OptimizeClause: $1}
+}
 | show_train_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
@@ -227,34 +249,39 @@ end_of_stmt
 ;
 
 train_clause
-: TO TRAIN IDENT WITH attrs column_clause label_clause INTO IDENT {
+: TO TRAIN IDENT WITH attrs column_clause label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Columns = $6
 	$$.Label = $7
-	$$.Save = $9
+	$$.TrainUsing = $8
+	$$.Save = $10
   }
-| TO TRAIN IDENT WITH attrs column_clause INTO IDENT {
+| TO TRAIN IDENT WITH attrs column_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Columns = $6
-	$$.Save = $8
+	$$.TrainUsing = $7
+	$$.Save = $9
 }
-| TO TRAIN IDENT WITH attrs label_clause INTO IDENT {
+| TO TRAIN IDENT WITH attrs label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
 	$$.Label = $6
-	$$.Save = $8
+	$$.TrainUsing = $7
+	$$.Save = $9
 }
-| TO TRAIN IDENT label_clause INTO IDENT {
+| TO TRAIN IDENT label_clause optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.Label = $4
-	$$.Save = $6
+	$$.TrainUsing = $5
+	$$.Save = $7
 }
-| TO TRAIN IDENT WITH attrs INTO IDENT {
+| TO TRAIN IDENT WITH attrs optional_using INTO IDENT {
 	$$.Estimator = $3
 	$$.TrainAttrs = $5
-	$$.Save = $7
+	$$.TrainUsing = $6
+	$$.Save = $8
 }
 ;
 
@@ -281,12 +308,44 @@ run_clause
 | TO RUN IDENT CMD stringlist INTO identlist { $$.ImageName = $3; $$.Parameters = $5; $$.OutputTables = $7 }
 ;
 
+optimize_clause
+: TO MAXIMIZE expr CONSTRAINT ExprList WITH attrs USING IDENT INTO IDENT {
+	$$.Direction = "MAXIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.Solver = $9;
+	$$.OptimizeInto = $11;
+}
+| TO MAXIMIZE expr CONSTRAINT ExprList WITH attrs INTO IDENT {
+	$$.Direction = "MAXIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.OptimizeInto = $9;
+}
+| TO MINIMIZE expr CONSTRAINT ExprList WITH attrs USING IDENT INTO IDENT {
+	$$.Direction = "MINIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.Solver = $9;
+	$$.OptimizeInto = $11;
+}
+| TO MINIMIZE expr CONSTRAINT ExprList WITH attrs INTO IDENT {
+	$$.Direction = "MINIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.OptimizeInto = $9;
+};
+
 show_train_clause
 : SHOW TRAIN IDENT { $$.ModelName = $3; }
 ;
 
 optional_using
-: /* empty */  {}
+: /* empty */  { $$ = "" }
 | USING IDENT  { $$ = $2 }
 ;
 

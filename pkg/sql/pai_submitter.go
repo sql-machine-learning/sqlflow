@@ -154,25 +154,39 @@ func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
-	ossModelPath, e := getModelPath(cl.Into, s.Session)
+	ossModelPathToSave, e := getModelPath(cl.Into, s.Session)
 	if e != nil {
 		return e
 	}
 
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
-	if e != nil {
-		return e
+	ossModelPathToLoad := ""
+	if cl.PreTrainedModel != "" {
+		ossModelPathToLoad, e = getModelPath(cl.PreTrainedModel, s.Session)
+		if e != nil {
+			return e
+		}
 	}
-	e = cleanOSSModelPath(ossModelPath+"/", currProject)
-	if e != nil {
-		return e
+
+	// NOTE(sneaxiy): should be careful whether there would be file conflict
+	// if we do not remove the original OSS files.
+	if ossModelPathToLoad == "" || ossModelPathToSave != ossModelPathToLoad {
+		currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+		if e != nil {
+			return e
+		}
+		e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
+		if e != nil {
+			return e
+		}
 	}
+
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
+	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); err != nil {
 		return err
 	}
-	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPath, s.Cwd)
+	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPathToSave,
+		ossModelPathToLoad, s.Cwd)
 	if e != nil {
 		return e
 	}
@@ -531,6 +545,28 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 	return nil
 }
 
+func copyPythonPackage(packageName, dst string) error {
+	path, e := findPyModulePath(packageName)
+	if e != nil {
+		return fmt.Errorf("Can not find Python pacakge: %s", packageName)
+	}
+	cmd := exec.Command("cp", "-r", path, ".")
+	cmd.Dir = dst
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed %s, %v", cmd, err)
+	}
+	return nil
+}
+
+func copyCustomPackage(estimator, dst string) error {
+	modelNameParts := strings.Split(estimator, ".")
+	pkgName := modelNameParts[0]
+	if len(modelNameParts) == 2 && pkgName != "sqlflow_models" && pkgName != "xgboost" {
+		return copyPythonPackage(pkgName, dst)
+	}
+	return nil
+}
+
 func achieveResource(cwd, entryCode, requirements, tarball, estimator string) error {
 	if err := writeFile(filepath.Join(cwd, entryFile), entryCode); err != nil {
 		return err
@@ -538,48 +574,20 @@ func achieveResource(cwd, entryCode, requirements, tarball, estimator string) er
 	if err := writeFile(filepath.Join(cwd, "requirements.txt"), requirements); err != nil {
 		return err
 	}
-
-	// add sqlflow_submitter
-	path, err := findPyModulePath("sqlflow_submitter")
-	if err != nil {
+	// sqlflow_submitter and sqlflow_models are built-in packages.
+	if err := copyPythonPackage("sqlflow_submitter", cwd); err != nil {
 		return err
 	}
-	cmd := exec.Command("cp", "-r", path, ".")
-	cmd.Dir = cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
-	}
-
-	// add sqlflow_models
-	path, err = findPyModulePath("sqlflow_models")
-	if err != nil {
+	if err := copyPythonPackage("sqlflow_models", cwd); err != nil {
 		return err
 	}
-	cmd = exec.Command("cp", "-r", path, ".")
-	cmd.Dir = cwd
-	if _, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed %s, %v", cmd, err)
+
+	// add custom package if needed
+	if err := copyCustomPackage(estimator, cwd); err != nil {
+		return err
 	}
 
-	// add any other custom model packages
-	if estimator != "" {
-		modelNameParts := strings.Split(estimator, ".")
-		if len(modelNameParts) == 2 && modelNameParts[0] != "sqlflow_models" {
-			customModelPkg := modelNameParts[0]
-			fmt.Printf("adding %s\n", customModelPkg)
-			path, err = findPyModulePath(customModelPkg)
-			if err != nil {
-				return err
-			}
-			cmd = exec.Command("cp", "-r", path, ".")
-			cmd.Dir = cwd
-			if _, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("failed %s, %v", cmd, err)
-			}
-		}
-	}
-
-	cmd = exec.Command("tar", "czf", tarball, "./sqlflow_submitter", "./sqlflow_models", entryFile, "requirements.txt")
+	cmd := exec.Command("tar", "czf", tarball, "./sqlflow_submitter", "./sqlflow_models", entryFile, "requirements.txt")
 	cmd.Dir = cwd
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)

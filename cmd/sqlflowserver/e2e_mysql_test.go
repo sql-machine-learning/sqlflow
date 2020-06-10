@@ -191,10 +191,11 @@ INTO %s;`, caseTrainTable, caseInto)
 func CaseTrainWithCommaSeparatedLabel(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := `SELECT sepal_length, sepal_width, petal_length, concat(petal_width,',',class) as class FROM iris.train 
-TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel WITH
+TO TRAIN sqlflow_models.RNNBasedTimeSeriesModel WITH
 	model.n_in=3,
 	model.stack_units = [10, 10],
 	model.n_out=2,
+	model.model_type="lstm",
 	validation.metrics= "MeanAbsoluteError,MeanSquaredError"
 LABEL class
 INTO sqlflow_models.my_dnn_regts_model_2;`
@@ -354,11 +355,12 @@ LABEL class_id
 INTO sqlflow_models.my_dnn_model;`, // dnn text classification
 		`SELECT news_title, class_id
 FROM text_cn.train_processed
-TO TRAIN sqlflow_models.StackedBiLSTMClassifier
-WITH model.n_classes = 17, model.stack_units = [16], train.epoch = 1, train.batch_size = 32
+TO TRAIN sqlflow_models.StackedRNNClassifier
+WITH model.n_classes = 17, model.stack_units = [16], model.model_type = "lstm", model.bidirectional = True,
+	 train.epoch = 1, train.batch_size = 32
 COLUMN EMBEDDING(SEQ_CATEGORY_ID(news_title,1600,COMMA),128,mean)
 LABEL class_id
-INTO sqlflow_models.my_bilstm_model;`, // custom lstm model text classification
+INTO sqlflow_models.my_rnn_model;`, // custom rnn model text classification
 		`SELECT * FROM iris.train WHERE class!=2
 TO TRAIN BoostedTreesClassifier
 WITH

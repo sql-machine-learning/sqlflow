@@ -125,7 +125,7 @@ func TestTrainCodegen(t *testing.T) {
 	ossModelPath := "iris/sqlflow/my_dnn_model"
 	scriptPath := "file:///tmp/task.tar.gz"
 	paramsPath := "file:///tmp/params.txt"
-	paiTFCode, paiCmd, _, e := Train(trainStmt, sess, scriptPath, paramsPath, "my_dnn_model", ossModelPath, "")
+	paiTFCode, paiCmd, _, e := Train(trainStmt, sess, scriptPath, paramsPath, "my_dnn_model", ossModelPath, "", "")
 	a.NoError(e)
 
 	tfCode, err := tensorflow.Train(trainStmt, sess)

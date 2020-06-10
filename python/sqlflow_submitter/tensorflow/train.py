@@ -24,6 +24,7 @@ import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter.db import (connect_with_data_source, db_generator,
                                   parseMaxComputeDSN)
+from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -73,13 +74,8 @@ def train(datasource,
     sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
 
-    if isinstance(estimator, types.FunctionType):
-        is_estimator = False
-    else:
-        is_estimator = issubclass(
-            estimator,
-            (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-             tf.estimator.BoostedTreesRegressor))
+    is_estimator = is_tf_estimator(estimator)
+
     if is_pai and verbose < 1:  # always use verbose == 1 when using PAI to get more logs
         verbose = 1
     set_log_level(verbose, is_estimator)
