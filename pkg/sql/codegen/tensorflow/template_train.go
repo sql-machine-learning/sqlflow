@@ -16,20 +16,22 @@ package tensorflow
 import "sqlflow.org/sqlflow/pkg/ir"
 
 type trainFiller struct {
-	DataSource        string
-	TrainSelect       string
-	ValidationSelect  string
-	Estimator         string
-	FieldDescs        map[string][]*ir.FieldDesc
-	FeatureColumnCode string
-	Y                 *ir.FieldDesc
-	ModelParams       map[string]interface{}
-	TrainParams       map[string]interface{}
-	ValidationParams  map[string]interface{}
-	Save              string
-	IsPAI             bool
-	PAITrainTable     string
-	PAIValidateTable  string
+	DataSource          string
+	TrainSelect         string
+	ValidationSelect    string
+	Estimator           string
+	FieldDescs          map[string][]*ir.FieldDesc
+	FeatureColumnCode   string
+	Y                   *ir.FieldDesc
+	ModelParams         map[string]interface{}
+	TrainParams         map[string]interface{}
+	ValidationParams    map[string]interface{}
+	Save                string
+	OSSModelDirToLoad   string
+	LoadPreTrainedModel bool
+	IsPAI               bool
+	PAITrainTable       string
+	PAIValidateTable    string
 }
 
 const tfTrainTemplateText = `
@@ -133,6 +135,7 @@ train(datasource="{{.DataSource}}",
       validation_throttle_secs={{index .ValidationParams "throttle_secs" | attrToPythonValue}},
       save_checkpoints_steps={{index .TrainParams "save_checkpoints_steps" | attrToPythonValue}},
       log_every_n_iter={{index .TrainParams "log_every_n_iter" | attrToPythonValue}},
+      load_pretrained_model="{{.LoadPreTrainedModel}}" == "true",
       is_pai="{{.IsPAI}}" == "true",
       pai_table="{{.PAITrainTable}}",
       pai_val_table="{{.PAIValidateTable}}")

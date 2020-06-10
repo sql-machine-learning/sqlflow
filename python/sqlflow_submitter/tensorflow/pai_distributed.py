@@ -24,6 +24,10 @@ from sqlflow_submitter.seeding import get_tf_random_seed
 
 
 def define_tf_flags():
+    # NOTE: make sure that tf.app.flags.FLAGS is only defined once
+    if hasattr(tf.app.flags.FLAGS, "task_index"):
+        return tf.app.flags.FLAGS
+
     tf.app.flags.DEFINE_integer("task_index", 0, "Worker task index")
     tf.app.flags.DEFINE_string("ps_hosts", "", "ps hosts")
     tf.app.flags.DEFINE_string("worker_hosts", "", "worker hosts")
@@ -41,8 +45,7 @@ def define_tf_flags():
     tf.app.flags.DEFINE_string("sqlflow_oss_modeldir", "",
                                "oss model dir, where the model will be saved")
 
-    FLAGS = tf.app.flags.FLAGS
-    return FLAGS
+    return tf.app.flags.FLAGS
 
 
 def set_oss_environs(FLAGS):
