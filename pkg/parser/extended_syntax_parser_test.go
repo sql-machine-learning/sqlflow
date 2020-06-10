@@ -15,7 +15,7 @@
 package parser
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -250,49 +250,73 @@ func TestExtendedSyntaxParseToRun(t *testing.T) {
 	{
 		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0;`
 		r, idx, e := parseSQLFlowStmt(testToRun)
-		a.Equal(nil, e)
+		a.NoError(e)
 		a.True(r.Extended)
 		a.True(r.Run)
 		a.Equal(`a_data_scientist/ts_data_processor:1.0`, r.ImageName)
-		fmt.Println(r.Parameters)
-		// a.Equal(``, r.Parameters)
+		a.Equal(len(r.Parameters), 0)
+		a.Equal(len(r.OutputTables), 0)
 		a.Equal(len(testToRun), idx)
 	}
 
 	{
 		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
-CMD "abc";`
+CMD "slide_window_to_row";`
 		r, idx, e := parseSQLFlowStmt(testToRun)
-		a.Equal(nil, e)
+		a.NoError(e)
 		a.True(r.Run)
+		a.True(reflect.DeepEqual(r.Parameters, []string {`slide_window_to_row`}))
+		a.Equal(len(r.OutputTables), 0)
 		a.Equal(len(testToRun), idx)
 	}
 
 	{
 		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
-CMD "abc"
+CMD "slide_window_to_row"
 INTO output_table;`
 		r, idx, e := parseSQLFlowStmt(testToRun)
-		a.Equal(nil, e)
+		a.NoError(e)
 		a.True(r.Run)
-		fmt.Println(r.Parameters)
-		fmt.Println(r.OutputTables)
-		// a.Equal(`abc`, r.Parameters)
-		// a.Equal(`output_table`, r.OutputTables)
+		a.True(reflect.DeepEqual(
+			r.Parameters,
+			[]string {`slide_window_to_row`}))
+		a.True(reflect.DeepEqual(r.OutputTables, []string {`output_table`}))
 		a.Equal(len(testToRun), idx)
 	}
 
 	{
 		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
-CMD "abc"
+CMD "slide_window_to_row"
 INTO output_table_1, output_table_2;`
 		r, idx, e := parseSQLFlowStmt(testToRun)
-		a.Equal(nil, e)
+		a.NoError(e)
 		a.True(r.Run)
-		fmt.Println(r.Parameters)
-		fmt.Println(r.OutputTables)
-		// a.Equal(`abc`, r.Parameters)
-		// a.Equal(`output_table`, r.OutputTables)
+		a.True(reflect.DeepEqual(
+			r.Parameters,
+			[]string {`slide_window_to_row`}))
+		a.True(reflect.DeepEqual(
+			r.OutputTables,
+			[]string {`output_table_1`, `output_table_2`}))
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row", "--param_a=value_a", "--param_b=value_b"
+INTO output_table_1, output_table_2;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.NoError(e)
+		a.True(r.Run)
+		a.True(reflect.DeepEqual(
+			r.Parameters,
+			[]string {
+				`slide_window_to_row`,
+				`--param_a=value_a`,
+				`--param_b=value_b`
+			}))
+		a.True(reflect.DeepEqual(
+			r.OutputTables,
+			[]string {`output_table_1`, `output_table_2`}))
 		a.Equal(len(testToRun), idx)
 	}
 }
