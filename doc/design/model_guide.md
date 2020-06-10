@@ -1,8 +1,8 @@
-# SQLFlow Model Zoo User Guide
+# SQLFlow Models User Guide
 
 There are various models in SQLFlow Model Zoo, and as the number of SQLFlow users increases,
 an important question for users raised -- **How can I choice a model and how can I use it**.
-This design provides an outline of the model zoo guide to help users choose a model and use it in his/her business scene.
+This design provides an outline of the model user guide to help users choose a model and use it in his/her business scene.
 
 ## Model Categories
 
