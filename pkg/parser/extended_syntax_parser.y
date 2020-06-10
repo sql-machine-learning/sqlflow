@@ -113,9 +113,9 @@ type EvaluateClause struct {
 }
 
 type RunClause struct {
-	ImageName		string
-	Parameters		[]string
-	OutputTables	[]string
+	ImageName       string
+	Parameters      []string
+	OutputTables    []string
 }
 
 type ShowTrainClause struct {
