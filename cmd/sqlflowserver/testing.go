@@ -196,6 +196,8 @@ func prepareTestData(dbStr string) error {
 		return e
 	}
 
+	defer testDB.Close()
+
 	db := os.Getenv("SQLFLOW_TEST_DB")
 	if db != "maxcompute" && db != "alisa" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
