@@ -95,7 +95,11 @@ func prepareTestDataOrSkip(t *testing.T) error {
 	// disable sixel
 	it2Check = false
 	assertConnectable(serverAddr, dbConnStr)
-	testDB, _ := database.OpenAndConnectDB(dbConnStr)
+	testDB, err := database.OpenAndConnectDB(dbConnStr)
+	if err != nil {
+		return err
+	}
+	defer testDB.Close()
 	if testDBDriver == "mysql" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		if e != nil {

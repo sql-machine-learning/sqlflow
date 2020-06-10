@@ -91,6 +91,7 @@ func GetTestingMySQLURL() string {
 func createTestingMySQLDB() *DB {
 	db, e := OpenAndConnectDB(GetTestingMySQLURL())
 	assertNoErr(e)
+	defer db.Close()
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisSQL))
@@ -109,6 +110,7 @@ func testingHiveURL() string {
 func createTestingHiveDB() *DB {
 	db, e := OpenAndConnectDB(testingHiveURL())
 	assertNoErr(e)
+	defer db.Close()
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
 	assertNoErr(testdata.Popularize(db.DB, testdata.IrisHiveSQL))
