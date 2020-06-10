@@ -22,6 +22,7 @@ import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter import db
 from sqlflow_submitter.pai import model
+from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -289,10 +290,8 @@ def pred(datasource,
         conn = db.connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
-    is_estimator = issubclass(
-        estimator,
-        (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-         tf.estimator.BoostedTreesRegressor))
+    is_estimator = is_tf_estimator(estimator)
+
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter

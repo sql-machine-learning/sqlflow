@@ -18,6 +18,7 @@ import types
 import sqlflow_submitter
 import tensorflow as tf
 from sqlflow_submitter.db import buffered_db_writer, connect_with_data_source
+from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -59,13 +60,7 @@ def evaluate(datasource,
     sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
 
-    if isinstance(estimator_cls, types.FunctionType):
-        is_estimator = False
-    else:
-        is_estimator = issubclass(
-            estimator_cls,
-            (tf.estimator.Estimator, tf.estimator.BoostedTreesClassifier,
-             tf.estimator.BoostedTreesRegressor))
+    is_estimator = is_tf_estimator(estimator_cls)
 
     set_log_level(verbose, is_estimator)
 
