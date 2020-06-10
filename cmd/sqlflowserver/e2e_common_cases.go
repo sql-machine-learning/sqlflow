@@ -615,7 +615,9 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 		caseTensorFlowIncrementalTrainImpl(t, "DNNClassifier", isPai)
 	})
 
-	t.Run("CaseTensorFlowIncrementalTrainKeras", func(t *testing.T) {
-		caseTensorFlowIncrementalTrainImpl(t, "sqlflow_models.DNNClassifier", isPai)
-	})
+	if !isPai {
+		t.Run("CaseTensorFlowIncrementalTrainKeras", func(t *testing.T) {
+			caseTensorFlowIncrementalTrainImpl(t, "sqlflow_models.DNNClassifier", isPai)
+		})
+	}
 }

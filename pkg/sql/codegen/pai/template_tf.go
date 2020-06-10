@@ -13,10 +13,6 @@
 
 package pai
 
-import (
-	"fmt"
-)
-
 type saveModelFiller struct {
 	OSSModelDir string
 	Estimator   string
@@ -76,11 +72,10 @@ try:
 	from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 except:
 	pass # PAI is not always needed
+
 `
 
-var tfLoadModelTmplText = fmt.Sprintf(`
-%s
-
+const tfLoadModelTmplText = tfImportsText + `
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
@@ -95,11 +90,10 @@ if is_estimator:
     model.load_dir("{{.OSSModelDir}}/model_save")
 else:
     model.load_file("{{.OSSModelDir}}", "model_save")
-`, tfImportsText)
+`
 
-var tfSaveModelTmplText = fmt.Sprintf(`
+const tfSaveModelTmplText = tfImportsText + `
 import types
-%s
 
 estimator = {{.Estimator}}
 is_estimator = is_tf_estimator(estimator)
@@ -130,7 +124,7 @@ model.save_metas("{{.OSSModelDir}}",
            label_meta,
            model_params,
            feature_columns_code)
-`, tfImportsText)
+`
 
 const paiRequirementsTmplText = `
 adanet==0.8.0
@@ -147,11 +141,10 @@ sklearn2pmml==0.56.0
 {{end}}
 `
 
-var tfPredictTmplText = fmt.Sprintf(`
+const tfPredictTmplText = tfImportsText + `
 import os
 import types
 from sqlflow_submitter.tensorflow import predict
-%s
 
 try:
     import sqlflow_models
@@ -203,9 +196,9 @@ predict.pred(datasource="{{.DataSource}}",
              batch_size=1,
              is_pai="{{.IsPAI}}" == "true",
              pai_table="{{.PAITable}}")
-`, tfImportsText)
+`
 
-var tfExplainTmplText = fmt.Sprintf(`
+const tfExplainTmplText = tfImportsText + `
 import os
 import matplotlib
 if os.environ.get('DISPLAY', '') == '':
@@ -216,7 +209,6 @@ import json
 import types
 import sys
 from sqlflow_submitter.tensorflow import explain
-%s
 
 try:
     tf.enable_eager_execution()
@@ -268,9 +260,9 @@ explain.explain(datasource="{{.DataSource}}",
                 oss_sk='''{{.ResultOSSSK}}''',
                 oss_endpoint='''{{.ResultOSSEndpoint}}''',
                 oss_bucket_name='''{{.ResultOSSBucket}}''')
-`, tfImportsText)
+`
 
-var tfEvaluateTmplText = fmt.Sprintf(`
+const tfEvaluateTmplText = tfImportsText + `
 import os
 import matplotlib
 if os.environ.get('DISPLAY', '') == '':
@@ -281,7 +273,6 @@ import json
 import types
 import sys
 from sqlflow_submitter.tensorflow import evaluate
-%s
 
 try:
     tf.enable_eager_execution()
@@ -331,4 +322,4 @@ evaluate.evaluate(datasource="{{.DataSource}}",
                   verbose=0,
                   is_pai="{{.IsPAI}}" == "true",
                   pai_table="{{.PAITable}}")
-`, tfImportsText)
+`

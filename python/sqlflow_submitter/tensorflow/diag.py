@@ -15,6 +15,8 @@ import inspect
 import os
 import re
 
+from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
+
 
 class SQLFlowDiagnostic(Exception):
     pass
@@ -29,8 +31,18 @@ def check_and_load_estimator(estimator, model_params, warm_start_from=None):
         warm_start_from_key = "warm_start_from"
         if estimator_spec.keywords is not None or warm_start_from_key in estimator_spec.args:
             model_params = copy.copy(model_params)
-            model_params[warm_start_from_key] = os.path.abspath(
-                warm_start_from)
+            warm_start_from = os.path.abspath(warm_start_from)
+
+            if is_tf_estimator(estimator):
+                with open("exported_path", "r") as fid:
+                    exported_path = str(fid.read())
+
+                exported_path = os.path.abspath(exported_path)
+                assert exported_path.startswith(
+                    warm_start_from), "The exported path is incorrect"
+                warm_start_from = exported_path
+
+            model_params[warm_start_from_key] = warm_start_from
         else:
             raise NotImplementedError(
                 "Incremental training is not supported in {}".format(
