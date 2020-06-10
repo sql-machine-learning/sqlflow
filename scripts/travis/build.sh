@@ -56,7 +56,7 @@ function build_sqlflow_image() {
     fi
 }
 
-# Build SQLFlow componenets image
+# Build SQLFlow componenets Docker images
 build_sqlflow_image server
 build_sqlflow_image mysql
 build_sqlflow_image jupyter
