@@ -403,6 +403,7 @@ stringlist
 identlist
 : IDENT                  { $$ = []string{$1}}
 | identlist ',' IDENT    { $$ = append($1, $3) }
+;
 
 expr
 : NUMBER         { $$ = atomic(NUMBER, $1) }
