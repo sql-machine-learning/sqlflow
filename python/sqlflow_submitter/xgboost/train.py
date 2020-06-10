@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import json
+import os
 import sys
 
 import six
@@ -35,6 +36,7 @@ def dist_train(flags,
                disk_cache=False,
                batch_size=None,
                epoch=1,
+               load_pretrained_model=False,
                is_pai=False,
                pai_train_table="",
                pai_validate_table="",
@@ -81,6 +83,7 @@ def dist_train(flags,
                   disk_cache,
                   batch_size,
                   epoch,
+                  load_pretrained_model,
                   is_pai,
                   pai_train_table,
                   pai_validate_table,
@@ -110,6 +113,7 @@ def train(datasource,
           disk_cache=False,
           batch_size=None,
           epoch=1,
+          load_pretrained_model=False,
           is_pai=False,
           pai_train_table="",
           pai_validate_table="",
@@ -150,7 +154,14 @@ def train(datasource,
                         nworkers=nworkers,
                         transform_fn=transform_fn,
                         feature_column_code=feature_column_code))[0]
-    bst = None
+
+    filename = "my_model"
+    if load_pretrained_model:
+        bst = xgb.Booster()
+        bst.load_model(filename)
+    else:
+        bst = None
+
     for per_batch_dmatrix in dtrain:
         watchlist = [(per_batch_dmatrix, "train")]
         if len(validation_select.strip()) > 0:
@@ -166,7 +177,6 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        filename = "my_model"
         save_model_to_local_file(bst, model_params, filename)
 
         if is_pai and len(oss_model_dir) > 0:
