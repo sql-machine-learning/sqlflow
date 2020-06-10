@@ -16,7 +16,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,7 +87,7 @@ func releaseModel(opts *options) error {
 	request := &pb.ReleaseModelRequest{
 		Name: nameParts[len(nameParts)-1],
 		Tag:  opts.Version,
-		// (TODO: lhw) add following fields form model
+		// (TODO: lhw) add following fields from model
 		Description:       "",
 		EvaluationMetrics: "",
 		ModelClassName:    "MyDNNClassifier",
@@ -160,16 +160,29 @@ func releaseRepo(opts *options) error {
 	if err != nil {
 		return err
 	}
-	buf, err := ioutil.ReadFile(tarFile)
+
+	file, err := os.Open(tarFile)
 	if err != nil {
 		return err
 	}
-	req := &pb.ReleaseModelRepoRequest{
-		Name:       opts.RepoName,
-		Tag:        opts.Version,
-		ContentTar: buf,
+	defer file.Close()
+
+	buf := make([]byte, 1024*32)
+	for {
+		size, e := file.Read(buf)
+		if e == io.EOF {
+			break
+		} else if e != nil {
+			return e
+		}
+		req := &pb.ReleaseModelRepoRequest{
+			Name:       opts.RepoName,
+			Tag:        opts.Version,
+			ContentTar: buf[:size],
+		}
+		stream.Send(req)
 	}
-	stream.Send(req)
+
 	resp, err := stream.CloseAndRecv()
 	if err != nil {
 		return err
