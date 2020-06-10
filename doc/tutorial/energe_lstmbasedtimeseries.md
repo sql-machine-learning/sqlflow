@@ -1,4 +1,4 @@
-# LSTMBasedTimeSeriesModel on SQLFlow Tutorial
+# Time Series Model on SQLFlow Tutorial
 
 This is a tutorial on how to apply a Time Series Model on [energy dataset]( https://www.dropbox.com/s/pqenrr2mcvl0hk9/GEFCom2014.zip?dl=0). 
 
@@ -10,7 +10,7 @@ In this notebook, we will demonstrate how to:
   - Data scaling
   - Reconstruct series data
   - Split the raw data into the train set and test set
-- Train an LSTMBasedTimeSeriesModel on the dataset.
+- Train an time-series model using the dataset.
 - Predict one or more time-step ahead electricity load data, using historical load data only. 
 
 ## PART 1  Prepare Data
@@ -155,7 +155,7 @@ select * from energy.con_all limit 1976, 2196;
 
 ## PART 2  Train Model
 
-First, let's train an LSTMBasedTimeSeriesModel to fit the energy dataset. the inputs of this model are the dataset have length 10 (`n_in`)series and the output is a 4 (`n_out`) time-steps data.
+First, let's train an RNNBasedTimeSeriesModel to fit the energy dataset. the inputs of this model are the dataset have length 10 (`n_in`)series and the output is a 4 (`n_out`) time-steps data.
 
 Due to the output of this task is multi-outputs, we concatenate the target cols into a column. If the output data is one time-step(`n_out=1`), we would do not need the concatenate.The standard SQL statements for specifying the training data like:
 
@@ -168,11 +168,12 @@ FROM energy.train
 We can also set the hidden units(`stack_units`) of the LSTM layer and the validation dataset (`validation.select`) and validation function during the train. At the same time, we can set the training parameter like batch_size, verbose, epoch. This can be done by specifying the training clause for SQLFlow's extended syntax.
 
 ```text
-TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel 
+TO TRAIN sqlflow_models.RNNBasedTimeSeriesModel 
 WITH
   model.n_in=10,
   model.stack_units = [500, 500],
   model.n_out=4,
+  model.model_type="lstm",
   validation.select = "SELECT col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8, col_9,col_10,
   concat(col_11,\",\", col_12,\",\",col_13,\",\", energy) as class FROM energy.val",
   train.batch_size=10,
@@ -195,11 +196,12 @@ Putting it all together, we have the SQLFlow training statement.
 SELECT col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8, col_9,col_10,
 concat(col_11,',', col_12,',', col_13,',', energy) as class 
 FROM energy.train
-TO TRAIN sqlflow_models.LSTMBasedTimeSeriesModel 
+TO TRAIN sqlflow_models.RNNBasedTimeSeriesModel 
 WITH
   model.n_in=10,
   model.stack_units = [500, 500],
   model.n_out=4,
+  model.model_type="lstm",
   validation.select = "SELECT col_1, col_2, col_3, col_4, col_5, col_6, col_7, col_8, 
   col_9,col_10,concat(col_11,\",\", col_12,\",\",col_13,\",\", energy) as class 
   FROM energy.val",
