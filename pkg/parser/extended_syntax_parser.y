@@ -57,13 +57,14 @@ func variadic(typ int, op string, ods ExprList) *Expr {
 }
 
 type SQLFlowSelectStmt struct {
-	Extended bool
-	Train    bool
-	Predict  bool
-	Explain  bool
-	Evaluate bool
-	Optimize    bool
+	Extended  bool
+	Train     bool
+	Predict   bool
+	Explain   bool
+	Evaluate  bool
+	Optimize  bool
 	ShowTrain bool
+
 	StandardSelect
 	TrainClause
 	PredictClause
