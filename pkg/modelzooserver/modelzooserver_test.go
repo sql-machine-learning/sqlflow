@@ -35,7 +35,7 @@ func mockTmpModelRepo() (string, error) {
 		return "", err
 	}
 	modelRepoDir := fmt.Sprintf("%s/my_test_models", dir)
-	if err := os.Mkdir(modelRepoDir, os.ModeDir); err != nil {
+	if err := os.Mkdir(modelRepoDir, 0755); err != nil {
 		return "", err
 	}
 
@@ -93,7 +93,9 @@ func TestModelZooServer(t *testing.T) {
 		a.NoError(err)
 
 		reply, err := stream.CloseAndRecv()
-		a.NoError(err)
+		if err != nil {
+			a.FailNow("%v", err)
+		}
 		a.Equal(true, reply.Success)
 
 		err = os.Chdir(cwd)

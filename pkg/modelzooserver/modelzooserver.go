@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -190,7 +191,12 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	reqName := ""
 	reqTag := ""
 
-	fd, err := os.Create("servergot.tar.gz")
+	dir, err := ioutil.TempDir("/tmp", "sqlflow-zoo-repo")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	fd, err := os.Create(fmt.Sprintf("%s/servergot.tar.gz", dir))
 	if err != nil {
 		return err
 	}
@@ -220,17 +226,15 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	if totalSize <= 0 {
 		return fmt.Errorf("no model repo content uploaded")
 	}
-	if err := os.Mkdir("modelrepo", os.ModeDir); err != nil {
+	modelExtractDir := fmt.Sprintf("%s/modelrepo", dir)
+	if err := os.Mkdir(modelExtractDir, 0755); err != nil {
 		return err
 	}
-	if err := tar.UnzipDir("servergot.tar.gz", "./modelrepo"); err != nil {
+	if err := tar.UnzipDir(fmt.Sprintf("%s/servergot.tar.gz", dir), modelExtractDir); err != nil {
 		return err
 	}
 
-	defer os.RemoveAll("./modelrepo")
-	defer os.Remove("servergot.tar.gz")
-
-	modelDescs, err := getModelClasses("./modelrepo")
+	modelDescs, err := getModelClasses(modelExtractDir)
 	if len(modelDescs) == 0 {
 		return fmt.Errorf("no model classes detected")
 	}
@@ -241,7 +245,7 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		// do not push images when testing on CI
 		dryrun = true
 	}
-	if err := buildAndPushImage("./modelrepo", reqName, reqTag, dryrun); err != nil {
+	if err := buildAndPushImage(modelExtractDir, reqName, reqTag, dryrun); err != nil {
 		return err
 	}
 
