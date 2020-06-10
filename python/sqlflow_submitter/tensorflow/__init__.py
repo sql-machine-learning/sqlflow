@@ -11,4 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_submitter.tensorflow.get_tf_model_type import *
+from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
