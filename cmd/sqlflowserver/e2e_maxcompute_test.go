@@ -57,5 +57,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 
 	t.Run("TestTrainSQL", caseTrainSQL)
 
-	CaseXGBoostFeatureColumn(t, true)
+	caseTensorFlowIncrementalTrain(t, true)
+
+	caseXGBoostFeatureColumn(t, true)
 }

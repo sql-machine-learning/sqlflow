@@ -318,20 +318,21 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 
 	filler := trainFiller{
-		DataSource:        session.DbConnStr,
-		TrainSelect:       trainStmt.Select,
-		ValidationSelect:  trainStmt.ValidationSelect,
-		Estimator:         trainStmt.Estimator,
-		FieldDescs:        fieldDescs,
-		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 trainStmt.Label.GetFieldDesc()[0], // TODO(typhoonzero): label only support numericColumn.
-		ModelParams:       modelParams,
-		TrainParams:       trainParams,
-		ValidationParams:  validateParams,
-		Save:              "model_save",
-		IsPAI:             IsPAI(),
-		PAITrainTable:     paiTrainTable,
-		PAIValidateTable:  paiValidateTable,
+		DataSource:          session.DbConnStr,
+		TrainSelect:         trainStmt.Select,
+		ValidationSelect:    trainStmt.ValidationSelect,
+		Estimator:           trainStmt.Estimator,
+		FieldDescs:          fieldDescs,
+		FeatureColumnCode:   fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
+		Y:                   trainStmt.Label.GetFieldDesc()[0], // TODO(typhoonzero): label only support numericColumn.
+		ModelParams:         modelParams,
+		TrainParams:         trainParams,
+		ValidationParams:    validateParams,
+		Save:                "model_save",
+		LoadPreTrainedModel: trainStmt.PreTrainedModel != "",
+		IsPAI:               IsPAI(),
+		PAITrainTable:       paiTrainTable,
+		PAIValidateTable:    paiValidateTable,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
