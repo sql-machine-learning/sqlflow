@@ -162,6 +162,7 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 	// read trained model in sqlflow_models.modelzoo_model_iris
 	db, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
 	a.NoError(err)
+	defer db.Close()
 	sqlf, err := sqlfs.Open(db.DB, "sqlflow_models.modelzoo_model_iris")
 	a.NoError(err)
 	defer sqlf.Close()

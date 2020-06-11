@@ -12,6 +12,7 @@ require (
 	github.com/beltran/gohive v1.0.0 // indirect
 	github.com/c-bata/go-prompt v0.0.0-20190826134812-0f95e1d1de2e
 	github.com/cosiner/argv v0.0.1 // indirect
+	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-delve/delve v1.3.2 // indirect
 	github.com/go-openapi/spec v0.19.5 // indirect

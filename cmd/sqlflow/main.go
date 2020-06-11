@@ -39,6 +39,8 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/tablewriter"
+
+	docopt "github.com/docopt/docopt-go"
 )
 
 const tablePageSize = 1000
@@ -51,6 +53,48 @@ const dotEnvFilename string = ".sqlflow_env"
 
 // if we are on sixel supported platform, assumed to be true for now
 var it2Check = true
+
+const usage = `SQLFlow Command-line Tool.
+
+Usage:
+    sqlflow [options] [run] [-e <program> -f <file>]
+    sqlflow [options] release repo [--force] <repo_dir> <repo_name> <version>
+    sqlflow [options] release model [--force] <model_name> <version>
+    sqlflow [options] delete repo <repo_name> <version>
+    sqlflow [options] delete model <model_name> <version>
+
+Options:
+    -v, --version                   	print the version and exit
+    -h, --help                      	print this screen
+    -c, --cert-file=<file>          	cert file to connect SQLFlow or Model Zoo server
+        --env-file=<file>           	config file in KEY=VAL format
+    -s, --sqlflow-server=<addr>     	SQLFlow server address and port, e.g localhost:50051
+    -m, --model-zoo-server=<addr>   	Model Zoo server address and port
+    -d, --data-source=<data_source>     data source to use when run or release model
+
+Run Options:
+    -e, --execute=<program>           execute given program
+    -f, --file=<file>                 execute program in file
+
+Release Options:
+		--force                  force overwrite existing model`
+
+type options struct {
+	CertFile, EnvFile string
+	SQLFlowServer     string `docopt:"--sqlflow-server"`
+	ModelZooServer    string `docopt:"--model-zoo-server"`
+	DataSource        string
+	Execute           string
+	Run               bool
+	File              string
+	Delete, Release   bool
+	Repo, Model       bool
+	Force             bool
+	RepoDir           string `docopt:"<repo_dir>"`
+	RepoName          string `docopt:"<repo_name>"`
+	ModelName         string `docopt:"<model_name>"`
+	Version           string `docopt:"<version>"`
+}
 
 func isSpace(c byte) bool {
 	return len(bytes.TrimSpace([]byte{c})) == 0
@@ -322,30 +366,21 @@ func initEnvFromFile(f string) {
 	_ = godotenv.Load(f)
 }
 
-func main() {
-	initEnvFromFile(filepath.Join(os.Getenv("HOME"), dotEnvFilename))
-	serverAddr := flag.String("sqlflow_server", "", "SQLFlow server address, in host:port form. You can set it from environment variable SQLFLOW_SERVER")
-	ds := flag.String("datasource", "", "database connect string")
-	cliStmt := flag.String("execute", "", "execute SQLFlow from command line.  e.g. --execute 'select * from table1'")
-	flag.StringVar(cliStmt, "e", "", "execute SQLFlow from command line, short for --execute")
-	sqlFileName := flag.String("file", "", "execute SQLFlow from file.  e.g. --file '~/iris_dnn.sql'")
-	flag.StringVar(sqlFileName, "f", "", "execute SQLFlow from file, short for --file")
-	noAutoCompletion := flag.Bool("A", false, "No auto completion for sqlflow models. This gives a quicker start.")
-	flag.Parse()
-	if *serverAddr == "" {
-		*serverAddr = os.Getenv("SQLFLOW_SERVER")
+func runSQLFlowClient(opts *options) error {
+	if opts.SQLFlowServer == "" {
+		opts.SQLFlowServer = os.Getenv("SQLFLOW_SERVER")
 	}
-	if *serverAddr == "" {
-		log.Fatal("SQLFlow server address is not provided.")
+	if opts.SQLFlowServer == "" {
+		return fmt.Errorf("SQLFlow server address is not provided")
 	}
-	if *ds == "" {
-		*ds = os.Getenv("SQLFLOW_DATASOURCE")
+	if opts.DataSource == "" {
+		opts.DataSource = os.Getenv("SQLFLOW_DATASOURCE")
 	}
-	assertConnectable(*serverAddr, *ds) // Fast fail if we can't connect to the datasource
+	assertConnectable(opts.SQLFlowServer, opts.DataSource) // Fast fail if we can't connect to the datasource
 	var err error
-	currentDB, err = database.GetDatabaseName(*ds)
+	currentDB, err = database.GetDatabaseName(opts.DataSource)
 	if err != nil {
-		log.Fatalf("error SQLFLOW_DATASOURCE: %v", err)
+		return err
 	}
 
 	// You might want to use syscall.Stdin instead of 0; however,
@@ -353,34 +388,72 @@ func main() {
 	// a special implementation for Windows, where the type of
 	// syscall.Stdin is not int as in Linux and macOS, but
 	// uintptr.
-	isTerminal := !flagPassed("execute", "e", "file", "f") &&
-		terminal.IsTerminal(0)
+	isTerminal := opts.File == "" && opts.Execute == "" && terminal.IsTerminal(0)
 	sqlFile := os.Stdin
 
-	if flagPassed("file", "f") && *sqlFileName != "-" {
-		sqlFile, err = os.Open(*sqlFileName)
+	if opts.File != "" && opts.File != "-" {
+		sqlFile, err = os.Open(opts.File)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		defer sqlFile.Close()
 	}
 	var reader io.Reader = sqlFile
 	// Override stdin and file when the `-e|-execute' options are present.
-	if flagPassed("execute", "e") {
-		reader = strings.NewReader(strings.TrimSpace(*cliStmt))
+	if opts.Execute != "" {
+		reader = strings.NewReader(strings.TrimSpace(opts.Execute))
 	}
 	scanner := bufio.NewScanner(reader)
 	if isTerminal {
 		if !it2Check {
 			fmt.Println("The terminal doesn't support sixel, explanation statements will show ASCII figures.")
 		}
-		if !*noAutoCompletion {
-			// TODO(lorylin): get autocomplete dicts for sqlflow_models from sqlflow_server
-		}
+		// TODO(lorylin): get autocomplete dicts for sqlflow_models from sqlflow_server
 		runPrompt(func(stmt string) {
-			runStmt(*serverAddr, stmt, true, *ds)
+			runStmt(opts.SQLFlowServer, stmt, true, opts.DataSource)
 		})
 	} else {
-		repl(*serverAddr, scanner, *ds)
+		repl(opts.SQLFlowServer, scanner, opts.DataSource)
 	}
+	return nil
+}
+
+func processOptions(opts *options) {
+	var err error
+	switch {
+	case opts.Run:
+		err = runSQLFlowClient(opts)
+	case opts.Release && opts.Model:
+		err = releaseModel(opts)
+	case opts.Release && opts.Repo:
+		err = releaseRepo(opts)
+	case opts.Delete && opts.Model:
+		err = deleteModel(opts)
+	case opts.Delete && opts.Repo:
+		err = deleteRepo(opts)
+	default:
+		err = runSQLFlowClient(opts)
+	}
+	if err != nil {
+		log.Printf("Failed due to %v", err)
+	}
+}
+
+func main() {
+	opts, err := docopt.ParseArgs(usage, nil, "1.0.0")
+	if err != nil {
+		log.Fatal(err)
+	}
+	optionData := &options{}
+	if err := opts.Bind(optionData); err != nil {
+		log.Fatal(err)
+	}
+	var envFilePath string
+	if optionData.EnvFile != "" {
+		envFilePath = optionData.EnvFile
+	} else {
+		envFilePath = filepath.Join(os.Getenv("HOME"), dotEnvFilename)
+	}
+	initEnvFromFile(envFilePath)
+	processOptions(optionData)
 }
