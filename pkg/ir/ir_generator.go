@@ -21,8 +21,7 @@ import (
 
 // GenerateStatement generates a `pb.Statement` from `parser.SQLFlowSelectStmt`
 func GenerateStatement(sql *parser.SQLFlowStmt) (*pb.Statement, error) {
-	stmt := &pb.Statement{}
-	stmt.OriginalSql = sql.Original
+	stmt := &pb.Statement{OriginalSql: sql.Original}
 	slct := sql.SQLFlowSelectStmt
 	if slct == nil || !slct.Extended {
 		stmt.Type = pb.Statement_QUERY
@@ -33,58 +32,52 @@ func GenerateStatement(sql *parser.SQLFlowStmt) (*pb.Statement, error) {
 	stmt.Columns = map[string]*pb.Statement_Columns{}
 	stmt.Select = slct.StandardSelect.String()
 	if slct.Train {
-		tc := slct.TrainClause
 		stmt.Type = pb.Statement_TRAIN
-		modelURI := tc.Estimator
+		modelURI := slct.Estimator
 		// get model Docker image name
 		modelParts := strings.Split(modelURI, "/")
 		modelImageName := strings.Join(modelParts[0:len(modelParts)-1], "/")
 		modelName := modelParts[len(modelParts)-1]
-		stmt.Attributes = map[string]string{}
-		for k, v := range tc.TrainAttrs {
+		for k, v := range slct.TrainAttrs {
 			stmt.Attributes[k] = v.String()
 		}
-		for k, v := range tc.Columns {
+		for k, v := range slct.Columns {
 			stmt.Columns[k] = &pb.Statement_Columns{}
 			for _, expr := range v {
 				stmt.Columns[k].Columns = append(stmt.Columns[k].Columns, expr.String())
 			}
 		}
-		stmt.Label = tc.Label
+		stmt.Label = slct.Label
 		stmt.Estimator = modelName
 		stmt.ModelImage = modelImageName
 		stmt.ModelSave = slct.Save
+		stmt.TrainedModel = slct.TrainUsing
 	} else if slct.Predict {
-		c := slct.PredictClause
 		stmt.Type = pb.Statement_PREDICT
-		stmt.Attributes = map[string]string{}
-		for k, v := range c.PredAttrs {
+		for k, v := range slct.PredAttrs {
 			stmt.Attributes[k] = v.String()
 		}
-		stmt.Target = c.Into
-		stmt.ModelSave = c.Model
+		stmt.Target = slct.Into
+		stmt.ModelSave = slct.Model
 	} else if slct.Explain {
-		c := slct.ExplainClause
 		stmt.Type = pb.Statement_EXPLAIN
-		stmt.Attributes = map[string]string{}
-		for k, v := range c.ExplainAttrs {
+		for k, v := range slct.ExplainAttrs {
 			stmt.Attributes[k] = v.String()
 		}
-		stmt.Target = c.ExplainInto
-		stmt.ModelSave = c.TrainedModel
+		stmt.Target = slct.ExplainInto
+		stmt.ModelSave = slct.TrainedModel
 	} else if slct.Evaluate {
-		c := slct.EvaluateClause
 		stmt.Type = pb.Statement_EVALUATE
-		stmt.Attributes = map[string]string{}
-		for k, v := range c.EvaluateAttrs {
+		for k, v := range slct.EvaluateAttrs {
 			stmt.Attributes[k] = v.String()
 		}
-		stmt.Target = c.EvaluateInto
-		stmt.ModelSave = c.ModelToEvaluate
+		stmt.Target = slct.EvaluateInto
+		stmt.ModelSave = slct.ModelToEvaluate
+	} else if slct.Optimize {
+		stmt.Type = pb.Statement_OPTIMIZE
 	} else if slct.ShowTrain {
-		c := slct.ShowTrainClause
 		stmt.Type = pb.Statement_SHOW
-		stmt.ModelSave = c.ModelName
+		stmt.ModelSave = slct.ModelName
 	}
 	return stmt, nil
 }

@@ -29,7 +29,7 @@ message Statement {
   // `columns` as ["NUMERIC(sepal_length)", "INDICATOR(ID)"]
     repeated string columns = 1;
   }
-  // `columns` contain a map of string to `Columns` For multiple COLUMN clauses
+  // `columns` contain a map of string to `Columns` for multiple COLUMN clauses
   // like "COLUMN ... FOR deep_feature, COLUMN ... FOR wide_feature". They will
   // be parsed as {"deep_feature": [...], "wide_feature": [...]}. For single
   // column clause like "column ...", "feature_columns" will be used as the
@@ -44,13 +44,16 @@ message Statement {
     PREDICT = 3;
     EXPLAIN = 4;
     EVALUATE = 5;
-    SOLVE = 6;
+    OPTIMIZE = 6;
 	SHOW = 7;
   }
   Type type = 10;
   // `target` specifies the table/column to store predict/explain result.
   // For example: "iris.predict.class"
   string target = 11;
+  // `trained_model` is used in incremental training (TO TRAIN ... USING `trained_model`)
+  // and have the same format as `model_save`
+  string trained_model = 12;
   // `original_sql` is the original statement from that this `Statement` is
   // generated. This can be for diagnostic purpose.
   string original_sql = 100;
