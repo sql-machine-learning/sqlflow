@@ -216,7 +216,7 @@ func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 
 }
 
-func TestExtendedSyntaxMathProg(t *testing.T) {
+func TestExtendedSyntaxOptimize(t *testing.T) {
 	a := assert.New(t)
 	s := `TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
 CONSTRAINT SUM(finishing * product) <= 100,
@@ -227,18 +227,20 @@ WITH variables="product",
 USING glpk
 INTO db.table;`
 	r, idx, e := parseSQLFlowStmt(s)
-	a.NoError(e)
+	if e != nil {
+		a.FailNow("%v", e)
+	}
 	a.Equal(len(s), idx)
 	a.True(r.Extended)
 	a.True(r.Optimize)
 	a.Equal("MAXIMIZE", r.Direction)
 	a.Equal("SUM((price - materials_cost - other_cost) * product)", r.Objective.String())
-	a.Equal("SUM(finishing * product) <= 100", r.Constrants.Strings()[0])
+	a.Equal("SUM(finishing * product) <= 100", r.Constrants[0].expr.String())
 	a.Equal("db.table", r.OptimizeInto)
 	a.Equal("glpk", r.Solver)
 
 	s = `TO MINIMIZE SUM((price - materials_cost - other_cost) * product)
-CONSTRAINT SUM(finishing * product) <= 100,
+CONSTRAINT SUM(finishing * product) <= 100 GROUP BY product,
            SUM(carpentry * product) <= 80,
 		   product <= max_num
 WITH variables="product",
@@ -248,6 +250,7 @@ INTO db.table;`
 	a.NoError(e)
 	a.Equal("MINIMIZE", r.Direction)
 	a.Equal("db.table", r.OptimizeInto)
+	a.Equal("product", r.Constrants[0].groupby)
 	a.Equal("", r.Solver)
 }
 
