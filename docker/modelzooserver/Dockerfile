@@ -6,10 +6,10 @@ FROM ubuntu:18.04
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
 RUN /bin/bash -c 'source find_fastest_resources.sh \
         && echo "Choose the fastest APT source ..." \
-        && choose_fastest_apt_source
+        && choose_fastest_apt_source'
 
 # Install pre-built SQLFlow components.
-COPY build /build
+COPY build/modelzooserver /build/modelzooserver
 RUN mv /build/modelzooserver /usr/local/bin
 
 # Install docker.io for building models

@@ -47,7 +47,7 @@ docker build -t sqlflow:ci \
 function build_sqlflow_image() {
     echo "Build sqlflow:${1} by loading $TRAVIS_BUILD_DIR/build ..."
     if docker pull sqlflow/sqlflow:"${1}" 2> /dev/null; then
-       echo " using sqlflow/sqlflow${1} as the cache image"
+       echo " using sqlflow/sqlflow:${1} as the cache image"
        docker build --cache-from sqlflow/sqlflow:"${1}" -t sqlflow/sqlflow:"${1}" \
               -f docker/"${1}"/Dockerfile "${TRAVIS_BUILD_DIR}"
     else
