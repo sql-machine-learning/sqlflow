@@ -69,6 +69,7 @@ type SQLFlowSelectStmt struct {
 	Predict   bool
 	Explain   bool
 	Evaluate  bool
+	Run       bool
 	Optimize  bool
 	ShowTrain bool
 
@@ -79,6 +80,7 @@ type SQLFlowSelectStmt struct {
 	EvaluateClause
 	OptimizeClause
 	ShowTrainClause
+	RunClause
 }
 
 type StandardSelect struct {
@@ -119,6 +121,12 @@ type EvaluateClause struct {
 	ModelToEvaluate string
 	EvaluateLabel string
 	EvaluateInto  string
+}
+
+type RunClause struct {
+	ImageName       string
+	Parameters      []string
+	OutputTables    []string
 }
 
 type OptimizeClause struct {
@@ -165,6 +173,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   infr PredictClause
   expln ExplainClause
   evalt EvaluateClause
+  runc  RunClause
   optim OptimizeClause
   shwtran ShowTrainClause
 }
@@ -177,6 +186,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <infr> predict_clause
 %type  <expln> explain_clause
 %type  <evalt> evaluate_clause
+%type  <runc> run_clause
 %type  <optim> optimize_clause
 %type  <val> optional_using
 %type  <expr> expr funcall column
@@ -185,8 +195,9 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <ctexpl> ConstraintExprList
 %type  <atrs> attr
 %type  <atrs> attrs
+%type  <tbls> stringlist, identlist
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE MAXIMIZE MINIMIZE CONSTRAINT WITH COLUMN LABEL USING INTO FOR AS TO SHOW GROUP BY
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE RUN MAXIMIZE MINIMIZE CONSTRAINT WITH COLUMN LABEL USING INTO FOR AS TO SHOW GROUP BY CMD
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -223,7 +234,13 @@ sqlflow_select_stmt
 		Extended: true,
 		Evaluate: true,
 		EvaluateClause: $1}
-}
+  }
+| run_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Run: true,
+		RunClause: $1}
+  }
 | optimize_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
 		Extended: true,
@@ -294,6 +311,12 @@ explain_clause
 evaluate_clause
 : TO EVALUATE IDENT WITH attrs label_clause INTO IDENT { $$.ModelToEvaluate = $3; $$.EvaluateAttrs = $5; $$.EvaluateLabel = $6; $$.EvaluateInto = $8 }
 | TO EVALUATE IDENT label_clause INTO IDENT { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4; $$.EvaluateInto = $6 }
+;
+
+run_clause
+: TO RUN IDENT { $$.ImageName = $3; }
+| TO RUN IDENT CMD stringlist { $$.ImageName = $3; $$.Parameters = $5 }
+| TO RUN IDENT CMD stringlist INTO identlist { $$.ImageName = $3; $$.Parameters = $5; $$.OutputTables = $7 }
 ;
 
 optimize_clause
@@ -391,6 +414,16 @@ ConstraintExprList
 pythonlist
 : '[' ']'           { $$ = nil }
 | '[' ExprList ']'  { $$ = $2  }
+;
+
+stringlist
+: STRING                 { $$ = []string{$1[1:len($1)-1]} }
+| stringlist ',' STRING  { $$ = append($1, $3[1:len($3)-1]) }
+;
+
+identlist
+: IDENT                  { $$ = []string{$1}}
+| identlist ',' IDENT    { $$ = append($1, $3) }
 ;
 
 expr
