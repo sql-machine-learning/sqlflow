@@ -13,7 +13,7 @@ COPY build/modelzooserver /build/modelzooserver
 RUN mv /build/modelzooserver /usr/local/bin
 
 # Install docker.io for building models
-RUN apt-get -qq update && apt-get -qq install -y axel sudo && apt-get install docker.io
+RUN apt-get -qq update && apt-get -qq install -y axel sudo docker.io
 
 ARG MYSQL_ADDR="mysql://root:root@tcp(127.0.0.1:3306)/?"
 ENV MYSQL_ADDR=${MYSQL_ADDR}
