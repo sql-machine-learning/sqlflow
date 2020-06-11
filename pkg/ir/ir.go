@@ -217,3 +217,31 @@ func (sql *ShowTrainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (sql *ShowTrainStmt) GetOriginalSQL() string { return sql.OriginalSQL }
+
+// OptimizeExpr is the intermediate code for generating target solver expressions.
+type OptimizeExpr struct {
+	// Objective expression or constraint expression string prepared for generate target code.
+	Expression string
+	// constraint group by like: SUM(markets) <= capacity GROUP BY plants, will expand to
+	// for p in plants:
+	//     sum(m for m in markets) <= capacity
+	GroupBy string
+}
+
+// OptimizeStmt is the intermediate representation of "SELECT TO MAXIMIZE|MINIMIZE" statement.
+type OptimizeStmt struct {
+	// Select is the select statement before TO MAXIMIZE|MINIMIZE clause.
+	Select string
+	// Attributes is a map of parsed attribute in the WITH clause.
+	Attributes map[string]interface{}
+	// Objective
+	Objective OptimizeExpr
+	// Direction, 0: maximize, 1: minimize
+	Direction int
+	// Constraints
+	Constraints []*OptimizeExpr
+	// ResultTable is the table name to store results.
+	ResultTable string
+	// When SQLFLOW_submitter == "pai", tmp tables will be created for solving tasks
+	TmpTrainTable string
+}
