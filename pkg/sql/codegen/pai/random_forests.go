@@ -48,6 +48,7 @@ func getExplainRandomForestsPAICmd(ir *ir.ExplainStmt, session *pb.Session) (str
 	if err != nil {
 		return "", err
 	}
+	defer db.Close()
 	flds, _, err := getColumnTypes(ir.Select, db)
 	if err != nil {
 		return "", err
