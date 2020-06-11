@@ -78,6 +78,7 @@ func StartModelZooServer(port int, dbConnStr string) {
 	if err != nil {
 		logger.Fatalf("failed to connect to mysql: %v", err)
 	}
+	defer mysqlConn.Close()
 	splitedStmts := strings.Split(createTableStmts, ";")
 	for idx, stmt := range splitedStmts {
 		if idx == len(splitedStmts)-1 {

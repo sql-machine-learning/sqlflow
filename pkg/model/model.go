@@ -69,6 +69,7 @@ func (m *Model) Save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	if err := m.saveDB(db, modelURI, session); err != nil {
 		return err
 	}
