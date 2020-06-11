@@ -63,9 +63,10 @@ function find_fastest_url() {
 function find_fastest_apt_source() {
     # We need to specify \t as the terminate indicator character; otherwise, the
     # read command would return an non-zero exit code.
+    default_ulr="http://archive.ubuntu.com"
     read -r -d '\t' apt_sources <<EOM
 http://mirrors.163.com
-http://archive.ubuntu.com
+$default_ulr
 \t
 EOM
 
@@ -73,6 +74,9 @@ EOM
     local fastest
     # shellcheck disable=SC2086
     fastest=$(find_fastest_url $apt_sources)/ubuntu/
+    if [[ "$fastest" == "$default_ulr" ]]; then
+        return
+    fi
 
     # The default Ubuntu version is 18.04, code named bionic.
     local codename
