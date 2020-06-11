@@ -416,7 +416,11 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 	LABEL %s
 	INTO %s;`
 
-	executeSQLFunc := func(sql string) {
+	executeSQLFunc := func(sql string, shouldError bool) {
+		if shouldError {
+			connectAndRunSQLShouldError(sql)
+			return
+		}
 		_, _, _, err := connectAndRunSQL(sql)
 		a.NoError(err, fmt.Sprintf("SQL execution failure\n%s", sql))
 	}
@@ -432,30 +436,35 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 	}
 
 	trainSQL := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table, columnClauses, label, modelName)
-	executeSQLFunc(trainSQL)
+	executeSQLFunc(trainSQL, false)
 
 	incrementalTrainSQLWithOverwriting := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
 		columnClauses,
 		fmt.Sprintf("%s USING %s ", label, modelName), modelName)
-	executeSQLFunc(incrementalTrainSQLWithOverwriting)
+	executeSQLFunc(incrementalTrainSQLWithOverwriting, false)
+
+	incrementalTrainSQLWithNotExist := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
+		columnClauses,
+		fmt.Sprintf("%s USING %s ", label, modelName+"_none"), modelName)
+	executeSQLFunc(incrementalTrainSQLWithNotExist, true)
 
 	newModelName := modelName + "_new"
 	incrementalTrainSQLWithoutOverwriting := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
 		columnClauses,
 		fmt.Sprintf("%s USING %s ", label, modelName), newModelName)
-	executeSQLFunc(incrementalTrainSQLWithoutOverwriting)
+	executeSQLFunc(incrementalTrainSQLWithoutOverwriting, false)
 
 	modelName = newModelName
 
 	predictTableName := fmt.Sprintf("%sxgb_fc_test_predict_table_%d", dbPrefix, uniqueID)
 	predictSQL := fmt.Sprintf(`SELECT %s FROM %s TO PREDICT %s.%s_new USING %s;`, selectColumns, table, predictTableName, label, modelName)
-	executeSQLFunc(predictSQL)
+	executeSQLFunc(predictSQL, false)
 
 	if !isPai { // PAI does not support evaluate now
 		evaluateTableName := fmt.Sprintf("%sxgb_fc_test_evaluate_table_%d", dbPrefix, uniqueID)
 		evaluateSQL := fmt.Sprintf(`SELECT %s FROM %s TO EVALUATE %s WITH validation.metrics="accuracy_score" LABEL %s INTO %s;`,
 			selectColumns, table, modelName, label, evaluateTableName)
-		executeSQLFunc(evaluateSQL)
+		executeSQLFunc(evaluateSQL, false)
 	}
 
 	if !skipExplain {
@@ -464,12 +473,12 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 			paiExplainExtra = fmt.Sprintf(`, label_col="%s" INTO %sxgb_fc_test_explain_table_%d`, label, dbPrefix, uniqueID)
 		}
 		explainSQL := fmt.Sprintf(`SELECT %s FROM %s TO EXPLAIN %s WITH summary.plot_type=bar %s;`, selectColumns, table, modelName, paiExplainExtra)
-		executeSQLFunc(explainSQL)
+		executeSQLFunc(explainSQL, false)
 	}
 
 	if !isPai { // PAI does not support SHOW TRAIN, because the model is not saved into database
 		showTrainSQL := fmt.Sprintf(`SHOW TRAIN %s;`, modelName)
-		executeSQLFunc(showTrainSQL)
+		executeSQLFunc(showTrainSQL, false)
 	}
 }
 
