@@ -41,6 +41,8 @@ func TestInputCheck(t *testing.T) {
 	a.NoError(err)
 	err = checkTag("latest")
 	a.NoError(err)
+	err = checkTag("")
+	a.NoError(err)
 	err = checkTag("v1.0 and 1=1")
 	a.Error(err)
 }

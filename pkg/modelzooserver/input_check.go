@@ -23,7 +23,7 @@ func checkName(name string) error {
 	if len(name) < 6 {
 		return fmt.Errorf("model name should have at least 6 characters")
 	}
-	match, err := regexp.MatchString(`^[a-zA-Z0-9_-]{6,256}$`, name)
+	match, err := regexp.MatchString(`^[a-zA-Z0-9_\-]{6,256}$`, name)
 	if err != nil {
 		return err
 	}
@@ -35,12 +35,12 @@ func checkName(name string) error {
 
 // checkTag checks tag is valid. Tags should be consist of alphabet, numbers, dashes (-), underscrolls (_) and dots (.).
 func checkTag(name string) error {
-	match, err := regexp.MatchString(`^[a-zA-Z0-9\_\-\.]{1,256}$`, name)
+	match, err := regexp.MatchString(`^[a-zA-Z0-9\_\-\.]{0,256}$`, name)
 	if err != nil {
 		return err
 	}
 	if !match {
-		return fmt.Errorf("model name should be constist of letters, numbers, underscroll, dash, and must start with a letter")
+		return fmt.Errorf("model tag should be constist of letters, numbers, underscroll, dash, and dots")
 	}
 	return nil
 }
