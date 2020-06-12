@@ -131,7 +131,7 @@ func TestTrainCodegen(t *testing.T) {
 	tfCode, err := tensorflow.Train(trainStmt, sess)
 	a.NoError(err)
 
-	a.True(strings.HasPrefix(paiTFCode, tfCode))
+	a.True(strings.Contains(paiTFCode, tfCode))
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(paiTFCode, knownTrainParams))
 

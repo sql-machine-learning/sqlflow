@@ -19,6 +19,11 @@ type saveModelFiller struct {
 	NumWorkers  int // used to determine whether is distributed training.
 }
 
+type loadModelFiller struct {
+	OSSModelDir string
+	Estimator   string
+}
+
 type predictFiller struct {
 	OSSModelDir string
 	DataSource  string
@@ -58,10 +63,36 @@ type requirementsFiller struct {
 	IsXGBoost bool
 }
 
-const tfSaveModelTmplText = `
-from sqlflow_submitter.pai import model
+const tfImportsText = `
+import tensorflow as tf
 from sqlflow_submitter.tensorflow import is_tf_estimator
-from shutil import copyfile
+from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
+try:
+	from sqlflow_submitter.pai import model
+	from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+except:
+	pass # PAI is not always needed
+
+`
+
+const tfLoadModelTmplText = tfImportsText + `
+FLAGS = define_tf_flags()
+set_oss_environs(FLAGS)
+
+estimator = {{.Estimator}}
+is_estimator = is_tf_estimator(estimator)
+
+# Keras single node is using h5 format to save the model, no need to deal with export model format.
+# Keras distributed mode will use estimator, so this is also needed.
+if is_estimator:
+    model.load_file("{{.OSSModelDir}}", "exported_path")
+    # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+    model.load_dir("{{.OSSModelDir}}/model_save")
+else:
+    model.load_file("{{.OSSModelDir}}", "model_save")
+`
+
+const tfSaveModelTmplText = tfImportsText + `
 import types
 
 estimator = {{.Estimator}}
@@ -110,15 +141,10 @@ sklearn2pmml==0.56.0
 {{end}}
 `
 
-const tfPredictTmplText = `
+const tfPredictTmplText = tfImportsText + `
 import os
 import types
-import tensorflow as tf
-from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
-from sqlflow_submitter.pai import model
-from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 from sqlflow_submitter.tensorflow import predict
-from sqlflow_submitter.tensorflow import is_tf_estimator
 
 try:
     import sqlflow_models
@@ -172,7 +198,7 @@ predict.pred(datasource="{{.DataSource}}",
              pai_table="{{.PAITable}}")
 `
 
-const tfExplainTmplText = `
+const tfExplainTmplText = tfImportsText + `
 import os
 import matplotlib
 if os.environ.get('DISPLAY', '') == '':
@@ -182,12 +208,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-import tensorflow as tf
-from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
-from sqlflow_submitter.pai import model
-from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 from sqlflow_submitter.tensorflow import explain
-from sqlflow_submitter.tensorflow import is_tf_estimator
 
 try:
     tf.enable_eager_execution()
@@ -241,7 +262,7 @@ explain.explain(datasource="{{.DataSource}}",
                 oss_bucket_name='''{{.ResultOSSBucket}}''')
 `
 
-const tfEvaluateTmplText = `
+const tfEvaluateTmplText = tfImportsText + `
 import os
 import matplotlib
 if os.environ.get('DISPLAY', '') == '':
@@ -251,12 +272,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-import tensorflow as tf
-from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
-from sqlflow_submitter.pai import model
-from sqlflow_submitter.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 from sqlflow_submitter.tensorflow import evaluate
-from sqlflow_submitter.tensorflow import is_tf_estimator
 
 try:
     tf.enable_eager_execution()

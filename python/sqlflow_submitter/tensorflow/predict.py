@@ -286,8 +286,6 @@ def pred(datasource,
     sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
 
-    if not is_pai:
-        conn = db.connect_with_data_source(datasource)
     model_params.update(feature_columns)
 
     is_estimator = is_tf_estimator(estimator)

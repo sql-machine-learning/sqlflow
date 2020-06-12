@@ -10,19 +10,49 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
+import inspect
+import os
 import re
+
+from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
 
 
 class SQLFlowDiagnostic(Exception):
     pass
 
 
-def check_and_load_estimator(estimator, model_params):
+def check_and_load_estimator(estimator, model_params, warm_start_from=None):
+    if warm_start_from is not None:
+        estimator_func = estimator.__init__ if inspect.isclass(
+            estimator) else estimator
+        estimator_spec = inspect.getargspec(estimator_func)
+        # The constructor of Estimator contains named parameter "warm_start_from"
+        warm_start_from_key = "warm_start_from"
+        if warm_start_from_key in estimator_spec.args:
+            model_params = copy.copy(model_params)
+            warm_start_from = os.path.abspath(warm_start_from)
+
+            if is_tf_estimator(estimator):
+                with open("exported_path", "r") as fid:
+                    exported_path = str(fid.read())
+
+                exported_path = os.path.abspath(exported_path)
+                assert exported_path.startswith(
+                    warm_start_from), "The exported path is incorrect"
+                warm_start_from = exported_path
+
+            model_params[warm_start_from_key] = warm_start_from
+        else:
+            raise NotImplementedError(
+                "Incremental training is not supported in {}".format(
+                    estimator))
+
     # load estimator class and diagnose the type error
     try:
-        name = estimator.__name__
         return estimator(**model_params)
     except TypeError as e:
+        name = estimator.__name__
         # translate error message of TypeError to a SQLFLow user-friendly
         # diagnosis message
         re_missing_args = re.search(

@@ -67,6 +67,7 @@ def train(datasource,
           validation_throttle_secs=0,
           save_checkpoints_steps=100,
           log_every_n_iter=10,
+          load_pretrained_model=False,
           is_pai=False,
           pai_table="",
           pai_val_table=""):
@@ -83,15 +84,12 @@ def train(datasource,
     model_params.update(feature_columns)
 
     FLAGS = None
-    is_distributed = False
     num_workers = 1
     worker_id = 0
     # only support distributed training on PAI (TF version 1.x)
     if is_pai:
         FLAGS = define_tf_flags()
         set_oss_environs(FLAGS)
-        if len(FLAGS.worker_hosts.split(",")) > 1:
-            is_distributed = True
         num_workers = len(FLAGS.worker_hosts.split(","))
         worker_id = FLAGS.task_index
 
@@ -125,14 +123,13 @@ def train(datasource,
         keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              train_dataset_fn, val_dataset_fn, label_meta,
                              epoch, verbose, validation_metrics,
-                             validation_steps)
+                             validation_steps, load_pretrained_model)
     else:
-        estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
-                                 train_dataset_fn, val_dataset_fn,
-                                 log_every_n_iter, max_steps,
-                                 validation_start_delay_secs,
-                                 validation_throttle_secs,
-                                 save_checkpoints_steps, validation_metrics)
+        estimator_train_and_save(
+            estimator, model_params, save, is_pai, FLAGS, train_dataset_fn,
+            val_dataset_fn, log_every_n_iter, max_steps,
+            validation_start_delay_secs, validation_throttle_secs,
+            save_checkpoints_steps, validation_metrics, load_pretrained_model)
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))

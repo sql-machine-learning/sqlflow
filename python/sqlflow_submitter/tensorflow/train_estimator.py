@@ -24,8 +24,8 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              train_dataset_fn, val_dataset_fn,
                              log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs,
-                             save_checkpoints_steps, metric_names):
-
+                             save_checkpoints_steps, metric_names,
+                             load_pretrained_model):
     print("Start training using estimator model...")
 
     is_distributed = False
@@ -42,7 +42,9 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         model_params["model_dir"] = save
 
-    classifier = check_and_load_estimator(estimator, model_params)
+    warm_start_from = save if load_pretrained_model else None
+    classifier = check_and_load_estimator(estimator, model_params,
+                                          warm_start_from)
 
     # do not add default Accuracy metric when using estimator to train, it will fail
     # when the estimator is a regressor, and estimator seems automatically add some
@@ -79,9 +81,9 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
 def estimator_train_compiled(estimator, is_pai, FLAGS, train_dataset_fn,
                              val_dataset_fn, log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs):
-    train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_dataset_fn(),
-                                        max_steps=None)
     if val_dataset_fn != None:
+        train_spec = tf.estimator.TrainSpec(
+            input_fn=lambda: train_dataset_fn(), max_steps=None)
         eval_spec = tf.estimator.EvalSpec(
             input_fn=lambda: val_dataset_fn(),
             start_delay_secs=eval_start_delay_secs,

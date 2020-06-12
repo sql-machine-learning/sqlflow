@@ -28,7 +28,8 @@ from .train_estimator import estimator_train_compiled
 
 def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                          train_dataset_fn, val_dataset_fn, label_meta, epochs,
-                         verbose, metric_names, validation_steps):
+                         verbose, metric_names, validation_steps,
+                         load_pretrained_model):
     print("Start training using keras model...")
     # remove optimizer param from model_params and use it when call "compile()"
     optimizer = None
@@ -75,6 +76,15 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     classifier = check_and_load_estimator(estimator, model_params)
 
     classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
+
+    if load_pretrained_model:
+        # Must run one batch to initialize parameters before load_weights
+        inputs, targets = next(iter(train_dataset.take(1)))
+        classifier.evaluate(inputs, targets)
+
+        # NOTE(sneaxiy): should we save/load optimizer info for incremental training, or
+        # let users to write the same WITH statements in SQL?
+        classifier.load_weights(save)
 
     if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
         # train keras model distributed

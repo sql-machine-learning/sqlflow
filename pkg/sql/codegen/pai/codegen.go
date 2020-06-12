@@ -135,7 +135,7 @@ func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName
 		}
 		requirements, e = genRequirements(true)
 	} else {
-		code, e = TFTrainAndSave(ir, session, ossModelPathToSave, cc)
+		code, e = TFTrainWithLoadAndSave(ir, session, ossModelPathToSave, ossModelPathToLoad, cc)
 		if e != nil {
 			return
 		}

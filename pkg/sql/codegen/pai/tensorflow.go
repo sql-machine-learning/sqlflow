@@ -27,8 +27,29 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
-// TFTrainAndSave generates PAI-TF train program.
-func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc *ClusterConfig) (string, error) {
+func generateLoadOSSModelCode(estimator, ossModelPathToLoad string) (string, error) {
+	if ossModelPathToLoad == "" {
+		return "", nil
+	}
+
+	loadCodeTemplate := template.Must(template.New("LoadModel").Parse(tfLoadModelTmplText))
+	filler := loadModelFiller{
+		OSSModelDir: ossModelPathToLoad,
+		Estimator:   estimator,
+	}
+
+	var loadCode bytes.Buffer
+	if err := loadCodeTemplate.Execute(&loadCode, filler); err != nil {
+		return "", err
+	}
+
+	return loadCode.String(), nil
+}
+
+// TFTrainWithLoadAndSave generates PAI-TF train program.
+// Load pre-trained model if modelPathToLoad != "".
+// Save the trained model to modelPathToSave.
+func TFTrainWithLoadAndSave(ir *ir.TrainStmt, session *pb.Session, modelPathToSave, modelPathToLoad string, cc *ClusterConfig) (string, error) {
 	// Distributed training must call train_and_evaluate, which need the user to specify validation.select
 	valSelect, valOK := ir.Attributes["validation.select"]
 	hasVal := true
@@ -38,16 +59,22 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 	if cc.Worker.Count > 1 && !hasVal {
 		return "", fmt.Errorf("Distributed training must specify WITH validation.select")
 	}
-	ckptDir := OSSModelURL(modelPath)
-	code, err := tensorflow.Train(ir, session)
+
+	loadCode, err := generateLoadOSSModelCode(ir.Estimator, modelPathToLoad)
+	if err != nil {
+		return "", err
+	}
+
+	trainCode, err := tensorflow.Train(ir, session)
 	if err != nil {
 		return "", err
 	}
 
 	// append code snippet to save model
+	checkpointDir := OSSModelURL(modelPathToSave)
 	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
 	filler := saveModelFiller{
-		OSSModelDir: ckptDir,
+		OSSModelDir: checkpointDir,
 		Estimator:   ir.Estimator,
 		NumWorkers:  cc.Worker.Count,
 	}
@@ -55,7 +82,9 @@ func TFTrainAndSave(ir *ir.TrainStmt, session *pb.Session, modelPath string, cc 
 	if err = tpl.Execute(&saveCode, filler); err != nil {
 		return "", err
 	}
-	return code + saveCode.String(), nil
+
+	fullCode := fmt.Sprintf("%s\n%s\n%s", loadCode, trainCode, saveCode.String())
+	return fullCode, nil
 }
 
 // TFLoadAndPredict generates PAI-TF prediction program.

@@ -425,6 +425,16 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 		a.NoError(err, fmt.Sprintf("SQL execution failure\n%s", sql))
 	}
 
+	dropModelTableFunc := func(table string) {
+		executeSQLFunc(fmt.Sprintf("DROP TABLE IF EXISTS %s;", table), false)
+	}
+
+	hasModelTableFunc := func(table string) {
+		_, rows, _, err := connectAndRunSQL(fmt.Sprintf("SELECT * FROM %s LIMIT 1;", table))
+		a.NoError(err)
+		a.Equal(len(rows), 1)
+	}
+
 	// a unique id to avoid name conflict when run parallel
 	uniqueID := getUniqueID()
 
@@ -433,15 +443,22 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 		modelName = fmt.Sprintf("xgb_fc_test_model_%d", uniqueID)
 	} else {
 		modelName = fmt.Sprintf("%sxgb_fc_test_model_%d", dbPrefix, uniqueID)
+		dropModelTableFunc(modelName)
 	}
 
 	trainSQL := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table, columnClauses, label, modelName)
 	executeSQLFunc(trainSQL, false)
+	if !isPai {
+		hasModelTableFunc(modelName)
+	}
 
 	incrementalTrainSQLWithOverwriting := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
 		columnClauses,
 		fmt.Sprintf("%s USING %s ", label, modelName), modelName)
 	executeSQLFunc(incrementalTrainSQLWithOverwriting, false)
+	if !isPai {
+		hasModelTableFunc(modelName)
+	}
 
 	incrementalTrainSQLWithNotExist := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
 		columnClauses,
@@ -449,10 +466,17 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 	executeSQLFunc(incrementalTrainSQLWithNotExist, true)
 
 	newModelName := modelName + "_new"
+	if !isPai {
+		dropModelTableFunc(newModelName)
+	}
 	incrementalTrainSQLWithoutOverwriting := fmt.Sprintf(trainSQLTemplate, selectColumns, table, nworkers, nclasses, selectColumns, table,
 		columnClauses,
 		fmt.Sprintf("%s USING %s ", label, modelName), newModelName)
 	executeSQLFunc(incrementalTrainSQLWithoutOverwriting, false)
+	if !isPai {
+		hasModelTableFunc(modelName)
+		hasModelTableFunc(newModelName)
+	}
 
 	modelName = newModelName
 
@@ -482,8 +506,8 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 	}
 }
 
-// CaseXGBoostFeatureColumn is cases to run xgboost e2e tests using feature columns
-func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
+// caseXGBoostFeatureColumn is cases to run xgboost e2e tests using feature columns
+func caseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 	irisTrainTable := "iris.train"
 	churnTrainTable := "churn.train"
 	if isPai {
@@ -514,4 +538,98 @@ func CaseXGBoostFeatureColumn(t *testing.T, isPai bool) {
 		caseXGBoostFeatureColumnImpl(t, churnTrainTable, "seniorcitizen", "seniorcitizen, customerid, gender, tenure",
 			`CATEGORY_HASH(customerid, 10), INDICATOR(CATEGORY_ID(gender, 2))`, 2, numWorkers, isPai, true)
 	})
+}
+
+func caseTensorFlowIncrementalTrainImpl(t *testing.T, model string, isPai bool) {
+	a := assert.New(t)
+
+	executeSQLFunc := func(sql string) {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err, fmt.Sprintf("SQL execution failure\n%s", sql))
+	}
+
+	dropModelTableFunc := func(table string) {
+		executeSQLFunc(fmt.Sprintf("DROP TABLE IF EXISTS %s;", table))
+	}
+
+	hasModelTableFunc := func(table string) {
+		_, rows, _, err := connectAndRunSQL(fmt.Sprintf("SELECT * FROM %s LIMIT 1;", table))
+		a.NoError(err)
+		a.Equal(len(rows), 1)
+	}
+
+	trainTable := "iris.train"
+	if isPai {
+		trainTable = "alifin_jtest_dev.sqlflow_test_iris_train"
+	}
+
+	db := strings.SplitN(trainTable, ".", 2)[0]
+
+	modelSave := "tf_estimator_inc_train"
+	if !isPai {
+		modelSave = db + "." + modelSave
+	}
+
+	newModelSave := modelSave + "_new"
+	if !isPai {
+		dropModelTableFunc(modelSave)
+		dropModelTableFunc(newModelSave)
+	}
+
+	trainSQL := fmt.Sprintf(`
+	SELECT sepal_width, sepal_length, petal_width, petal_length, class FROM %s
+	TO TRAIN %s
+	WITH
+		model.n_classes = 3,
+		model.hidden_units = [10],
+		validation.select = "SELECT * FROM %s"
+	LABEL class
+	INTO %s;
+`, trainTable, model, trainTable, modelSave)
+
+	executeSQLFunc(trainSQL)
+	if !isPai {
+		hasModelTableFunc(modelSave)
+	}
+
+	incTrainSQLTemplate := `
+	SELECT sepal_width, sepal_length, petal_width, petal_length, class FROM %s
+	TO TRAIN %s
+	WITH 
+		model.n_classes = 3,
+		model.hidden_units = [10],
+		validation.select = "SELECT * FROM %s"
+	LABEL class
+	USING %s
+	INTO %s;
+	`
+
+	overwrittenIncTrainSQL := fmt.Sprintf(incTrainSQLTemplate, trainTable, model, trainTable, modelSave, modelSave)
+	executeSQLFunc(overwrittenIncTrainSQL)
+	if !isPai {
+		hasModelTableFunc(modelSave)
+	}
+
+	notOverwrittenIncTrainSQL := fmt.Sprintf(incTrainSQLTemplate, trainTable, model, trainTable, modelSave, newModelSave)
+	executeSQLFunc(notOverwrittenIncTrainSQL)
+	if !isPai {
+		hasModelTableFunc(modelSave)
+		hasModelTableFunc(newModelSave)
+	}
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %s TO PREDICT %s.tf_inc_train_pred.class USING %s;`,
+		trainTable, db, newModelSave)
+	executeSQLFunc(predSQL)
+}
+
+func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
+	t.Run("CaseTensorFlowIncrementalTrainEstimator", func(t *testing.T) {
+		caseTensorFlowIncrementalTrainImpl(t, "DNNClassifier", isPai)
+	})
+
+	if !isPai {
+		t.Run("CaseTensorFlowIncrementalTrainKeras", func(t *testing.T) {
+			caseTensorFlowIncrementalTrainImpl(t, "sqlflow_models.DNNClassifier", isPai)
+		})
+	}
 }
