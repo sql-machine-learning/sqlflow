@@ -49,7 +49,7 @@ func generateLoadOSSModelCode(estimator, ossModelPathToLoad string) (string, err
 // TFTrainWithLoadAndSave generates PAI-TF train program.
 // Load pre-trained model if ossModelPathToLoad != "".
 // Save the trained model to modelPathToSave.
-func TFTrainWithLoadAndSave(ir *ir.TrainStmt, session *pb.Session, modelPathToSave, ossModelPathToLoad string, cc *ClusterConfig) (string, error) {
+func TFTrainWithLoadAndSave(ir *ir.TrainStmt, session *pb.Session, modelPathToSave, modelPathToLoad string, cc *ClusterConfig) (string, error) {
 	// Distributed training must call train_and_evaluate, which need the user to specify validation.select
 	valSelect, valOK := ir.Attributes["validation.select"]
 	hasVal := true
@@ -60,7 +60,7 @@ func TFTrainWithLoadAndSave(ir *ir.TrainStmt, session *pb.Session, modelPathToSa
 		return "", fmt.Errorf("Distributed training must specify WITH validation.select")
 	}
 
-	loadCode, err := generateLoadOSSModelCode(ir.Estimator, ossModelPathToLoad)
+	loadCode, err := generateLoadOSSModelCode(ir.Estimator, modelPathToLoad)
 	if err != nil {
 		return "", err
 	}

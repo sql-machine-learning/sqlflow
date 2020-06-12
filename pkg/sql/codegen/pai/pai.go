@@ -30,6 +30,7 @@ func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer db.Close()
 	flds, _, err := getColumnTypes(ir.Select, db)
 	if err != nil {
 		return "", err
@@ -49,6 +50,7 @@ func CleanupPAIModel(ir *ir.TrainStmt, session *pb.Session) error {
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 		if _, err := db.Exec(fmt.Sprintf("DROP OFFLINEMODEL IF EXISTS %s", ir.Into)); err != nil {
 			return err
 		}

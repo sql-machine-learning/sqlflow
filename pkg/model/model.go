@@ -69,6 +69,7 @@ func (m *Model) Save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Sessi
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	if err := m.saveDB(db, modelURI, session); err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func Load(modelURI, dst string, db *database.DB) (*Model, error) {
 		// download traind model and extract to dst
 		return loadModelFromZoo(modelURI, dst)
 	}
-	return loadDB(db, modelURI, dst)
+	return loadDBAndUntar(db, modelURI, dst)
 }
 
 func downloadModelToBuf(modelZooServerAddr, modelName, modelTag string) (bytes.Buffer, error) {
@@ -241,33 +242,53 @@ func loadTar(modelDir, cwd, save string) (m *Model, e error) {
 	return m, nil
 }
 
-// load reads from the given sqlfs table for the train select
+// loadDBAndUntar reads from the given sqlfs table for the train select
 // statement, and untar the SQLFlow working directory, which contains
 // the TensorFlow model, into directory cwd if cwd is not "".
-func loadDB(db *database.DB, table, cwd string) (m *Model, e error) {
+func loadDBAndUntar(db *database.DB, table, cwd string) (*Model, error) {
+	buf, err := LoadToBuffer(db, table)
+	if err != nil {
+		return nil, err
+	}
+	model, err := DecodeModel(buf)
+	if err != nil {
+		return nil, err
+	}
+	// empty is invalid param for tar -C
+	if cwd == "" {
+		return model, nil
+	}
+	if err = untarBuf(*buf, cwd); err != nil {
+		return nil, err
+	}
+	return model, nil
+}
+
+// DecodeModel decode model metadata from a byte buffer
+func DecodeModel(buf *bytes.Buffer) (*Model, error) {
+	m := &Model{}
+	if e := gob.NewDecoder(buf).Decode(m); e != nil {
+		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
+	}
+	return m, nil
+}
+
+// LoadToBuffer reads model data from database to a buffer
+func LoadToBuffer(db *database.DB, table string) (buf *bytes.Buffer, e error) {
 	sqlf, e := sqlfs.Open(db.DB, table)
 	if e != nil {
 		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
 	}
 	defer sqlf.Close()
 
-	var buf bytes.Buffer
+	buf = &bytes.Buffer{}
 	// FIXME(typhoonzero): ReadFrom may panic with ErrTooLarge
 	// need to put the "Model" struct under extracted model files
 	if _, e := buf.ReadFrom(sqlf); e != nil {
 		return nil, fmt.Errorf("buf.ReadFrom %v", e)
 	}
-	m = &Model{}
-	if e := gob.NewDecoder(&buf).Decode(m); e != nil {
-		return nil, fmt.Errorf("gob-decoding train select failed: %v", e)
-	}
 
-	if cwd != "" { // empty is invalid param for tar -C
-		if err := untarBuf(buf, cwd); err != nil {
-			return nil, err
-		}
-	}
-	return m, nil
+	return buf, nil
 }
 
 func writeGob(filePath string, object interface{}) error {

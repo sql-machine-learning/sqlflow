@@ -199,6 +199,7 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	if isXGBoostModel(cl.TrainStmt.Estimator) {
 		code, err = xgboost.Explain(cl, s.Session)
 		// TODO(typhoonzero): deal with XGBoost model explain result table creation.
@@ -252,6 +253,7 @@ func (s *defaultSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 		// default always output evaluation loss
 		metricNames := []string{"loss"}
 		metricsAttr, ok := cl.Attributes["validation.metrics"]

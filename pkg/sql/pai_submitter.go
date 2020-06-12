@@ -60,10 +60,10 @@ func randStringRunes(n int) string {
 
 func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, error) {
 	db, err := database.OpenAndConnectDB(dataSource)
-	defer db.Close()
 	if err != nil {
 		return "", "", err
 	}
+	defer db.Close()
 	tableName := randStringRunes(16)
 	// FIXME(typhoonzero): only work if specify database name in connect string.
 	databaseName, err := database.GetDatabaseName(dataSource)
@@ -78,10 +78,10 @@ func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, er
 
 func dropTmpTables(tableNames []string, dataSource string) error {
 	db, err := database.OpenAndConnectDB(dataSource)
-	defer db.Close()
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	for _, tbName := range tableNames {
 		// TODO(yancey1989): write log into pipe to avoid the wrong row
 		// log.Printf("drop tmp table %s", tbName)
@@ -305,6 +305,7 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 		err = createExplainResultTable(db, cl, cl.Into, modelType, estimator)
 		if err != nil {
 			return err
@@ -365,6 +366,7 @@ func (s *paiSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 		// default always output evaluation loss
 		metricNames := []string{"loss"}
 		metricsAttr, ok := cl.Attributes["validation.metrics"]

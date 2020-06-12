@@ -195,6 +195,7 @@ func prepareTestData(dbStr string) error {
 	if e != nil {
 		return e
 	}
+	defer testDB.Close()
 
 	db := os.Getenv("SQLFLOW_TEST_DB")
 	if db != "maxcompute" && db != "alisa" {

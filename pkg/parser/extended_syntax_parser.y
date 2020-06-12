@@ -20,6 +20,13 @@ type Expr struct {
 
 type ExprList []*Expr
 
+type ConstraintExpr struct {
+	expr *Expr
+	groupby string
+}
+
+type ConstraintExprList []*ConstraintExpr
+
 /* construct an atomic expr */
 func atomic(typ int, val string) *Expr {
 	return &Expr{
@@ -57,18 +64,23 @@ func variadic(typ int, op string, ods ExprList) *Expr {
 }
 
 type SQLFlowSelectStmt struct {
-	Extended bool
-	Train    bool
-	Predict  bool
-	Explain  bool
-	Evaluate bool
+	Extended  bool
+	Train     bool
+	Predict   bool
+	Explain   bool
+	Evaluate  bool
+	Run       bool
+	Optimize  bool
 	ShowTrain bool
+
 	StandardSelect
 	TrainClause
 	PredictClause
 	ExplainClause
 	EvaluateClause
+	OptimizeClause
 	ShowTrainClause
+	RunClause
 }
 
 type StandardSelect struct {
@@ -111,6 +123,22 @@ type EvaluateClause struct {
 	EvaluateInto  string
 }
 
+type RunClause struct {
+	ImageName       string
+	Parameters      []string
+	OutputTables    []string
+}
+
+type OptimizeClause struct {
+	// Direction can be MAXIMIZE or MINIMIZE
+	Direction string
+	Objective *Expr
+	Constrants ConstraintExprList
+	OptimizeAttrs Attributes
+	Solver string
+	OptimizeInto string
+}
+
 type ShowTrainClause struct {
 	ModelName string
 }
@@ -134,6 +162,8 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   tbls []string
   expr *Expr
   expl ExprList
+  ctexp  *ConstraintExpr
+  ctexpl ConstraintExprList
   atrs Attributes
   eslt SQLFlowSelectStmt
   slct StandardSelect
@@ -143,6 +173,8 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   infr PredictClause
   expln ExplainClause
   evalt EvaluateClause
+  runc  RunClause
+  optim OptimizeClause
   shwtran ShowTrainClause
 }
 
@@ -154,13 +186,18 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <infr> predict_clause
 %type  <expln> explain_clause
 %type  <evalt> evaluate_clause
+%type  <runc> run_clause
+%type  <optim> optimize_clause
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
+%type  <ctexp> ConstraintExpr
+%type  <ctexpl> ConstraintExprList
 %type  <atrs> attr
 %type  <atrs> attrs
+%type  <tbls> stringlist, identlist
 
-%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE WITH COLUMN LABEL USING INTO FOR AS TO SHOW
+%token <val> SELECT FROM WHERE LIMIT TRAIN PREDICT EXPLAIN EVALUATE RUN MAXIMIZE MINIMIZE CONSTRAINT WITH COLUMN LABEL USING INTO FOR AS TO SHOW GROUP BY CMD
 %token <val> IDENT NUMBER STRING
 
 %left <val> AND OR
@@ -197,6 +234,18 @@ sqlflow_select_stmt
 		Extended: true,
 		Evaluate: true,
 		EvaluateClause: $1}
+  }
+| run_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Run: true,
+		RunClause: $1}
+  }
+| optimize_clause end_of_stmt {
+	parseResult = &SQLFlowSelectStmt{
+		Extended: true,
+		Optimize: true,
+		OptimizeClause: $1}
 }
 | show_train_clause end_of_stmt {
 	parseResult = &SQLFlowSelectStmt{
@@ -264,6 +313,44 @@ evaluate_clause
 | TO EVALUATE IDENT label_clause INTO IDENT { $$.ModelToEvaluate = $3; $$.EvaluateLabel = $4; $$.EvaluateInto = $6 }
 ;
 
+run_clause
+: TO RUN IDENT { $$.ImageName = $3; }
+| TO RUN IDENT CMD stringlist { $$.ImageName = $3; $$.Parameters = $5 }
+| TO RUN IDENT CMD stringlist INTO identlist { $$.ImageName = $3; $$.Parameters = $5; $$.OutputTables = $7 }
+;
+
+optimize_clause
+: TO MAXIMIZE expr CONSTRAINT ConstraintExprList WITH attrs USING IDENT INTO IDENT {
+	$$.Direction = "MAXIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.Solver = $9;
+	$$.OptimizeInto = $11;
+}
+| TO MAXIMIZE expr CONSTRAINT ConstraintExprList WITH attrs INTO IDENT {
+	$$.Direction = "MAXIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.OptimizeInto = $9;
+}
+| TO MINIMIZE expr CONSTRAINT ConstraintExprList WITH attrs USING IDENT INTO IDENT {
+	$$.Direction = "MINIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.Solver = $9;
+	$$.OptimizeInto = $11;
+}
+| TO MINIMIZE expr CONSTRAINT ConstraintExprList WITH attrs INTO IDENT {
+	$$.Direction = "MINIMIZE";
+	$$.Objective = $3;
+	$$.Constrants = $5;
+	$$.OptimizeAttrs = $7;
+	$$.OptimizeInto = $9;
+};
+
 show_train_clause
 : SHOW TRAIN IDENT { $$.ModelName = $3; }
 ;
@@ -314,9 +401,29 @@ ExprList
 | ExprList ',' expr { $$ = append($1, $3) }
 ;
 
+ConstraintExpr
+: expr { $$ = &ConstraintExpr{expr: $1, groupby: ""} }
+| expr GROUP BY IDENT { $$ = &ConstraintExpr{expr: $1, groupby: $4} }
+;
+
+ConstraintExprList
+: ConstraintExpr { $$ = ConstraintExprList{$1} }
+| ConstraintExprList ',' ConstraintExpr { $$ = append($1, $3) }
+;
+
 pythonlist
 : '[' ']'           { $$ = nil }
 | '[' ExprList ']'  { $$ = $2  }
+;
+
+stringlist
+: STRING                 { $$ = []string{$1[1:len($1)-1]} }
+| stringlist ',' STRING  { $$ = append($1, $3[1:len($3)-1]) }
+;
+
+identlist
+: IDENT                  { $$ = []string{$1}}
+| identlist ',' IDENT    { $$ = append($1, $3) }
 ;
 
 expr

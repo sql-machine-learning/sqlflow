@@ -15,6 +15,7 @@
 package parser
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -215,6 +216,44 @@ func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 
 }
 
+func TestExtendedSyntaxOptimize(t *testing.T) {
+	a := assert.New(t)
+	s := `TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
+CONSTRAINT SUM(finishing * product) <= 100,
+           SUM(carpentry * product) <= 80,
+		   product <= max_num
+WITH variables="product",
+	 product="Integers"
+USING glpk
+INTO db.table;`
+	r, idx, e := parseSQLFlowStmt(s)
+	if e != nil {
+		a.FailNow("%v", e)
+	}
+	a.Equal(len(s), idx)
+	a.True(r.Extended)
+	a.True(r.Optimize)
+	a.Equal("MAXIMIZE", r.Direction)
+	a.Equal("SUM((price - materials_cost - other_cost) * product)", r.Objective.String())
+	a.Equal("SUM(finishing * product) <= 100", r.Constrants[0].expr.String())
+	a.Equal("db.table", r.OptimizeInto)
+	a.Equal("glpk", r.Solver)
+
+	s = `TO MINIMIZE SUM((price - materials_cost - other_cost) * product)
+CONSTRAINT SUM(finishing * product) <= 100 GROUP BY product,
+           SUM(carpentry * product) <= 80,
+		   product <= max_num
+WITH variables="product",
+	 product="Integers"
+INTO db.table;`
+	r, idx, e = parseSQLFlowStmt(s)
+	a.NoError(e)
+	a.Equal("MINIMIZE", r.Direction)
+	a.Equal("db.table", r.OptimizeInto)
+	a.Equal("product", r.Constrants[0].groupby)
+	a.Equal("", r.Solver)
+}
+
 func TestExtendedShowTrainStmt(t *testing.T) {
 	a := assert.New(t)
 	{
@@ -241,5 +280,111 @@ func TestExtendedShowTrainStmt(t *testing.T) {
 		a.Nil(r)
 		a.NotNil(e)
 		a.Equal(11, idx)
+	}
+}
+
+func TestExtendedSyntaxParseToRun(t *testing.T) {
+	a := assert.New(t)
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.NoError(e)
+		a.True(r.Extended)
+		a.True(r.Run)
+		a.Equal(`a_data_scientist/ts_data_processor:1.0`, r.ImageName)
+		a.Equal(len(r.Parameters), 0)
+		a.Equal(len(r.OutputTables), 0)
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row";`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.NoError(e)
+		a.True(r.Run)
+		a.True(reflect.DeepEqual(r.Parameters, []string{`slide_window_to_row`}))
+		a.Equal(len(r.OutputTables), 0)
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row"
+INTO output_table;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.NoError(e)
+		a.True(r.Run)
+		a.True(reflect.DeepEqual(
+			r.Parameters,
+			[]string{`slide_window_to_row`}))
+		a.True(reflect.DeepEqual(r.OutputTables, []string{`output_table`}))
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row"
+INTO output_table_1, output_table_2;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.NoError(e)
+		a.True(r.Run)
+		a.True(reflect.DeepEqual(
+			r.Parameters,
+			[]string{`slide_window_to_row`}))
+		a.True(reflect.DeepEqual(
+			r.OutputTables,
+			[]string{`output_table_1`, `output_table_2`}))
+		a.Equal(len(testToRun), idx)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row", "--param_a=value_a", "--param_b=value_b"
+INTO output_table_1, output_table_2;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.NoError(e)
+		a.True(r.Run)
+		a.True(reflect.DeepEqual(
+			r.Parameters,
+			[]string{
+				`slide_window_to_row`,
+				`--param_a=value_a`,
+				`--param_b=value_b`,
+			}))
+		a.True(reflect.DeepEqual(
+			r.OutputTables,
+			[]string{`output_table_1`, `output_table_2`}))
+		a.Equal(len(testToRun), idx)
+	}
+}
+
+func TestExtendedSyntaxParseToRunInvalid(t *testing.T) {
+	a := assert.New(t)
+	{
+		testToRun := `TO RUN "a_data_scientist/ts_data_processor:1.0";`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Nil(r)
+		a.Equal(7, idx)
+		a.Error(e)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD slide_window_to_row;`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Nil(r)
+		a.Equal(50, idx)
+		a.Error(e)
+	}
+
+	{
+		testToRun := `TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row"
+INTO "output_table_1";`
+		r, idx, e := parseSQLFlowStmt(testToRun)
+		a.Nil(r)
+		a.Equal(77, idx)
+		a.Error(e)
 	}
 }

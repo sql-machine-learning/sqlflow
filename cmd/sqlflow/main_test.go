@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docopt/docopt-go"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -81,21 +82,29 @@ func serverIsReady(addr string, timeout time.Duration) bool {
 	return err == nil
 }
 
-func waitForServer() {
+func waitForGivenServer(serverAddr string) {
 	for i := 0; i < 10; i++ {
 		if serverIsReady(serverAddr, 5*time.Second) {
 			return
 		}
 		time.Sleep(1 * time.Second)
 	}
-	log.Fatal("Can't connect to sqlflow server.")
+	log.Fatal("Can't connect to server: " + serverAddr)
+}
+
+func waitForServer() {
+	waitForGivenServer(serverAddr)
 }
 
 func prepareTestDataOrSkip(t *testing.T) error {
 	// disable sixel
 	it2Check = false
 	assertConnectable(serverAddr, dbConnStr)
-	testDB, _ := database.OpenAndConnectDB(dbConnStr)
+	testDB, err := database.OpenAndConnectDB(dbConnStr)
+	if err != nil {
+		return err
+	}
+	defer testDB.Close()
 	if testDBDriver == "mysql" {
 		_, e := testDB.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 		if e != nil {
@@ -220,7 +229,7 @@ func TestMain(t *testing.T) {
 
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
-	os.Args = append(os.Args, "-datasource", dbConnStr, "-e", "use iris; show tables", "-sqlflow_server", serverAddr)
+	os.Args = []string{"sqlflow", "-d", dbConnStr, "-e", "use iris; show tables", "-s", serverAddr}
 	output, _ := step.GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
@@ -963,7 +972,7 @@ func TestGetServerAddrFromEnv(t *testing.T) {
 	a := assert.New(t)
 	a.Nil(prepareTestDataOrSkip(t))
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	os.Args = []string{"", "-e", "use iris; show tables"}
+	os.Args = []string{"sqlflow", "-e", "use iris; show tables"}
 	output, _ := step.GetStdout(func() error { main(); return nil })
 	a.Contains(output, `
 +----------------+
@@ -1004,3 +1013,117 @@ func newTestConsoleParser() *stdinParser {
 func (p *testConsoleParser) Setup() error                { return nil }
 func (p *testConsoleParser) TearDown() error             { return nil }
 func (p *testConsoleParser) GetWinSize() *prompt.WinSize { return &prompt.WinSize{73, 238} }
+
+func getOptions(argStr interface{}) (*options, error) {
+	args := []string{}
+	switch val := argStr.(type) {
+	case string:
+		if val != "" {
+			args = strings.Split(val, " ")
+		}
+	case []string:
+		args = val
+	default:
+		return nil, fmt.Errorf("Not supported args")
+	}
+	parser := &docopt.Parser{
+		HelpHandler: func(err error, usage string) {},
+	}
+	p, err := parser.ParseArgs(usage, args, "1.0.0")
+	if err != nil {
+		return nil, err
+	}
+	opts := &options{}
+	if err = p.Bind(opts); err != nil {
+		return nil, err
+	}
+	return opts, nil
+}
+
+func TestParseArgument(t *testing.T) {
+	a := assert.New(t)
+	// no param is passed
+	opts, err := getOptions("")
+	a.NoError(err)
+	a.False(opts.Run || opts.Delete || opts.Release)
+
+	// options
+	opts, err = getOptions("--sqlflow-server=localhost:50051")
+	a.NoError(err)
+	a.Equal("localhost:50051", opts.SQLFlowServer)
+
+	opts, err = getOptions("--model-zoo-server=localhost:50055")
+	a.NoError(err)
+	a.Equal("localhost:50055", opts.ModelZooServer)
+
+	opts, err = getOptions("--env-file=~/.sqlflow_env")
+	a.NoError(err)
+	a.Equal("~/.sqlflow_env", opts.EnvFile)
+
+	// run sub-command
+	opts, err = getOptions("run")
+	a.NoError(err)
+	a.True(opts.Run)
+	a.False(opts.Release || opts.Delete)
+
+	opts, err = getOptions([]string{"run", "-e", "select 1;"})
+	a.NoError(err)
+	a.True(opts.Run)
+	a.False(opts.Release || opts.Delete)
+	a.Equal("select 1;", opts.Execute)
+
+	opts, err = getOptions("run -d localhost:3306")
+	a.NoError(err)
+	a.True(opts.Run)
+	a.False(opts.Release || opts.Delete)
+	a.Equal("localhost:3306", opts.DataSource)
+
+	opts, err = getOptions("run -f a.sql")
+	a.NoError(err)
+	a.True(opts.Run)
+	a.False(opts.Release || opts.Delete)
+	a.Equal("a.sql", opts.File)
+
+	opts, err = getOptions("run --data-source=localhost:3306 --file a.sql")
+	a.NoError(err)
+	a.True(opts.Run)
+	a.False(opts.Release || opts.Delete)
+	a.Equal("localhost:3306", opts.DataSource)
+	a.Equal("a.sql", opts.File)
+
+	// release sub-command
+	opts, err = getOptions("release repo ./workspace my_repo v1.0")
+	a.NoError(err)
+	a.True(opts.Release && opts.Repo)
+	a.False(opts.Run || opts.Delete)
+	a.Equal("./workspace", opts.RepoDir)
+	a.Equal("my_repo", opts.RepoName)
+	a.Equal("v1.0", opts.Version)
+
+	opts, err = getOptions("--data-source=localhost:3306 release model my_model v1.0")
+	a.NoError(err)
+	a.True(opts.Release && opts.Model)
+	a.False(opts.Run || opts.Delete)
+	a.Equal("my_model", opts.ModelName)
+	a.Equal("v1.0", opts.Version)
+	a.Equal("localhost:3306", opts.DataSource)
+
+	// delete sub-command
+	opts, err = getOptions("delete repo my_repo v1.0")
+	a.NoError(err)
+	a.True(opts.Delete && opts.Repo)
+	a.False(opts.Run || opts.Release)
+	a.Equal("my_repo", opts.RepoName)
+	a.Equal("v1.0", opts.Version)
+
+	opts, err = getOptions("delete model my_model v1.0")
+	a.NoError(err)
+	a.True(opts.Delete && opts.Model)
+	a.False(opts.Run || opts.Release)
+	a.Equal("my_model", opts.ModelName)
+	a.Equal("v1.0", opts.Version)
+
+	// invalid args
+	opts, err = getOptions("kill model my_model")
+	a.Error(err)
+}

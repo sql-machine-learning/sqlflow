@@ -170,7 +170,7 @@ train_params,
 feature_metas,
 feature_column_names,
 label_meta,
-feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+feature_column_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
 feature_column_transformers = eval('[{}]'.format(feature_column_code))
 transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
