@@ -35,7 +35,6 @@ const modelDefTable = "sqlflow_model_zoo.model_definitions"
 const trainedModelTable = "sqlflow_model_zoo.models"
 const publicModelDB = "sqlflow_public_models"
 
-// TODO(typhoonzero): create tables if these tables are not pre created?
 const createTableStmts = `CREATE DATABASE IF NOT EXISTS sqlflow_model_zoo;
 
 CREATE TABLE IF NOT EXISTS sqlflow_model_zoo.model_repos (
@@ -102,7 +101,6 @@ type modelZooServer struct {
 }
 
 func (s *modelZooServer) ListModelRepos(ctx context.Context, req *pb.ListModelRequest) (*pb.ListModelRepoResponse, error) {
-	// TODO(typhoonzero): join model_repos
 	var sql string
 	if req.Size <= 0 {
 		sql = fmt.Sprintf("SELECT class_name, args_desc, b.name, b.version FROM %s LEFT JOIN %s AS b ON %s.model_coll_id=b.id;",
@@ -220,6 +218,9 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 	if err := checkImageURL(reqName); err != nil {
 		return err
 	}
+	if err := checkTag(reqTag); err != nil {
+		return err
+	}
 	imgExists := imageExistsOnRegistry(reqName, reqTag)
 	if imgExists {
 		return fmt.Errorf("current image %s:%s already exists on registry", reqName, reqTag)
@@ -286,7 +287,10 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 
 func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModelRepoRequest) (*pb.ReleaseResponse, error) {
 	// 1. find model repo id
-	// TODO(typhoonzero): verify request strings to avoid SQL injection
+	if err := checkImageAndTag(req.GetName(), req.GetTag()); err != nil {
+		return nil, err
+	}
+
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' and version='%s';",
 		modelCollTable, req.GetName(), req.GetTag())
 	rows, err := s.DB.Query(sql)
@@ -330,7 +334,6 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	if _, err := s.DB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", publicModelDB)); err != nil {
 		return err
 	}
-	// TODO(typhoonzero): save model to sqlfs with version tag
 
 	for { // read stream request
 		// NOTE: other fields in req must be the same in every stream request.
@@ -355,8 +358,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 			return fmt.Errorf("get user model source code error %v", err)
 		}
 	}
-
-	if err := checkName(req.Name); err != nil {
+	if err := checkNameAndTag(req.GetName(), req.GetTag()); err != nil {
 		return err
 	}
 
@@ -364,6 +366,12 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 	imageAndTag := strings.Split(req.ModelRepoImageUrl, ":")
 	if len(imageAndTag) != 2 {
 		return fmt.Errorf("model repo image should be like you_image_name:version")
+	}
+	if err := checkImageURL(imageAndTag[0]); err != nil {
+		return err
+	}
+	if err := checkTag(imageAndTag[1]); err != nil {
+		return err
 	}
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
 	rowsImageID, err := s.DB.Query(sql)
@@ -380,7 +388,6 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 		return err
 	}
 
-	// TODO(typhoonzero): verify req.ModelClassName to avoid SQL injection.
 	sql = fmt.Sprintf("SELECT id FROM %s WHERE class_name='%s' AND model_coll_id='%d'", modelDefTable, req.ModelClassName, modelCollID)
 	rowsModelDefID, err := s.DB.Query(sql)
 	if err != nil {
@@ -408,6 +415,9 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 
 func (s *modelZooServer) DropModel(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.ReleaseResponse, error) {
 	// TODO(typhoonzero): do not delete rows, set an deletion flag.
+	if err := checkNameAndTag(req.GetName(), req.GetTag()); err != nil {
+		return nil, err
+	}
 	sql := fmt.Sprintf("DELETE FROM %s WHERE name='%s' AND version='%s'", trainedModelTable, req.Name, req.Tag)
 	if _, err := s.DB.Exec(sql); err != nil {
 		return nil, err
@@ -420,6 +430,10 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 	modelTag := req.Tag
 	modelClassName := req.ModelClassName
 	modelRepoImageURL := req.ModelRepoImageUrl
+
+	if err := checkNameAndTag(modelName, modelTag); err != nil {
+		return err
+	}
 
 	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s", publicModelDB, modelName))
 	if err != nil {

@@ -36,4 +36,11 @@ func TestInputCheck(t *testing.T) {
 	a.NoError(err)
 	err = checkImageURL("my_published_model")
 	a.NoError(err)
+
+	err = checkTag("v0.0.1")
+	a.NoError(err)
+	err = checkTag("latest")
+	a.NoError(err)
+	err = checkTag("v1.0 and 1=1")
+	a.Error(err)
 }
