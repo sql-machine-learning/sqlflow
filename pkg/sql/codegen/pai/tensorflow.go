@@ -38,12 +38,12 @@ func generateLoadOSSModelCode(estimator, ossModelPathToLoad string) (string, err
 		Estimator:   estimator,
 	}
 
-	var saveCode bytes.Buffer
-	if err := loadCodeTemplate.Execute(&saveCode, filler); err != nil {
+	var loadCode bytes.Buffer
+	if err := loadCodeTemplate.Execute(&loadCode, filler); err != nil {
 		return "", err
 	}
 
-	return saveCode.String(), nil
+	return loadCode.String(), nil
 }
 
 // TFTrainWithLoadAndSave generates PAI-TF train program.
