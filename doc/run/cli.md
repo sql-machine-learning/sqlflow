@@ -10,6 +10,18 @@ In the REPL mode, `sqlflow` supports automatic code completion and other feature
 
 ![](figures/repl.gif)
 
+## Installation
+You can click below links to download the `sqlflow` binary according to your system type:
+- [Linux](http://cdn.sqlflow.tech/latest/linux/sqlflow)
+- [macOS](http://cdn.sqlflow.tech/latest/osx/sqlflow)
+- [Windows](http://cdn.sqlflow.tech/latest/windows/sqlflow)
+
+For Linux and macOS, after downloading the `sqlflow` binary, you need to change the file's mode to allow execution. e.g.
+```bash
+wget http://cdn.sqlflow.tech/latest/linux/sqlflow
+chmod +x sqlflow
+```
+
 ## Quick Start
 
 We can run an example session by typing the following command on macOS.  We assume you have installed [Docker](https://docs.docker.com/get-docker/) on your computer.
