@@ -23,12 +23,24 @@ func checkName(name string) error {
 	if len(name) < 6 {
 		return fmt.Errorf("model name should have at least 6 characters")
 	}
-	match, err := regexp.MatchString(`^[a-zA-Z0-9_-]{6,256}$`, name)
+	match, err := regexp.MatchString(`^[a-zA-Z0-9_\-]{6,256}$`, name)
 	if err != nil {
 		return err
 	}
 	if !match {
 		return fmt.Errorf("model name should be constist of letters, numbers, underscroll, dash, and must start with a letter")
+	}
+	return nil
+}
+
+// checkTag checks tag is valid. Tags should be consist of alphabet, numbers, dashes (-), underscrolls (_) and dots (.).
+func checkTag(name string) error {
+	match, err := regexp.MatchString(`^[a-zA-Z0-9\_\-\.]{0,256}$`, name)
+	if err != nil {
+		return err
+	}
+	if !match {
+		return fmt.Errorf("model tag should be constist of letters, numbers, underscroll, dash, and dots")
 	}
 	return nil
 }
@@ -47,7 +59,25 @@ func checkImageURL(imageURL string) error {
 	if !match {
 		return fmt.Errorf("docker image URL should be format like [hub.your-registry.com/group/]your_image_name")
 	}
-	// TODO(typhoonzero): check if the Docker image can be pulled.
+	return nil
+}
 
+func checkNameAndTag(name, tag string) error {
+	if err := checkName(name); err != nil {
+		return err
+	}
+	if err := checkTag(tag); err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkImageAndTag(imageURL, tag string) error {
+	if err := checkImageURL(imageURL); err != nil {
+		return err
+	}
+	if err := checkTag(tag); err != nil {
+		return err
+	}
 	return nil
 }
