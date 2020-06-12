@@ -9,8 +9,7 @@ RUN /bin/bash -c 'source find_fastest_resources.sh \
         && choose_fastest_apt_source'
 
 # Install pre-built SQLFlow components.
-COPY build/modelzooserver /build/modelzooserver
-RUN mv /build/modelzooserver /usr/local/bin
+COPY build/modelzooserver /usr/local/bin/modelzooserver
 
 # Install docker.io for building models
 RUN apt-get -qq update && apt-get -qq install -y axel sudo docker.io
