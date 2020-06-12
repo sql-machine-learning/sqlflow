@@ -27,9 +27,9 @@ def check_and_load_estimator(estimator, model_params, warm_start_from=None):
         estimator_func = estimator.__init__ if inspect.isclass(
             estimator) else estimator
         estimator_spec = inspect.getargspec(estimator_func)
-        # The constructor of Estimator contains **kwargs or named parameter "warm_start_from"
+        # The constructor of Estimator contains named parameter "warm_start_from"
         warm_start_from_key = "warm_start_from"
-        if estimator_spec.keywords is not None or warm_start_from_key in estimator_spec.args:
+        if warm_start_from_key in estimator_spec.args:
             model_params = copy.copy(model_params)
             warm_start_from = os.path.abspath(warm_start_from)
 
