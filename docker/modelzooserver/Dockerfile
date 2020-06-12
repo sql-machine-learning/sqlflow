@@ -3,16 +3,16 @@
 FROM ubuntu:18.04
 
 # Choose faster mirrors for apt-get and pip
+# Install docker.io to release model defininiation
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN /bin/bash -c 'source find_fastest_resources.sh \
-        && echo "Choose the fastest APT source ..." \
-        && choose_fastest_apt_source'
+RUN bash -c 'source find_fastest_resources.sh && \
+             echo "Choose the fastest APT source ..." && \
+             choose_fastest_apt_source' && \
+    apt-get -qq update && \
+    apt-get -qq install -y axel sudo docker.io
 
 # Install pre-built SQLFlow components.
 COPY build/modelzooserver /usr/local/bin/modelzooserver
-
-# Install docker.io for building models
-RUN apt-get -qq update && apt-get -qq install -y axel sudo docker.io
 
 ARG MYSQL_ADDR="mysql://root:root@tcp(127.0.0.1:3306)/?"
 ENV MYSQL_ADDR=${MYSQL_ADDR}
