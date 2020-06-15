@@ -72,7 +72,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				logger.Info("resolveSQL:train")
-				// TODO(yancey1989): enable the atttribute checker when cover pai codegen.
+				// TODO(yancey1989): enable the attribute checker when cover pai codegen.
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
 			} else if sql.ShowTrain {
 				logger.Info("resolveSQL:showTrain")
@@ -88,7 +88,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 				logger.Info("resolveSQL:evaluate")
 				r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else {
-				return nil, fmt.Errorf("unkown exteneded SQL statement type")
+				return nil, fmt.Errorf("unknown extended SQL statement type")
 			}
 		} else {
 			logger.Info("resolveSQL:standard")
