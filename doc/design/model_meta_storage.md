@@ -14,7 +14,8 @@ First, we do not save the model metadata from the `step` go code any more.  Beca
   "OriginalSQL": "SELECT * from train to TRAIN ...",
   "Estimator": "DNNClassifier",
   "Attributes":{"model.hidden_units":[10,10],"model.n_classes":3,"train.batch_size":1},
-  "Features":{"feature_columns":[{"FieldDesc":{"name":"sepal_length","dtype":1,"delimiter":"","shape":[1],"is_sparse":false,"vocabulary":null,"MaxID":0}}]},
+  "FeatureColumns":{"feature_columns":[{"FieldDesc":{"name":"sepal_length","dtype":1,"delimiter":"","shape":[1],"is_sparse":false,"vocabulary":null,"MaxID":0}}]},
+  "FieldDescs": {"sepal_length": {"name":"sepal_length","dtype":1,"delimiter":"","shape":[1],"is_sparse":false,"vocabulary":null,"MaxID":0}},
   "EvaluationResult": "{auc:0.88}"
   ...
 }
