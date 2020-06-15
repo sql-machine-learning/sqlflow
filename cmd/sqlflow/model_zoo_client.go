@@ -14,6 +14,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -23,10 +24,28 @@ import (
 
 	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/model"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sqlfs"
 	"sqlflow.org/sqlflow/pkg/tar"
 )
+
+// loadToBuffer reads model data from database to a buffer
+func loadToBuffer(db *database.DB, table string) (buf *bytes.Buffer, e error) {
+	sqlf, e := sqlfs.Open(db.DB, table)
+	if e != nil {
+		return nil, fmt.Errorf("cannot open sqlfs file %s: %v", table, e)
+	}
+	defer sqlf.Close()
+
+	buf = &bytes.Buffer{}
+	// FIXME(typhoonzero): ReadFrom may panic with ErrTooLarge
+	// need to put the "Model" struct under extracted model files
+	if _, e := buf.ReadFrom(sqlf); e != nil {
+		return nil, fmt.Errorf("buf.ReadFrom %v", e)
+	}
+
+	return buf, nil
+}
 
 func getModelZooServerConn(opts *options) (*grpc.ClientConn, error) {
 	if opts.ModelZooServer == "" {
@@ -63,7 +82,7 @@ func releaseModel(opts *options) error {
 		return err
 	}
 	defer db.Close()
-	buf, err := model.LoadToBuffer(db, opts.ModelName)
+	buf, err := loadToBuffer(db, opts.ModelName)
 	if err != nil {
 		return err
 	}
