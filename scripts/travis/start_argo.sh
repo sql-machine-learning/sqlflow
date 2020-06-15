@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 # If argo already installed, skip
 if kubectl get namespace argo>/dev/null 2>&1; then
