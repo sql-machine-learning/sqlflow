@@ -21,8 +21,9 @@ RUN apt-get -qq update
 COPY docker/jupyter/install-jupyter.bash /jupyter
 RUN /jupyter/install-jupyter.bash
 
-# back to the default user
-USER jovyan
+# switch back to the default user to avoid accidental container runs as root,
+# this env comes from base Dockerfile:  https://github.com/jupyter/docker-stacks/blob/master/base-notebook/Dockerfile#L13
+USER $NB_UID
 
 # Install IPythono Notebook tutorials
 COPY build/tutorial /workspace
