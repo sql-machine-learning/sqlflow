@@ -326,7 +326,7 @@ func caseShowTrain(t *testing.T) {
 	cols, _, _, err := connectAndRunSQL(showSQL)
 	a.NoError(err)
 	a.Equal(2, len(cols))
-	a.Equal("Table", cols[0])
+	a.Equal("Model", cols[0])
 	a.Equal("Train Statement", cols[1])
 }
 
