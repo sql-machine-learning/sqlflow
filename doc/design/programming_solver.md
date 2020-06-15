@@ -182,11 +182,11 @@ INTO result_table;
 Then after the solving job has completed, we should have below contents in the `result_table` (the result column is a fake result for demonstration):
 
 | plants  | markets | shipment |
-| ------- | ------- | ------ |
-| plantA  | marketA |  123   |
-| plantA  | marketB |  123   |
-| plantB  | marketA |  123   |
-| plantB  | marketB |  123   |
+| ------- | ------- | -------- |
+| plantA  | marketA |  123     |
+| plantA  | marketB |  123     |
+| plantB  | marketA |  123     |
+| plantB  | marketB |  123     |
 
 
 ### Aggregation Functions
