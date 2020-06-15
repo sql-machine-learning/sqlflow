@@ -59,8 +59,6 @@ spec:
       - image: sqlflow/sqlflow:jupyterhub
         name: jupyterhub
         imagePullPolicy: Always
-        command: ["jupyterhub", "--config", "/etc/jupyterhub/jupyterhub_config.py"]
-        command: ["jupyterhub"]
         ports:
         - containerPort: 8000
           protocol: TCP
