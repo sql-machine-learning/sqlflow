@@ -1,6 +1,6 @@
-# Model Meta Storage
+# Model Metadata Storage
 
-This article describe the data structure of the metadata for models trained by SQLFlow.  It also describe how we save and load the metadata to/from kinds of `sqlfs`.
+Model `metadata` in SQLFlow is a piece of data which describes how the model is defined, trained and stored.  It includes the original `train data selection statement`, the `estimator` and its`hyper-parameters` , the `test set performance` and so on. This article describe the data structure of the metadata and how we save and load the metadata to/from kinds of `sqlfs`.
 
 ## Background
 SQLFlow models can be saved in `MySQL`, `Hive`, `OSS` and other places.  While the model can be trained side by side to the `step` docker image, it can also be trained remote to the step image (as a job on third-party platform).  As a result, we do not have a unified way to store the model currently.  As for the default `submitter` which may use `MySQL` or `Hive` as it data source, we store the model with some metadata into a zipped file, and finally store the file into a database.  In this case, there is only one metadata got saved, that is the `TrainSelect` SQL statement.  As to `pai` submitter, we store the model to `OSS` with more metadata, such as the `Estimator` and the `FeatureColumnNames`.
