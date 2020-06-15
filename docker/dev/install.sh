@@ -105,7 +105,7 @@ rm p.zip
 
 # We have mirrored some software on QiNiu cloud
 # which is used to speed up the build process.
-QINIU_BUCKET=http://qaaz0kmmt.bkt.clouddn.com
+QINIU_BUCKET=http://cdn.sqlflow.tech
 
 echo "Install gRPC for Java as a protobuf-compiler ..."
 # c.f. https://stackoverflow.com/a/53982507/724872.

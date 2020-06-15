@@ -25,7 +25,7 @@ kubectl create namespace argo
 
 # Get argo config from QiNiu or github
 wget -q -O /tmp/argo-v2.7.7.yaml \
-	http://qaaz0kmmt.bkt.clouddn.com/argo-v2.7.7.yaml
+	http://cdn.sqlflow.tech/argo-v2.7.7.yaml
 kubectl apply -n argo -f /tmp/argo-v2.7.7.yaml
 kubectl create rolebinding default-admin \
 	--clusterrole=admin \
