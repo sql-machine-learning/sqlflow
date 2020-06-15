@@ -51,7 +51,7 @@ WITH
 LABEL class
 INTO sqlflow_models.my_dnn_model;
 `, modelDir, database.GetSessionFromTestingDB())
-		a.True(goodStream(stream.ReadAll()))
+		a.True(GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
 		stream := RunSQLProgram(`
@@ -59,7 +59,7 @@ SELECT * FROM sanity_check.train
 TO PREDICT sanity_check.predict.class
 USING sqlflow_models.my_dnn_model;
 `, modelDir, database.GetSessionFromTestingDB())
-		a.True(goodStream(stream.ReadAll()))
+		a.True(GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
 		rows, err := testDB.Query("select * from sanity_check.predict order by class")

@@ -14,44 +14,12 @@
 package sql
 
 import (
-	"container/list"
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/pipe"
 )
-
-const (
-	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
-	testSelectIris                    = `SELECT * FROM iris.train`
-)
-
-func goodStream(stream chan interface{}) (bool, string) {
-	lastResp := list.New()
-	keepSize := 10
-
-	for rsp := range stream {
-		switch rsp.(type) {
-		case error:
-			var ss []string
-			for e := lastResp.Front(); e != nil; e = e.Next() {
-				if s, ok := e.Value.(string); ok {
-					ss = append(ss, s)
-				}
-			}
-			return false, fmt.Sprintf("%v: %s", rsp, strings.Join(ss, "\n"))
-		}
-		lastResp.PushBack(rsp)
-		if lastResp.Len() > keepSize {
-			e := lastResp.Front()
-			lastResp.Remove(e)
-		}
-	}
-	return true, ""
-}
 
 func TestNormalStmt(t *testing.T) {
 	a := assert.New(t)
@@ -62,7 +30,7 @@ func TestNormalStmt(t *testing.T) {
 			e := runNormalStmt(wr, testSelectIris, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
-		a.True(goodStream(rd.ReadAll()))
+		a.True(GoodStream(rd.ReadAll()))
 	})
 	a.NotPanics(func() {
 		if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
@@ -74,7 +42,7 @@ func TestNormalStmt(t *testing.T) {
 			e := runNormalStmt(wr, testStandardExecutiveSQLStatement, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
-		a.True(goodStream(rd.ReadAll()))
+		a.True(GoodStream(rd.ReadAll()))
 	})
 	a.NotPanics(func() {
 		rd, wr := pipe.Pipe()
@@ -83,7 +51,7 @@ func TestNormalStmt(t *testing.T) {
 			e := runNormalStmt(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
-		stat, _ := goodStream(rd.ReadAll())
+		stat, _ := GoodStream(rd.ReadAll())
 		a.True(stat)
 	})
 }
@@ -91,7 +59,7 @@ func TestNormalStmt(t *testing.T) {
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
 	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
-	a.False(goodStream(stream.ReadAll()))
+	a.False(GoodStream(stream.ReadAll()))
 }
 
 func TestIsQuery(t *testing.T) {

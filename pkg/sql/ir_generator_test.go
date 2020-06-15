@@ -293,7 +293,7 @@ WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: database.GetTestingDBSingleton().URL()})
-	a.True(goodStream(stream.ReadAll()))
+	a.True(GoodStream(stream.ReadAll()))
 
 	predStmt, err := generatePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), modelDir, cwd, true)
 	a.NoError(err)
@@ -330,7 +330,7 @@ LABEL class
 INTO sqlflow_models.my_xgboost_model;
 `, modelDir, &pb.Session{DbConnStr: connStr})
 	a.NoError(e)
-	a.True(goodStream(stream.ReadAll()))
+	a.True(GoodStream(stream.ReadAll()))
 
 	pr, e := parser.ParseStatement("mysql", `
 	SELECT *
