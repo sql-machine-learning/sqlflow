@@ -19,6 +19,7 @@ set -e
 pip install --quiet \
     jupyter==1.0.0 \
     notebook==6.0.0 \
+    jupyterhub==1.1.0 \
     sqlflow==0.10.0 # sqlflow is the Python client of SQLFlow server.
 
 # Load SQLFlow's Jupyter magic command

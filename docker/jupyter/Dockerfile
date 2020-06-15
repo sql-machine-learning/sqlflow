@@ -1,8 +1,10 @@
 # This Dockerfile containers Jupyter Notebook server with many
 # SQLFlow tutorials and SQLFlow magic command.
 
-FROM ubuntu:18.04
+FROM jupyter/base-notebook
 
+# using root user to avoid permission deni
+USER root
 # Choose fastest mirrors for apt-get and pip
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/find_fastest_resources.sh
 RUN /bin/bash -c 'source find_fastest_resources.sh \
@@ -16,14 +18,11 @@ COPY docker/jupyter/js /jupyter/js
 
 RUN apt-get -qq update
 
-COPY /docker/ci/install-python.bash /jupyter
-RUN /jupyter/install-python.bash
-
-COPY docker/ci/install-pips.bash /jupyter/
-RUN /jupyter/install-pips.bash
-
 COPY docker/jupyter/install-jupyter.bash /jupyter
 RUN /jupyter/install-jupyter.bash
+
+# back to the default user
+USER jovyan
 
 # Install IPythono Notebook tutorials
 COPY build/tutorial /workspace
@@ -45,4 +44,4 @@ ENV SQLFLOW_DATASOURCE=${SQLFLOW_DATASOURCE}
 WORKDIR /workspace
 EXPOSE 8888
 
-CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--allow-root", "-NotebookApp.token=''"] 
+CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--allow-root", "--NotebookApp.token=''"] 
