@@ -16,6 +16,8 @@
 set -e
 
 # This file depends on install-python.bash.
+# install jupyterhub Python package so that this image can be used as jupyterhub
+# singleuser notebook server, ref: https://github.com/jupyterhub/jupyterhub/tree/master/singleuser
 pip install --quiet \
     jupyter==1.0.0 \
     notebook==6.0.0 \
