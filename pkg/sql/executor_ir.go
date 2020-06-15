@@ -213,14 +213,29 @@ func splitHints(stmts []*parser.SQLFlowStmt, dialect string) (string, []*parser.
 func isHint(stmt *parser.SQLFlowStmt, dialect string) bool {
 	if !stmt.IsExtendedSyntax() {
 		if dialect == "alisa" {
-			s := strings.ToLower(strings.TrimSpace(stmt.Original))
-			if strings.HasPrefix(s, "set ") {
-				return true
-			}
+			return isAlisaHint(stmt.Original)
 		}
 		// TODO(weiguoz) handle if submitter is "maxcompute" or "hive"
 	}
 	return false
+}
+
+func isAlisaHint(sql string) bool {
+	for {
+		sql = strings.TrimSpace(sql)
+		// TODO(weiguoz): Let's remove the following code if we clean the comments before
+		if strings.HasPrefix(sql, "--") {
+			eol := strings.IndexAny(sql, "\n\r")
+			if eol != -1 {
+				sql = sql[eol+1:]
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+	return strings.HasPrefix(strings.ToLower(sql), "set ")
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns
