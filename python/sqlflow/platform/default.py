@@ -22,6 +22,7 @@ import tempfile
 
 import grpc
 from sqlflow_submitter import db
+from sqlflow_submitter.tensorflow import diag
 
 from .. import features
 from ..proto import ir_pb2, modelzooserver_pb2, modelzooserver_pb2_grpc
@@ -341,7 +342,13 @@ def execute(program):
                 raise RuntimeError("Empty dataset")
         if stmt.type == ir_pb2.Statement.TRAIN:
             specs = features.get_feature_metas(conn, stmt.select, stmt.label)
-            meta = train(stmt, program.datasource, *specs)
+            if stmt.trained_model:
+                print("Loading from {}".format(stmt.trained_model))
+                load_model(conn, stmt.trained_model)
+            meta = train(stmt,
+                         program.datasource,
+                         *specs,
+                         load_pretrained_model=stmt.trained_model != "")
             save_model(conn, stmt.model_save, stmt.estimator,
                        stmt.original_sql, specs, meta)
         elif stmt.type == ir_pb2.Statement.PREDICT:

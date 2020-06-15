@@ -96,8 +96,7 @@ def get_feature_columns(feature_metas, columns, engine='tensorflow'):
     eval_globals.update(fc.EVAL_GLOBALS)
     ret = {k: [] for k in columns} if columns else {"feature_columns": []}
     # undefined = []
-    for k, v in columns.items(
-    ):  # k is a parameter name like 'dnn_feature_column'
+    for k, v in columns.items():  # k is a parameter like 'feature_columns'
         for c in v.columns:  # v(ir_pb2.Columns) is a list of expressions
             if c not in feature_metas:  # COLUMN sepal_length
                 for i, code_obj in check_and_expand_columns(
