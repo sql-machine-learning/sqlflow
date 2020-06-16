@@ -20,7 +20,7 @@ spec:
         command: ["sqlflowserver", "--argo-mode"]
         env:
         - name: SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT
-          value: "http://localhost:9001"
+          value: "http://localhost:2746"
         - name: SQLFLOW_WORKFLOW_STEP_IMAGE
           value: sqlflow/sqlflow:step
         ports:

@@ -94,8 +94,7 @@ c.KubeSpawner.extra_containers = [{
         "value": "3306"
     }],
     "ports": [{
-        "containerPort": "3306",
-        "protocol": "TCP"
+        "containerPort": 3306,
     }]
 }]
 
