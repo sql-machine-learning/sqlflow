@@ -1,0 +1,64 @@
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-server
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow-server
+    spec:
+      containers:
+      - image: sqlflow/sqlflow:server
+        name: server
+        imagePullPolicy: Always
+        command: ["sqlflowserver", "--argo-mode"]
+        env:
+        - name: SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT
+          value: "http://localhost:2746"
+        - name: SQLFLOW_WORKFLOW_STEP_IMAGE
+          value: sqlflow/sqlflow:step
+        ports:
+        - containerPort: 50051
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlflow-server
+  labels:
+    app: sqlflow-server
+spec:
+  ports:
+  - port: 50051
+    protocol: TCP
+  selector:
+    app: sqlflow-server
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: sqlflow-jupyterhub
+spec:
+  selector:
+    matchLabels:
+      app: sqlflow-jupyterhub
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sqlflow-jupyterhub
+    spec:
+      containers:
+      - image: sqlflow/sqlflow:jupyterhub
+        name: jupyterhub
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          protocol: TCP
