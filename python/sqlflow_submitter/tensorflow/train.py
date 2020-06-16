@@ -31,6 +31,7 @@ from tensorflow.estimator import (BoostedTreesClassifier,
                                   DNNLinearCombinedRegressor, DNNRegressor,
                                   LinearClassifier, LinearRegressor)
 
+from ..model_metadata import collect_model_metadata
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dataset_fn
 from .pai_distributed import define_tf_flags, set_oss_environs
@@ -70,7 +71,13 @@ def train(datasource,
           load_pretrained_model=False,
           is_pai=False,
           pai_table="",
-          pai_val_table=""):
+          pai_val_table="",
+          feature_columns_code="",
+          model_repo_image=""):
+    model_meta = collect_model_metadata(select, validation_select,
+                                        estimator_string, model_params,
+                                        feature_columns_code, feature_metas,
+                                        label_meta, None, model_repo_image)
     # import custom model package
     sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
@@ -123,13 +130,16 @@ def train(datasource,
         keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              train_dataset_fn, val_dataset_fn, label_meta,
                              epoch, verbose, validation_metrics,
-                             validation_steps, load_pretrained_model)
+                             validation_steps, load_pretrained_model,
+                             model_meta)
     else:
-        estimator_train_and_save(
-            estimator, model_params, save, is_pai, FLAGS, train_dataset_fn,
-            val_dataset_fn, log_every_n_iter, max_steps,
-            validation_start_delay_secs, validation_throttle_secs,
-            save_checkpoints_steps, validation_metrics, load_pretrained_model)
+        estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                                 train_dataset_fn, val_dataset_fn,
+                                 log_every_n_iter, max_steps,
+                                 validation_start_delay_secs,
+                                 validation_throttle_secs,
+                                 save_checkpoints_steps, validation_metrics,
+                                 load_pretrained_model, model_meta)
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))

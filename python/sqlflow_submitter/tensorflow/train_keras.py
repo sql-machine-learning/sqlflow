@@ -12,11 +12,13 @@
 # limitations under the License.
 
 import sys
+from os import path
 
 import tensorflow as tf
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.seeding import get_tf_random_seed
 
+from ..model_metadata import save_model_metadata
 from . import metrics
 from .diag import check_and_load_estimator
 from .get_tf_version import tf_is_version2
@@ -29,7 +31,7 @@ from .train_estimator import estimator_train_compiled
 def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                          train_dataset_fn, val_dataset_fn, label_meta, epochs,
                          verbose, metric_names, validation_steps,
-                         load_pretrained_model):
+                         load_pretrained_model, model_meta):
     print("Start training using keras model...")
     # remove optimizer param from model_params and use it when call "compile()"
     optimizer = None
@@ -129,10 +131,15 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             tf.feature_column.make_parse_example_spec(all_feature_columns))
         export_path = keras_estimator.export_saved_model(
             save, serving_input_fn)
+
         # write the path under current directory
+        export_path_str = str(export_path.decode("utf-8"))
         with open("exported_path", "w") as fn:
-            fn.write(str(export_path.decode("utf-8")))
-        print("Done training, model exported to: %s" % export_path)
+            fn.write(export_path_str)
+        # write model metadata to model_meta.json
+        save_model_metadata(path.join(export_path_str, "model_meta.json"),
+                            model_meta)
+        print("Done training, model exported to: %s" % export_path_str)
         return
 
     if hasattr(classifier, 'sqlflow_train_loop'):
@@ -158,20 +165,24 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                                      epochs=epochs if epochs else
                                      classifier.default_training_epochs(),
                                      verbose=verbose)
-        train_keys = []
-        val_keys = []
+        train_metrics = dict()
+        val_metrics = dict()
         for k in history.history.keys():
             if k.startswith("val_"):
-                val_keys.append(k)
+                val_metrics[k] = float(history.history[k][-1])
             else:
-                train_keys.append(k)
+                train_metrics[k] = float(history.history[k][-1])
         print("====== Result for training set: ======")
-        for k in train_keys:
-            print("%s: %s" % (k, history.history[k][-1]))
+        for k, v in train_metrics.items():
+            print("%s: %s" % (k, v))
         print("====== Result for validation set: ======")
-        for k in val_keys:
-            print("%s: %s" % (k, history.history[k][-1]))
+        for k, v in val_metrics.items():
+            print("%s: %s" % (k, v))
+        model_meta["evaluation"] = val_metrics
     classifier.save_weights(save, save_format="h5")
+    # write model metadata to model_meta.json
+    save_model_metadata("model_meta.json", model_meta)
     if is_pai:
         print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
         model.save_file(FLAGS.sqlflow_oss_modeldir, save)
+        model.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")

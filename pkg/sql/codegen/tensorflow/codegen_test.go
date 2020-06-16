@@ -53,6 +53,16 @@ func TestTrainCodegen(t *testing.T) {
 	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
 }
 
+func TestTrainWithModelRepoImage(t *testing.T) {
+	a := assert.New(t)
+	tir := ir.MockTrainStmt(false)
+	tir.ModelImage = "myRepo/MyDNNClassifier:v1.0"
+	code, err := Train(tir, mockSession())
+	a.NoError(err)
+	r, _ := regexp.Compile(`model_repo_image="(.*)"`)
+	a.Equal(r.FindStringSubmatch(code)[1], tir.ModelImage)
+}
+
 func TestTrainWithOptimizer(t *testing.T) {
 	a := assert.New(t)
 	tir := ir.MockTrainStmt(false)

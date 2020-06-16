@@ -18,9 +18,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"strings"
 	"text/template"
+
+	"sqlflow.org/sqlflow/pkg/sql/codegen"
 
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -333,6 +334,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		IsPAI:               IsPAI(),
 		PAITrainTable:       paiTrainTable,
 		PAIValidateTable:    paiValidateTable,
+		ModelRepoImage:      trainStmt.ModelImage,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
