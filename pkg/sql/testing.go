@@ -13,11 +13,46 @@
 
 package sql
 
-import "os"
+import (
+	"container/list"
+	"fmt"
+	"os"
+	"strings"
+)
+
+const (
+	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
+	testSelectIris                    = `SELECT * FROM iris.train`
+)
 
 func getEnv(env, value string) string {
 	if v := os.Getenv(env); len(v) > 0 {
 		return v
 	}
 	return value
+}
+
+// GoodStream checks whether there's errors in `stream`
+func GoodStream(stream chan interface{}) (bool, string) {
+	lastResp := list.New()
+	keepSize := 10
+
+	for rsp := range stream {
+		switch rsp.(type) {
+		case error:
+			var ss []string
+			for e := lastResp.Front(); e != nil; e = e.Next() {
+				if s, ok := e.Value.(string); ok {
+					ss = append(ss, s)
+				}
+			}
+			return false, fmt.Sprintf("%v: %s", rsp, strings.Join(ss, "\n"))
+		}
+		lastResp.PushBack(rsp)
+		if lastResp.Len() > keepSize {
+			e := lastResp.Front()
+			lastResp.Remove(e)
+		}
+	}
+	return true, ""
 }
