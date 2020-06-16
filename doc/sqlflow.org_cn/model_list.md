@@ -21,7 +21,7 @@ SQLFlow 模型库(Model Zoo) 中提供了很多算法、模型，您可以根据
 1. [RNNBasedTimeSeriesModel](https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/rnn_based_time_series.py) 基于过去一段时间的数据，预测未来一段时间内的趋势，用来预测一组基于时间序列的数值。
 1. [XGBoost Regression](#) 基于树模型的的回归模型。
 
-| 模型| 分布式 | 图形化模型解释 | 训练性能 |小数据集效果|
+| 模型| 分布式 | 图形化模型解释 | 训练性能 |
 | -- | -- | -- | -- |  
 | DNNRegresssion | 支持| 支持 |低 |
 | RNNBasedTimeSeriesModel|不支持| 不支持 |低 |
