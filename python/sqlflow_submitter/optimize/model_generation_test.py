@@ -127,7 +127,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
                                                 objective=objective,
                                                 direction="maximize",
                                                 constraints=constraints)
-        self.assertTrue(model1, pyomo_env.ConcreteModel)
+        self.assertTrue(isinstance(model1, pyomo_env.ConcreteModel))
 
         model2 = generate_model_with_data_frame(
             data_frame=self.data_frame,
@@ -137,7 +137,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
             objective=objective,
             direction="minimize",
             constraints=constraints)
-        self.assertTrue(model2, pyomo_env.ConcreteModel)
+        self.assertTrue(isinstance(model2, pyomo_env.ConcreteModel))
 
 
 class TestModelGenerationWithGroupBy(TestModelGenerationBase):
@@ -195,7 +195,7 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
             objective=objective,
             direction="minimize",
             constraints=constraints)
-        self.assertTrue(model, pyomo_env.ConcreteModel)
+        self.assertTrue(isinstance(model, pyomo_env.ConcreteModel))
 
 
 if __name__ == '__main__':
