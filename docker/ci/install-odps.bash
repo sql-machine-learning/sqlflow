@@ -22,7 +22,7 @@ set -e
 # Aliyun.  So, we manually mirrored the package on AWS and Qiniu and
 # download from all these mirrors simultaneously using axel.
 M1=http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh
-M2="http://qaaz0kmmt.bkt.clouddn.com/aliyun"
+M2="http://cdn.sqlflow.tech/aliyun"
 M3="https://sqlflow-release.s3.ap-east-1.amazonaws.com/aliyun"
 axel --quiet \
      $M1/1557995455961/odpscmd_public.zip \

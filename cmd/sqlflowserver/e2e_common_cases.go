@@ -63,7 +63,6 @@ func caseShowDatabases(t *testing.T) {
 		"imdb":                    "",
 		"sqlflow_model_zoo":       "",
 		"sqlflow_public_models":   "",
-		"test_model_db":           "", // cli use this db to test model zoo
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
@@ -327,7 +326,7 @@ func caseShowTrain(t *testing.T) {
 	cols, _, _, err := connectAndRunSQL(showSQL)
 	a.NoError(err)
 	a.Equal(2, len(cols))
-	a.Equal("Table", cols[0])
+	a.Equal("Model", cols[0])
 	a.Equal("Train Statement", cols[1])
 }
 

@@ -550,7 +550,7 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 func copyPythonPackage(packageName, dst string) error {
 	path, e := findPyModulePath(packageName)
 	if e != nil {
-		return fmt.Errorf("Can not find Python pacakge: %s", packageName)
+		return fmt.Errorf("Can not find Python package: %s", packageName)
 	}
 	cmd := exec.Command("cp", "-r", path, ".")
 	cmd.Dir = dst

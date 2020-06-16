@@ -78,19 +78,19 @@ Then we have the below table `woodcarving`:
 In the `woodcarving`:
 
 - The set X is row one and row two.
-- We have one variable, and the variable name strings is stored in column `product`. In cases that have multiple variables (like the example described at https://en.wikipedia.org/wiki/AMPL), the table should have multiple string columns to store the variable.
+- We have one variable, and the variable name strings is stored in column `product`. In cases that have cross variables (like the example described at https://en.wikipedia.org/wiki/AMPL), the table should have multiple string columns to store the variable names.
 - Other columns like `price`, `materials_cost` are all params for the corresponding variable.
 
 Then we can use below extended SQL syntax to describe above example:
 
 ```sql
 SELECT * FROM woodcarving
-TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
-CONSTRAINT SUM(finishing * product) <= 100,
-           SUM(carpentry * product) <= 80,
-           product <= max_num
-WITH variables="product",
-     product="Integers"
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * amount)
+CONSTRAINT SUM(finishing * amount) <= 100,
+           SUM(carpentry * amount) <= 80,
+           amount <= max_num
+WITH variable="amount(product)",
+     var_type="Integers"
 [USING glpk]
 INTO result_table;
 ```
@@ -102,14 +102,14 @@ In the SQL statement:
     - In the expression, `SUM` means sum the value across all rows like normal SQL statements.
 - `CONSTRAINT ...` expression strings that describe the constraints, can have multiple `CONSTRAINT` expressions separated by comma.
 - `WITH` attributes:
-    - `variables="product"`: **required**, specify one column that stores the variable name. Using comma to separate if there are multiple variables.
-    - `product="Integers"`: **optional**, specify the variable type for each variable, format like `variable="Type"`,  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc. The default variable type is `Integers`.
+    - `variable="amount(product)"`: **required**, specify the variable definition, `product` is the column that stores the variable name. Using comma to separate if there are multiple variables, e.g. `shipment(plants,markets)`.
+    - `var_type="Integers"`: **optional**, specify the variable type, there should only be one variable in current cases. The format is like `var_type="Type"`,  the type can be `Integers`, `NonNegativeIntegers`, `Reals` etc. The default variable type is `Integers`.
 - `USING`: **optional**, solver tool to use, default: glpk.
 - `INTO result_table`: set the result table name.
 
 After the SQL statement finishes execution, the result table `result_table` should look like:
 
-| product | result |
+| product | amount |
 | ------  | ------ |
 | soldier | 20     |
 | train   | 60     |
@@ -165,12 +165,11 @@ Then we can use below extended SQL syntax to describe above example:
 SELECT src.plants, src.markets, src.distance, plants.capacity, markets.demand FROM transportation AS src
 LEFT JOIN plants ON src.plants = plants.plants
 LEFT JOIN markets ON src.markets = markets.markets
-TO MINIMIZE SUM(distance * 90 / 1000)
-CONSTRAINT SUM(markets) <= capacity GROUP BY plants,
-           SUM(plants) >= demand GROUP BY markets
-WITH variables="plants,markets",
-     plants="Integers",
-     markets="Integers"
+TO MINIMIZE SUM(shipment * distance * 90 / 1000)
+CONSTRAINT SUM(shipment) <= capacity GROUP BY plants,
+           SUM(shipment) >= demand GROUP BY markets
+WITH variable="shipment(plants,markets)",
+     var_type="Integers"
 [USING glpk]
 INTO result_table;
 ```
@@ -178,16 +177,16 @@ INTO result_table;
 - In the above SQL statement, the syntax is quite the same as the single variable example, yet
 - The `CONSTRAINT` including a `GROUP BY` clause is a "partial aggregation constraint", take `CONSTRAINT SUM(markets) <= capacity GROUP BY plants` as an example, it means:
     1. for each plant,
-    2. the sum of "transportaion amount to each market from current plant" should be less than the current plant's capacity.
+    2. the sum of "shipment amount to each market from current plant" should be less than the current plant's capacity.
 
 Then after the solving job has completed, we should have below contents in the `result_table` (the result column is a fake result for demonstration):
 
-| plants  | markets | result |
-| ------- | ------- | ------ |
-| plantA  | marketA |  123   |
-| plantA  | marketB |  123   |
-| plantB  | marketA |  123   |
-| plantB  | marketB |  123   |
+| plants  | markets | shipment |
+| ------- | ------- | -------- |
+| plantA  | marketA |  123     |
+| plantA  | marketB |  123     |
+| plantB  | marketA |  123     |
+| plantB  | marketB |  123     |
 
 
 ### Aggregation Functions

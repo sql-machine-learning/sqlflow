@@ -284,3 +284,18 @@ func TestRewriteStatementsWithHints4Alisa(t *testing.T) {
 	a.Equal(sqls[0].Original, hint1+hint2+"\n"+standardSQL)
 	a.Equal(sqls[1].Original, extendedSQL)
 }
+
+func TestIsHints(t *testing.T) {
+	a := assert.New(t)
+	a.True(isAlisaHint("set odps=2"))
+	a.True(isAlisaHint(`--comment1
+    --comment2
+	set odps=2`))
+	a.True(isAlisaHint(`--comment1
+	set odps = 3
+    --comment2`))
+	a.True(isAlisaHint("-- comment \n set odps=2"))
+
+	a.False(isAlisaHint("-- set odps=2"))
+	a.False(isAlisaHint("-- comment \n -- set odps=2"))
+}

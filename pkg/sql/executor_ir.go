@@ -72,7 +72,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				logger.Info("resolveSQL:train")
-				// TODO(yancey1989): enable the atttribute checker when cover pai codegen.
+				// TODO(yancey1989): enable the attribute checker when cover pai codegen.
 				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
 			} else if sql.ShowTrain {
 				logger.Info("resolveSQL:showTrain")
@@ -88,7 +88,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 				logger.Info("resolveSQL:evaluate")
 				r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else {
-				return nil, fmt.Errorf("unkown exteneded SQL statement type")
+				return nil, fmt.Errorf("unknown extended SQL statement type")
 			}
 		} else {
 			logger.Info("resolveSQL:standard")
@@ -213,14 +213,29 @@ func splitHints(stmts []*parser.SQLFlowStmt, dialect string) (string, []*parser.
 func isHint(stmt *parser.SQLFlowStmt, dialect string) bool {
 	if !stmt.IsExtendedSyntax() {
 		if dialect == "alisa" {
-			s := strings.ToLower(strings.TrimSpace(stmt.Original))
-			if strings.HasPrefix(s, "set ") {
-				return true
-			}
+			return isAlisaHint(stmt.Original)
 		}
 		// TODO(weiguoz) handle if submitter is "maxcompute" or "hive"
 	}
 	return false
+}
+
+func isAlisaHint(sql string) bool {
+	for {
+		sql = strings.TrimSpace(sql)
+		// TODO(weiguoz): Let's remove the following code if we clean the comments before
+		if strings.HasPrefix(sql, "--") {
+			eol := strings.IndexAny(sql, "\n\r")
+			if eol != -1 {
+				sql = sql[eol+1:]
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+	return strings.HasPrefix(strings.ToLower(sql), "set ")
 }
 
 // getColumnTypes is quiet like verify but accept a SQL string as input, and returns

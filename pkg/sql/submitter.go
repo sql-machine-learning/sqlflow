@@ -324,7 +324,7 @@ func (s *defaultSubmitter) ExecuteShowTrain(showTrain *ir.ShowTrainStmt) error {
 		return err
 	}
 	header := make(map[string]interface{})
-	header["columnNames"] = []string{"Table", "Train Statement"}
+	header["columnNames"] = []string{"Model", "Train Statement"}
 	s.Writer.Write(header)
 	s.Writer.Write([]interface{}{showTrain.ModelName, strings.TrimSpace(model.TrainSelect)})
 
