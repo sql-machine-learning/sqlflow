@@ -24,6 +24,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/optimize"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -393,6 +394,55 @@ func (s *paiSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 		return e
 	}
 	return e
+}
+
+// TODO(sneaxiy): need to add some tests to this function, but it requires
+// optflow installed in docker image
+func (s *paiSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
+	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	defer dropTmpTables([]string{tableName}, s.Session.DbConnStr)
+
+	db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	splittedResultTable := strings.SplitN(cl.ResultTable, ".", 2)
+	var resultTable string
+	if len(splittedResultTable) == 2 {
+		if splittedResultTable[0] != dbName {
+			return fmt.Errorf("database name of result table must be the same as source table")
+		}
+		resultTable = cl.ResultTable
+	} else {
+		resultTable = fmt.Sprintf("%s.%s", dbName, cl.ResultTable)
+	}
+
+	_, err = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", resultTable))
+	if err != nil {
+		return err
+	}
+
+	// Generate optimization code
+	code, err := optimize.GenerateOptimizeCode(cl, s.Session, s.Cwd, dbName, tableName)
+	if err != nil {
+		return err
+	}
+
+	err = copyPythonPackage("sqlflow_submitter", s.Cwd)
+	if err != nil {
+		return err
+	}
+
+	// Note: OptFlow submit API logs on stderr but not stdout
+	if err = s.runCommand(code, true); err != nil {
+		return err
+	}
+	return nil
 }
 
 // getOSSModelBucket construct a bucket object. Argument project is used to get OSS checkpoint dir

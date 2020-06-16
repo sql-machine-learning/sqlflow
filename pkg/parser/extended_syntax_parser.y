@@ -25,6 +25,14 @@ type ConstraintExpr struct {
 	groupby string
 }
 
+func (e *ConstraintExpr) Expression() *Expr {
+    return e.expr
+}
+
+func (e *ConstraintExpr) GroupBy() string {
+    return e.groupby
+}
+
 type ConstraintExprList []*ConstraintExpr
 
 /* construct an atomic expr */

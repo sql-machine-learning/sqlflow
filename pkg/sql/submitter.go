@@ -130,15 +130,21 @@ func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
 	return m.Save(modelURI, cl, s.Session)
 }
 
-func (s *defaultSubmitter) runCommand(program string) error {
+func (s *defaultSubmitter) runCommand(program string, logStderr bool) error {
 	cw := &logChanWriter{wr: s.Writer}
-	var stderr bytes.Buffer
-	var stdout bytes.Buffer
-	w := io.MultiWriter(cw, &stdout)
-	wStderr := bufio.NewWriter(&stderr)
 	defer cw.Close()
 	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, wStderr
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+	if logStderr {
+		w := io.MultiWriter(cw, &stderr)
+		wStdout := bufio.NewWriter(&stdout)
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), wStdout, w
+	} else {
+		w := io.MultiWriter(cw, &stdout)
+		wStderr := bufio.NewWriter(&stderr)
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, wStderr
+	}
 	if e := cmd.Run(); e != nil {
 		// return the diagnostic message
 		sub := rePyDiagnosis.FindStringSubmatch(stderr.String())
@@ -166,7 +172,7 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 			return e
 		}
 	}
-	if e := s.runCommand(code); e != nil {
+	if e := s.runCommand(code, false); e != nil {
 		return e
 	}
 	return s.SaveModel(cl)
@@ -188,7 +194,7 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 			return e
 		}
 	}
-	return s.runCommand(code)
+	return s.runCommand(code, false)
 }
 
 func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -216,7 +222,7 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if err != nil {
 		return err
 	}
-	if err = s.runCommand(code); err != nil {
+	if err = s.runCommand(code, false); err != nil {
 		return err
 	}
 	img, err := readExplainResult(path.Join(s.Cwd, "summary.png"))
@@ -266,10 +272,15 @@ func (s *defaultSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 			return err
 		}
 	}
-	if err = s.runCommand(code); err != nil {
+	if err = s.runCommand(code, false); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *defaultSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
+	// TODO(sneaxiy): to be implemented
+	return fmt.Errorf("ExecuteOptimize is not supported in default submitter")
 }
 
 func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {
