@@ -16,9 +16,10 @@
 set -e
 
 # This file depends on install-python.bash.
+# install jupyterhub Python package so that this image can be used as jupyterhub
+# singleuser notebook server, ref: https://github.com/jupyterhub/jupyterhub/tree/master/singleuser
 pip install --quiet \
-    jupyter==1.0.0 \
-    notebook==6.0.0 \
+    jupyterhub==1.1.0 \
     sqlflow==0.10.0 # sqlflow is the Python client of SQLFlow server.
 
 # Load SQLFlow's Jupyter magic command
