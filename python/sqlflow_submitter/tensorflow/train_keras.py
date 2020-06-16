@@ -105,7 +105,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         del model_params["feature_columns"]
         classifier = WrappedKerasModel(estimator, model_params,
                                        feature_columns)
-        print(classifier)
     else:
         classifier = check_and_load_estimator(estimator, model_params)
 
@@ -196,8 +195,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         print("====== Result for validation set: ======")
         for k in val_keys:
             print("%s: %s" % (k, history.history[k][-1]))
-
-    print(classifier.summary())
 
     classifier.save_weights(save, save_format="h5")
     if is_pai:

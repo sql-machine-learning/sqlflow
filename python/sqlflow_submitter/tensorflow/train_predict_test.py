@@ -56,6 +56,14 @@ class TestEstimatorModels(TestCase):
                                  env=os.environ.copy(),
                                  check=True)
             self.assertEqual(ret.returncode, 0)
+
+            ret = subprocess.run([
+                "/usr/local/bin/python",
+                "python/sqlflow_submitter/tensorflow/keras_example_reg.py"
+            ],
+                                 env=os.environ.copy(),
+                                 check=True)
+            self.assertEqual(ret.returncode, 0)
         except Exception as e:
             self.fail("%s" % e)
 
