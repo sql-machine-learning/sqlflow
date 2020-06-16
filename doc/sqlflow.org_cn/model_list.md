@@ -1,7 +1,7 @@
 # SQLFlow 模型列表
 
-SQLFlow 模型库(Model Zoo) 中提供了很多算法、模型，您可以根据要解决问题的不同，选择其中一个在现有的数据集上进行尝试，同时每个模型我们也提供了相应的
-业务案例供您参考。
+SQLFlow 模型库(Model Zoo) 中提供了很多算法、模型，您可以根据要解决问题的不同，选择其中一个在现有的数据集上进行尝试，
+同时每个模型我们也提供了相应的业务案例供您参考。
 
 ## 选择模型
 
@@ -11,7 +11,8 @@ SQLFlow 模型库(Model Zoo) 中提供了很多算法、模型，您可以根据
 
 ### 探索数据规律
 
-1. [Deep Embedding Clustering](/doc/sqlflow.org_cn/models/deep_embedding_clustering.md) 无监督聚类算法，可以根据数据的特征，将数据划分成 N 组。
+1. [Deep Embedding Clustering](/doc/sqlflow.org_cn/models/deep_embedding_clustering.md) 无监督聚类算法，
+可以根据数据的特征，将数据划分成 N 组。
 
 ### 数值预测
 
@@ -28,7 +29,8 @@ SQLFlow 模型库(Model Zoo) 中提供了很多算法、模型，您可以根据
 
 ### 分类预测
 
-1. [DNNClassifier](https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier.py) 基于神经网络的模型，可以用来做二分类或多分类的预测。
+1. [DNNClassifier](https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier.py) 基于神经网络的模型，
+可以用来做二分类或多分类的预测。
 1. [XGBoost Binary Classification](#) 基于树模型的二分类模型。
 1. [XGBoost Multiple Classification](#) 基于树模型的多分类模型。
 
