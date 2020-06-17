@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package submitter
 
 import (
 	"bufio"
@@ -36,11 +36,11 @@ var resourceName = "job.tar.gz"
 var entryFile = "entry.py"
 var reOSS = regexp.MustCompile(`oss://([^/]+).*host=([^&]+)`)
 
-type alisaSubmitter struct {
-	*defaultSubmitter
+type alisaExecutor struct {
+	*pythonExecutor
 }
 
-func (s *alisaSubmitter) submitAlisaTask(submitCode, codeResourceURL, paramsResourceURL string) error {
+func (s *alisaExecutor) submitAlisaTask(submitCode, codeResourceURL, paramsResourceURL string) error {
 	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -63,9 +63,8 @@ func (s *alisaSubmitter) submitAlisaTask(submitCode, codeResourceURL, paramsReso
 
 }
 
-func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
-	ts.TmpTrainTable, ts.TmpValidateTable, e = createTempTrainAndValTable(ts.Select, ts.ValidationSelect, s.Session.DbConnStr)
-	if e != nil {
+func (s *alisaExecutor) ExecuteTrain(ts *ir.TrainStmt) (e error) {
+	if e = preExecuteTrainOnpPA(ts, s.Session); e != nil {
 		return e
 	}
 	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)
@@ -105,7 +104,7 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd, ts.Estimator)
 }
 
-func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
+func (s *alisaExecutor) ExecutePredict(ps *ir.PredictStmt) error {
 	dbName, tableName, err := createTmpTableFromSelect(ps.Select, s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -143,7 +142,7 @@ func (s *alisaSubmitter) ExecutePredict(ps *ir.PredictStmt) error {
 	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd, estimator)
 }
 
-func (s *alisaSubmitter) uploadResourceAndSubmitAlisaTask(entryCode, requirements, alisaExecCode, estimator string) error {
+func (s *alisaExecutor) uploadResourceAndSubmitAlisaTask(entryCode, requirements, alisaExecCode, estimator string) error {
 	// upload generated program to OSS and submit an Alisa task.
 	ossCodeObjectName := randStringRunes(16)
 	alisaBucket, e := getAlisaBucket()
@@ -163,7 +162,7 @@ func (s *alisaSubmitter) uploadResourceAndSubmitAlisaTask(entryCode, requirement
 	return s.submitAlisaTask(alisaExecCode, codeResourceURL, paramResourceURL)
 }
 
-func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
+func (s *alisaExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -207,7 +206,7 @@ func (s *alisaSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return e
 }
 
-func (s *alisaSubmitter) ExecuteEvaluate(es *ir.EvaluateStmt) error {
+func (s *alisaExecutor) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 	dbName, tableName, e := createTmpTableFromSelect(es.Select, s.Session.DbConnStr)
 	if e != nil {
 		return e
@@ -252,7 +251,7 @@ func (s *alisaSubmitter) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd, estimator)
 }
 
-func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
+func (s *alisaExecutor) GetTrainStmtFromModel() bool { return false }
 
 func findPyModulePath(pyModuleName string) (string, error) {
 	var b bytes.Buffer

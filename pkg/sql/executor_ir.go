@@ -14,7 +14,6 @@
 package sql
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,13 +21,12 @@ import (
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	submitter "sqlflow.org/sqlflow/pkg/executor"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/step/feature"
-	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
 // EndOfExecution will push to the pipe when one SQL statement execution is finished.
@@ -72,8 +70,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				logger.Info("resolveSQL:train")
-				// TODO(yancey1989): enable the attribute checker when cover pai codegen.
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.ShowTrain {
 				logger.Info("resolveSQL:showTrain")
 				r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
@@ -152,7 +149,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}(cwd)
 	var r ir.SQLFlowStmt
 
-	generateTrainStmtFromModel := GetSubmitter(session.Submitter).GetTrainStmtFromModel()
+	generateTrainStmtFromModel := submitter.New(session.Submitter).GetTrainStmtFromModel()
 
 	if sql.IsExtendedSyntax() {
 		if sql.Train {
@@ -177,9 +174,9 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	r.SetOriginalSQL(sql.Original)
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
-	submitter := GetSubmitter(session.Submitter)
-	submitter.Setup(wr, db, modelDir, cwd, session)
-	return r.Execute(submitter)
+	exec := submitter.New(session.Submitter)
+	exec.Setup(wr, db, modelDir, cwd, session)
+	return r.Execute(exec)
 }
 
 // RewriteStatementsWithHints combines the hints into the standard SQL(s)
@@ -236,107 +233,4 @@ func isAlisaHint(sql string) bool {
 		}
 	}
 	return strings.HasPrefix(strings.ToLower(sql), "set ")
-}
-
-// getColumnTypes is quiet like verify but accept a SQL string as input, and returns
-// an ordered list of the field types.
-func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
-	rows, err := feature.FetchSamples(db, slct)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		return nil, nil, fmt.Errorf("query %s gives 0 row", slct)
-	}
-
-	if rows.Err() != nil {
-		return nil, nil, err
-	}
-
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ft := []string{}
-	flds := []string{}
-	for _, ct := range columnTypes {
-		_, fld := verifier.Decomp(ct.Name())
-		typeName := ct.DatabaseTypeName()
-		flds = append(flds, fld)
-		ft = append(ft, typeName)
-	}
-
-	return flds, ft, nil
-}
-
-// Create prediction table using the `PredictStmt`.
-func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, session *pb.Session) error {
-	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
-	if _, e := db.Exec(dropStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
-	}
-	flds, fts, e := getColumnTypes(predStmt.Select, db)
-	if e != nil {
-		return e
-	}
-
-	var b bytes.Buffer
-	// NOTE(typhoonzero): predStmt.TrainStmt may be nil, because the model may not loaded when
-	// creating prediction table.
-	trainLabelColumn := ""
-	if predStmt.TrainStmt != nil {
-		trainLabelColumn = predStmt.TrainStmt.Label.GetFieldDesc()[0].Name
-	}
-	resultColumnName := predStmt.ResultColumn
-	resultColumnType := ""
-	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
-	for idx, colType := range fts {
-		stype, e := fieldType(db.DriverName, colType)
-		if e != nil {
-			return e
-		}
-		fldName := flds[idx]
-		// When predicting use validation table, we should find the label column type
-		// using the label column name from train table.
-		if fldName == trainLabelColumn {
-			resultColumnType = stype
-			if resultColumnName == trainLabelColumn {
-				continue
-			}
-		}
-		// result column have the same name, do not add as feature column
-		if fldName == resultColumnName {
-			resultColumnType = stype
-			continue
-		}
-		fmt.Fprintf(&b, "%s %s, ", fldName, stype)
-	}
-
-	// TODO(Yancey1989): For the current implementation, the prediction result column
-	// type is derivated by the pred-select-statement, the better way is derivating
-	// the result column type by the prediction result.
-	//
-	// label column not found in predict table, create a column specified by PREDICT clause:
-	if resultColumnType == "" {
-		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		resultColumnType = "INT"
-	}
-	stype, e := fieldType(db.DriverName, resultColumnType)
-	if e != nil {
-		return e
-	}
-	if db.DriverName == "hive" {
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", resultColumnName, stype)
-	} else {
-		fmt.Fprintf(&b, "%s %s);", resultColumnName, stype)
-	}
-
-	createStmt := b.String()
-	if _, e := db.Exec(createStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", createStmt, e)
-	}
-	return nil
 }

@@ -57,9 +57,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	r, e := parser.ParseStatement("mysql", normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt, true)
-	a.Error(err)
-	trainStmt, err = generateTrainStmt(r.SQLFlowSelectStmt, false)
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
 	a.Equal(`SELECT c1, c2, c3, c4 FROM my_table
@@ -205,7 +203,7 @@ func TestGenerateTrainStmtWithTypeCheck(t *testing.T) {
 	r, e := parser.ParseStatement("mysql", normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt, true)
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
 	a.NoError(err)
 	a.Equal("DNNClassifier", trainStmt.Estimator)
 	a.Equal("SELECT c1, c2, c3, c4 FROM my_table\n	", trainStmt.Select)
@@ -263,7 +261,7 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	r, e := parser.ParseStatement("mysql", normal)
 	a.NoError(e)
 
-	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt, false)
+	trainStmt, err := generateTrainStmt(r.SQLFlowSelectStmt)
 	a.NoError(err)
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)
@@ -422,7 +420,7 @@ func bucketColumnParserTestMain(bucketStr string) error {
 		return err
 	}
 
-	trainStmt, err := generateTrainStmt(pr[0].SQLFlowSelectStmt, false)
+	trainStmt, err := generateTrainStmt(pr[0].SQLFlowSelectStmt)
 	if err != nil {
 		return err
 	}

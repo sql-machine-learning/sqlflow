@@ -14,7 +14,14 @@
 // Package ir is the Intermediate Representation of parsed SQL statements
 package ir
 
+import (
+	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/pipe"
+	pb "sqlflow.org/sqlflow/pkg/proto"
+)
+
 // Executor is a visitor that generates and executes code for SQLFlowStmt
+// TODO(yancey1989) decompose Executor from IR
 type Executor interface {
 	ExecuteQuery(*NormalStmt) error
 	ExecuteTrain(*TrainStmt) error
@@ -22,6 +29,8 @@ type Executor interface {
 	ExecuteExplain(*ExplainStmt) error
 	ExecuteEvaluate(*EvaluateStmt) error
 	ExecuteShowTrain(*ShowTrainStmt) error
+	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
+	GetTrainStmtFromModel() bool
 }
 
 // SQLFlowStmt has multiple implementations: TrainStmt, PredictStmt, ExplainStmt and standard SQL.

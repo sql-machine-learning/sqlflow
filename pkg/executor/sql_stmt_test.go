@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package submitter
 
 import (
 	"testing"
@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/pipe"
+	"sqlflow.org/sqlflow/pkg/sql"
 )
 
 func TestNormalStmt(t *testing.T) {
@@ -48,7 +49,7 @@ func TestNormalStmt(t *testing.T) {
 		rd, wr := pipe.Pipe()
 		go func() {
 			defer wr.Close()
-			e := runNormalStmt(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
+			e := sql.RunNormalStmt(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
 		stat, _ := GoodStream(rd.ReadAll())
