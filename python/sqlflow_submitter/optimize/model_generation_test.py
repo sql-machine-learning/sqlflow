@@ -166,6 +166,10 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
                 "expression": "SUM(shipment) >= demand",
                 "group_by": "markets",
             },
+            {
+                "expression": "shipment * 2 <= demand",
+                "group_by": "markets",
+            },
         ]
 
         obj_func = self.generate_objective_func(objective,
@@ -186,6 +190,13 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
                                                 index=[2, 3])
         self.assertEqual(get_source(const_1),
                          "sum([model.x[i_0] for i_0 in [2, 3]]) >= 130")
+
+        const_2 = self.generate_constraint_func(constraints[2],
+                                                self.result_value_name,
+                                                index=[2, 3],
+                                                is_aggregation=False)
+        self.assertEqual(get_source(const_2),
+                         "model.x[i] * 2 <= DATA_FRAME.demand[i]")
 
         model = generate_model_with_data_frame(
             data_frame=self.data_frame,

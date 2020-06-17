@@ -296,7 +296,6 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
         has_aggregation_func = contains_aggregation_function(expression)
 
         if group_by:
-            assert has_aggregation_func, "GROUP BY should be used with aggregation function together"
             group_by_column = None
 
             for column in data_frame.columns:
@@ -311,18 +310,28 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
             values = np.unique(data_frame[group_by_column].to_numpy()).tolist()
             for v in values:
                 index = np.where(data_frame[group_by_column] == v)[0].tolist()
-                constraint_func = generate_objective_or_constraint_func(
-                    expression=expression,
-                    data_frame=data_frame,
-                    variables=variables,
-                    result_value_name=result_value_name,
-                    index=index)
-                constraint = pyomo_env.Constraint(rule=constraint_func)
+                if has_aggregation_func:
+                    constraint_func = generate_objective_or_constraint_func(
+                        expression=expression,
+                        data_frame=data_frame,
+                        variables=variables,
+                        result_value_name=result_value_name,
+                        index=index)
+                    constraint = pyomo_env.Constraint(rule=constraint_func)
+                else:
+                    constraint_func = generate_range_constraint_func(
+                        expression=expression,
+                        data_frame=data_frame,
+                        variables=variables,
+                        result_value_name=result_value_name)
+                    index_set = pyomo_env.Set(initialize=index)
+                    constraint = pyomo_env.Constraint(index_set,
+                                                      rule=constraint_func)
+
                 attr_name = "c_{}".format(attr_index)
                 setattr(model, attr_name, constraint)
                 attr_index += 1
         else:
-            attr_name = "c_{}".format(attr_index)
             if has_aggregation_func:
                 constraint_func = generate_objective_or_constraint_func(
                     expression=expression,
@@ -330,18 +339,18 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
                     variables=variables,
                     result_value_name=result_value_name)
                 constraint = pyomo_env.Constraint(rule=constraint_func)
-                setattr(model, attr_name, constraint)
             else:
-                constraint_funcs = generate_range_constraint_func(
+                constraint_func = generate_range_constraint_func(
                     expression=expression,
                     data_frame=data_frame,
                     variables=variables,
                     result_value_name=result_value_name)
                 range_set = pyomo_env.RangeSet(0, var_num - 1)
-                constraint_list = pyomo_env.Constraint(range_set,
-                                                       rule=constraint_funcs)
-                setattr(model, attr_name, constraint_list)
+                constraint = pyomo_env.Constraint(range_set,
+                                                  rule=constraint_func)
 
+            attr_name = "c_{}".format(attr_index)
+            setattr(model, attr_name, constraint)
             attr_index += 1
 
     DATA_FRAME = None
