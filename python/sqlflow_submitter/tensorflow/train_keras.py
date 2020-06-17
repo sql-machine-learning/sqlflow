@@ -15,6 +15,7 @@ import inspect
 import sys
 import warnings
 
+import six
 import tensorflow as tf
 from sqlflow_submitter.pai import model
 from sqlflow_submitter.seeding import get_tf_random_seed
@@ -213,8 +214,13 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         for k in val_keys:
             print("%s: %s" % (k, history.history[k][-1]))
 
-    if not has_none_optimizer:
+    try:
         classifier.save_weights(save, save_format="h5")
         if is_pai:
             print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
             model.save_file(FLAGS.sqlflow_oss_modeldir, save)
+    except:
+        if has_none_optimizer:
+            warnings.warn("Saving model with None optimizer fails")
+        else:
+            six.reraise(*sys.exc_info())
