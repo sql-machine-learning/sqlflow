@@ -48,7 +48,7 @@ func TestParamsDocs(t *testing.T) {
 
 	a.Equal(11, len(PremadeModelParamsDocs))
 	ExtractDocStringsOnce()
-	a.Equal(18, len(PremadeModelParamsDocs))
+	a.Equal(20, len(PremadeModelParamsDocs))
 	a.Equal(len(PremadeModelParamsDocs["DNNClassifier"]), 12)
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "feature_columns")
 	a.Contains(PremadeModelParamsDocs["DNNClassifier"], "optimizer")
