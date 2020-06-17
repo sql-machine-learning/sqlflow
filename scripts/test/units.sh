@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -ex
+set -e
 
 changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
@@ -34,6 +34,8 @@ python -c "import sqlflow_submitter.db"
 
 go generate ./...
 go install ./...
+
+set -ex
 
 pip list
 
