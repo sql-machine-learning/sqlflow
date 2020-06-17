@@ -24,6 +24,7 @@ type optimizeFiller struct {
 	Direction       string
 	Constraints     []*ir.OptimizeExpr
 	Solver          string
+	AttributeJSON   string
 	TrainTable      string
 	ResultTable     string
 	IsPAI           bool
@@ -57,16 +58,23 @@ class CustomOptFlowRunner(BaseOptFlowRunner):
 
 const optFlowSubmitText = `
 import os
+import json
+import sys
 from optflow.core.api.config import (InputConf, OdpsItemConf, OdpsConf, OutputConf, RunnerConf, SolverConf,
                                      SolverExperiment, OptflowLocalEngine, OptflowKubemakerEngine, OptionConf)
 from optflow.core.submit import submit_experiment
 
-if "{{.IsPAI}}":
+is_pai = ("{{.IsPAI}}" == "true")
+
+if is_pai:
     from alps.framework.engine import ResourceConf
 
 def submit():
-    options = {}  # solver options
-    solver_conf = SolverConf(name="{{.Solver}}", options=OptionConf(options))
+    attributes = json.loads('''{{.AttributeJSON}}''')
+
+    solver_options = attributes.get("solver", {})
+    sys.stderr.write('solver options: {}\n'.format(solver_options))
+    solver_conf = SolverConf(name="{{.Solver}}", options=OptionConf(solver_options))
 
     pai_project = "{{.TrainTable}}".split('.')[0]
     odps_conf = OdpsConf(project=pai_project,
@@ -75,13 +83,21 @@ def submit():
                          partitions=None)
     
     runner = RunnerConf(cls="{{.RunnerModule}}.CustomOptFlowRunner")
-    
+
+    data_options = attributes.get("data", {})
+    sys.stderr.write('data options: {}\n'.format(data_options))
+    enable_slice = data_options.get("enable_slice", False)
+    batch_size = data_options.get("batch_size", None)
+    if batch_size <= 0:
+         batch_size = None
+
     output_table = OdpsItemConf(path="odps://{{.ResultTable}}", odps=odps_conf)
     output = OutputConf(df1=output_table)
 
     df1 = OdpsItemConf(path="odps://{{.TrainTable}}",
                        odps=odps_conf,
-                       enable_slice=False)
+                       enable_slice=enable_slice,
+                       batch_size=batch_size)
     
     input_conf = InputConf(df1=df1)
 
@@ -89,13 +105,14 @@ def submit():
     if not optflow_version:
         raise ValueError("Environment variable SQLFLOW_OPTFLOW_VERSION must be set")
     	
-    if "{{.IsPAI}}":
+    if is_pai:
         cluster = os.environ.get("SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER")
         if not cluster:
             raise ValueError("Environment variable SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER must be set")
-    
-        # TODO(sneaxiy): move ResourceConf setting to WITH statements
-        engine = OptflowKubemakerEngine(worker=ResourceConf(core=8, memory=20000, num=1), cluster=cluster)
+ 
+        worker_options = attributes.get("worker", {})
+        sys.stderr.write('worker options: {}\n'.format(worker_options))
+        engine = OptflowKubemakerEngine(worker=ResourceConf(**worker_options), cluster=cluster)
     else:
         # TODO(sneaxiy): support local engine
         engine = OptflowLocalEngine()

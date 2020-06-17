@@ -15,12 +15,49 @@ package optimize
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"strings"
 	"text/template"
 )
+
+func checkIsPositiveInteger(i interface{}, name string) error {
+	if i.(int) <= 0 {
+		return fmt.Errorf("%s should be positive integer", name)
+	}
+	return nil
+}
+
+var attributeDictionary = attribute.Dictionary{
+	"data.enable_slice": {attribute.Bool, false, "Whether to enable data slicing", nil},
+	"data.batch_size":   {attribute.Int, -1, "Batch size when training", nil},
+	"worker.num": {attribute.Int, 1, "Worker number", func(i interface{}) error {
+		return checkIsPositiveInteger(i, "worker.num")
+	}},
+	"worker.core": {attribute.Int, 8, "Worker core number", func(i interface{}) error {
+		return checkIsPositiveInteger(i, "worker.core")
+	}},
+	"worker.memory": {attribute.Int, 4096, "Worker memory", func(i interface{}) error {
+		return checkIsPositiveInteger(i, "worker.memory")
+	}},
+	"solver.*": {attribute.Unknown, nil, "Solver options", nil},
+}
+
+const (
+	dataAttrPrefix   = "data."
+	solverAttrPrefix = "solver."
+	workerAttrPrefix = "worker."
+)
+
+// InitializeAttributes initialize attributes in optimize clause IR
+func InitializeAttributes(stmt *ir.OptimizeStmt) error {
+	attributeDictionary.FillDefaults(stmt.Attributes)
+	err := attributeDictionary.Validate(stmt.Attributes)
+	return err
+}
 
 // GenerateOptFlowOptimizeCode generates optimize codes for execution
 // The returned value is (runnerProgramCode, submitProgramCode, error)
@@ -28,6 +65,32 @@ func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session
 	resultTable := optimStmt.ResultTable
 	if !strings.Contains(resultTable, ".") {
 		resultTable = fmt.Sprintf("%s.%s", dbName, resultTable)
+	}
+
+	attrs := make(map[string]map[string]interface{})
+	for k, v := range optimStmt.Attributes {
+		prefix := ""
+		if strings.HasPrefix(k, dataAttrPrefix) {
+			prefix = dataAttrPrefix
+		} else if strings.HasPrefix(k, solverAttrPrefix) {
+			prefix = solverAttrPrefix
+		} else if strings.HasPrefix(k, workerAttrPrefix) {
+			prefix = workerAttrPrefix
+		} else {
+			return "", "", fmt.Errorf("unrecognized attribute %s", k)
+		}
+
+		k = k[len(prefix):]
+		prefixKey := prefix[0 : len(prefix)-1]
+		if _, ok := optimStmt.Attributes[prefixKey]; !ok {
+			attrs[prefixKey] = make(map[string]interface{})
+		}
+		attrs[prefixKey][k] = v
+	}
+
+	attrJSON, err := json.Marshal(attrs)
+	if err != nil {
+		return "", "", err
 	}
 
 	filler := optimizeFiller{
@@ -39,6 +102,7 @@ func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session
 		Direction:       optimStmt.Direction,
 		Constraints:     optimStmt.Constraints,
 		Solver:          optimStmt.Solver,
+		AttributeJSON:   string(attrJSON),
 		TrainTable:      fmt.Sprintf("%s.%s", dbName, tableName),
 		ResultTable:     resultTable,
 		IsPAI:           isPai,
