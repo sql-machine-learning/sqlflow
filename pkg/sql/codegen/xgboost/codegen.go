@@ -21,9 +21,9 @@ import (
 	"sqlflow.org/sqlflow/pkg/sql/codegen"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 )
 
