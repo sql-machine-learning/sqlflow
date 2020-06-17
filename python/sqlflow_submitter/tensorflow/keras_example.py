@@ -35,12 +35,48 @@ if __name__ == "__main__":
               "n_classes": 3,
               "hidden_units": [10, 20]
           },
+          validation_metrics=["CategoricalAccuracy"],
           save="mymodel_keras",
           batch_size=1,
           epoch=3,
           verbose=0)
     pred(datasource=datasource,
          estimator_string="sqlflow_models.DNNClassifier",
+         select=select,
+         result_table="iris.predict",
+         feature_columns=feature_columns,
+         feature_column_names=feature_column_names,
+         feature_column_names_map=feature_column_names_map,
+         result_col_name=label_meta["feature_name"],
+         feature_metas=feature_metas,
+         model_params={
+             "n_classes": 3,
+             "hidden_units": [10, 20]
+         },
+         save="mymodel_keras",
+         batch_size=1)
+    os.unlink("mymodel_keras")
+
+    train(datasource=datasource,
+          estimator_string="sqlflow_models.RawDNNClassifier",
+          select=select,
+          validation_select=validate_select,
+          feature_columns=feature_columns,
+          feature_column_names=feature_column_names,
+          feature_metas=feature_metas,
+          label_meta=label_meta,
+          model_params={
+              "n_classes": 3,
+              "hidden_units": [10, 20],
+              "loss": "sparse_categorical_crossentropy"
+          },
+          validation_metrics=["CategoricalAccuracy"],
+          save="mymodel_keras",
+          batch_size=1,
+          epoch=3,
+          verbose=0)
+    pred(datasource=datasource,
+         estimator_string="sqlflow_models.RawDNNClassifier",
          select=select,
          result_table="iris.predict",
          feature_columns=feature_columns,

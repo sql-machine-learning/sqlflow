@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import sys
 import warnings
 
@@ -22,6 +23,7 @@ from . import metrics
 from .diag import check_and_load_estimator
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
+from .keras_with_feature_column_input import WrappedKerasModel
 from .pai_distributed import (dump_into_tf_config,
                               make_distributed_info_without_evaluator)
 from .train_estimator import estimator_train_compiled
@@ -41,6 +43,13 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     if "loss" in model_params:
         loss = model_params["loss"]
         del model_params["loss"]
+
+    signature = inspect.signature(estimator)
+    has_feature_columns_arg = False
+    for p in signature.parameters:
+        if signature.parameters[p].name == "feature_columns":
+            has_feature_columns_arg = True
+            break
 
     classifier_pkg = sys.modules[estimator.__module__]
     # setting training metrics
@@ -63,9 +72,20 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     # setting optimizer
     if optimizer is None:
         # use keras model default optimizer if optimizer is not specified in WITH clause.
-        optimizer = classifier_pkg.optimizer()
+        members = inspect.getmembers(classifier_pkg)
+        # default optimizer
+        optimizer = tf.keras.optimizers.Adagrad(lr=0.001)
+        for m, func in members:
+            if m == "optimizer":
+                optimizer = classifier_pkg.optimizer()
+
     if loss is None:
-        loss = classifier_pkg.loss
+        members = inspect.getmembers(classifier_pkg)
+        # FIXME(typhoonzero): default loss may cause error if model's output shape does not fit.
+        loss = "sparse_categorical_crossentropy"
+        for m, func in members:
+            if m == "loss":
+                loss = classifier_pkg.loss
 
     # setting datasets
     train_dataset = train_dataset_fn()
@@ -74,7 +94,13 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         validate_dataset = None
 
-    classifier = check_and_load_estimator(estimator, model_params)
+    if not has_feature_columns_arg:
+        feature_columns = model_params["feature_columns"]
+        del model_params["feature_columns"]
+        classifier = WrappedKerasModel(estimator, model_params,
+                                       feature_columns)
+    else:
+        classifier = check_and_load_estimator(estimator, model_params)
 
     # FIXME(sneaxiy): some models defined by other framework (not TensorFlow or XGBoost)
     # may return None optimizer.
@@ -180,6 +206,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         print("====== Result for validation set: ======")
         for k in val_keys:
             print("%s: %s" % (k, history.history[k][-1]))
+
     classifier.save_weights(save, save_format="h5")
     if is_pai:
         print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
