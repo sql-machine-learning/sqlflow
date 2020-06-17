@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import sys
+import warnings
 
 import tensorflow as tf
 from sqlflow_submitter.pai import model
@@ -75,7 +76,15 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
 
     classifier = check_and_load_estimator(estimator, model_params)
 
-    classifier.compile(optimizer=optimizer, loss=loss, metrics=keras_metrics)
+    # FIXME(sneaxiy): some models defined by other framework (not TensorFlow or XGBoost)
+    # may return None optimizer.
+    # For example: https://github.com/sql-machine-learning/models/blob/ce970d14a524e20de10a645c99b6bf8724be17d9/sqlflow_models/arima_with_stl_decomposition.py#L123
+    if optimizer is None:
+        warnings.warn("Optimizer is None.")
+    else:
+        classifier.compile(optimizer=optimizer,
+                           loss=loss,
+                           metrics=keras_metrics)
 
     if load_pretrained_model:
         # Must run one batch to initialize parameters before load_weights

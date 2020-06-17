@@ -214,7 +214,8 @@ func prepareTestData(dbStr string) error {
 			testdata.StandardJoinTest,
 			testdata.HousingSQL,
 			testdata.FeatureDerivationCaseSQL,
-			testdata.TextCNSQL}
+			testdata.TextCNSQL,
+			testdata.fundSQL}
 	case "hive":
 		datasets = []string{
 			testdata.IrisHiveSQL,
