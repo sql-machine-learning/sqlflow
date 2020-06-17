@@ -33,8 +33,8 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>base_score</td>
-	<td>%!s(<nil>)</td>
-	<td>initial prediction score of all instances, global bias.</td>
+	<td>float32</td>
+	<td>The initial prediction score of all instances, global bias.</td>
 </tr>
 <tr>
 	<td>colsample_bylevel</td>
