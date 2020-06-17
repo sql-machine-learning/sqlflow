@@ -22,9 +22,9 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/attribute"
+	tf "sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	tf "sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 )
 
 func getXGBoostObjectives() (ret []string) {

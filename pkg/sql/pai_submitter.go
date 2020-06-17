@@ -28,9 +28,9 @@ import (
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/gomaxcompute"
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
-	"sqlflow.org/sqlflow/pkg/codegen/pai"
 )
 
 const (
