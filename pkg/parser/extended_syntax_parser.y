@@ -25,6 +25,14 @@ type ConstraintExpr struct {
 	groupby string
 }
 
+func (e *ConstraintExpr) Expression() *Expr {
+    return e.expr
+}
+
+func (e *ConstraintExpr) GroupBy() string {
+    return e.groupby
+}
+
 type ConstraintExprList []*ConstraintExpr
 
 /* construct an atomic expr */
@@ -468,6 +476,68 @@ func (el ExprList) Strings() (r []string) {
 		r = append(r, el[i].String())
 	}
 	return r
+}
+
+func (e *Expr) ToTokens() []string {
+    if e.Type != 0 {
+        return []string{e.Value}
+    }
+
+    result := []string{}
+
+    switch e.Sexp[0].Type {
+    case '+', '*', '/', '%', '=', '<', '>', '!', LE, GE, AND, OR:
+        if len(e.Sexp) != 3 {
+            log.Panicf("Expecting binary expression, got %.10q", e.Sexp)
+        }
+
+        result = append(result, e.Sexp[1].ToTokens()...)
+        result = append(result, e.Sexp[0].Value)
+        result = append(result, e.Sexp[2].ToTokens()...)
+        return result
+    case '-':
+        switch len(e.Sexp) {
+        case 2:
+            return []string{fmt.Sprintf("-%s", e.Sexp[1])}
+        case 3:
+            result = append(result, e.Sexp[1].ToTokens()...)
+            result = append(result, e.Sexp[0].Value)
+            result = append(result, e.Sexp[2].ToTokens()...)
+            return result
+        default:
+            log.Panicf("Expecting either unary or binary -, got %.10q", e.Sexp)
+        }
+    case '(':
+        if len(e.Sexp) != 2 {
+            log.Panicf("Expecting ( ) as unary operator, got %.10q", e.Sexp)
+        }
+        result = append(result, "(")
+        result = append(result, e.Sexp[1].ToTokens()...)
+        result = append(result, ")")
+        return result
+    case '[':
+        result = append(result, "[")
+        for i := 1; i < len(e.Sexp); i++ {
+            result = append(result, e.Sexp[i].ToTokens()...)
+        }
+        result = append(result, "]")
+        return result
+    case NOT:
+        result = append(result, "NOT")
+        result = append(result, e.Sexp[1].ToTokens()...)
+        return result
+    case IDENT: /* function call */
+        result = append(result, e.Sexp[0].Value)
+        result = append(result, "(")
+        for i := 1; i < len(e.Sexp); i++ {
+            result = append(result, e.Sexp[i].ToTokens()...)
+        }
+        result = append(result, ")")
+        return result
+    }
+
+    log.Panicf("Cannot get tokens from an unknown expression")
+    return nil
 }
 
 func (e *Expr) String() string {
