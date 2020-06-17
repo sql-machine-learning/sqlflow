@@ -444,3 +444,92 @@ func TestBucketColumnParser(t *testing.T) {
 	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [-10, -10]"))
 	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [5, 5]"))
 }
+
+func TestGenerateOptimizeStmt(t *testing.T) {
+	a := assert.New(t)
+
+	oneVarSQL := `
+SELECT * FROM alifin_jtest_dev.woodcarving
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * product)
+CONSTRAINT SUM(finishing * product) <= 100,
+           SUM(carpentry * product) <= 80,
+           product <= max_num
+WITH variables="product",
+     var_type="NonNegativeIntegers"
+USING glpk
+INTO result_table;
+`
+	r, e := parser.Parse("mysql", oneVarSQL)
+	a.NoError(e)
+	a.Equal(1, len(r))
+	stmt, e := generateOptimizeStmt(r[0].SQLFlowSelectStmt)
+	a.NoError(e)
+	a.Equal("maximize", stmt.Direction)
+	a.Equal([]string{"SUM", "(", "(", "price", "-", "materials_cost", "-", "other_cost", ")", "*", "product", ")"}, stmt.Objective.ExpressionTokens)
+	a.Equal("", stmt.Objective.GroupBy)
+
+	a.Equal(3, len(stmt.Constraints))
+	a.Equal([]string{"SUM", "(", "finishing", "*", "product", ")", "<=", "100"}, stmt.Constraints[0].ExpressionTokens)
+	a.Equal("", stmt.Constraints[0].GroupBy)
+	a.Equal([]string{"SUM", "(", "carpentry", "*", "product", ")", "<=", "80"}, stmt.Constraints[1].ExpressionTokens)
+	a.Equal("", stmt.Constraints[1].GroupBy)
+	a.Equal([]string{"product", "<=", "max_num"}, stmt.Constraints[2].ExpressionTokens)
+	a.Equal("", stmt.Constraints[2].GroupBy)
+
+	a.Equal("glpk", stmt.Solver)
+	a.Equal(1, len(stmt.Variables))
+	a.Equal("product", stmt.Variables[0])
+	a.Equal("product", stmt.ResultValueName)
+	a.Equal("NonNegativeIntegers", stmt.VariableType)
+	a.Equal("result_table", stmt.ResultTable)
+
+	oneVarSQLWithResultValueName := `
+SELECT * FROM alifin_jtest_dev.woodcarving
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * amount)
+CONSTRAINT SUM(finishing * amount) <= 100,
+           SUM(carpentry * amount) <= 80,
+           product <= max_num
+WITH variables="amount(product)",
+     var_type="NonNegativeIntegers"
+USING glpk
+INTO result_table;
+`
+	r, e = parser.Parse("mysql", oneVarSQLWithResultValueName)
+	a.NoError(e)
+	stmt, e = generateOptimizeStmt(r[0].SQLFlowSelectStmt)
+	a.NoError(e)
+	a.Equal("amount", stmt.ResultValueName)
+
+	twoVarSQL := `
+SELECT * FROM alifin_jtest_dev.zjl_shipment_test
+TO MINIMIZE SUM(distance * shipment * 90 / 1000)
+CONSTRAINT SUM(shipment) <= capacity GROUP BY plants,
+           SUM(shipment) >= demand GROUP BY markets
+WITH variables="shipment(plants,markets)",
+     var_type="NonNegativeReals"
+USING glpk
+INTO shipment_result_table;
+`
+	r, e = parser.Parse("mysql", twoVarSQL)
+	a.NoError(e)
+	a.Equal(1, len(r))
+	stmt, e = generateOptimizeStmt(r[0].SQLFlowSelectStmt)
+	a.NoError(e)
+	a.Equal("minimize", stmt.Direction)
+	a.Equal([]string{"SUM", "(", "distance", "*", "shipment", "*", "90", "/", "1000", ")"}, stmt.Objective.ExpressionTokens)
+	a.Equal("", stmt.Objective.GroupBy)
+
+	a.Equal(2, len(stmt.Constraints))
+	a.Equal([]string{"SUM", "(", "shipment", ")", "<=", "capacity"}, stmt.Constraints[0].ExpressionTokens)
+	a.Equal("plants", stmt.Constraints[0].GroupBy)
+	a.Equal([]string{"SUM", "(", "shipment", ")", ">=", "demand"}, stmt.Constraints[1].ExpressionTokens)
+	a.Equal("markets", stmt.Constraints[1].GroupBy)
+
+	a.Equal("glpk", stmt.Solver)
+	a.Equal(2, len(stmt.Variables))
+	a.Equal("plants", stmt.Variables[0])
+	a.Equal("markets", stmt.Variables[1])
+	a.Equal("shipment", stmt.ResultValueName)
+	a.Equal("NonNegativeReals", stmt.VariableType)
+	a.Equal("shipment_result_table", stmt.ResultTable)
+}

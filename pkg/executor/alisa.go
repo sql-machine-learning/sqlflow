@@ -252,6 +252,11 @@ func (s *alisaExecutor) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 }
 
 func (s *alisaExecutor) GetTrainStmtFromModel() bool { return false }
+func (s *alisaSubmitter) ExecuteOptimize(es *ir.OptimizeStmt) error {
+	return fmt.Errorf("ExecuteOptimize is not implemented in alisa submitter")
+}
+
+func (s *alisaSubmitter) GetTrainStmtFromModel() bool { return false }
 
 func findPyModulePath(pyModuleName string) (string, error) {
 	var b bytes.Buffer

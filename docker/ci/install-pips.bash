@@ -34,5 +34,6 @@ pip install --quiet \
     seaborn==0.9.0 \
     scikit-learn==0.21.0 \
     sklearn2pmml==0.56.0 \
-    jpmml-evaluator==0.3.1
+    jpmml-evaluator==0.3.1 \
+    pyomo==5.6.9
 

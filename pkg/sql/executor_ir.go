@@ -163,6 +163,8 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 			r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Evaluate {
 			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+		} else if sql.Optimize {
+			r, err = generateOptimizeStmt(sql.SQLFlowSelectStmt)
 		}
 	} else {
 		standardSQL := ir.NormalStmt(sql.Original)
