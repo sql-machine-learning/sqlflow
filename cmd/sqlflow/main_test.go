@@ -35,11 +35,11 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/c-bata/go-prompt"
+	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/proto"
 	srv "sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 	"sqlflow.org/sqlflow/pkg/step"
 )

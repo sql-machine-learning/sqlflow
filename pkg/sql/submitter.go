@@ -23,18 +23,19 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/optimize"
 	"strings"
 	"sync"
 
+	"sqlflow.org/sqlflow/pkg/codegen/optimize"
+
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
+	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/codegen/pai"
-	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 )
 
 var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnostic: (.*)")
