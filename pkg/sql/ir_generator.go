@@ -1042,6 +1042,7 @@ func getOptimizeVariablesAndResultValueName(optimizeStmt *parser.SQLFlowSelectSt
 		return nil, "", fmt.Errorf("variables must be string but got %T", parsedVarsExpr)
 	}
 
+	varsStr = strings.TrimSpace(varsStr)
 	resultName := ""
 	if idx := strings.Index(varsStr, "("); idx >= 0 {
 		if varsStr[len(varsStr)-1] != ')' {

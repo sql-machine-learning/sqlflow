@@ -14,10 +14,8 @@
 import re
 
 import numpy as np
-import pandas as pd
 import pyomo.environ as pyomo_env
 import six
-import sqlflow_submitter.db as db
 from pyomo.environ import (Integers, NegativeIntegers, NegativeReals,
                            NonNegativeIntegers, NonNegativeReals,
                            NonPositiveIntegers, NonPositiveReals,
@@ -29,23 +27,6 @@ AGGREGATION_FUNCTIONS = ['sum']
 
 # FIXME(sneaxiy): do not know why pyomo requires that DATA_FRAME must be a global variable
 DATA_FRAME = None
-
-
-def create_data_frame(datasource, select):
-    conn = db.connect_with_data_source(datasource)
-    generator = db.db_generator(conn.driver,
-                                conn,
-                                select,
-                                feature_column_names=None,
-                                label_spec=None,
-                                feature_specs=None)()
-    selected_cols = db.selected_cols(conn.driver, conn, select)
-    df = pd.DataFrame(columns=selected_cols)
-    i = 0
-    for rows, _ in generator:
-        df.loc[i] = rows
-        i += 1
-    return df
 
 
 def split_to_tokens(expression):

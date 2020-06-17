@@ -35,5 +35,5 @@ pip install --quiet \
     scikit-learn==0.21.0 \
     sklearn2pmml==0.56.0 \
     jpmml-evaluator==0.3.1 \
-    pyomo==5.6.6
+    pyomo==5.6.9
 
