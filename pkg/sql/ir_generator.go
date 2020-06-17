@@ -1115,14 +1115,14 @@ func generateOptimizeStmt(optimizeStmt *parser.SQLFlowSelectStmt) (*ir.OptimizeS
 	}
 
 	objective := ir.OptimizeExpr{
-		Expression: optimizeStmt.Objective.String(),
+		ExpressionTokens: optimizeStmt.Objective.ToTokens(),
 	}
 
 	constraints := make([]*ir.OptimizeExpr, len(optimizeStmt.Constrants))
 	for i, c := range optimizeStmt.Constrants {
 		constraints[i] = &ir.OptimizeExpr{
-			Expression: c.Expression().String(),
-			GroupBy:    c.GroupBy(),
+			ExpressionTokens: c.Expression().ToTokens(),
+			GroupBy:          c.GroupBy(),
 		}
 	}
 

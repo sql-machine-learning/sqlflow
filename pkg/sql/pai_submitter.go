@@ -24,7 +24,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/optimize"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -427,22 +426,8 @@ func (s *paiSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 		return err
 	}
 
-	// Generate optimization code
-	code, err := optimize.GenerateOptimizeCode(cl, s.Session, s.Cwd, dbName, tableName)
-	if err != nil {
-		return err
-	}
-
-	err = copyPythonPackage("sqlflow_submitter", s.Cwd)
-	if err != nil {
-		return err
-	}
-
-	// Note: OptFlow submit API logs on stderr but not stdout
-	if err = s.runCommand(code, true); err != nil {
-		return err
-	}
-	return nil
+	err = generateOptFlowOptimizeCodeAndExecute(cl, s.defaultSubmitter, s.Session, s.Cwd, dbName, tableName, true)
+	return err
 }
 
 // getOSSModelBucket construct a bucket object. Argument project is used to get OSS checkpoint dir

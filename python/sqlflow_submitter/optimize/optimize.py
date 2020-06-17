@@ -29,17 +29,12 @@ AGGREGATION_FUNCTIONS = ['sum']
 DATA_FRAME = None
 
 
-def split_to_tokens(expression):
-    splitted = re.split('(\w+|\W)', expression)
-    return [s for s in splitted if len(s) > 0]
-
-
-def find_prev_non_blank(exprs, i):
-    if i >= len(exprs):
+def find_prev_non_blank(expression, i):
+    if i >= len(expression):
         return -1
 
     while i >= 0:
-        if len(exprs[i].strip()) == 0:
+        if len(expression[i].strip()) == 0:
             i -= 1
             continue
 
@@ -48,9 +43,9 @@ def find_prev_non_blank(exprs, i):
     return -1
 
 
-def find_next_non_blank(exprs, i):
-    while i < len(exprs):
-        if len(exprs[i].strip()) == 0:
+def find_next_non_blank(expression, i):
+    while i < len(expression):
+        if len(expression[i].strip()) == 0:
             i += 1
             continue
 
@@ -59,18 +54,18 @@ def find_next_non_blank(exprs, i):
     return -1
 
 
-def find_matched_aggregation_brackets(exprs, i):
+def find_matched_aggregation_brackets(expression, i):
     brackets = []
     left_bracket_num = 0
-    while i < len(exprs):
-        i = find_next_non_blank(exprs, i)
+    while i < len(expression):
+        i = find_next_non_blank(expression, i)
         if i < 0:
             break
 
-        if exprs[i] == "(":
+        if expression[i] == "(":
             brackets.append([i, None, None])
             left_bracket_num += 1
-        elif exprs[i] == ")":
+        elif expression[i] == ")":
             left_bracket_num -= 1
             if left_bracket_num < 0:
                 return None, None
@@ -84,16 +79,15 @@ def find_matched_aggregation_brackets(exprs, i):
 
     aggregation_brackets = []
     for left_idx, right_idx, depth in brackets:
-        j = find_prev_non_blank(exprs, left_idx - 1)
-        if j >= 0 and exprs[j].lower() in AGGREGATION_FUNCTIONS:
+        j = find_prev_non_blank(expression, left_idx - 1)
+        if j >= 0 and expression[j].lower() in AGGREGATION_FUNCTIONS:
             aggregation_brackets.append((left_idx, right_idx, depth))
 
-    return aggregation_brackets, min(i + 1, len(exprs))
+    return aggregation_brackets, min(i + 1, len(expression))
 
 
 def contains_aggregation_function(expression):
-    exprs = split_to_tokens(expression)
-    for expr in exprs:
+    for expr in expression:
         if expr.lower() in AGGREGATION_FUNCTIONS:
             return True
 
@@ -111,10 +105,9 @@ def generate_range_constraint_func(expression, data_frame, variables,
             continue
         param_columns[c.lower()] = c
 
-    exprs = split_to_tokens(expression)
     result_exprs = []
 
-    for i, expr in enumerate(exprs):
+    for i, expr in enumerate(expression):
         if expr.lower() == result_value_name:
             result_exprs.append("model.x[i]")
         elif expr.lower() in variables:
@@ -129,8 +122,7 @@ def generate_range_constraint_func(expression, data_frame, variables,
         else:
             result_exprs.append(expr)
 
-    result_func_str = "".join(result_exprs).replace('\r',
-                                                    ' ').replace('\n', ' ')
+    result_func_str = "".join(result_exprs)
     result_func_str = "lambda model, i: {}".format(result_func_str)
     result_func = eval(result_func_str)
     setattr(result_func, "code", result_func_str)  # for debug and unittest
@@ -180,16 +172,16 @@ def generate_objective_or_constraint_func(expression,
         else:
             result_exprs.append(expr)
 
-    exprs = split_to_tokens(expression)
     result_exprs = []
     i = 0
-    while i < len(exprs):
-        bracket_indices, next_idx = find_matched_aggregation_brackets(exprs, i)
+    while i < len(expression):
+        bracket_indices, next_idx = find_matched_aggregation_brackets(
+            expression, i)
         assert bracket_indices is not None, "brackets not match"
 
         if not bracket_indices:  # no bracket
             for idx in six.moves.range(i, next_idx):
-                append_non_aggregation_expr(exprs[idx], result_exprs)
+                append_non_aggregation_expr(expression[idx], result_exprs)
             i = next_idx
             continue
 
@@ -198,7 +190,7 @@ def generate_objective_or_constraint_func(expression,
         left_idx, right_idx = left_indices[0], right_indices[0]
 
         for idx in six.moves.range(i, left_idx):
-            append_non_aggregation_expr(exprs[idx], result_exprs)
+            append_non_aggregation_expr(expression[idx], result_exprs)
 
         def get_depth(idx):
             max_depth_idx = -1
@@ -220,12 +212,12 @@ def generate_objective_or_constraint_func(expression,
         for idx in six.moves.range(left_idx, right_idx + 1):
             depth = get_depth(idx)
             index_str = 'i_{}'.format(depth)
-            if exprs[idx] == "(":
-                result_exprs.append(exprs[idx])
+            if expression[idx] == "(":
+                result_exprs.append(expression[idx])
                 if idx in left_indices:
                     result_exprs.append("[")
                 continue
-            elif exprs[idx] == ")":
+            elif expression[idx] == ")":
                 if idx in right_indices:
                     result_exprs.append(' ')
                     if index is not None:
@@ -235,35 +227,33 @@ def generate_objective_or_constraint_func(expression,
                         result_exprs.append(
                             'for {} in model.x'.format(index_str))
                     result_exprs.append(']')
-                result_exprs.append(exprs[idx])
+                result_exprs.append(expression[idx])
                 continue
 
-            if exprs[idx].lower() in AGGREGATION_FUNCTIONS:
-                result_exprs.append(exprs[idx].lower())
-            elif exprs[idx].lower() in param_columns:
-                column_name = param_columns.get(exprs[idx].lower())
+            if expression[idx].lower() in AGGREGATION_FUNCTIONS:
+                result_exprs.append(expression[idx].lower())
+            elif expression[idx].lower() in param_columns:
+                column_name = param_columns.get(expression[idx].lower())
                 expr = 'DATA_FRAME.{}[{}]'.format(column_name, index_str)
                 result_exprs.append(expr)
-            elif exprs[idx].lower() == result_value_name or (
+            elif expression[idx].lower() == result_value_name or (
                     len(variables) == 1
-                    and exprs[idx].lower() == variables[0]):
+                    and expression[idx].lower() == variables[0]):
                 expr = 'model.x[{}]'.format(index_str)
                 result_exprs.append(expr)
-            elif exprs[idx].lower() in variables:
+            elif expression[idx].lower() in variables:
                 raise ValueError(
                     "Invalid expression, variable {} should not be inside aggregation expression"
-                    .format(exprs[idx]))
+                    .format(expression[idx]))
             else:
-                result_exprs.append(exprs[idx])
+                result_exprs.append(expression[idx])
 
         for idx in six.moves.range(right_idx + 1, next_idx):
-            append_non_aggregation_expr(exprs[idx], result_exprs)
+            append_non_aggregation_expr(expression[idx], result_exprs)
 
         i = next_idx
 
     result_expresion = "".join(result_exprs)
-    result_expresion = result_expresion.replace('\r', ' ').replace('\n', ' ')
-
     result_func_str = "lambda model: {}".format(result_expresion)
     result_func = eval(result_func_str)
     setattr(result_func, "code", result_func_str)  # for debug and unittest

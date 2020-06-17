@@ -16,51 +16,45 @@ package optimize
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
 	"strings"
 	"text/template"
 )
 
-// GenerateOptimizeCode generates optimize codes for execution
-func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, cwd string, paiDBName string, paiTableName string) (string, error) {
+// GenerateOptFlowOptimizeCode generates optimize codes for execution
+// The returned value is (runnerProgramCode, submitProgramCode, error)
+func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, dbName, tableName, runnerModuleName string, isPai bool) (string, string, error) {
 	resultTable := optimStmt.ResultTable
-	if tf.IsPAI() && !strings.Contains(resultTable, ".") {
-		resultTable = fmt.Sprintf("%s.%s", paiDBName, resultTable)
+	if !strings.Contains(resultTable, ".") {
+		resultTable = fmt.Sprintf("%s.%s", dbName, resultTable)
 	}
 
 	filler := optimizeFiller{
 		UserID:          session.UserId,
-		DataSource:      session.DbConnStr,
-		Select:          optimStmt.Select,
 		Variables:       optimStmt.Variables,
 		ResultValueName: optimStmt.ResultValueName,
 		VariableType:    optimStmt.VariableType,
-		Objective:       optimStmt.Objective.Expression,
+		Objective:       optimStmt.Objective,
 		Direction:       optimStmt.Direction,
 		Constraints:     optimStmt.Constraints,
 		Solver:          optimStmt.Solver,
+		TrainTable:      fmt.Sprintf("%s.%s", dbName, tableName),
 		ResultTable:     resultTable,
-		IsPAI:           tf.IsPAI(),
-		PAITrainTable:   fmt.Sprintf("%s.%s", paiDBName, paiTableName),
+		IsPAI:           isPai,
+		RunnerModule:    runnerModuleName,
 	}
 
 	var runnerProgram bytes.Buffer
-	runnerTpl := template.Must(template.New("custom_optimize_runner").Parse(paiOptFlowRunnerText))
+	runnerTpl := template.Must(template.New(runnerModuleName).Parse(optFlowRunnerText))
 	if err := runnerTpl.Execute(&runnerProgram, filler); err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	if err := ioutil.WriteFile(fmt.Sprintf("%s/custom_optimize_runner.py", cwd), []byte(runnerProgram.String()), 0644); err != nil {
-		return "", err
+	tpl := template.Must(template.New("optimize").Parse(optFlowSubmitText))
+	var submitProgram bytes.Buffer
+	if err := tpl.Execute(&submitProgram, filler); err != nil {
+		return "", "", err
 	}
-
-	tpl := template.Must(template.New("optimize").Parse(paiOptFlowSubmitText))
-	var program bytes.Buffer
-	if err := tpl.Execute(&program, filler); err != nil {
-		return "", err
-	}
-	return program.String(), nil
+	return runnerProgram.String(), submitProgram.String(), nil
 }

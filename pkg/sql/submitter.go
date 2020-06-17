@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sqlflow.org/sqlflow/pkg/sql/codegen/optimize"
 	"strings"
 	"sync"
 
@@ -273,6 +274,37 @@ func (s *defaultSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 		}
 	}
 	if err = s.runCommand(code, false); err != nil {
+		return err
+	}
+	return nil
+}
+
+func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *defaultSubmitter, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
+	// Generate optimization code
+	runnerFileName := "custom_optimize_runner"
+	runnerCode, submitCode, err := optimize.GenerateOptFlowOptimizeCode(cl, session, dbName, tableName,
+		runnerFileName, isPai)
+
+	if err != nil {
+		return err
+	}
+
+	// Write the runner code to cwd for submission
+	runnerFilePath := fmt.Sprintf("%s/%s.py", cwd, runnerFileName)
+	err = ioutil.WriteFile(runnerFilePath, []byte(runnerCode), 0644)
+	if err != nil {
+		return err
+	}
+
+	if isPai {
+		err = copyPythonPackage("sqlflow_submitter", cwd)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Note: OptFlow submit API logs on stderr but not stdout
+	if err = submitter.runCommand(submitCode, true); err != nil {
 		return err
 	}
 	return nil

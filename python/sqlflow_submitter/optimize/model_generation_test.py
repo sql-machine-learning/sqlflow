@@ -70,18 +70,25 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         self.variables = ["product"]
 
     def test_main(self):
-        objective = "SUM((price - materials_cost - other_cost) * product)"
+        objective = [
+            'SUM', '(', '(', 'price', '-', 'materials_cost', '-', 'other_cost',
+            ')', '*', 'product', ')'
+        ]
         constraints = [
             {
-                "expression": "SUM(finishing * product) <= 100",
-                "group_by": "",
+                "expression":
+                ['SUM', '(', 'finishing', '*', 'product', ')', '<=', '100'],
+                "group_by":
+                "",
             },
             {
-                "expression": "SUM(carpentry * product) <= 80",
-                "group_by": ""
+                "expression":
+                ['SUM', '(', 'carpentry', '*', 'product', ')', '<=', '80'],
+                "group_by":
+                ""
             },
             {
-                "expression": "product <= max_num"
+                "expression": ['product', '<=', 'max_num']
             },
         ]
 
@@ -90,7 +97,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         self.assertEqual(get_source(obj_func1), get_source(obj_func2))
         self.assertEqual(
             get_source(obj_func1),
-            "sum([(DATA_FRAME.price[i_0] - DATA_FRAME.materials_cost[i_0] - DATA_FRAME.other_cost[i_0]) * model.x[i_0] for i_0 in model.x])"
+            "sum([(DATA_FRAME.price[i_0]-DATA_FRAME.materials_cost[i_0]-DATA_FRAME.other_cost[i_0])*model.x[i_0] for i_0 in model.x])"
         )
 
         const_01 = self.generate_constraint_func(constraints[0],
@@ -99,7 +106,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         self.assertEqual(get_source(const_01), get_source(const_02))
         self.assertEqual(
             get_source(const_01),
-            "sum([DATA_FRAME.finishing[i_0] * model.x[i_0] for i_0 in model.x]) <= 100"
+            "sum([DATA_FRAME.finishing[i_0]*model.x[i_0] for i_0 in model.x])<=100"
         )
 
         const_11 = self.generate_constraint_func(constraints[1],
@@ -108,7 +115,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         self.assertEqual(get_source(const_11), get_source(const_12))
         self.assertEqual(
             get_source(const_11),
-            "sum([DATA_FRAME.carpentry[i_0] * model.x[i_0] for i_0 in model.x]) <= 80"
+            "sum([DATA_FRAME.carpentry[i_0]*model.x[i_0] for i_0 in model.x])<=80"
         )
 
         const_21 = self.generate_constraint_func(constraints[1],
@@ -117,7 +124,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
                                                  False)
         self.assertEqual(get_source(const_21), get_source(const_22))
         self.assertEqual(get_source(const_21),
-                         "SUM(DATA_FRAME.carpentry[i] * model.x[i]) <= 80")
+                         "SUM(DATA_FRAME.carpentry[i]*model.x[i])<=80")
 
         # TODO(sneaxiy): need to add more tests to generated models
         model1 = generate_model_with_data_frame(data_frame=self.data_frame,
@@ -155,19 +162,22 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
         self.result_value_name = "shipment"
 
     def test_main(self):
-        objective = "SUM(distance * shipment * 90 / 1000)"
+        objective = [
+            'SUM', '(', 'distance', '*', 'shipment', '*', '90', '/', '1000',
+            ')'
+        ]
 
         constraints = [
             {
-                "expression": "SUM(shipment) <= capacity",
+                "expression": ['SUM', '(', 'shipment', ')', '<=', 'capacity'],
                 "group_by": "plants",
             },
             {
-                "expression": "SUM(shipment) >= demand",
+                "expression": ['SUM', '(', 'shipment', ')', '>=', 'demand'],
                 "group_by": "markets",
             },
             {
-                "expression": "shipment * 2 <= demand",
+                "expression": ['shipment', '*', '2', '<=', 'demand'],
                 "group_by": "markets",
             },
         ]
@@ -176,27 +186,27 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
                                                 self.result_value_name)
         self.assertEqual(
             get_source(obj_func),
-            "sum([DATA_FRAME.distance[i_0] * model.x[i_0] * 90 / 1000 for i_0 in model.x])"
+            "sum([DATA_FRAME.distance[i_0]*model.x[i_0]*90/1000 for i_0 in model.x])"
         )
 
         const_0 = self.generate_constraint_func(constraints[0],
                                                 self.result_value_name,
                                                 index=[0, 1])
         self.assertEqual(get_source(const_0),
-                         "sum([model.x[i_0] for i_0 in [0, 1]]) <= 100")
+                         "sum([model.x[i_0] for i_0 in [0, 1]])<=100")
 
         const_1 = self.generate_constraint_func(constraints[1],
                                                 self.result_value_name,
                                                 index=[2, 3])
         self.assertEqual(get_source(const_1),
-                         "sum([model.x[i_0] for i_0 in [2, 3]]) >= 130")
+                         "sum([model.x[i_0] for i_0 in [2, 3]])>=130")
 
         const_2 = self.generate_constraint_func(constraints[2],
                                                 self.result_value_name,
                                                 index=[2, 3],
                                                 is_aggregation=False)
         self.assertEqual(get_source(const_2),
-                         "model.x[i] * 2 <= DATA_FRAME.demand[i]")
+                         "model.x[i]*2<=DATA_FRAME.demand[i]")
 
         model = generate_model_with_data_frame(
             data_frame=self.data_frame,
