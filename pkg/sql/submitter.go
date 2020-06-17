@@ -32,9 +32,9 @@ import (
 	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
+	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 )
 
 var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnostic: (.*)")

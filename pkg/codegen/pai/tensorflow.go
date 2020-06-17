@@ -24,7 +24,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 )
 
 func generateLoadOSSModelCode(estimator, ossModelPathToLoad string) (string, error) {

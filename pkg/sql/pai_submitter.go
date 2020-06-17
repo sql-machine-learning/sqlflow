@@ -30,7 +30,7 @@ import (
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
 )
 
 const (

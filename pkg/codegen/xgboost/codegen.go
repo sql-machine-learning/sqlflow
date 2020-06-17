@@ -18,13 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/codegen"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
+	tf "sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 )
 
 func getXGBoostObjectives() (ret []string) {

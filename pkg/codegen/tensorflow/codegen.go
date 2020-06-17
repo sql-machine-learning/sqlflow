@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/codegen"
 	"strings"
 	"text/template"
 

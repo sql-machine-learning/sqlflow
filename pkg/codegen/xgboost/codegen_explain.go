@@ -20,7 +20,7 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	tf "sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
+	tf "sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 )
 
 const (
