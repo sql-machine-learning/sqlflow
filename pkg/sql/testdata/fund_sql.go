@@ -21,7 +21,7 @@ CREATE DATABASE IF NOT EXISTS fund;
 
 DROP TABLE IF EXISTS fund.train;
 
-CREATE TABLE fund.train (
+CREATE TABLE IF NOT EXISTS fund.train (
   time VARCHAR(255),
   purchase DOUBLE,
   redeem DOUBLE

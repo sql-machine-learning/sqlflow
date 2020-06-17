@@ -111,8 +111,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     # For example: https://github.com/sql-machine-learning/models/blob/ce970d14a524e20de10a645c99b6bf8724be17d9/sqlflow_models/arima_with_stl_decomposition.py#L123
     if has_none_optimizer:
         assert hasattr(
-            classifier, "sqlflow_train_loop"
-        ), "optimizer() should not return None {}".format(classifier)
+            classifier,
+            "sqlflow_train_loop"), "optimizer() should not return None"
     else:
         classifier.compile(optimizer=optimizer,
                            loss=loss,
