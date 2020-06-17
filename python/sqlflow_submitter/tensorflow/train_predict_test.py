@@ -13,6 +13,7 @@
 
 import os
 import subprocess
+import sys
 import unittest
 from unittest import TestCase
 
@@ -24,7 +25,7 @@ class TestEstimatorModels(TestCase):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
             ret = subprocess.run([
-                "/usr/local/bin/python",
+                sys.executable,
                 "python/sqlflow_submitter/tensorflow/estimator_example.py"
             ],
                                  env=os.environ.copy(),
@@ -37,7 +38,7 @@ class TestEstimatorModels(TestCase):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
             ret = subprocess.run([
-                "/usr/local/bin/python",
+                sys.executable,
                 "python/sqlflow_submitter/tensorflow/explain_example.py"
             ],
                                  env=os.environ.copy(),
@@ -50,7 +51,7 @@ class TestEstimatorModels(TestCase):
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
             ret = subprocess.run([
-                "/usr/local/bin/python",
+                sys.executable,
                 "python/sqlflow_submitter/tensorflow/keras_example.py"
             ],
                                  env=os.environ.copy(),
@@ -58,7 +59,7 @@ class TestEstimatorModels(TestCase):
             self.assertEqual(ret.returncode, 0)
 
             ret = subprocess.run([
-                "/usr/local/bin/python",
+                sys.executable,
                 "python/sqlflow_submitter/tensorflow/keras_example_reg.py"
             ],
                                  env=os.environ.copy(),
