@@ -13,7 +13,8 @@
 
 package testdata
 
-const fundSQL = `
+// FundSQL is the SQL statements to prepare fund test data.
+const FundSQL = `
 DROP DATABASE IF EXISTS fund;
 
 CREATE DATABASE IF NOT EXISTS fund;

@@ -215,7 +215,7 @@ func prepareTestData(dbStr string) error {
 			testdata.HousingSQL,
 			testdata.FeatureDerivationCaseSQL,
 			testdata.TextCNSQL,
-			testdata.fundSQL}
+			testdata.FundSQL}
 	case "hive":
 		datasets = []string{
 			testdata.IrisHiveSQL,
