@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"sqlflow.org/sqlflow/pkg/database"
-	submitter "sqlflow.org/sqlflow/pkg/executor"
+	"sqlflow.org/sqlflow/pkg/executor"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
@@ -149,7 +149,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}(cwd)
 	var r ir.SQLFlowStmt
 
-	generateTrainStmtFromModel := submitter.New(session.Submitter).GetTrainStmtFromModel()
+	generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
 
 	if sql.IsExtendedSyntax() {
 		if sql.Train {
@@ -174,7 +174,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	r.SetOriginalSQL(sql.Original)
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
-	exec := submitter.New(session.Submitter)
+	exec := executor.New(session.Submitter)
 	exec.Setup(wr, db, modelDir, cwd, session)
 	return r.Execute(exec)
 }
