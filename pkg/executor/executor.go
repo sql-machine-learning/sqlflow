@@ -125,7 +125,7 @@ func (s *pythonExecutor) SaveModel(cl *ir.TrainStmt) error {
 	return m.Save(modelURI, cl, s.Session)
 }
 
-func (s *defaultSubmitter) runCommand(program string, logStderr bool) error {
+func (s *pythonExecutor) runCommand(program string, logStderr bool) error {
 	cw := &logChanWriter{wr: s.Writer}
 	defer cw.Close()
 	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
@@ -276,7 +276,7 @@ func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	return nil
 }
 
-func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *defaultSubmitter, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
+func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *pythonExecutor, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
 	// Generate optimization code
 	runnerFileName := "custom_optimize_runner"
 	runnerCode, submitCode, err := optimize.GenerateOptFlowOptimizeCode(cl, session, dbName, tableName,
@@ -307,7 +307,7 @@ func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *defau
 	return nil
 }
 
-func (s *defaultSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
+func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 	// TODO(sneaxiy): to be implemented
 	return fmt.Errorf("ExecuteOptimize is not supported in default submitter")
 }

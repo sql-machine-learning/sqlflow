@@ -411,7 +411,7 @@ func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 
 // TODO(sneaxiy): need to add some tests to this function, but it requires
 // optflow installed in docker image
-func (s *paiSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
+func (s *paiExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -440,7 +440,7 @@ func (s *paiSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 		return err
 	}
 
-	err = generateOptFlowOptimizeCodeAndExecute(cl, s.defaultSubmitter, s.Session, s.Cwd, dbName, tableName, true)
+	err = generateOptFlowOptimizeCodeAndExecute(cl, s.pythonExecutor, s.Session, s.Cwd, dbName, tableName, true)
 	return err
 }
 
