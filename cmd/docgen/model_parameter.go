@@ -18,8 +18,8 @@ import (
 	"regexp"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
+	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 )
 
 func main() {

@@ -23,7 +23,7 @@ import (
 
 	prompt "github.com/c-bata/go-prompt"
 
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
+	"sqlflow.org/sqlflow/pkg/attribute"
 )
 
 type searchMode int
