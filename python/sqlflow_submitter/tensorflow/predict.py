@@ -129,11 +129,18 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                                hdfs_pass) as w:
         for features in pred_dataset:
             result = classifier.predict_on_batch(features)
-            # FIXME(typhoonzero): determine the predict result by
+            # FIXME(typhoonzero): determine the predict result is classification by
+            # adding the prediction result together to see if it is close to 1.0.
             if len(result[0]) == 1:  # regression result
                 result = result[0][0]
-            else:  # classification result
-                result = result[0].argmax(axis=-1)
+            else:
+                sum = 0
+                for i in result[0]:
+                    sum += i
+                if np.isclose(sum, 1.0):  # classification result
+                    result = result[0].argmax(axis=-1)
+                else:
+                    result = result[0]  # multiple regression result
             row = []
             for idx, name in enumerate(feature_column_names):
                 val = features[name].numpy()[0][0]

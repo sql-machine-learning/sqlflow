@@ -65,6 +65,8 @@ def parse_ctor_args(f, prefix=''):
     except:
         doc = ''
     doc = doc if doc else f.__doc__
+    if doc is None:
+        doc = ''
     arg_list = list(inspect.signature(f).parameters)
     args = '|'.join(arg_list)
     arg_re = re.compile(r'(?<=\n)\s*%s\s*(%s)\s*:\s*' % (prefix, args),
