@@ -28,15 +28,6 @@ from .pai_distributed import (dump_into_tf_config,
 from .train_estimator import estimator_train_compiled
 
 
-def default_loss(labels, output):
-    # global _loss
-    # if _loss == "binary_crossentropy":
-    #     return tf.reduce_mean(tf.keras.losses.binary_crossentropy(labels, output))
-    # elif _loss == "categorical_crossentropy":
-    return tf.reduce_mean(
-        tf.keras.losses.sparse_categorical_crossentropy(labels, output))
-
-
 def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                          train_dataset_fn, val_dataset_fn, label_meta, epochs,
                          verbose, metric_names, validation_steps):
@@ -88,7 +79,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
 
     if loss is None:
         members = inspect.getmembers(classifier_pkg)
-        loss = default_loss
+        # FIXME(typhoonzero): default loss may cause error if model's output shape does not fit.
+        loss = "sparse_categorical_crossentropy"
         for m, func in members:
             if m == "loss":
                 loss = classifier_pkg.loss

@@ -97,7 +97,8 @@ if __name__ == "__main__":
           label_meta=label_meta,
           model_params={
               "n_classes": 3,
-              "hidden_units": [10, 20]
+              "hidden_units": [10, 20],
+              "loss": "sparse_categorical_crossentropy"
           },
           validation_metrics=["CategoricalAccuracy"],
           save="mymodel_keras",
