@@ -61,7 +61,7 @@ func InitializeAttributes(stmt *ir.OptimizeStmt) error {
 
 // GenerateOptFlowOptimizeCode generates optimize codes for execution
 // The returned value is (runnerProgramCode, submitProgramCode, error)
-func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, dbName, tableName, runnerModuleName string, isPai bool) (string, string, error) {
+func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, dbName, tableName, runnerModuleName string) (string, string, error) {
 	resultTable := optimStmt.ResultTable
 	if !strings.Contains(resultTable, ".") {
 		resultTable = fmt.Sprintf("%s.%s", dbName, resultTable)
@@ -82,7 +82,7 @@ func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session
 
 		k = k[len(prefix):]
 		prefixKey := prefix[0 : len(prefix)-1]
-		if _, ok := optimStmt.Attributes[prefixKey]; !ok {
+		if _, ok := attrs[prefixKey]; !ok {
 			attrs[prefixKey] = make(map[string]interface{})
 		}
 		attrs[prefixKey][k] = v
@@ -105,7 +105,6 @@ func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session
 		AttributeJSON:   string(attrJSON),
 		TrainTable:      fmt.Sprintf("%s.%s", dbName, tableName),
 		ResultTable:     resultTable,
-		IsPAI:           isPai,
 		RunnerModule:    runnerModuleName,
 	}
 

@@ -27,7 +27,6 @@ type optimizeFiller struct {
 	AttributeJSON   string
 	TrainTable      string
 	ResultTable     string
-	IsPAI           bool
 	RunnerModule    string
 }
 
@@ -64,10 +63,7 @@ from optflow.core.api.config import (InputConf, OdpsItemConf, OdpsConf, OutputCo
                                      SolverExperiment, OptflowLocalEngine, OptflowKubemakerEngine, OptionConf)
 from optflow.core.submit import submit_experiment
 
-is_pai = ("{{.IsPAI}}" == "true")
-
-if is_pai:
-    from alps.framework.engine import ResourceConf
+from alps.framework.engine import ResourceConf
 
 def submit():
     attributes = json.loads('''{{.AttributeJSON}}''')
@@ -105,18 +101,15 @@ def submit():
     if not optflow_version:
         raise ValueError("Environment variable SQLFLOW_OPTFLOW_VERSION must be set")
     	
-    if is_pai:
-        cluster = os.environ.get("SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER")
-        if not cluster:
-            raise ValueError("Environment variable SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER must be set")
+    cluster = os.environ.get("SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER")
+    if not cluster:
+        raise ValueError("Environment variable SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER must be set")
  
-        worker_options = attributes.get("worker", {})
-        sys.stderr.write('worker options: {}\n'.format(worker_options))
-        engine = OptflowKubemakerEngine(worker=ResourceConf(**worker_options), cluster=cluster)
-    else:
-        # TODO(sneaxiy): support local engine
-        engine = OptflowLocalEngine()
-    
+    worker_options = attributes.get("worker", {})
+    sys.stderr.write('worker options: {}\n'.format(worker_options))
+    # TODO(sneaxiy): support local engine
+    engine = OptflowKubemakerEngine(worker=ResourceConf(**worker_options), cluster=cluster)
+         
     user_id = "{{.UserID}}"
     if not user_id:
         user_id = "jinle.zjl"

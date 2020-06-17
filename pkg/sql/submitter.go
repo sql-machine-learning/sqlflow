@@ -283,7 +283,7 @@ func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *defau
 	// Generate optimization code
 	runnerFileName := "custom_optimize_runner"
 	runnerCode, submitCode, err := optimize.GenerateOptFlowOptimizeCode(cl, session, dbName, tableName,
-		runnerFileName, isPai)
+		runnerFileName)
 
 	if err != nil {
 		return err
