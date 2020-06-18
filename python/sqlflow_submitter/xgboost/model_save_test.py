@@ -50,7 +50,7 @@ class TestXGBoostModelSavingBase(unittest.TestCase):
         return 32
 
     def save_and_load_model(self, booster, params):
-        save_model_to_local_file(booster, params, self.filename())
+        save_model_to_local_file(booster, params, {}, self.filename())
         self.assertTrue(os.path.exists(self.filename()))
         self.assertTrue(os.path.exists(self.pmml_filename()))
 

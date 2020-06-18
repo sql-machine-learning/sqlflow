@@ -34,6 +34,7 @@ type trainFiller struct {
 	IsPAI               bool
 	PAITrainTable       string
 	PAIValidateTable    string
+	ModelRepoImage      string
 }
 
 const trainTemplateText = `
@@ -81,7 +82,8 @@ train(datasource='''{{.DataSource}}''',
       pai_validate_table="{{.PAIValidateTable}}",
       oss_model_dir="{{.OSSModelDirToSave}}",
       transform_fn=transform_fn,
-      feature_column_code='''{{.FeatureColumnCode}}''')
+      feature_column_code='''{{.FeatureColumnCode}}''',
+      model_repo_image="{{.ModelRepoImage}}")
 `
 
 const distTrainTemplateText = `
@@ -128,7 +130,8 @@ dist_train(flags=FLAGS,
       pai_validate_table="{{.PAIValidateTable}}",
       oss_model_dir="{{.OSSModelDirToSave}}",
       transform_fn=transform_fn,
-      feature_column_code='''{{.FeatureColumnCode}}''')
+      feature_column_code='''{{.FeatureColumnCode}}''',
+      model_repo_image="{{.ModelRepoImage}}")
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

@@ -11,8 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from os import path
+
 import tensorflow as tf
 
+from ..model_metadata import save_model_metadata
 from . import metrics
 from .diag import check_and_load_estimator
 from .get_tf_version import tf_is_version2
@@ -25,7 +28,7 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                              log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs,
                              save_checkpoints_steps, metric_names,
-                             load_pretrained_model):
+                             load_pretrained_model, model_meta):
     print("Start training using estimator model...")
 
     is_distributed = False
@@ -73,9 +76,13 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         tf.feature_column.make_parse_example_spec(all_feature_columns))
     export_path = classifier.export_saved_model(save, serving_input_fn)
     # write the path under current directory
+    export_path_str = str(export_path.decode("utf-8"))
     with open("exported_path", "w") as fn:
-        fn.write(str(export_path.decode("utf-8")))
-    print("Done training, model exported to: %s" % export_path)
+        fn.write(export_path_str)
+    # write model metadata to model_meta.json
+    save_model_metadata(path.join(export_path_str, "model_meta.json"),
+                        model_meta)
+    print("Done training, model exported to: %s" % export_path_str)
 
 
 def estimator_train_compiled(estimator, is_pai, FLAGS, train_dataset_fn,

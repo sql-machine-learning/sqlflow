@@ -18,8 +18,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"sqlflow.org/sqlflow/pkg/codegen"
 	"strings"
+
+	"sqlflow.org/sqlflow/pkg/codegen"
 
 	"sqlflow.org/sqlflow/pkg/attribute"
 	tf "sqlflow.org/sqlflow/pkg/codegen/tensorflow"
@@ -336,7 +337,9 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURIToSave, 
 		LoadPreTrainedModel: trainStmt.PreTrainedModel != "",
 		IsPAI:               tf.IsPAI(),
 		PAITrainTable:       paiTrainTable,
-		PAIValidateTable:    paiValidateTable}, nil
+		PAIValidateTable:    paiValidateTable,
+		ModelRepoImage:      trainStmt.ModelImage,
+	}, nil
 }
 
 // Pred generates a Python program for predict a xgboost model.

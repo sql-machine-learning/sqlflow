@@ -23,6 +23,8 @@ from sqlflow_submitter.xgboost.dataset import xgb_dataset
 from sqlflow_submitter.xgboost.pai_rabit import (PaiXGBoostTracker,
                                                  PaiXGBoostWorker)
 
+from ..model_metadata import collect_model_metadata, save_model_metadata
+
 
 def dist_train(flags,
                datasource,
@@ -42,7 +44,8 @@ def dist_train(flags,
                pai_validate_table="",
                oss_model_dir="",
                transform_fn=None,
-               feature_column_code=""):
+               feature_column_code="",
+               model_repo_image=""):
     if not is_pai:
         raise Exception(
             "XGBoost distributed training is only supported on PAI")
@@ -91,7 +94,8 @@ def dist_train(flags,
                   nworkers=num_workers,
                   oss_model_dir=oss_model_dir,
                   transform_fn=transform_fn,
-                  feature_column_code=feature_column_code)
+                  feature_column_code=feature_column_code,
+                  model_repo_image=model_repo_image)
     except Exception as e:
         print("node={}, id={}, exception={}".format(node, task_id, e))
         six.reraise(*sys.exc_info())  # For better backtrace
@@ -121,7 +125,8 @@ def train(datasource,
           nworkers=1,
           oss_model_dir="",
           transform_fn=None,
-          feature_column_code=""):
+          feature_column_code="",
+          model_repo_image=""):
     if batch_size == -1:
         batch_size = None
     print("Start training XGBoost model...")
@@ -177,7 +182,11 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        save_model_to_local_file(bst, model_params, filename)
+        metadata = collect_model_metadata(select, validation_select, None,
+                                          model_params, train_params,
+                                          feature_metas, label_meta, re,
+                                          model_repo_image)
+        save_model_to_local_file(bst, model_params, metadata, filename)
 
         if is_pai and len(oss_model_dir) > 0:
             save_model(oss_model_dir, filename, model_params, train_params,
@@ -185,7 +194,7 @@ def train(datasource,
                        feature_column_code)
 
 
-def save_model_to_local_file(booster, model_params, filename):
+def save_model_to_local_file(booster, model_params, meta, filename):
     from sklearn2pmml import PMMLPipeline, sklearn2pmml
     try:
         from xgboost.compat import XGBoostLabelEncoder
@@ -194,8 +203,8 @@ def save_model_to_local_file(booster, model_params, filename):
         from xgboost.sklearn import XGBLabelEncoder as XGBoostLabelEncoder
 
     objective = model_params.get("objective")
+    bst_meta = dict()
 
-    meta = dict()
     if objective.startswith("binary:") or objective.startswith("multi:"):
         if objective.startswith("binary:"):
             num_class = 2
@@ -212,8 +221,8 @@ def save_model_to_local_file(booster, model_params, filename):
         model._le = label_encoder
         model.classes_ = model._le.classes_
 
-        meta["_le"] = {"classes_": model.classes_.tolist()}
-        meta["classes_"] = model.classes_.tolist()
+        bst_meta["_le"] = {"classes_": model.classes_.tolist()}
+        bst_meta["classes_"] = model.classes_.tolist()
     elif objective.startswith("reg:"):
         model = xgb.XGBRegressor()
     elif objective.startswith("rank:"):
@@ -223,13 +232,13 @@ def save_model_to_local_file(booster, model_params, filename):
             "Not supported objective {} for saving PMML".format(objective))
 
     model_type = type(model).__name__
-    meta["type"] = model_type
-    meta = json.dumps(meta)
+    bst_meta["type"] = model_type
 
     # Meta data is needed for saving sklearn pipeline. See here:
     # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
-    booster.set_attr(scikit_learn=meta)
+    booster.set_attr(scikit_learn=json.dumps(bst_meta))
     booster.save_model(filename)
+    save_model_metadata("model_meta.json", meta)
     booster.set_attr(scikit_learn=None)
     model.load_model(filename)
 
@@ -241,7 +250,8 @@ def save_model(model_dir, filename, model_params, train_params, feature_metas,
                feature_column_names, label_meta, feature_column_code):
     model.save_file(model_dir, filename)
     model.save_file(model_dir, "{}.pmml".format(filename))
-
+    model.save_file(model_dir, "model_meta.json")
+    # (TODO:lhw) remove this function call, use the new metadata in load_metas
     model.save_metas(
         model_dir,
         1,
