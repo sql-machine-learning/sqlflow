@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/ir"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 var attributeDictionary = attribute.Dictionary{

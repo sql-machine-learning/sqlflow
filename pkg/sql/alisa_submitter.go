@@ -26,10 +26,10 @@ import (
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/goalisa"
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
 )
 
 var resourceName = "job.tar.gz"

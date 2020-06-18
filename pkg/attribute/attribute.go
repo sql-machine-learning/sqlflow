@@ -29,8 +29,6 @@ const (
 	errUnexpectedType       = `unexpected type on attribute %v. expect %s, received %[3]v(%[3]T)`
 )
 
-type unknown struct{}
-
 var (
 	// Bool indicates that the corresponding attribute is a boolean
 	Bool = reflect.TypeOf(true)
@@ -43,7 +41,7 @@ var (
 	// IntList indicates the corresponding attribute is a list of integers
 	IntList = reflect.TypeOf([]int{})
 	// Unknown type indicates that the attribute type is dynamically determined.
-	Unknown = reflect.TypeOf(unknown{})
+	Unknown = reflect.Type(nil)
 )
 
 // Dictionary contains the description of all attributes
@@ -82,7 +80,8 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 		var desc *Description
 		desc, ok := d[k]
 		if !ok {
-			// Support attribute definition like "model.*" to match attributes start with "model"
+			// Support attribute definition like "model.*" to match
+			// attributes start with "model"
 			keyParts := strings.Split(k, ".")
 			if len(keyParts) == 2 {
 				wildCard := fmt.Sprintf("%s.*", keyParts[0])

@@ -33,8 +33,8 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>base_score</td>
-	<td>attribute.unknown</td>
-	<td>initial prediction score of all instances, global bias.</td>
+	<td>float32</td>
+	<td>The initial prediction score of all instances, global bias.</td>
 </tr>
 <tr>
 	<td>colsample_bylevel</td>
@@ -78,7 +78,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>max_bin</td>
-	<td>attribute.unknown</td>
+	<td>%!s(<nil>)</td>
 	<td>used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features.</td>
 </tr>
 <tr>
@@ -153,7 +153,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>silent</td>
-	<td>attribute.unknown</td>
+	<td>%!s(<nil>)</td>
 	<td>Whether to print messages while running boosting. Deprecated. Use verbosity instead.</td>
 </tr>
 <tr>
