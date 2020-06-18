@@ -91,7 +91,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         validate_dataset = None
 
-    classifier = init_model_with_feature_column(estimator, model_params)
+    classifier = init_model_with_feature_column(
+        estimator, model_params, has_none_optimizer=has_none_optimizer)
 
     # FIXME(sneaxiy): some models defined by other framework (not TensorFlow or XGBoost)
     # may return None optimizer.

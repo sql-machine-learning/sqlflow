@@ -29,7 +29,9 @@ class WrappedKerasModel(tf.keras.Model):
         return self.sub_model.__call__(x, training=training)
 
 
-def init_model_with_feature_column(estimator, model_params):
+def init_model_with_feature_column(estimator,
+                                   model_params,
+                                   has_none_optimizer=False):
     """Check if estimator have argument "feature_column" and initialize the model
        by wrapping the keras model if no "feature_column" argument detected.
 
@@ -42,7 +44,7 @@ def init_model_with_feature_column(estimator, model_params):
         if k == "feature_columns":
             has_feature_columns_arg = True
             break
-    if not has_feature_columns_arg:
+    if not has_feature_columns_arg and not has_none_optimizer:
         feature_columns = model_params["feature_columns"]
         del model_params["feature_columns"]
         classifier = WrappedKerasModel(estimator, model_params,
