@@ -32,6 +32,7 @@ type trainFiller struct {
 	IsPAI               bool
 	PAITrainTable       string
 	PAIValidateTable    string
+	ModelRepoImage      string
 }
 
 const tfTrainTemplateText = `
@@ -138,5 +139,7 @@ train(datasource="{{.DataSource}}",
       load_pretrained_model="{{.LoadPreTrainedModel}}" == "true",
       is_pai="{{.IsPAI}}" == "true",
       pai_table="{{.PAITrainTable}}",
-      pai_val_table="{{.PAIValidateTable}}")
+      pai_val_table="{{.PAIValidateTable}}",
+      feature_columns_code=feature_columns_code,
+      model_repo_image="{{.ModelRepoImage}}")
 `
