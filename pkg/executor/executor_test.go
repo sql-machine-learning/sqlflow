@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/pipe"
 )
 
 func TestGetSubmitter(t *testing.T) {
@@ -28,4 +29,28 @@ func TestGetSubmitter(t *testing.T) {
 	s3 := GetSubmitter("pai")
 	_, ok := s3.(*paiExecutor)
 	a.True(ok)
+}
+
+func TestLogChanWriter_Write(t *testing.T) {
+	a := assert.New(t)
+	rd, wr := pipe.Pipe()
+	go func() {
+		defer wr.Close()
+		cw := &logChanWriter{wr: wr}
+		cw.Write([]byte("hello\n世界"))
+		cw.Write([]byte("hello\n世界"))
+		cw.Write([]byte("\n"))
+		cw.Write([]byte("世界\n世界\n世界\n"))
+	}()
+
+	c := rd.ReadAll()
+
+	a.Equal("hello\n", <-c)
+	a.Equal("世界hello\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
+	a.Equal("世界\n", <-c)
+	_, more := <-c
+	a.False(more)
 }

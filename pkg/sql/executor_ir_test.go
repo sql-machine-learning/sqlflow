@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
-	"sqlflow.org/sqlflow/pkg/pipe"
 )
 
 const (
@@ -239,30 +238,6 @@ USING sqlflow_models.my_dense_dnn_model
 		stream = RunSQLProgram(predSQL, "", database.GetSessionFromTestingDB())
 		a.True(GoodStream(stream.ReadAll()))
 	})
-}
-
-func TestLogChanWriter_Write(t *testing.T) {
-	a := assert.New(t)
-	rd, wr := pipe.Pipe()
-	go func() {
-		defer wr.Close()
-		cw := &logChanWriter{wr: wr}
-		cw.Write([]byte("hello\n世界"))
-		cw.Write([]byte("hello\n世界"))
-		cw.Write([]byte("\n"))
-		cw.Write([]byte("世界\n世界\n世界\n"))
-	}()
-
-	c := rd.ReadAll()
-
-	a.Equal("hello\n", <-c)
-	a.Equal("世界hello\n", <-c)
-	a.Equal("世界\n", <-c)
-	a.Equal("世界\n", <-c)
-	a.Equal("世界\n", <-c)
-	a.Equal("世界\n", <-c)
-	_, more := <-c
-	a.False(more)
 }
 
 func TestRewriteStatementsWithHints4Alisa(t *testing.T) {
