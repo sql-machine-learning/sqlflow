@@ -17,7 +17,7 @@ import tensorflow as tf
 
 from ..model_metadata import save_model_metadata
 from . import metrics
-from .diag import check_and_load_estimator
+from .diag import init_model, load_pretrained_model_estimator
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
 from .pai_distributed import make_estimator_distributed_runconfig
@@ -46,8 +46,9 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         model_params["model_dir"] = save
 
     warm_start_from = save if load_pretrained_model else None
-    classifier = check_and_load_estimator(estimator, model_params,
-                                          warm_start_from)
+    if warm_start_from:
+        load_pretrained_model_estimator(estimator, model_params)
+    classifier = init_model(estimator, model_params)
 
     # do not add default Accuracy metric when using estimator to train, it will fail
     # when the estimator is a regressor, and estimator seems automatically add some
