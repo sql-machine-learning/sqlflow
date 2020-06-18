@@ -13,8 +13,8 @@
 
 import inspect
 import sys
-from os import path
 import warnings
+from os import path
 
 import six
 import tensorflow as tf
