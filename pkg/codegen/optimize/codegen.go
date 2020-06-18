@@ -24,27 +24,14 @@ import (
 	"text/template"
 )
 
-func checkIsPositiveInteger(i interface{}, name string) error {
-	if v, ok := i.(int); !ok || v <= 0 {
-		return fmt.Errorf("%s should be positive integer", name)
-	}
-	return nil
-}
-
 // TODO(sneaxiy): polish attribute codes
 var attributeDictionary = attribute.Dictionary{
 	"data.enable_slice": {attribute.Bool, false, "Whether to enable data slicing", nil},
 	"data.batch_size":   {attribute.Int, -1, "Batch size when training", nil},
-	"worker.num": {attribute.Int, 1, "Worker number", func(i interface{}) error {
-		return checkIsPositiveInteger(i, "worker.num")
-	}},
-	"worker.core": {attribute.Int, 8, "Worker core number", func(i interface{}) error {
-		return checkIsPositiveInteger(i, "worker.core")
-	}},
-	"worker.memory": {attribute.Int, 4096, "Worker memory", func(i interface{}) error {
-		return checkIsPositiveInteger(i, "worker.memory")
-	}},
-	"solver.*": {attribute.Unknown, nil, "Solver options", nil},
+	"worker.num":        {attribute.Int, 1, "Worker number", attribute.IntLowerBoundChecker(0, false)},
+	"worker.core":       {attribute.Int, 8, "Worker core number", attribute.IntLowerBoundChecker(0, false)},
+	"worker.memory":     {attribute.Int, 4096, "Worker memory", attribute.IntLowerBoundChecker(0, false)},
+	"solver.*":          {attribute.Unknown, nil, "Solver options", nil},
 }
 
 // InitializeAttributes initialize attributes in optimize clause IR

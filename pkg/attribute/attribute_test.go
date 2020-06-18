@@ -16,6 +16,7 @@ package attribute
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,10 +25,10 @@ import (
 func TestDictionaryValidate(t *testing.T) {
 	a := assert.New(t)
 
-	checker := func(i interface{}) error {
+	checker := func(i interface{}, name string) error {
 		ii, ok := i.(int)
 		if !ok {
-			return fmt.Errorf("%T %v should of type integer", i, i)
+			return fmt.Errorf("attribute %s %T %v should of type integer", name, i, i)
 		}
 		if ii < 0 {
 			return fmt.Errorf("some error")
@@ -41,6 +42,90 @@ func TestDictionaryValidate(t *testing.T) {
 	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "int", 1.))
 	a.NoError(tb.Validate(map[string]interface{}{"b": float32(1.0)}))
 	a.NoError(tb.Validate(map[string]interface{}{"b": 1}))
+}
+
+func TestDictionaryChecker(t *testing.T) {
+	a := assert.New(t)
+	var tb Dictionary
+	var err error
+
+	boolChecker := func(b bool, name string) error {
+		if !b {
+			return fmt.Errorf("attribute %s must be true", name)
+		}
+		return nil
+	}
+	tb = Dictionary{}.Bool("a", true, "attr a", boolChecker)
+	err = tb.Validate(map[string]interface{}{"a": false})
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "attribute a"))
+	a.NoError(tb.Validate(map[string]interface{}{"a": true}))
+
+	intChecker := func(i int, name string) error {
+		if i == 3 {
+			return fmt.Errorf("attribute %s cannot be 3", name)
+		}
+		return nil
+	}
+	tb = Dictionary{}.Int("b", 2, "attr b", intChecker)
+	err = tb.Validate(map[string]interface{}{"b": 3})
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "attribute b"))
+	a.NoError(tb.Validate(map[string]interface{}{"b": 1}))
+
+	floatChecker := func(f float32, name string) error {
+		if f >= 0 && f <= 7 {
+			return fmt.Errorf("attribute %s must not be between [0, 7]", name)
+		}
+		return nil
+	}
+	tb = Dictionary{}.Float("c", float32(-10.0), "attr c", floatChecker)
+	err = tb.Validate(map[string]interface{}{"c": 5})
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "attribute c"))
+	a.NoError(tb.Validate(map[string]interface{}{"c": float32(-1.0)}))
+
+	stringChecker := func(s string, name string) error {
+		if !strings.HasPrefix(s, "valid") {
+			return fmt.Errorf("attribute %s must have prefix valid", name)
+		}
+		return nil
+	}
+	tb = Dictionary{}.String("d", "valid.any_str", "attr d", stringChecker)
+	err = tb.Validate(map[string]interface{}{"d": "invalid.str"})
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "attribute d"))
+	a.NoError(tb.Validate(map[string]interface{}{"d": "valid.str"}))
+
+	intListChecker := func(intList []int, name string) error {
+		if len(intList) != 2 {
+			return fmt.Errorf("attribute %s must have length of 2", name)
+		}
+		return nil
+	}
+	tb = Dictionary{}.IntList("e", []int{1, 3}, "attr e", intListChecker)
+	err = tb.Validate(map[string]interface{}{"e": []int{1, 2, 3}})
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "attribute e"))
+	a.NoError(tb.Validate(map[string]interface{}{"e": []int{4, 5}}))
+
+	unknownChecker := func(i interface{}, name string) error {
+		switch i.(type) {
+		case int:
+			return nil
+		case string:
+			return nil
+		default:
+			return fmt.Errorf("attribute %s must be of type int or string", name)
+		}
+	}
+	tb = Dictionary{}.Unknown("f", "abc", "attr f", unknownChecker)
+	err = tb.Validate(map[string]interface{}{"f": float32(4.5)})
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "attribute f"))
+	a.NoError(tb.Validate(map[string]interface{}{"f": 3}))
+	a.NoError(tb.Validate(map[string]interface{}{"f": "any_str"}))
+
 }
 
 func TestParamsDocs(t *testing.T) {
