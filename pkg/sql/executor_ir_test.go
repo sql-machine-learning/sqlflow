@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
+	"sqlflow.org/sqlflow/pkg/test"
 )
 
 const (
@@ -38,7 +39,8 @@ COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_xgboost_model;
 `
-	testTrainSelectIris = testSelectIris + `
+	testTrainSelectIris = `
+SELECT * FROM iris.train
 TO TRAIN DNNClassifier
 WITH
   model.n_classes = 3,
@@ -137,7 +139,7 @@ SELECT sepal_length as sl, sepal_width as sw, class FROM iris.train
 TO EXPLAIN sqlflow_models.my_xgboost_model_by_program
 USING TreeExplainer;
 `, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
@@ -146,17 +148,17 @@ func TestExecuteXGBoostClassifier(t *testing.T) {
 	modelDir := ""
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testTrainSelectWithLimit, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testXGBoostPredictIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testXGBoostTrainSelectIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testExplainTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testXGBoostPredictIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
@@ -165,11 +167,11 @@ func TestExecuteXGBoostRegression(t *testing.T) {
 	modelDir := ""
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testXGBoostTrainSelectHousing, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testExplainTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testXGBoostPredictHousing, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
@@ -178,9 +180,9 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	modelDir := ""
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testTrainSelectIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testPredictSelectIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
@@ -192,9 +194,9 @@ func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testClusteringTrain, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testClusteringPredict, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
@@ -205,15 +207,15 @@ func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testTrainSelectIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 		stream = RunSQLProgram(testPredictSelectIris, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
 func TestExecutorTrainAndPredictionDNNClassifierDENSE(t *testing.T) {
-	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
-		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	if test.GetEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip(fmt.Sprintf("%s: skip Hive test", test.GetEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
 	a.NotPanics(func() {
@@ -229,14 +231,14 @@ COLUMN NUMERIC(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model;`
 		stream := RunSQLProgram(trainSQL, "", database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 
 		predSQL := `SELECT * FROM iris.test_dense
 TO PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
 ;`
 		stream = RunSQLProgram(predSQL, "", database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
@@ -273,4 +275,10 @@ func TestIsHints(t *testing.T) {
 
 	a.False(isAlisaHint("-- set odps=2"))
 	a.False(isAlisaHint("-- comment \n -- set odps=2"))
+}
+
+func TestSQLLexerError(t *testing.T) {
+	a := assert.New(t)
+	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
+	a.False(test.GoodStream(stream.ReadAll()))
 }

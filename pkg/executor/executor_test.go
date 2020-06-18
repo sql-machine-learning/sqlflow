@@ -22,11 +22,11 @@ import (
 
 func TestGetSubmitter(t *testing.T) {
 	a := assert.New(t)
-	s1 := GetSubmitter("default")
-	s2 := GetSubmitter("default")
+	s1 := New("default")
+	s2 := New("default")
 	// call GetSubmitter should get 2 different objects
 	a.False(s1 == s2)
-	s3 := GetSubmitter("pai")
+	s3 := New("pai")
 	_, ok := s3.(*paiExecutor)
 	a.True(ok)
 }

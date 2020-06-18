@@ -21,7 +21,7 @@ import (
 
 func TestAlisaSubmitter(t *testing.T) {
 	a := assert.New(t)
-	_, ok := GetSubmitter("alisa").(*alisaExecutor)
+	_, ok := New("alisa").(*alisaExecutor)
 	a.True(ok)
 }
 
