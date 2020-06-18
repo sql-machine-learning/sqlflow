@@ -20,6 +20,10 @@ import (
 	"strings"
 	"time"
 
+	"sqlflow.org/sqlflow/pkg/codegen/optimize"
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
+	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/executor"
 	"sqlflow.org/sqlflow/pkg/ir"
@@ -61,6 +65,29 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 	return rd
 }
 
+func isXGBoostModel(estimator string) bool {
+	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
+}
+
+func isKMeansModel(estimator string) bool {
+	return strings.ToUpper(estimator) == "KMEANS"
+}
+
+func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
+	switch s := stmt.(type) {
+	case *ir.TrainStmt:
+		if s.GetModelKind() == ir.XGBoost {
+			return xgboost.InitializeAttributes(s)
+		} else if s.GetModelKind() == ir.KMeans {
+			return pai.InitializeKMeansAttributes(s)
+		}
+		return tensorflow.InitializeAttributes(s)
+	case *ir.OptimizeStmt:
+		return optimize.InitializeAttributes(s)
+	}
+	return nil
+}
+
 // ResolveSQLProgram accepts parse result from parser and returns a list of SQLFlowStmt
 func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir.SQLFlowStmt, error) {
 	spIRs := []ir.SQLFlowStmt{}
@@ -70,20 +97,20 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				logger.Info("resolveSQL:train")
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
+				r, err = ir.GenerateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.ShowTrain {
 				logger.Info("resolveSQL:showTrain")
-				r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
+				r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
 				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = generateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+				r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else if sql.Predict {
 				logger.Info("resolveSQL:predict")
-				r, err = generatePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+				r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else if sql.Evaluate {
 				logger.Info("resolveSQL:evaluate")
-				r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
 			} else {
 				return nil, fmt.Errorf("unknown extended SQL statement type")
 			}
@@ -95,6 +122,11 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if err != nil {
 			return nil, err
 		}
+		// TODO(yancey1989): enable the attribute checker when cover pai codegen.
+		// if err = initializeAndCheckAttributes(r); err != nil {
+		// 	return nil, err
+		// }
+
 		r.SetOriginalSQL(sql.Original)
 		logger.Infof("Original SQL is:%s", r.GetOriginalSQL())
 		spIRs = append(spIRs, r)
@@ -154,23 +186,27 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	if sql.IsExtendedSyntax() {
 		if sql.Train {
 			loadPreTrainModel := generateTrainStmtFromModel
-			r, err = generateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, loadPreTrainModel, true)
+			r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, loadPreTrainModel, true)
 		} else if sql.ShowTrain {
-			r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)
+			r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
-			r, err = generateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+			r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Predict {
-			r, err = generatePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+			r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Evaluate {
-			r, err = generateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Optimize {
-			r, err = generateOptimizeStmt(sql.SQLFlowSelectStmt)
+			r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
 		}
+
 	} else {
 		standardSQL := ir.NormalStmt(sql.Original)
 		r = &standardSQL
 	}
 	if err != nil {
+		return err
+	}
+	if err = initializeAndCheckAttributes(r); err != nil {
 		return err
 	}
 	r.SetOriginalSQL(sql.Original)

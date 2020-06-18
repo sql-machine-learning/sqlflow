@@ -15,13 +15,33 @@ package verifier
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/parser"
-	"sqlflow.org/sqlflow/pkg/step/feature"
 )
+
+const numSamples = 1000
+
+// FetchSamples returns Rows accoding to the input Query
+func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
+	re, err := regexp.Compile("(?i)LIMIT [0-9]+")
+	if err != nil {
+		return nil, err
+	}
+	limitClauseIndexes := re.FindStringIndex(query)
+	if limitClauseIndexes == nil {
+		query = fmt.Sprintf("%s LIMIT %d", query, numSamples)
+	} else {
+		// TODO(typhoonzero): there may be complex SQL statements that contain multiple
+		// LIMIT clause, using regex replace will replace them all.
+		re.ReplaceAllString(query, fmt.Sprintf("LIMIT %d", numSamples))
+	}
+	return db.Query(query)
+}
 
 // FieldTypes type records a mapping from field name to field type name.
 type FieldTypes map[string]string
@@ -60,7 +80,7 @@ func Decomp(ident string) (tbl string, fld string) {
 //
 // It returns a FieldTypes describing types of fields in SELECT.
 func Verify(q string, db *database.DB) (FieldTypes, error) {
-	rows, err := feature.FetchSamples(db, q)
+	rows, err := FetchSamples(db, q)
 	if err != nil {
 		return nil, err
 	}

@@ -27,7 +27,6 @@ import (
 
 	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/ir"
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
@@ -50,7 +49,7 @@ func New(cwd, trainSelect string) *Model {
 }
 
 // Save all files in workDir as a tarball to a filesystem or sqlfs.
-func (m *Model) Save(modelURI string, trainStmt *ir.TrainStmt, session *pb.Session) error {
+func (m *Model) Save(modelURI string, session *pb.Session) error {
 	if strings.Contains(modelURI, "://") {
 		uriParts := strings.Split(modelURI, "://")
 		if len(uriParts) == 2 {
