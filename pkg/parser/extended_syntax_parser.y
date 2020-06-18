@@ -498,7 +498,9 @@ func (e *Expr) ToTokens() []string {
     case '-':
         switch len(e.Sexp) {
         case 2:
-            return []string{fmt.Sprintf("-%s", e.Sexp[1])}
+            result = append(result, "-")
+            result = append(result, e.Sexp[1].ToTokens()...)
+            return result
         case 3:
             result = append(result, e.Sexp[1].ToTokens()...)
             result = append(result, e.Sexp[0].Value)
