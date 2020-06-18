@@ -32,7 +32,6 @@ def load_pretrained_model_estimator(estimator,
         # The constructor of Estimator contains named parameter "warm_start_from"
         warm_start_from_key = "warm_start_from"
         if warm_start_from_key in estimator_spec.args:
-            model_params = copy.copy(model_params)
             warm_start_from = os.path.abspath(warm_start_from)
 
             if is_tf_estimator(estimator):

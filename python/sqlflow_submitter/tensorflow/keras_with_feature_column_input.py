@@ -39,12 +39,7 @@ def init_model_with_feature_column(estimator,
        "feature_column" argument.
     """
     argspec = inspect.getargspec(estimator)
-    has_feature_columns_arg = False
-    for k in argspec.args:
-        if k == "feature_columns":
-            has_feature_columns_arg = True
-            break
-    if not has_feature_columns_arg and not has_none_optimizer:
+    if "feature_columns" not in argspec.args and not has_none_optimizer:
         feature_columns = model_params["feature_columns"]
         del model_params["feature_columns"]
         classifier = WrappedKerasModel(estimator, model_params,
