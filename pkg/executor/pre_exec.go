@@ -29,12 +29,12 @@ import (
 )
 
 // Create prediction table using the `PredictStmt`.
-func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, session *pb.Session) error {
+func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, session *pb.Session) error {
 	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
-	flds, fts, e := getColumnTypes(predStmt.Select, db)
+	flds, fts, e := getSQLFieldType(predStmt.Select, db)
 	if e != nil {
 		return e
 	}
@@ -80,9 +80,10 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
 		resultColumnType = "INT"
 	}
+	// mapping to DBMS column type from the result column type
 	stype, e := fieldType(db.DriverName, resultColumnType)
 	if e != nil {
-		return e
+		return fmt.Errorf("mapping to DBMS column type failed, %s", e)
 	}
 	if db.DriverName == "hive" {
 		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", resultColumnName, stype)
@@ -97,9 +98,9 @@ func createPredictionTableFromIR(predStmt *ir.PredictStmt, db *database.DB, sess
 	return nil
 }
 
-// getColumnTypes is quiet like verify but accept a SQL string as input, and returns
+// getSQLFieldType is quiet like verify but accept a SQL string as input, and returns
 // an ordered list of the field types.
-func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
+func getSQLFieldType(slct string, db *database.DB) ([]string, []string, error) {
 	rows, err := feature.FetchSamples(db, slct)
 	if err != nil {
 		return nil, nil, err
@@ -131,7 +132,7 @@ func getColumnTypes(slct string, db *database.DB) ([]string, []string, error) {
 	return flds, ft, nil
 }
 
-func doAttrInitAndTypeChecking(ir *ir.TrainStmt) error {
+func initializeAndCheckAttributes(ir *ir.TrainStmt) error {
 	if isXGBoostModel(ir.Estimator) {
 		return xgboost.InitializeAttributes(ir)
 	} else if isKMeansModel(ir.Estimator) {

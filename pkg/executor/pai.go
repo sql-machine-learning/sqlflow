@@ -146,7 +146,7 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 
 func preExecuteTrainOnpPA(cl *ir.TrainStmt, session *pb.Session) (e error) {
 	// 1. check the attribute
-	if e = doAttrInitAndTypeChecking(cl); e != nil {
+	if e = initializeAndCheckAttributes(cl); e != nil {
 		return e
 	}
 	// 2. create tmp table for training and validating
@@ -259,7 +259,7 @@ func (s *paiExecutor) ExecutePredict(cl *ir.PredictStmt) error {
 	if len(resultTableParts) == 1 {
 		cl.ResultTable = fmt.Sprintf("%s.%s", currProject, cl.ResultTable)
 	}
-	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
+	if e := createPredictionResultTable(cl, s.Db, s.Session); e != nil {
 		return e
 	}
 
@@ -536,7 +536,7 @@ func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
 
 func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string, labelCol string) (string, error) {
 	// create table to record shap values for every feature for each sample.
-	flds, _, err := getColumnTypes(selectStmt, db)
+	flds, _, err := getSQLFieldType(selectStmt, db)
 	if err != nil {
 		return "", err
 	}
