@@ -27,6 +27,7 @@ from tensorflow.estimator import (BoostedTreesClassifier,
 
 from . import metrics
 from .input_fn import get_dataset_fn
+from .keras_with_feature_column_input import init_model_with_feature_column
 from .pai_distributed import define_tf_flags
 from .set_log_level import set_log_level
 
@@ -85,11 +86,12 @@ def evaluate(datasource,
             model_params["model_dir"] = FLAGS.checkpointDir
         else:
             model_params["model_dir"] = save
+        # tf estimator always have feature_column argument
         estimator = estimator_cls(**model_params)
         result_metrics = estimator_evaluate(estimator, eval_dataset,
                                             validation_metrics)
     else:
-        keras_model = estimator_cls(**model_params)
+        keras_model = init_model_with_feature_column(estimator, model_params)
         keras_model_pkg = sys.modules[estimator_cls.__module__]
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)

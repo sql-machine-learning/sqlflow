@@ -22,7 +22,9 @@ class SQLFlowDiagnostic(Exception):
     pass
 
 
-def check_and_load_estimator(estimator, model_params, warm_start_from=None):
+def load_pretrained_model_estimator(estimator,
+                                    model_params,
+                                    warm_start_from=None):
     if warm_start_from is not None:
         estimator_func = estimator.__init__ if inspect.isclass(
             estimator) else estimator
@@ -48,6 +50,8 @@ def check_and_load_estimator(estimator, model_params, warm_start_from=None):
                 "Incremental training is not supported in {}".format(
                     estimator))
 
+
+def init_model(estimator, model_params):
     # load estimator class and diagnose the type error
     try:
         return estimator(**model_params)

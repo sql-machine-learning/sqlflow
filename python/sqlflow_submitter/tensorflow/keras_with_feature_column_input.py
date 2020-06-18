@@ -11,7 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+
 import tensorflow as tf
+
+from .diag import init_model, load_pretrained_model
 
 
 class WrappedKerasModel(tf.keras.Model):
@@ -23,3 +27,25 @@ class WrappedKerasModel(tf.keras.Model):
     def __call__(self, inputs, training=True):
         x = self.feature_layer(inputs)
         return self.sub_model.__call__(x, training=training)
+
+
+def init_model_with_feature_column(estimator, model_params):
+    """Check if estimator have argument "feature_column" and initialize the model
+       by wrapping the keras model if no "feature_column" argument detected.
+
+       NOTE: initalize estimator model can also use this function since estimators all have
+       "feature_column" argument.
+    """
+    argspec = inspect.getargspec(estimator)
+    has_feature_columns_arg = False
+    for k in argspec.args:
+        if k == "feature_columns":
+            has_feature_columns_arg = True
+            break
+    if not has_feature_columns_arg:
+        feature_columns = model_params["feature_columns"]
+        del model_params["feature_columns"]
+        classifier = WrappedKerasModel(estimator, model_params,
+                                       feature_columns)
+    else:
+        classifier = init_model(estimator, model_params)
