@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 
+	"sqlflow.org/sqlflow/pkg/codegen/optimize"
 	"sqlflow.org/sqlflow/pkg/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
@@ -1126,6 +1127,11 @@ func generateOptimizeStmt(optimizeStmt *parser.SQLFlowSelectStmt) (*ir.OptimizeS
 		}
 	}
 
+	solver := optimizeStmt.Solver
+	if solver == "" {
+		solver = "glpk" // find a better way to set default value
+	}
+
 	stmt := &ir.OptimizeStmt{
 		Select:          optimizeStmt.StandardSelect.String(),
 		Variables:       vars,
@@ -1135,8 +1141,14 @@ func generateOptimizeStmt(optimizeStmt *parser.SQLFlowSelectStmt) (*ir.OptimizeS
 		Objective:       objective,
 		Direction:       strings.ToLower(optimizeStmt.Direction),
 		Constraints:     constraints,
-		Solver:          optimizeStmt.Solver,
+		Solver:          solver,
 		ResultTable:     optimizeStmt.OptimizeInto,
 	}
+
+	err = optimize.InitializeAttributes(stmt)
+	if err != nil {
+		return nil, err
+	}
+
 	return stmt, nil
 }

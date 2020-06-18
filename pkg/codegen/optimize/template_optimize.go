@@ -24,9 +24,9 @@ type optimizeFiller struct {
 	Direction       string
 	Constraints     []*ir.OptimizeExpr
 	Solver          string
+	AttributeJSON   string
 	TrainTable      string
 	ResultTable     string
-	IsPAI           bool
 	RunnerModule    string
 }
 
@@ -56,63 +56,23 @@ class CustomOptFlowRunner(BaseOptFlowRunner):
 `
 
 const optFlowSubmitText = `
-import os
-from optflow.core.api.config import (InputConf, OdpsItemConf, OdpsConf, OutputConf, RunnerConf, SolverConf,
-                                     SolverExperiment, OptflowLocalEngine, OptflowKubemakerEngine, OptionConf)
-from optflow.core.submit import submit_experiment
+import json
+from sqlflow_submitter.optimize import submit
 
-if "{{.IsPAI}}":
-    from alps.framework.engine import ResourceConf
+runner = "{{.RunnerModule}}.CustomOptFlowRunner"
+solver = "{{.Solver}}"
+attributes = json.loads('''{{.AttributeJSON}}''')
+train_table = "{{.TrainTable}}"
+result_table = "{{.ResultTable}}"
 
-def submit():
-    options = {}  # solver options
-    solver_conf = SolverConf(name="{{.Solver}}", options=OptionConf(options))
+user_id = "{{.UserID}}"
+if not user_id:
+    user_id = "jinle.zjl"
 
-    pai_project = "{{.TrainTable}}".split('.')[0]
-    odps_conf = OdpsConf(project=pai_project,
-                         accessid=os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_AK"),
-                         accesskey=os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_SK"),
-                         partitions=None)
-    
-    runner = RunnerConf(cls="{{.RunnerModule}}.CustomOptFlowRunner")
-    
-    output_table = OdpsItemConf(path="odps://{{.ResultTable}}", odps=odps_conf)
-    output = OutputConf(df1=output_table)
-
-    df1 = OdpsItemConf(path="odps://{{.TrainTable}}",
-                       odps=odps_conf,
-                       enable_slice=False)
-    
-    input_conf = InputConf(df1=df1)
-
-    optflow_version = os.environ.get("SQLFLOW_OPTFLOW_VERSION")
-    if not optflow_version:
-        raise ValueError("Environment variable SQLFLOW_OPTFLOW_VERSION must be set")
-    	
-    if "{{.IsPAI}}":
-        cluster = os.environ.get("SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER")
-        if not cluster:
-            raise ValueError("Environment variable SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER must be set")
-    
-        # TODO(sneaxiy): move ResourceConf setting to WITH statements
-        engine = OptflowKubemakerEngine(worker=ResourceConf(core=8, memory=20000, num=1), cluster=cluster)
-    else:
-        # TODO(sneaxiy): support local engine
-        engine = OptflowLocalEngine()
-    
-    user_id = "{{.UserID}}"
-    if not user_id:
-        user_id = "jinle.zjl"
-
-    experiment = SolverExperiment(user=user_id,
-                                  engine=engine,
-                                  runner=runner,
-                                  solver=solver_conf,
-                                  input_conf=input_conf,
-                                  output_conf=output)
-
-    submit_experiment(experiment, optflow_version=optflow_version)
-
-if __name__ == '__main__':
-    submit()
+submit(runner=runner, 
+       solver=solver, 
+       attributes=attributes, 
+       train_table=train_table,
+       result_table=result_table,
+       user_id=user_id)
 `
