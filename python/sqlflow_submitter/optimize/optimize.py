@@ -197,7 +197,7 @@ def generate_objective_or_constraint_func(expression,
                 if idx < l or idx > r:
                     continue
 
-                if max_depth_idx < 0 or bracket_indices[max_depth_idx] < d:
+                if max_depth_idx < 0 or bracket_indices[max_depth_idx][2] < d:
                     max_depth_idx = k
 
                 k += 1
