@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -32,9 +31,10 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-var resourceName = "job.tar.gz"
-var entryFile = "entry.py"
-var reOSS = regexp.MustCompile(`oss://([^/]+).*host=([^&]+)`)
+const (
+	resourceName = "job.tar.gz"
+	entryFile    = "entry.py"
+)
 
 type alisaSubmitter struct {
 	*defaultSubmitter
@@ -60,7 +60,6 @@ func (s *alisaSubmitter) submitAlisaTask(submitCode, codeResourceURL, paramsReso
 		return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
 	}
 	return nil
-
 }
 
 func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
@@ -93,8 +92,8 @@ func (s *alisaSubmitter) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 		return e
 	}
 	paramsPath := fmt.Sprintf("file://@@%s", paramsFile)
-	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); err != nil {
-		return err
+	if e = createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); e != nil {
+		return e
 	}
 
 	code, paiCmd, requirements, e := pai.Train(ts, s.Session, scriptPath, paramsPath, ts.Into, ossModelPathToSave, ts.PreTrainedModel, s.Cwd)
