@@ -14,6 +14,6 @@
 from sqlflow_submitter.optimize.optimize import generate_model_with_data_frame
 
 try:
-    from sqlflow_submitter.optimize.runner import BaseOptFlowRunner
+    from sqlflow_submitter.optimize.runner import BaseOptFlowRunner, submit
 except:
     pass

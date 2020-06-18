@@ -17,20 +17,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"strings"
 	"text/template"
 )
 
 func checkIsPositiveInteger(i interface{}, name string) error {
-	if i.(int) <= 0 {
+	if v, ok := i.(int); !ok || v <= 0 {
 		return fmt.Errorf("%s should be positive integer", name)
 	}
 	return nil
 }
 
+// TODO(sneaxiy): polish attribute codes
 var attributeDictionary = attribute.Dictionary{
 	"data.enable_slice": {attribute.Bool, false, "Whether to enable data slicing", nil},
 	"data.batch_size":   {attribute.Int, -1, "Batch size when training", nil},
@@ -46,12 +47,6 @@ var attributeDictionary = attribute.Dictionary{
 	"solver.*": {attribute.Unknown, nil, "Solver options", nil},
 }
 
-const (
-	dataAttrPrefix   = "data."
-	solverAttrPrefix = "solver."
-	workerAttrPrefix = "worker."
-)
-
 // InitializeAttributes initialize attributes in optimize clause IR
 func InitializeAttributes(stmt *ir.OptimizeStmt) error {
 	attributeDictionary.FillDefaults(stmt.Attributes)
@@ -62,6 +57,12 @@ func InitializeAttributes(stmt *ir.OptimizeStmt) error {
 // GenerateOptFlowOptimizeCode generates optimize codes for execution
 // The returned value is (runnerProgramCode, submitProgramCode, error)
 func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, dbName, tableName, runnerModuleName string) (string, string, error) {
+	const (
+		dataAttrPrefix   = "data."
+		solverAttrPrefix = "solver."
+		workerAttrPrefix = "worker."
+	)
+
 	resultTable := optimStmt.ResultTable
 	if !strings.Contains(resultTable, ".") {
 		resultTable = fmt.Sprintf("%s.%s", dbName, resultTable)

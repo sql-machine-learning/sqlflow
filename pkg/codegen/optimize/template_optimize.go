@@ -56,73 +56,23 @@ class CustomOptFlowRunner(BaseOptFlowRunner):
 `
 
 const optFlowSubmitText = `
-import os
 import json
-import sys
-from optflow.core.api.config import (InputConf, OdpsItemConf, OdpsConf, OutputConf, RunnerConf, SolverConf,
-                                     SolverExperiment, OptflowLocalEngine, OptflowKubemakerEngine, OptionConf)
-from optflow.core.submit import submit_experiment
+from sqlflow_submitter.optimize import submit
 
-from alps.framework.engine import ResourceConf
+runner = "{{.RunnerModule}}.CustomOptFlowRunner"
+solver = "{{.Solver}}"
+attributes = json.loads('''{{.AttributeJSON}}''')
+train_table = "{{.TrainTable}}"
+result_table = "{{.ResultTable}}"
 
-def submit():
-    attributes = json.loads('''{{.AttributeJSON}}''')
+user_id = "{{.UserID}}"
+if not user_id:
+    user_id = "jinle.zjl"
 
-    solver_options = attributes.get("solver", {})
-    sys.stderr.write('solver options: {}\n'.format(solver_options))
-    solver_conf = SolverConf(name="{{.Solver}}", options=OptionConf(solver_options))
-
-    pai_project = "{{.TrainTable}}".split('.')[0]
-    odps_conf = OdpsConf(project=pai_project,
-                         accessid=os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_AK"),
-                         accesskey=os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_SK"),
-                         partitions=None)
-    
-    runner = RunnerConf(cls="{{.RunnerModule}}.CustomOptFlowRunner")
-
-    data_options = attributes.get("data", {})
-    sys.stderr.write('data options: {}\n'.format(data_options))
-    enable_slice = data_options.get("enable_slice", False)
-    batch_size = data_options.get("batch_size", None)
-    if batch_size <= 0:
-         batch_size = None
-
-    output_table = OdpsItemConf(path="odps://{{.ResultTable}}", odps=odps_conf)
-    output = OutputConf(df1=output_table)
-
-    df1 = OdpsItemConf(path="odps://{{.TrainTable}}",
-                       odps=odps_conf,
-                       enable_slice=enable_slice,
-                       batch_size=batch_size)
-    
-    input_conf = InputConf(df1=df1)
-
-    optflow_version = os.environ.get("SQLFLOW_OPTFLOW_VERSION")
-    if not optflow_version:
-        raise ValueError("Environment variable SQLFLOW_OPTFLOW_VERSION must be set")
-    	
-    cluster = os.environ.get("SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER")
-    if not cluster:
-        raise ValueError("Environment variable SQLFLOW_OPTFLOW_KUBEMAKER_CLUSTER must be set")
- 
-    worker_options = attributes.get("worker", {})
-    sys.stderr.write('worker options: {}\n'.format(worker_options))
-    # TODO(sneaxiy): support local engine
-    engine = OptflowKubemakerEngine(worker=ResourceConf(**worker_options), cluster=cluster)
-
-    user_id = "{{.UserID}}"
-    if not user_id:
-        user_id = "jinle.zjl"
-
-    experiment = SolverExperiment(user=user_id,
-                                  engine=engine,
-                                  runner=runner,
-                                  solver=solver_conf,
-                                  input_conf=input_conf,
-                                  output_conf=output)
-
-    submit_experiment(experiment, optflow_version=optflow_version)
-
-if __name__ == '__main__':
-    submit()
+submit(runner=runner, 
+       solver=solver, 
+       attributes=attributes, 
+       train_table=train_table,
+       result_table=result_table,
+       user_id=user_id)
 `
