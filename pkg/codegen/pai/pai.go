@@ -31,7 +31,7 @@ func getPAIPredictCmd(ir *ir.PredictStmt, session *pb.Session) (string, error) {
 		return "", err
 	}
 	defer db.Close()
-	flds, _, err := getSQLFieldType(ir.Select, db)
+	flds, _, err := getColumnTypes(ir.Select, db)
 	if err != nil {
 		return "", err
 	}
