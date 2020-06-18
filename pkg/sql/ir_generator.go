@@ -19,6 +19,9 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/codegen/optimize"
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
+	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/model"
@@ -47,7 +50,7 @@ const (
 
 func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string,
 	cwd string, loadPreTrainedModel bool, verifyLabel bool) (*ir.TrainStmt, error) {
-	trainStmt, err := generateTrainStmt(slct)
+	trainStmt, err := generateTrainStmt(slct, true)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +80,7 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	return trainStmt, nil
 }
 
-func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
+func generateTrainStmt(slct *parser.SQLFlowSelectStmt, initAndCheckAttribute bool) (*ir.TrainStmt, error) {
 	tc := slct.TrainClause
 	modelURI := tc.Estimator
 	// get model Docker image name
@@ -134,7 +137,29 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt) (*ir.TrainStmt, error) {
 		PreTrainedModel:  tc.TrainUsing,
 		Into:             slct.Save,
 	}
+	if initAndCheckAttribute {
+		if e := initializeAndCheckAttributes(trainStmt); e != nil {
+			return nil, e
+		}
+	}
 	return trainStmt, nil
+}
+
+func initializeAndCheckAttributes(ir *ir.TrainStmt) error {
+	if isXGBoostModel(ir.Estimator) {
+		return xgboost.InitializeAttributes(ir)
+	} else if isKMeansModel(ir.Estimator) {
+		return pai.InitializeKMeansAttributes(ir)
+	}
+	return tensorflow.InitializeAttributes(ir)
+}
+
+func isXGBoostModel(estimator string) bool {
+	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
+}
+
+func isKMeansModel(estimator string) bool {
+	return strings.ToUpper(estimator) == "KMEANS"
 }
 
 func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, *parser.SQLFlowSelectStmt, error) {

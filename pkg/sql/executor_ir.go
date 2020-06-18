@@ -70,7 +70,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
 				logger.Info("resolveSQL:train")
-				r, err = generateTrainStmt(sql.SQLFlowSelectStmt)
+				r, err = generateTrainStmt(sql.SQLFlowSelectStmt, false)
 			} else if sql.ShowTrain {
 				logger.Info("resolveSQL:showTrain")
 				r, err = generateShowTrainStmt(sql.SQLFlowSelectStmt)

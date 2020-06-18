@@ -158,9 +158,6 @@ func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
 
 func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	var code string
-	if e = initializeAndCheckAttributes(cl); e != nil {
-		return e
-	}
 	if isXGBoostModel(cl.Estimator) {
 		if code, e = xgboost.Train(cl, s.Session); e != nil {
 			return e

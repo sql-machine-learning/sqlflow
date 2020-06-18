@@ -145,11 +145,7 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 }
 
 func preExecuteTrainOnpPA(cl *ir.TrainStmt, session *pb.Session) (e error) {
-	// 1. check the attribute
-	if e = initializeAndCheckAttributes(cl); e != nil {
-		return e
-	}
-	// 2. create tmp table for training and validating
+	// create tmp table for training and validating
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, session.DbConnStr)
 	if e != nil {
 		return e

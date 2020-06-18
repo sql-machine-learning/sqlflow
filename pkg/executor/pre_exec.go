@@ -18,9 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/codegen/pai"
-	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -132,19 +129,8 @@ func getSQLFieldType(slct string, db *database.DB) ([]string, []string, error) {
 	return flds, ft, nil
 }
 
-func initializeAndCheckAttributes(ir *ir.TrainStmt) error {
-	if isXGBoostModel(ir.Estimator) {
-		return xgboost.InitializeAttributes(ir)
-	} else if isKMeansModel(ir.Estimator) {
-		return pai.InitializeKMeansAttributes(ir)
-	}
-	return tensorflow.InitializeAttributes(ir)
-}
-
+// TODO(yancey1989): need to discuss fill esimator type in IR,
+// that we don't need the duplicate judgement with pkg/sql/ir_generator.go
 func isXGBoostModel(estimator string) bool {
 	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
-}
-
-func isKMeansModel(estimator string) bool {
-	return strings.ToUpper(estimator) == "KMEANS"
 }
