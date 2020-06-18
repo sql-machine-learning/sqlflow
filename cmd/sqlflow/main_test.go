@@ -35,11 +35,11 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/c-bata/go-prompt"
+	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/proto"
 	srv "sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 	"sqlflow.org/sqlflow/pkg/step"
 )
@@ -642,7 +642,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(18, len(c))
+	a.Equal(20, len(c))
 	a.Equal("BoostedTreesClassifier", c[0].Text)
 
 	p.InsertText(`DNN`, false, true)

@@ -45,6 +45,7 @@ func caseShowDatabases(t *testing.T) {
 		"churn":                   "",
 		"creditcard":              "",
 		"feature_derivation_case": "",
+		"fund":                    "",
 		"housing":                 "",
 		"iris":                    "",
 		"mysql":                   "",

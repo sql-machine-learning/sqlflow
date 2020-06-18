@@ -13,6 +13,7 @@
 
 import copy
 import functools
+import inspect
 import json
 import os
 import sys
@@ -31,6 +32,7 @@ from tensorflow.estimator import (BoostedTreesClassifier,
 
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dtype, parse_sparse_feature_predict, tf_generator
+from .keras_with_feature_column_input import WrappedKerasModel
 
 try:
     import sqlflow_models
@@ -55,7 +57,19 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                   pai_table, feature_column_names, feature_metas,
                   result_col_name, datasource, select, hdfs_namenode_addr,
                   hive_location, hdfs_user, hdfs_pass):
-    classifier = estimator(**model_params)
+    signature = inspect.signature(estimator)
+    has_feature_columns_arg = False
+    for p in signature.parameters:
+        if signature.parameters[p].name == "feature_columns":
+            has_feature_columns_arg = True
+            break
+    if not has_feature_columns_arg:
+        feature_columns = model_params["feature_columns"]
+        del model_params["feature_columns"]
+        classifier = WrappedKerasModel(estimator, model_params,
+                                       feature_columns)
+    else:
+        classifier = estimator(**model_params)
     classifier_pkg = sys.modules[estimator.__module__]
     conn = None
     if is_pai:
@@ -115,7 +129,18 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                                hdfs_pass) as w:
         for features in pred_dataset:
             result = classifier.predict_on_batch(features)
-            result = classifier_pkg.prepare_prediction_column(result[0])
+            # FIXME(typhoonzero): determine the predict result is classification by
+            # adding the prediction result together to see if it is close to 1.0.
+            if len(result[0]) == 1:  # regression result
+                result = result[0][0]
+            else:
+                sum = 0
+                for i in result[0]:
+                    sum += i
+                if np.isclose(sum, 1.0):  # classification result
+                    result = result[0].argmax(axis=-1)
+                else:
+                    result = result[0]  # multiple regression result
             row = []
             for idx, name in enumerate(feature_column_names):
                 val = features[name].numpy()[0][0]

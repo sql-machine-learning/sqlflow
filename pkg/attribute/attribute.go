@@ -29,8 +29,6 @@ const (
 	errUnexpectedType       = `unexpected type on attribute %v. expect %s, received %[3]v(%[3]T)`
 )
 
-type unknown struct{}
-
 var (
 	// Bool indicates that the corresponding attribute is a boolean
 	Bool = reflect.TypeOf(true)
@@ -43,7 +41,7 @@ var (
 	// IntList indicates the corresponding attribute is a list of integers
 	IntList = reflect.TypeOf([]int{})
 	// Unknown type indicates that the attribute type is dynamically determined.
-	Unknown = reflect.TypeOf(unknown{})
+	Unknown = reflect.Type(nil)
 )
 
 // Dictionary contains the description of all attributes
@@ -55,6 +53,61 @@ type Description struct {
 	Default interface{}
 	Doc     string
 	Checker func(i interface{}) error
+}
+
+// Int declares an attribute of int-typed in Dictionary d.
+func (d Dictionary) Int(name string, value int, doc string, checker func(int) error) Dictionary {
+	d[name] = &Description{
+		Type:    Int,
+		Default: value,
+		Doc:     doc,
+		Checker: func(x interface{}) error { return checker(x.(int)) },
+	}
+	return d
+}
+
+// Float declares an attribute of float32-typed in Dictionary d.
+func (d Dictionary) Float(name string, value float32, doc string, checker func(float32) error) Dictionary {
+	d[name] = &Description{
+		Type:    Float,
+		Default: value,
+		Doc:     doc,
+		Checker: func(x interface{}) error { return checker(x.(float32)) },
+	}
+	return d
+}
+
+// Bool declares an attribute of bool-typed in Dictionary d.
+func (d Dictionary) Bool(name string, value bool, doc string, checker func(bool) error) Dictionary {
+	d[name] = &Description{
+		Type:    Bool,
+		Default: value,
+		Doc:     doc,
+		Checker: func(x interface{}) error { return checker(x.(bool)) },
+	}
+	return d
+}
+
+// String declares an attribute of string-typed in Dictionary d.
+func (d Dictionary) String(name string, value string, doc string, checker func(string) error) Dictionary {
+	d[name] = &Description{
+		Type:    String,
+		Default: value,
+		Doc:     doc,
+		Checker: func(x interface{}) error { return checker(x.(string)) },
+	}
+	return d
+}
+
+// IntList declares an attribute of []int-typed in Dictionary d.
+func (d Dictionary) IntList(name string, value []int, doc string, checker func([]int) error) Dictionary {
+	d[name] = &Description{
+		Type:    IntList,
+		Default: value,
+		Doc:     doc,
+		Checker: func(x interface{}) error { return checker(x.([]int)) },
+	}
+	return d
 }
 
 // FillDefaults fills default values defined in Dictionary to attrs.
@@ -82,7 +135,8 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 		var desc *Description
 		desc, ok := d[k]
 		if !ok {
-			// Support attribute definition like "model.*" to match attributes start with "model"
+			// Support attribute definition like "model.*" to match
+			// attributes start with "model"
 			keyParts := strings.Split(k, ".")
 			if len(keyParts) == 2 {
 				wildCard := fmt.Sprintf("%s.*", keyParts[0])

@@ -29,9 +29,8 @@ sql/
       ...
 ```
 
-The IR and feature column definition will resides in `sql/codegen`. Each code generator package forms a subdirectory in `sql/codegen` like `sql/codegen/tensorflow/`.
+The IR and feature column definition will resides in `codegen`. Each code generator package forms a subdirectory in `codegen` like `codegen/tensorflow/`.
 
 ## Intermediate Representation
 
-Please refer to [sql/codegen/intermediate_representation.go](/pkg/sql/codegen/intermediate_representation.go) and [sql/codegen/feature_column.go](/pkg/sql/codegen/feature_column.go) for implementation details.
-
+Please refer to [codegen/intermediate_representation.go](/pkg/codegen/intermediate_representation.go) and [codegen/feature_column.go](/pkg/codegen/feature_column.go) for implementation details.

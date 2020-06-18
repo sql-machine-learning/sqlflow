@@ -11,9 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_submitter.optimize.optimize import generate_model_with_data_frame
+import tensorflow as tf
 
-try:
-    from sqlflow_submitter.optimize.runner import BaseOptFlowRunner, submit
-except:
-    pass
+
+class WrappedKerasModel(tf.keras.Model):
+    def __init__(self, keras_model, model_params, feature_columns):
+        super(WrappedKerasModel, self).__init__()
+        self.sub_model = keras_model(**model_params)
+        self.feature_layer = tf.keras.layers.DenseFeatures(feature_columns)
+
+    def __call__(self, inputs, training=True):
+        x = self.feature_layer(inputs)
+        return self.sub_model.__call__(x, training=training)

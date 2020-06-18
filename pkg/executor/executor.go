@@ -26,16 +26,16 @@ import (
 	"strings"
 	"sync"
 
-	"sqlflow.org/sqlflow/pkg/sql/codegen/optimize"
+	"sqlflow.org/sqlflow/pkg/codegen/optimize"
 
+	"sqlflow.org/sqlflow/pkg/codegen/pai"
+	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
+	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/pai"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/tensorflow"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/xgboost"
 )
 
 var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnostic: (.*)")
@@ -280,7 +280,7 @@ func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *pytho
 	// Generate optimization code
 	runnerFileName := "custom_optimize_runner"
 	runnerCode, submitCode, err := optimize.GenerateOptFlowOptimizeCode(cl, session, dbName, tableName,
-		runnerFileName, isPai)
+		runnerFileName)
 
 	if err != nil {
 		return err

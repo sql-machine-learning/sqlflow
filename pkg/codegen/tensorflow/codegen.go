@@ -18,13 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sqlflow.org/sqlflow/pkg/sql/codegen"
+	"sqlflow.org/sqlflow/pkg/codegen"
 	"strings"
 	"text/template"
 
+	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/sql/codegen/attribute"
 )
 
 var commonAttributes = attribute.Dictionary{

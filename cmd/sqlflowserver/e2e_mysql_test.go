@@ -73,6 +73,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// Cases for diagnosis
 	t.Run("CaseDiagnosisMissingModelParams", CaseDiagnosisMissingModelParams)
 
+	t.Run("CaseTrainARIMAWithSTLDecompostionModel", caseTrainARIMAWithSTLDecompostionModel)
 }
 
 func CaseShouldError(t *testing.T) {
@@ -390,4 +391,33 @@ INTO iris.explain_result;`, // explain tf boosted trees model
 	for _, row := range rows {
 		AssertGreaterEqualAny(a, row[1], float32(0))
 	}
+}
+
+func caseTrainARIMAWithSTLDecompostionModel(t *testing.T) {
+	a := assert.New(t)
+
+	trainSQL := `
+SELECT time, %[1]s FROM fund.train
+TO TRAIN sqlflow_models.ARIMAWithSTLDecomposition
+WITH
+  model.order=[7, 0, 2],
+  model.period=[7, 30],
+  model.date_format="%[2]s",
+  model.forecast_start='2014-09-01',
+  model.forecast_end='2014-09-30'
+COLUMN time, %[1]s
+LABEL %[1]s
+INTO fund.%[1]s_model;
+`
+
+	var err error
+
+	dateFormat := "%Y-%m-%d"
+	purchaseTrainSQL := fmt.Sprintf(trainSQL, "purchase", dateFormat)
+	_, _, _, err = connectAndRunSQL(purchaseTrainSQL)
+	a.NoError(err)
+
+	redeemTrainSQL := fmt.Sprintf(trainSQL, "redeem", dateFormat)
+	_, _, _, err = connectAndRunSQL(redeemTrainSQL)
+	a.NoError(err)
 }

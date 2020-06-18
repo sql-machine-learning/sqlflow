@@ -100,7 +100,7 @@ message IR {
 }
 ```
 
-Note: You can check more details about the IR definition from [intermediate_representation.go](/pkg/sql/codegen/intermediate_representation.go).
+Note: You can check more details about the IR definition from [ir.go](/pkg/ir/ir.go).
 
 ### SQLFLow Submitter Python Module
 

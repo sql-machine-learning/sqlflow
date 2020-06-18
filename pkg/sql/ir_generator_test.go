@@ -505,8 +505,14 @@ SELECT * FROM alifin_jtest_dev.zjl_shipment_test
 TO MINIMIZE SUM(distance * shipment * 90 / 1000)
 CONSTRAINT SUM(shipment) <= capacity GROUP BY plants,
            SUM(shipment) >= demand GROUP BY markets
-WITH variables="shipment(plants,markets)",
-     var_type="NonNegativeReals"
+WITH variables = "shipment(plants,markets)",
+     var_type = "NonNegativeReals",
+     data.enable_slice = True,
+     data.batch_size = 1,
+     worker.core = 16,
+     worker.num = 4,
+     worker.memory = 8192,
+     solver.max_iter = 10
 USING glpk
 INTO shipment_result_table;
 `
@@ -532,4 +538,11 @@ INTO shipment_result_table;
 	a.Equal("shipment", stmt.ResultValueName)
 	a.Equal("NonNegativeReals", stmt.VariableType)
 	a.Equal("shipment_result_table", stmt.ResultTable)
+
+	a.Equal(true, stmt.Attributes["data.enable_slice"])
+	a.Equal(1, stmt.Attributes["data.batch_size"])
+	a.Equal(16, stmt.Attributes["worker.core"])
+	a.Equal(4, stmt.Attributes["worker.num"])
+	a.Equal(8192, stmt.Attributes["worker.memory"])
+	a.Equal(10, stmt.Attributes["solver.max_iter"])
 }
