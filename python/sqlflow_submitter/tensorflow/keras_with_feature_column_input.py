@@ -15,7 +15,7 @@ import inspect
 
 import tensorflow as tf
 
-from .diag import init_model, load_pretrained_model
+from .diag import init_model
 
 
 class WrappedKerasModel(tf.keras.Model):
@@ -49,3 +49,4 @@ def init_model_with_feature_column(estimator, model_params):
                                        feature_columns)
     else:
         classifier = init_model(estimator, model_params)
+    return classifier
