@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package test
 
 import (
 	"container/list"
@@ -20,12 +20,8 @@ import (
 	"strings"
 )
 
-const (
-	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
-	testSelectIris                    = `SELECT * FROM iris.train`
-)
-
-func getEnv(env, value string) string {
+// GetEnv returns the environment variable value or the given default value
+func GetEnv(env, value string) string {
 	if v := os.Getenv(env); len(v) > 0 {
 		return v
 	}

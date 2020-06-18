@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package executor
 
 import (
 	"database/sql"
@@ -147,13 +147,6 @@ func runExec(wr *pipe.Writer, slct string, db *database.DB) error {
 }
 
 // -------------------------- utilities --------------------------------------
-func isXGBoostModel(estimator string) bool {
-	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
-}
-
-func isKMeansModel(estimator string) bool {
-	return strings.ToUpper(estimator) == "KMEANS"
-}
 
 func parseTableColumn(s string) (string, string, error) {
 	pos := strings.LastIndex(s, ".")

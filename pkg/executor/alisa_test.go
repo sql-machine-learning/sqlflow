@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package executor
 
 import (
 	"testing"
@@ -19,13 +19,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetSubmitter(t *testing.T) {
+func TestAlisaSubmitter(t *testing.T) {
 	a := assert.New(t)
-	s1 := GetSubmitter("default")
-	s2 := GetSubmitter("default")
-	// call GetSubmitter should get 2 different objects
-	a.False(s1 == s2)
-	s3 := GetSubmitter("pai")
-	_, ok := s3.(*paiSubmitter)
+	_, ok := New("alisa").(*alisaExecutor)
 	a.True(ok)
+}
+
+func TestFindPyModulePath(t *testing.T) {
+	a := assert.New(t)
+	_, err := findPyModulePath("sqlflow_submitter")
+	a.NoError(err)
 }

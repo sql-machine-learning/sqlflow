@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/test"
 )
 
 // We train a DNNClassifier on five data points and let it reaches 100 percent accuracy.
@@ -51,7 +52,7 @@ WITH
 LABEL class
 INTO sqlflow_models.my_dnn_model;
 `, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
 		stream := RunSQLProgram(`
@@ -59,7 +60,7 @@ SELECT * FROM sanity_check.train
 TO PREDICT sanity_check.predict.class
 USING sqlflow_models.my_dnn_model;
 `, modelDir, database.GetSessionFromTestingDB())
-		a.True(GoodStream(stream.ReadAll()))
+		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
 		rows, err := testDB.Query("select * from sanity_check.predict order by class")

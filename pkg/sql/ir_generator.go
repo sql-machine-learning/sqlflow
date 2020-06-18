@@ -80,16 +80,7 @@ func generateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	return trainStmt, nil
 }
 
-func doAttrInitAndTypeChecking(ir *ir.TrainStmt) error {
-	if isXGBoostModel(ir.Estimator) {
-		return xgboost.InitializeAttributes(ir)
-	} else if isKMeansModel(ir.Estimator) {
-		return pai.InitializeKMeansAttributes(ir)
-	}
-	return tensorflow.InitializeAttributes(ir)
-}
-
-func generateTrainStmt(slct *parser.SQLFlowSelectStmt, attrInitAndTypeCheck bool) (*ir.TrainStmt, error) {
+func generateTrainStmt(slct *parser.SQLFlowSelectStmt, initAndCheckAttribute bool) (*ir.TrainStmt, error) {
 	tc := slct.TrainClause
 	modelURI := tc.Estimator
 	// get model Docker image name
@@ -146,12 +137,29 @@ func generateTrainStmt(slct *parser.SQLFlowSelectStmt, attrInitAndTypeCheck bool
 		PreTrainedModel:  tc.TrainUsing,
 		Into:             slct.Save,
 	}
-	if attrInitAndTypeCheck {
-		if err = doAttrInitAndTypeChecking(trainStmt); err != nil {
-			return nil, err
+	if initAndCheckAttribute {
+		if e := initializeAndCheckAttributes(trainStmt); e != nil {
+			return nil, e
 		}
 	}
 	return trainStmt, nil
+}
+
+func initializeAndCheckAttributes(ir *ir.TrainStmt) error {
+	if isXGBoostModel(ir.Estimator) {
+		return xgboost.InitializeAttributes(ir)
+	} else if isKMeansModel(ir.Estimator) {
+		return pai.InitializeKMeansAttributes(ir)
+	}
+	return tensorflow.InitializeAttributes(ir)
+}
+
+func isXGBoostModel(estimator string) bool {
+	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
+}
+
+func isKMeansModel(estimator string) bool {
+	return strings.ToUpper(estimator) == "KMEANS"
 }
 
 func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, *parser.SQLFlowSelectStmt, error) {

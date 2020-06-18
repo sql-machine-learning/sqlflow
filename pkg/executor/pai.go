@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package executor
 
 import (
 	"bytes"
@@ -31,6 +31,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const (
@@ -44,7 +45,7 @@ const (
 
 var reODPSLogURL = regexp.MustCompile(`http://logview.*`)
 
-type paiSubmitter struct{ *defaultSubmitter }
+type paiExecutor struct{ *pythonExecutor }
 
 func randStringRunes(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -143,15 +144,24 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 	return nil
 }
 
+func preExecuteTrainOnpPA(cl *ir.TrainStmt, session *pb.Session) (e error) {
+	// create tmp table for training and validating
+	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, session.DbConnStr)
+	if e != nil {
+		return e
+	}
+	return nil
+}
+
 // Possible situations:
 //
 // 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
-func (s *paiSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, s.Session.DbConnStr)
-	if e != nil {
-		return
+func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
+	if e = preExecuteTrainOnpPA(cl, s.Session); e != nil {
+		return e
 	}
+
 	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 
 	ossModelPathToSave, e := getModelPath(cl.Into, s.Session)
@@ -201,7 +211,7 @@ func cleanOSSModelPath(ossModelPath, project string) error {
 	return deleteDirRecursive(bucket, ossModelPath)
 }
 
-func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements, estimator string) error {
+func (s *paiExecutor) submitPAITask(code, paiCmd, requirements, estimator string) error {
 	if e := achieveResource(s.Cwd, code, requirements, tarball, estimator); e != nil {
 		return e
 	}
@@ -225,7 +235,7 @@ func (s *paiSubmitter) submitPAITask(code, paiCmd, requirements, estimator strin
 	return nil
 }
 
-func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
+func (s *paiExecutor) ExecutePredict(cl *ir.PredictStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
@@ -245,7 +255,7 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	if len(resultTableParts) == 1 {
 		cl.ResultTable = fmt.Sprintf("%s.%s", currProject, cl.ResultTable)
 	}
-	if e := createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
+	if e := createPredictionResultTable(cl, s.Db, s.Session); e != nil {
 		return e
 	}
 
@@ -269,7 +279,7 @@ func (s *paiSubmitter) ExecutePredict(cl *ir.PredictStmt) error {
 	return s.submitPAITask(code, paiCmd, requirements, estimator)
 }
 
-func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
+func (s *paiExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
@@ -330,7 +340,7 @@ func (s *paiSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return e
 }
 
-func (s *paiSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
+func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
@@ -397,7 +407,7 @@ func (s *paiSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 
 // TODO(sneaxiy): need to add some tests to this function, but it requires
 // optflow installed in docker image
-func (s *paiSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
+func (s *paiExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -426,7 +436,7 @@ func (s *paiSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 		return err
 	}
 
-	err = generateOptFlowOptimizeCodeAndExecute(cl, s.defaultSubmitter, s.Session, s.Cwd, dbName, tableName, true)
+	err = generateOptFlowOptimizeCodeAndExecute(cl, s.pythonExecutor, s.Session, s.Cwd, dbName, tableName, true)
 	return err
 }
 
@@ -522,7 +532,7 @@ func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
 
 func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string, labelCol string) (string, error) {
 	// create table to record shap values for every feature for each sample.
-	flds, _, err := getColumnTypes(selectStmt, db)
+	flds, _, err := getSQLFieldType(selectStmt, db)
 	if err != nil {
 		return "", err
 	}
@@ -632,7 +642,7 @@ func achieveResource(cwd, entryCode, requirements, tarball, estimator string) er
 	return nil
 }
 
-func (s *paiSubmitter) GetTrainStmtFromModel() bool { return false }
+func (s *paiExecutor) GetTrainStmtFromModel() bool { return false }
 
 func pickPAILogViewerURL(output string) []string {
 	return reODPSLogURL.FindAllString(output, -1)

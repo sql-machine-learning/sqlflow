@@ -16,11 +16,11 @@ package database
 import (
 	"fmt"
 	"log"
-	"os"
 	"sync"
 
 	"sqlflow.org/gomaxcompute"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
+	"sqlflow.org/sqlflow/pkg/test"
 
 	"github.com/go-sql-driver/mysql"
 	"sqlflow.org/sqlflow/pkg/proto"
@@ -52,7 +52,7 @@ func GetTestingDBSingleton() *DB {
 // order to do it, users might want to define TestMain and call
 // createTestingDB and defer db.Close in it.
 func createTestingDB() *DB {
-	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
+	switch dbms := test.GetEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
 	case "mysql":
 		return createTestingMySQLDB()
 	case "hive":
@@ -65,20 +65,13 @@ func createTestingDB() *DB {
 	return nil
 }
 
-func getEnv(env, value string) string {
-	if env := os.Getenv(env); len(env) != 0 {
-		return env
-	}
-	return value
-}
-
 // GetTestingMySQLConfig construct a MySQL config
 func GetTestingMySQLConfig() *mysql.Config {
 	return &mysql.Config{
-		User:                 getEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
-		Passwd:               getEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
-		Net:                  getEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
-		Addr:                 getEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
+		User:                 test.GetEnv("SQLFLOW_TEST_DB_MYSQL_USER", "root"),
+		Passwd:               test.GetEnv("SQLFLOW_TEST_DB_MYSQL_PASSWD", "root"),
+		Net:                  test.GetEnv("SQLFLOW_TEST_DB_MYSQL_NET", "tcp"),
+		Addr:                 test.GetEnv("SQLFLOW_TEST_DB_MYSQL_ADDR", "127.0.0.1:3306"),
 		AllowNativePasswords: true,
 	}
 }
@@ -119,10 +112,10 @@ func createTestingHiveDB() *DB {
 
 func testingMaxComputeConfig() *gomaxcompute.Config {
 	return &gomaxcompute.Config{
-		AccessID:  getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK", "test"),
-		AccessKey: getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK", "test"),
-		Project:   getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT", "test"),
-		Endpoint:  getEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT", "http://service-maxcompute.com/api"),
+		AccessID:  test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK", "test"),
+		AccessKey: test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK", "test"),
+		Project:   test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT", "test"),
+		Endpoint:  test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT", "http://service-maxcompute.com/api"),
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/test"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/ir"
@@ -270,8 +271,8 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 }
 
 func TestGeneratePredictStmt(t *testing.T) {
-	if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
-		t.Skip(fmt.Sprintf("%s: skip Hive test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	if test.GetEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		t.Skip(fmt.Sprintf("%s: skip Hive test", test.GetEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
 
@@ -293,7 +294,7 @@ WITH model.n_classes=3, model.hidden_units=[10,20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: database.GetTestingDBSingleton().URL()})
-	a.True(GoodStream(stream.ReadAll()))
+	a.True(test.GoodStream(stream.ReadAll()))
 
 	predStmt, err := generatePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), modelDir, cwd, true)
 	a.NoError(err)
@@ -308,8 +309,8 @@ INTO sqlflow_models.mymodel;`, modelDir, &pb.Session{DbConnStr: database.GetTest
 }
 
 func TestGenerateExplainStmt(t *testing.T) {
-	if getEnv("SQLFLOW_TEST_DB", "mysql") != "mysql" {
-		t.Skip(fmt.Sprintf("%s: skip test", getEnv("SQLFLOW_TEST_DB", "mysql")))
+	if test.GetEnv("SQLFLOW_TEST_DB", "mysql") != "mysql" {
+		t.Skip(fmt.Sprintf("%s: skip test", test.GetEnv("SQLFLOW_TEST_DB", "mysql")))
 	}
 	a := assert.New(t)
 	connStr := database.GetTestingMySQLURL()
@@ -330,7 +331,7 @@ LABEL class
 INTO sqlflow_models.my_xgboost_model;
 `, modelDir, &pb.Session{DbConnStr: connStr})
 	a.NoError(e)
-	a.True(GoodStream(stream.ReadAll()))
+	a.True(test.GoodStream(stream.ReadAll()))
 
 	pr, e := parser.ParseStatement("mysql", `
 	SELECT *

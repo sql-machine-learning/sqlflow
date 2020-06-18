@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-sixel"
+	"sqlflow.org/sqlflow/pkg/executor"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/tablewriter"
@@ -68,7 +69,7 @@ func Render(rsp interface{}, table tablewriter.TableWriter, isTerminal, it2Check
 			log.Fatalf("workflow step failed: %v", s)
 		}
 	case sql.EndOfExecution:
-	case sql.Figures:
+	case executor.Figures:
 		if isHTMLCode(s.Image) {
 			if !isTerminal {
 				printAsDataURL(s.Image)
