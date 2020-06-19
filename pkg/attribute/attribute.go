@@ -337,6 +337,8 @@ func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 			continue
 		}
 
+		// Fill typ field according to the model parameter doc
+		// The doc would be like: "int Maximum tree depth for base learners"
 		pieces := strings.SplitN(strings.TrimSpace(desc.doc), " ", 2)
 		if len(pieces) != 2 {
 			continue
