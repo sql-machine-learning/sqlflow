@@ -16,12 +16,10 @@ package executor
 import (
 	"bytes"
 	"fmt"
-	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/step/feature"
 	"sqlflow.org/sqlflow/pkg/verifier"
 )
 
@@ -98,7 +96,7 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 // getSQLFieldType is quiet like verify but accept a SQL string as input, and returns
 // an ordered list of the field types.
 func getSQLFieldType(slct string, db *database.DB) ([]string, []string, error) {
-	rows, err := feature.FetchSamples(db, slct)
+	rows, err := verifier.FetchSamples(db, slct)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,10 +125,4 @@ func getSQLFieldType(slct string, db *database.DB) ([]string, []string, error) {
 	}
 
 	return flds, ft, nil
-}
-
-// TODO(yancey1989): need to discuss fill esimator type in IR,
-// that we don't need the duplicate judgement with pkg/sql/ir_generator.go
-func isXGBoostModel(estimator string) bool {
-	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
 }

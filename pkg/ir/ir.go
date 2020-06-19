@@ -15,6 +15,8 @@
 package ir
 
 import (
+	"strings"
+
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -80,6 +82,27 @@ type TrainStmt struct {
 	// see: pai_submitter.go
 	TmpTrainTable    string
 	TmpValidateTable string
+}
+
+const (
+	// TensorFlow is a kind of `TrainStmt`
+	TensorFlow = iota
+	// XGBoost is a kind of `TrainStmt`
+	XGBoost
+	// KMeans is a kind of `TrainStmt`
+	KMeans
+)
+
+// GetModelKind returns the kind of model in the TrainStmt
+func (cl *TrainStmt) GetModelKind() int {
+	estimator := strings.ToUpper(cl.Estimator)
+	if strings.HasPrefix(estimator, "XGB") {
+		return XGBoost
+	}
+	if strings.HasPrefix(estimator, "KMeans") {
+		return KMeans
+	}
+	return TensorFlow
 }
 
 // Execute generates and executes code for TrainStmt

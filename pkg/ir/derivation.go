@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package feature
+package ir
 
 import (
 	"database/sql"
@@ -21,11 +21,9 @@ import (
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/pipe"
+	"sqlflow.org/sqlflow/pkg/verifier"
 )
-
-const featureDerivationRows = 1000
 
 // TODO(typhoonzero): fieldTypes are copied from verifier.go, need refactor.
 type fieldTypes map[string]string
@@ -45,17 +43,17 @@ func decomp(ident string) (tbl string, fld string) {
 // ColumnMap is like: target -> key -> []FeatureColumn
 // one column's data can be used by multiple feature columns, e.g.
 // EMBEDDING(c1), CROSS(c1, c2)
-type ColumnMap map[string]map[string][]ir.FeatureColumn
+type ColumnMap map[string]map[string][]FeatureColumn
 
 // FieldDescMap is a mapping from column name to ColumnSpec struct
-type FieldDescMap map[string]*ir.FieldDesc
+type FieldDescMap map[string]*FieldDesc
 
 // makeColumnMap returns a map from column key to FeatureColumn
 // NOTE that the target is not important for analyzing feature derivation.
-func makeColumnMap(parsedFeatureColumns map[string][]ir.FeatureColumn) ColumnMap {
+func makeColumnMap(parsedFeatureColumns map[string][]FeatureColumn) ColumnMap {
 	fcMap := make(ColumnMap)
 	for target, fcList := range parsedFeatureColumns {
-		fcMap[target] = make(map[string][]ir.FeatureColumn)
+		fcMap[target] = make(map[string][]FeatureColumn)
 		for _, fc := range fcList {
 			initColumnMap(fcMap, fc, target)
 		}
@@ -63,36 +61,36 @@ func makeColumnMap(parsedFeatureColumns map[string][]ir.FeatureColumn) ColumnMap
 	return fcMap
 }
 
-func initColumnMap(fcMap ColumnMap, fc ir.FeatureColumn, target string) {
+func initColumnMap(fcMap ColumnMap, fc FeatureColumn, target string) {
 	// CrossColumn use two columns as input, record the key for each column
-	if cc, ok := fc.(*ir.CrossColumn); ok {
+	if cc, ok := fc.(*CrossColumn); ok {
 		for idx, k := range cc.Keys {
 			// if the key of CrossColumn is a string, generate a default numeric column.
 			if strKey, ok := k.(string); ok {
-				cc.Keys[idx] = &ir.NumericColumn{
-					FieldDesc: &ir.FieldDesc{
+				cc.Keys[idx] = &NumericColumn{
+					FieldDesc: &FieldDesc{
 						Name:      strKey,
-						DType:     ir.Float,
+						DType:     Float,
 						Delimiter: "",
 						Shape:     []int{1},
 						IsSparse:  false,
 					},
 				}
 				fcMap[target][strKey] = append(fcMap[target][strKey], cc)
-			} else if nc, ok := k.(*ir.NumericColumn); ok {
+			} else if nc, ok := k.(*NumericColumn); ok {
 				fcMap[target][nc.FieldDesc.Name] = append(fcMap[target][nc.FieldDesc.Name], cc)
 			}
 		}
 	} else {
 		switch c := fc.(type) {
 		// embedding/indicator column may got len(GetFieldDesc()) == 0
-		case *ir.EmbeddingColumn:
+		case *EmbeddingColumn:
 			if len(fc.GetFieldDesc()) == 0 {
 				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
 				return
 			}
 
-		case *ir.IndicatorColumn:
+		case *IndicatorColumn:
 			if len(fc.GetFieldDesc()) == 0 {
 				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
 				return
@@ -104,7 +102,7 @@ func initColumnMap(fcMap ColumnMap, fc ir.FeatureColumn, target string) {
 
 // makeFieldDescMap returns a map from column key to FieldDesc
 // NOTE that the target is not important for analyzing feature derivation.
-func makeFieldDescMap(features map[string][]ir.FeatureColumn) FieldDescMap {
+func makeFieldDescMap(features map[string][]FeatureColumn) FieldDescMap {
 	fmMap := make(FieldDescMap)
 	for _, fcList := range features {
 		for _, fc := range fcList {
@@ -150,12 +148,12 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	return rowData, nil
 }
 
-func newDefaultFieldDesc(fieldName string) *ir.FieldDesc {
-	return &ir.FieldDesc{
+func newDefaultFieldDesc(fieldName string) *FieldDesc {
+	return &FieldDesc{
 		Name:       fieldName,
 		IsSparse:   false,
 		Shape:      nil,
-		DType:      ir.Int,
+		DType:      Int,
 		Delimiter:  "",
 		Vocabulary: nil,
 		MaxID:      0,
@@ -180,7 +178,7 @@ func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName stri
 			_, err := strconv.ParseFloat(v, 32)
 			// set dtype to float32 once a float value come up
 			if err == nil {
-				fieldDescMap[fieldName].DType = ir.Float
+				fieldDescMap[fieldName].DType = Float
 			}
 		} else {
 			// if the value is integer, record maxID
@@ -202,11 +200,11 @@ func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName s
 			if fieldDescMap[fieldName].Shape == nil {
 				fieldDescMap[fieldName].Shape = []int{1}
 			}
-			fieldDescMap[fieldName].DType = ir.Float
+			fieldDescMap[fieldName].DType = Float
 		} else {
 			// neither int nor float, should deal with string dtype
 			// to form a category_id_column
-			fieldDescMap[fieldName].DType = ir.String
+			fieldDescMap[fieldName].DType = String
 			fieldDescMap[fieldName].Shape = []int{1}
 			if fieldDescMap[fieldName].Vocabulary == nil {
 				// initialize the vocabulary map
@@ -240,10 +238,10 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		typeName := ct.DatabaseTypeName()
 		switch unifyDatabaseTypeName(typeName) {
 		case "INT", "TINYINT", "DECIMAL", "BIGINT":
-			fieldDescMap[fld].DType = ir.Int
+			fieldDescMap[fld].DType = Int
 			fieldDescMap[fld].Shape = []int{1}
 		case "FLOAT", "DOUBLE":
-			fieldDescMap[fld].DType = ir.Float
+			fieldDescMap[fld].DType = Float
 			fieldDescMap[fld].Shape = []int{1}
 		case "CHAR", "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
@@ -262,13 +260,13 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 // InferFeatureColumns fill up featureColumn and columnSpec structs
 // for all fields.
 // if wr is not nil, then write
-func InferFeatureColumns(trainStmt *ir.TrainStmt, db *database.DB) error {
+func InferFeatureColumns(trainStmt *TrainStmt, db *database.DB) error {
 	fcMap := makeColumnMap(trainStmt.Features)
 	fmMap := makeFieldDescMap(trainStmt.Features)
 
 	// TODO(typhoonzero): find a way to using subqueries like select * from (%s) AS a LIMIT 100
 	// q := trainStmt.Select
-	rows, err := FetchSamples(db, trainStmt.Select)
+	rows, err := verifier.FetchSamples(db, trainStmt.Select)
 	if err != nil {
 		return err
 	}
@@ -309,7 +307,7 @@ func InferFeatureColumns(trainStmt *ir.TrainStmt, db *database.DB) error {
 // the parameter keys when initialize a model, e.g.
 // https://www.tensorflow.org/api_docs/python/tf/estimator/DNNLinearCombinedClassifier#__init__
 // has parameters "linear_feature_columns", "dnn_feature_columns" accepts feature_columns.
-func getFeatureColumnTargets(trainStmt *ir.TrainStmt) []string {
+func getFeatureColumnTargets(trainStmt *TrainStmt) []string {
 	columnTargets := []string{}
 	if len(trainStmt.Features) > 0 {
 		for target := range trainStmt.Features {
@@ -322,7 +320,7 @@ func getFeatureColumnTargets(trainStmt *ir.TrainStmt) []string {
 }
 
 // deriveFeatureColumn will fill in "fcMap" with derivated FeatureColumns.
-func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDescMap, selectFieldTypeMap fieldTypes, trainStmt *ir.TrainStmt) error {
+func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDescMap, selectFieldTypeMap fieldTypes, trainStmt *TrainStmt) error {
 	// 1. Infer omitted category_id_column for embedding_columns
 	// 2. Add derivated feature column.
 	//
@@ -335,10 +333,10 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDes
 		fcTargetMap, ok := fcMap[target]
 		if !ok {
 			// create map for current target
-			fcMap[target] = make(map[string][]ir.FeatureColumn)
+			fcMap[target] = make(map[string][]FeatureColumn)
 			fcTargetMap = fcMap[target]
 		}
-		fcMap[target] = make(map[string][]ir.FeatureColumn)
+		fcMap[target] = make(map[string][]FeatureColumn)
 		for f := range fcTargetMap {
 			if _, ok := selectFieldTypeMap[f]; !ok {
 				if len(fcTargetMap[f]) != 1 {
@@ -356,7 +354,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDes
 						if err != nil {
 							return err
 						}
-						fcMap[target][sf] = []ir.FeatureColumn{applied}
+						fcMap[target][sf] = []FeatureColumn{applied}
 						hasMatch = true
 					}
 				}
@@ -397,23 +395,6 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDes
 	return nil
 }
 
-// FetchSamples returns Rows accoding to the input Query
-func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
-	re, err := regexp.Compile("(?i)LIMIT [0-9]+")
-	if err != nil {
-		return nil, err
-	}
-	limitClauseIndexes := re.FindStringIndex(query)
-	if limitClauseIndexes == nil {
-		query = fmt.Sprintf("%s LIMIT %d", query, featureDerivationRows)
-	} else {
-		// TODO(typhoonzero): there may be complex SQL statements that contain multiple
-		// LIMIT clause, using regex replace will replace them all.
-		re.ReplaceAllString(query, fmt.Sprintf("LIMIT %d", featureDerivationRows))
-	}
-	return db.Query(query)
-}
-
 func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDescMap) error {
 	rowCount := 0
 	for rows.Next() {
@@ -437,10 +418,10 @@ func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDe
 	return rows.Err()
 }
 
-func updateFeatureColumn(fcList []ir.FeatureColumn, fmMap FieldDescMap) error {
+func updateFeatureColumn(fcList []FeatureColumn, fmMap FieldDescMap) error {
 	for _, fc := range fcList {
 		switch c := fc.(type) {
-		case *ir.EmbeddingColumn:
+		case *EmbeddingColumn:
 			if c.CategoryColumn == nil {
 				cs, ok := fmMap[c.Name]
 				if !ok {
@@ -457,12 +438,12 @@ func updateFeatureColumn(fcList []ir.FeatureColumn, fmMap FieldDescMap) error {
 					}
 					bucketSize = cs.MaxID + 1
 				}
-				c.CategoryColumn = &ir.CategoryIDColumn{
+				c.CategoryColumn = &CategoryIDColumn{
 					FieldDesc:  cs,
 					BucketSize: bucketSize,
 				}
 			}
-		case *ir.IndicatorColumn:
+		case *IndicatorColumn:
 			if c.CategoryColumn == nil {
 				cs, ok := fmMap[c.Name]
 				if !ok {
@@ -474,7 +455,7 @@ func updateFeatureColumn(fcList []ir.FeatureColumn, fmMap FieldDescMap) error {
 					if cs.MaxID == 0 {
 						return fmt.Errorf("use indicator column but did not got a correct MaxID")
 					}
-					c.CategoryColumn = &ir.CategoryIDColumn{
+					c.CategoryColumn = &CategoryIDColumn{
 						FieldDesc:  cs,
 						BucketSize: cs.MaxID + 1,
 					}
@@ -488,20 +469,20 @@ func updateFeatureColumn(fcList []ir.FeatureColumn, fmMap FieldDescMap) error {
 	return nil
 }
 
-func newFeatureColumn(fcTargetMap map[string][]ir.FeatureColumn, fmMap FieldDescMap, fieldName string) error {
+func newFeatureColumn(fcTargetMap map[string][]FeatureColumn, fmMap FieldDescMap, fieldName string) error {
 	cs, ok := fmMap[fieldName]
 	if !ok {
 		return fmt.Errorf("column not found or inferred: %s", fieldName)
 	}
-	if cs.DType != ir.String {
+	if cs.DType != String {
 		fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
-			&ir.NumericColumn{
+			&NumericColumn{
 				FieldDesc: cs,
 			})
 	} else {
 		fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
-			&ir.EmbeddingColumn{
-				CategoryColumn: &ir.CategoryIDColumn{
+			&EmbeddingColumn{
+				CategoryColumn: &CategoryIDColumn{
 					FieldDesc:  cs,
 					BucketSize: int64(len(cs.Vocabulary)),
 				},
@@ -514,19 +495,19 @@ func newFeatureColumn(fcTargetMap map[string][]ir.FeatureColumn, fmMap FieldDesc
 }
 
 // setDerivedFeatureColumnToIR set derived feature column information back to the original IR structure.
-func setDerivedFeatureColumnToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
+func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
 	for _, target := range columnTargets {
 		targetFeatureColumnMap := fcMap[target]
-		trainStmt.Features[target] = []ir.FeatureColumn{}
+		trainStmt.Features[target] = []FeatureColumn{}
 		// append cross columns at the end of all selected fields.
-		crossColumns := []*ir.CrossColumn{}
+		crossColumns := []*CrossColumn{}
 		for _, slctKey := range selectFieldNames {
 			// label should not be added to feature columns
 			if slctKey == trainStmt.Label.GetFieldDesc()[0].Name {
 				continue
 			}
 			for _, fc := range targetFeatureColumnMap[slctKey] {
-				if cc, ok := fc.(*ir.CrossColumn); ok {
+				if cc, ok := fc.(*CrossColumn); ok {
 					crossColumns = append(crossColumns, cc)
 					continue
 				}
@@ -551,7 +532,7 @@ func setDerivedFeatureColumnToIR(trainStmt *ir.TrainStmt, fcMap ColumnMap, colum
 }
 
 // deriveLabel set derived label FieldDesc information back to the original IR structure.
-func deriveLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) error {
+func deriveLabel(trainStmt *TrainStmt, fmMap FieldDescMap) error {
 	labelName := trainStmt.Label.GetFieldDesc()[0].Name
 	if labelName == "" {
 		return nil // NOTE: clustering model may not specify Label
@@ -559,7 +540,7 @@ func deriveLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) error {
 	if fmMap[labelName] == nil {
 		return fmt.Errorf("deriveLabel: LABEL COLUMN '%s' not found", labelName)
 	}
-	trainStmt.Label = &ir.NumericColumn{
+	trainStmt.Label = &NumericColumn{
 		FieldDesc: fmMap[labelName],
 	}
 	// use shape [] if label shape is [1] for Tensorflow scalar label shape should be [].
@@ -571,7 +552,7 @@ func deriveLabel(trainStmt *ir.TrainStmt, fmMap FieldDescMap) error {
 }
 
 // LogDerivationResult write messages to wr to log the feature derivation results
-func LogDerivationResult(wr *pipe.Writer, trainStmt *ir.TrainStmt) {
+func LogDerivationResult(wr *pipe.Writer, trainStmt *TrainStmt) {
 	if wr != nil {
 		for target, fclist := range trainStmt.Features {
 			for _, fc := range fclist {

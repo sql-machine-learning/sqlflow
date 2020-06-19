@@ -122,7 +122,7 @@ func (s *pythonExecutor) SaveModel(cl *ir.TrainStmt) error {
 	if s.ModelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
 	}
-	return m.Save(modelURI, cl, s.Session)
+	return m.Save(modelURI, s.Session)
 }
 
 func (s *pythonExecutor) runCommand(program string, logStderr bool) error {
@@ -158,7 +158,7 @@ func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
 
 func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	var code string
-	if isXGBoostModel(cl.Estimator) {
+	if cl.GetModelKind() == ir.XGBoost {
 		if code, e = xgboost.Train(cl, s.Session); e != nil {
 			return e
 		}
@@ -180,7 +180,7 @@ func (s *pythonExecutor) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	}
 
 	var code string
-	if isXGBoostModel(cl.TrainStmt.Estimator) {
+	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		if code, e = xgboost.Pred(cl, s.Session); e != nil {
 			return e
 		}
@@ -201,7 +201,7 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 		return err
 	}
 	defer db.Close()
-	if isXGBoostModel(cl.TrainStmt.Estimator) {
+	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		code, err = xgboost.Explain(cl, s.Session)
 		// TODO(typhoonzero): deal with XGBoost model explain result table creation.
 	} else {
@@ -236,7 +236,7 @@ func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
-	if isXGBoostModel(cl.TrainStmt.Estimator) {
+	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		code, err = xgboost.Evaluate(cl, s.Session)
 		if err != nil {
 			return err
