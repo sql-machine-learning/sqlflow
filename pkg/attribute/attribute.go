@@ -19,7 +19,6 @@ import (
 	"log"
 	"os/exec"
 	"reflect"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -328,30 +327,32 @@ func (d Dictionary) Update(other Dictionary) Dictionary {
 // NewDictionaryFromModelDefinition create a new Dictionary according to pre-made estimators or XGBoost model types.
 func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 	isXGBoostModel := strings.HasPrefix(estimator, "xgboost")
-	re := regexp.MustCompile("[^a-z]")
 
 	var d = Dictionary{}
 	for param, doc := range PremadeModelParamsDocs[estimator] {
 		desc := &description{unknownType, nil, doc, nil}
-
-		if isXGBoostModel {
-			pieces := strings.SplitN(desc.doc, " ", 2)
-			if len(pieces) == 2 {
-				maybeType := re.ReplaceAllString(pieces[0], "")
-				if maybeType == strings.ToLower(maybeType) {
-					switch maybeType {
-					case "float":
-						desc.typ = floatType
-					case "int":
-						desc.typ = intType
-					case "string":
-						desc.typ = stringType
-					}
-					desc.doc = pieces[1]
-				}
-			}
-		}
 		d[prefix+param] = desc
+
+		if !isXGBoostModel {
+			continue
+		}
+
+		pieces := strings.SplitN(strings.TrimSpace(desc.doc), " ", 2)
+		if len(pieces) != 2 {
+			continue
+		}
+
+		switch pieces[0] {
+		case "float":
+			desc.typ = floatType
+			desc.doc = pieces[1]
+		case "int":
+			desc.typ = intType
+			desc.doc = pieces[1]
+		case "string":
+			desc.typ = stringType
+			desc.doc = pieces[1]
+		}
 	}
 	return d
 }

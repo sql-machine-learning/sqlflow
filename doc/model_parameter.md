@@ -68,8 +68,8 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>importance_type</td>
-	<td>string</td>
-	<td>default "gain" The feature importance type for the feature_importances_ property: either "gain", "weight", "cover", "total_gain" or "total_cover".</td>
+	<td>%!s(<nil>)</td>
+	<td>string, default "gain" The feature importance type for the feature_importances_ property: either "gain", "weight", "cover", "total_gain" or "total_cover".</td>
 </tr>
 <tr>
 	<td>learning_rate</td>
@@ -79,7 +79,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 <tr>
 	<td>max_bin</td>
 	<td>%!s(<nil>)</td>
-	<td>used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features.</td>
+	<td>Only used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features.</td>
 </tr>
 <tr>
 	<td>max_delta_step</td>
@@ -98,8 +98,8 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>missing</td>
-	<td>float32</td>
-	<td>optional Value in the data which needs to be present as a missing value. If None, defaults to np.nan.</td>
+	<td>%!s(<nil>)</td>
+	<td>float, optional Value in the data which needs to be present as a missing value. If None, defaults to np.nan.</td>
 </tr>
 <tr>
 	<td>n_estimators</td>
@@ -154,7 +154,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 <tr>
 	<td>silent</td>
 	<td>%!s(<nil>)</td>
-	<td>Whether to print messages while running boosting. Deprecated. Use verbosity instead.</td>
+	<td>boolean Whether to print messages while running boosting. Deprecated. Use verbosity instead.</td>
 </tr>
 <tr>
 	<td>subsample</td>
