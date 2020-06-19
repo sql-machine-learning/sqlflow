@@ -217,7 +217,7 @@ func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 
 // PremadeModelParamsDocs stores parameters and documents of all known models
 var PremadeModelParamsDocs map[string]map[string]string
-var extractDocStringsOnce sync.Once
+var extractSymbolOnce sync.Once
 
 // OptimizerParamsDocs stores parameters and documents of optimizers
 var OptimizerParamsDocs map[string]map[string]string
@@ -225,22 +225,22 @@ var OptimizerParamsDocs map[string]map[string]string
 // XGBoostObjectiveDocs stores options for xgboost objective
 var XGBoostObjectiveDocs map[string]string
 
-// ExtractDocString extracts parameter documents of Python modules from doc strings
-func ExtractDocString(module ...string) {
+// ExtractSymbol extracts parameter documents of Python modules from doc strings
+func ExtractSymbol(module ...string) {
 	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('symbol_extractor').print_param_doc('%s')", strings.Join(module, "', '")))
 	output, e := cmd.CombinedOutput()
 	if e != nil {
-		log.Println("ExtractDocString failed: ", e, string(output))
+		log.Println("ExtractSymbol failed: ", e, string(output))
 	}
 	// json.Unmarshal extends the map rather than reallocate a new one, see golang.org/pkg/encoding/json/#Unmarshal
 	if e := json.Unmarshal(output, &PremadeModelParamsDocs); e != nil {
-		log.Println("ExtractDocString failed:", e, string(output))
+		log.Println("ExtractSymbol failed:", e, string(output))
 	}
 }
 
-// ExtractDocStringsOnce extracts parameter documents from python doc strings using sync.Once
-func ExtractDocStringsOnce() {
-	extractDocStringsOnce.Do(func() { ExtractDocString("sqlflow_models") })
+// ExtractSymbolOnce extracts parameter documents from python doc strings using sync.Once
+func ExtractSymbolOnce() {
+	extractSymbolOnce.Do(func() { ExtractSymbol("sqlflow_models") })
 }
 
 func removeUnnecessaryParams() {
