@@ -144,12 +144,14 @@ sklearn2pmml==0.56.0
 const tfPredictTmplText = tfImportsText + `
 import os
 import types
+import traceback
 from sqlflow_submitter.tensorflow import predict
 
 try:
     import sqlflow_models
 except Exception as e:
     print("error importing sqlflow_models: %s" % e)
+    traceback.print_exc()
 try:
     tf.enable_eager_execution()
 except:

@@ -478,6 +478,10 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	// write model to current MaxCompute project
 	caseInto = "my_dnn_model"
 
+	if err := prepareTestData(dbConnStr); err != nil {
+		t.FailNow()
+	}
+
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 

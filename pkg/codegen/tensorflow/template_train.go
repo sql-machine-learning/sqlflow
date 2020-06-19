@@ -37,6 +37,7 @@ type trainFiller struct {
 
 const tfTrainTemplateText = `
 import copy
+import traceback
 import tensorflow as tf
 import sqlflow_submitter
 from sqlflow_submitter.tensorflow.train import train
@@ -59,6 +60,7 @@ try:
     import sqlflow_models
 except Exception as e:
     print("failed to import sqlflow_models: %s", e)
+    traceback.print_exc()
 
 feature_column_names = [{{range $target, $desclist := .FieldDescs}}{{range $desclist}}
 "{{.Name}}",

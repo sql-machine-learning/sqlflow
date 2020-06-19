@@ -38,7 +38,10 @@ def init_model_with_feature_column(estimator,
        NOTE: initalize estimator model can also use this function since estimators all have
        "feature_column" argument.
     """
-    argspec = inspect.getargspec(estimator)
+    if inspect.isclass(estimator):
+        argspec = inspect.getargspec(estimator.__init__)
+    else:
+        argspec = inspect.getargspec(estimator)
     if "feature_columns" not in argspec.args and not has_none_optimizer:
         feature_columns = model_params["feature_columns"]
         del model_params["feature_columns"]
