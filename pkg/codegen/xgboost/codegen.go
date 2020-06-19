@@ -339,6 +339,7 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURIToSave, 
 		PAITrainTable:       paiTrainTable,
 		PAIValidateTable:    paiValidateTable,
 		ModelRepoImage:      trainStmt.ModelImage,
+		OriginalSQL:         trainStmt.OriginalSQL,
 	}, nil
 }
 

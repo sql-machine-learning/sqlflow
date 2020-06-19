@@ -126,7 +126,8 @@ def train(datasource,
           oss_model_dir="",
           transform_fn=None,
           feature_column_code="",
-          model_repo_image=""):
+          model_repo_image="",
+          original_sql=""):
     if batch_size == -1:
         batch_size = None
     print("Start training XGBoost model...")
@@ -182,7 +183,8 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        metadata = collect_model_metadata(select, validation_select, None,
+        metadata = collect_model_metadata(original_sql, select,
+                                          validation_select, "XGBoost",
                                           model_params, train_params,
                                           feature_metas, label_meta, re,
                                           model_repo_image)

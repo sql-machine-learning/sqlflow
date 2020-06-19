@@ -167,6 +167,7 @@ func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 			return e
 		}
 	}
+	ioutil.WriteFile("train_program.py", []byte(code), 0644)
 	if e := s.runCommand(code, false); e != nil {
 		return e
 	}

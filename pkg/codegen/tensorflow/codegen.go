@@ -335,6 +335,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		PAITrainTable:       paiTrainTable,
 		PAIValidateTable:    paiValidateTable,
 		ModelRepoImage:      trainStmt.ModelImage,
+		OriginalSQL:         trainStmt.OriginalSQL,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{

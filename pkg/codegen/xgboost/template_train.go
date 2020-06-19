@@ -35,6 +35,7 @@ type trainFiller struct {
 	PAITrainTable       string
 	PAIValidateTable    string
 	ModelRepoImage      string
+	OriginalSQL         string
 }
 
 const trainTemplateText = `
@@ -83,7 +84,8 @@ train(datasource='''{{.DataSource}}''',
       oss_model_dir="{{.OSSModelDirToSave}}",
       transform_fn=transform_fn,
       feature_column_code='''{{.FeatureColumnCode}}''',
-      model_repo_image="{{.ModelRepoImage}}")
+      model_repo_image="{{.ModelRepoImage}}",
+      original_sql='''{{.OriginalSQL}}''')
 `
 
 const distTrainTemplateText = `
@@ -131,7 +133,8 @@ dist_train(flags=FLAGS,
       oss_model_dir="{{.OSSModelDirToSave}}",
       transform_fn=transform_fn,
       feature_column_code='''{{.FeatureColumnCode}}''',
-      model_repo_image="{{.ModelRepoImage}}")
+      model_repo_image="{{.ModelRepoImage}}",
+      original_sql='''{{.OriginalSQL}}''')
 `
 
 var trainTemplate = template.Must(template.New("Train").Parse(trainTemplateText))

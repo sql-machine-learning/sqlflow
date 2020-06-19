@@ -47,23 +47,17 @@ func prepareModelRepo() (string, error) {
 		COPY model /work/model`), 0644)
 	os.Mkdir(fmt.Sprintf("%s/model", path), 0755)
 	ioutil.WriteFile(fmt.Sprintf("%s/model/__init__.py", path),
-		[]byte("from .my_model import MyDNNClassifier"), 0644)
+		[]byte("from .my_model import DNNClassifier"), 0644)
 	ioutil.WriteFile(fmt.Sprintf("%s/model/my_model.py", path), []byte(`
 import tensorflow as tf
 
-"""This is a test model"""
-class MyDNNClassifier(tf.keras.Model):
-	pass
+class DNNClassifier(tf.estimator.DNNClassifier):
+	"""This is a test model"""
+	def __init__(self, *args, **dargs):
+		super(tf.estimator.DNNClassifier, self).__init__(*args, **dargs)
+
 `), 0644)
 	return path, nil
-}
-
-func prepareModel() error {
-	return runStmt(
-		serverAddr,
-		"SELECT * FROM iris.train WHERE class < 2 TO TRAIN LinearClassifier LABEL class INTO iris.my_model;",
-		true,
-		dbConnStr)
 }
 
 func caseReleaseRepo(t *testing.T) {
@@ -87,10 +81,21 @@ func caseDeleteRepo(t *testing.T) {
 	a.NoError(err)
 	a.NoError(deleteRepo(opts))
 }
+func caseTrainModel(t *testing.T) {
+	err := runStmt(
+		serverAddr,
+		`SELECT * FROM iris.train WHERE class < 2
+		 TO TRAIN test/my_repo:v1.0/DNNClassifier
+		 WITH model.hidden_units=[10,10], model.n_classes=3
+		 LABEL class INTO iris.my_model;`,
+		true,
+		dbConnStr)
+	a := assert.New(t)
+	a.NoError(err)
+}
 
 func caseReleaseModel(t *testing.T) {
 	a := assert.New(t)
-	a.NoError(prepareModel())
 	cmd := fmt.Sprintf(
 		`--model-zoo-server=localhost:%d --data-source=%s release model %s v1.0`,
 		modelZooServerPort, database.GetTestingMySQLURL(), "iris.my_model")
@@ -118,6 +123,7 @@ func TestModelZooOperation(t *testing.T) {
 	a.NoError(prepareTestDataOrSkip(t))
 
 	t.Run("caseReleaseRepo", caseReleaseRepo)
+	t.Run("caseTrainModel", caseTrainModel)
 	t.Run("caseReleaseModel", caseReleaseModel)
 	t.Run("caseDeleteModel", CaseDeleteModel)
 	t.Run("caseDeleteRepo", caseDeleteRepo)

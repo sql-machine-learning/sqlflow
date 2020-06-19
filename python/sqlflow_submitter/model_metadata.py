@@ -15,9 +15,9 @@ import copy
 import json
 
 
-def collect_model_metadata(select, validate_select, estimator, attributes,
-                           feature_columns, field_descs, label, evaluation,
-                           model_repo_image):
+def collect_model_metadata(original_sql, select, validate_select, class_name,
+                           attributes, feature_columns, field_descs, label,
+                           evaluation, model_repo_image):
     """ collect kinds of model metadata and put them in a dict """
     metadata = dict(locals())
     attr_copy = copy.deepcopy(attributes)
