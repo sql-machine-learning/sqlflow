@@ -14,7 +14,16 @@
 // Package ir is the Intermediate Representation of parsed SQL statements
 package ir
 
+import (
+	"strings"
+
+	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/pipe"
+	pb "sqlflow.org/sqlflow/pkg/proto"
+)
+
 // Executor is a visitor that generates and executes code for SQLFlowStmt
+// TODO(yancey1989) decompose Executor from IR
 type Executor interface {
 	ExecuteQuery(*NormalStmt) error
 	ExecuteTrain(*TrainStmt) error
@@ -22,6 +31,8 @@ type Executor interface {
 	ExecuteExplain(*ExplainStmt) error
 	ExecuteEvaluate(*EvaluateStmt) error
 	ExecuteShowTrain(*ShowTrainStmt) error
+	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
+	GetTrainStmtFromModel() bool
 	ExecuteOptimize(*OptimizeStmt) error
 }
 
@@ -71,6 +82,27 @@ type TrainStmt struct {
 	// see: pai_submitter.go
 	TmpTrainTable    string
 	TmpValidateTable string
+}
+
+const (
+	// TensorFlow is a kind of `TrainStmt`
+	TensorFlow = iota
+	// XGBoost is a kind of `TrainStmt`
+	XGBoost
+	// KMeans is a kind of `TrainStmt`
+	KMeans
+)
+
+// GetModelKind returns the kind of model in the TrainStmt
+func (cl *TrainStmt) GetModelKind() int {
+	estimator := strings.ToUpper(cl.Estimator)
+	if strings.HasPrefix(estimator, "XGB") {
+		return XGBoost
+	}
+	if strings.HasPrefix(estimator, "KMeans") {
+		return KMeans
+	}
+	return TensorFlow
 }
 
 // Execute generates and executes code for TrainStmt

@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package executor
 
 import (
 	"bufio"
@@ -40,35 +40,28 @@ import (
 
 var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnostic: (.*)")
 
-// GetSubmitter returns a proper Submitter from configurations in environment variables.
-func GetSubmitter(submitter string) Submitter {
-	if submitter == "" {
-		submitter = os.Getenv("SQLFLOW_submitter")
-	}
-	switch submitter {
-	case "default":
-		return &defaultSubmitter{}
-	case "pai":
-		return &paiSubmitter{&defaultSubmitter{}}
-	case "alisa":
-		return &alisaSubmitter{&defaultSubmitter{}}
-	// TODO(typhoonzero): add submitters like alps, elasticdl
-	default:
-		return &defaultSubmitter{}
-	}
-}
-
 // Figures contains analyzed figures as strings
 type Figures struct {
 	Image string
 	Text  string
 }
 
-// Submitter extends ir.Executor
-type Submitter interface {
-	ir.Executor
-	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
-	GetTrainStmtFromModel() bool
+// New returns a proper Submitter from configurations in environment variables.
+func New(executor string) ir.Executor {
+	if executor == "" {
+		executor = os.Getenv("SQLFLOW_submitter")
+	}
+	switch executor {
+	case "default":
+		return &pythonExecutor{}
+	case "pai":
+		return &paiExecutor{&pythonExecutor{}}
+	case "alisa":
+		return &alisaExecutor{&pythonExecutor{}}
+	// TODO(typhoonzero): add executor like alps, elasticdl
+	default:
+		return &pythonExecutor{}
+	}
 }
 
 type logChanWriter struct {
@@ -110,7 +103,7 @@ func (cw *logChanWriter) Close() {
 	}
 }
 
-type defaultSubmitter struct {
+type pythonExecutor struct {
 	Writer   *pipe.Writer
 	Db       *database.DB
 	ModelDir string
@@ -118,21 +111,21 @@ type defaultSubmitter struct {
 	Session  *pb.Session
 }
 
-func (s *defaultSubmitter) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
+func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
 	// cwd is used to store train scripts and save output models.
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
 }
 
-func (s *defaultSubmitter) SaveModel(cl *ir.TrainStmt) error {
+func (s *pythonExecutor) SaveModel(cl *ir.TrainStmt) error {
 	m := model.New(s.Cwd, cl.OriginalSQL)
 	modelURI := cl.Into
 	if s.ModelDir != "" {
 		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
 	}
-	return m.Save(modelURI, cl, s.Session)
+	return m.Save(modelURI, s.Session)
 }
 
-func (s *defaultSubmitter) runCommand(program string, logStderr bool) error {
+func (s *pythonExecutor) runCommand(program string, logStderr bool) error {
 	cw := &logChanWriter{wr: s.Writer}
 	defer cw.Close()
 	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
@@ -159,13 +152,13 @@ func (s *defaultSubmitter) runCommand(program string, logStderr bool) error {
 	return nil
 }
 
-func (s *defaultSubmitter) ExecuteQuery(sql *ir.NormalStmt) error {
-	return runNormalStmt(s.Writer, string(*sql), s.Db)
+func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
+	return runNormalStmt(s.Writer, string(*stmt), s.Db)
 }
 
-func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
+func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	var code string
-	if isXGBoostModel(cl.Estimator) {
+	if cl.GetModelKind() == ir.XGBoost {
 		if code, e = xgboost.Train(cl, s.Session); e != nil {
 			return e
 		}
@@ -180,14 +173,14 @@ func (s *defaultSubmitter) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	return s.SaveModel(cl)
 }
 
-func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
+func (s *pythonExecutor) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
-	if e = createPredictionTableFromIR(cl, s.Db, s.Session); e != nil {
+	if e = createPredictionResultTable(cl, s.Db, s.Session); e != nil {
 		return e
 	}
 
 	var code string
-	if isXGBoostModel(cl.TrainStmt.Estimator) {
+	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		if code, e = xgboost.Pred(cl, s.Session); e != nil {
 			return e
 		}
@@ -199,7 +192,7 @@ func (s *defaultSubmitter) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	return s.runCommand(code, false)
 }
 
-func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
+func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
@@ -208,7 +201,7 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 		return err
 	}
 	defer db.Close()
-	if isXGBoostModel(cl.TrainStmt.Estimator) {
+	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		code, err = xgboost.Explain(cl, s.Session)
 		// TODO(typhoonzero): deal with XGBoost model explain result table creation.
 	} else {
@@ -239,11 +232,11 @@ func (s *defaultSubmitter) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return nil
 }
 
-func (s *defaultSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
+func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
-	if isXGBoostModel(cl.TrainStmt.Estimator) {
+	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		code, err = xgboost.Evaluate(cl, s.Session)
 		if err != nil {
 			return err
@@ -280,7 +273,7 @@ func (s *defaultSubmitter) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	return nil
 }
 
-func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *defaultSubmitter, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
+func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *pythonExecutor, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
 	// Generate optimization code
 	runnerFileName := "custom_optimize_runner"
 	runnerCode, submitCode, err := optimize.GenerateOptFlowOptimizeCode(cl, session, dbName, tableName,
@@ -311,7 +304,7 @@ func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *defau
 	return nil
 }
 
-func (s *defaultSubmitter) ExecuteOptimize(cl *ir.OptimizeStmt) error {
+func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 	// TODO(sneaxiy): to be implemented
 	return fmt.Errorf("ExecuteOptimize is not supported in default submitter")
 }
@@ -359,9 +352,9 @@ func readExplainResult(target string) (string, error) {
 	return fmt.Sprintf("<div align='center'><img src='data:image/png;base64,%s' /></div>", img), nil
 }
 
-func (s *defaultSubmitter) GetTrainStmtFromModel() bool { return true }
+func (s *pythonExecutor) GetTrainStmtFromModel() bool { return true }
 
-func (s *defaultSubmitter) ExecuteShowTrain(showTrain *ir.ShowTrainStmt) error {
+func (s *pythonExecutor) ExecuteShowTrain(showTrain *ir.ShowTrainStmt) error {
 	model, err := model.Load(showTrain.ModelName, "", s.Db)
 	if err != nil {
 		s.Writer.Write("Load model meta " + showTrain.ModelName + " failed.")

@@ -31,6 +31,7 @@ from tensorflow.estimator import (BoostedTreesClassifier,
 
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
+from .keras_with_feature_column_input import init_model_with_feature_column
 
 sns_colors = sns.color_palette('colorblind')
 # Disable Tensorflow INFO and WARNING logs
@@ -97,7 +98,9 @@ def explain(datasource,
         return dataset.batch(1).cache()
 
     model_params.update(feature_columns)
-    estimator = estimator_cls(**model_params)
+
+    estimator = init_model_with_feature_column(estimator_cls, model_params)
+
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,

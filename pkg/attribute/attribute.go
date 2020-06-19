@@ -227,7 +227,7 @@ var XGBoostObjectiveDocs map[string]string
 
 // ExtractDocString extracts parameter documents of Python modules from doc strings
 func ExtractDocString(module ...string) {
-	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('extract_docstring').print_param_doc('%s')", strings.Join(module, "', '")))
+	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('symbol_extractor').print_param_doc('%s')", strings.Join(module, "', '")))
 	output, e := cmd.CombinedOutput()
 	if e != nil {
 		log.Println("ExtractDocString failed: ", e, string(output))

@@ -23,10 +23,9 @@ from sqlflow_submitter.seeding import get_tf_random_seed
 
 from ..model_metadata import save_model_metadata
 from . import metrics
-from .diag import check_and_load_estimator
 from .get_tf_version import tf_is_version2
 from .input_fn import input_fn
-from .keras_with_feature_column_input import WrappedKerasModel
+from .keras_with_feature_column_input import init_model_with_feature_column
 from .pai_distributed import (dump_into_tf_config,
                               make_distributed_info_without_evaluator)
 from .train_estimator import estimator_train_compiled
@@ -46,13 +45,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     if "loss" in model_params:
         loss = model_params["loss"]
         del model_params["loss"]
-
-    signature = inspect.signature(estimator)
-    has_feature_columns_arg = False
-    for p in signature.parameters:
-        if signature.parameters[p].name == "feature_columns":
-            has_feature_columns_arg = True
-            break
 
     classifier_pkg = sys.modules[estimator.__module__]
     # setting training metrics
@@ -101,13 +93,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     else:
         validate_dataset = None
 
-    if not has_feature_columns_arg and not has_none_optimizer:
-        feature_columns = model_params["feature_columns"]
-        del model_params["feature_columns"]
-        classifier = WrappedKerasModel(estimator, model_params,
-                                       feature_columns)
-    else:
-        classifier = check_and_load_estimator(estimator, model_params)
+    classifier = init_model_with_feature_column(
+        estimator, model_params, has_none_optimizer=has_none_optimizer)
 
     # FIXME(sneaxiy): some models defined by other framework (not TensorFlow or XGBoost)
     # may return None optimizer.

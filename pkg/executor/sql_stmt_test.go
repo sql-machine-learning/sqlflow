@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package executor
 
 import (
 	"testing"
@@ -19,6 +19,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/pipe"
+	"sqlflow.org/sqlflow/pkg/test"
+)
+
+const (
+	testStandardExecutiveSQLStatement = `DELETE FROM iris.train WHERE class = 4;`
+	testSelectIris                    = `SELECT * FROM iris.train`
 )
 
 func TestNormalStmt(t *testing.T) {
@@ -30,10 +36,10 @@ func TestNormalStmt(t *testing.T) {
 			e := runNormalStmt(wr, testSelectIris, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
-		a.True(GoodStream(rd.ReadAll()))
+		a.True(test.GoodStream(rd.ReadAll()))
 	})
 	a.NotPanics(func() {
-		if getEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
+		if test.GetEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 			t.Skip("hive: skip DELETE statement")
 		}
 		rd, wr := pipe.Pipe()
@@ -42,7 +48,7 @@ func TestNormalStmt(t *testing.T) {
 			e := runNormalStmt(wr, testStandardExecutiveSQLStatement, database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
-		a.True(GoodStream(rd.ReadAll()))
+		a.True(test.GoodStream(rd.ReadAll()))
 	})
 	a.NotPanics(func() {
 		rd, wr := pipe.Pipe()
@@ -51,15 +57,9 @@ func TestNormalStmt(t *testing.T) {
 			e := runNormalStmt(wr, "SELECT * FROM iris.iris_empty LIMIT 10;", database.GetTestingDBSingleton())
 			a.NoError(e)
 		}()
-		stat, _ := GoodStream(rd.ReadAll())
+		stat, _ := test.GoodStream(rd.ReadAll())
 		a.True(stat)
 	})
-}
-
-func TestSQLLexerError(t *testing.T) {
-	a := assert.New(t)
-	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
-	a.False(GoodStream(stream.ReadAll()))
 }
 
 func TestIsQuery(t *testing.T) {

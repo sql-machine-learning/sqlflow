@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package feature
+package ir
 
 import (
 	"os"
@@ -20,7 +20,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
 )
 
@@ -53,24 +52,24 @@ func TestCSVRegex(t *testing.T) {
 	}
 }
 
-func mockTrainStmtNormal() *ir.TrainStmt {
+func mockTrainStmtNormal() *TrainStmt {
 	attrs := make(map[string]interface{})
 	attrs["model.nclasses"] = 2
-	features := make(map[string][]ir.FeatureColumn)
-	features["feature_columns"] = []ir.FeatureColumn{
-		&ir.EmbeddingColumn{CategoryColumn: nil, Dimension: 128, Combiner: "sum", Name: "c3"},
-		&ir.EmbeddingColumn{
-			CategoryColumn: &ir.CategoryIDColumn{
-				FieldDesc:  &ir.FieldDesc{Name: "c5", DType: ir.Int, Shape: []int{10000}, Delimiter: ",", IsSparse: true},
+	features := make(map[string][]FeatureColumn)
+	features["feature_columns"] = []FeatureColumn{
+		&EmbeddingColumn{CategoryColumn: nil, Dimension: 128, Combiner: "sum", Name: "c3"},
+		&EmbeddingColumn{
+			CategoryColumn: &CategoryIDColumn{
+				FieldDesc:  &FieldDesc{Name: "c5", DType: Int, Shape: []int{10000}, Delimiter: ",", IsSparse: true},
 				BucketSize: 10000,
 			},
 			Dimension: 128,
 			Combiner:  "sum",
 			Name:      "c5"},
 	}
-	label := &ir.NumericColumn{FieldDesc: &ir.FieldDesc{Name: "class", DType: ir.Int, Shape: []int{1}, Delimiter: "", IsSparse: false}}
+	label := &NumericColumn{FieldDesc: &FieldDesc{Name: "class", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false}}
 
-	return &ir.TrainStmt{
+	return &TrainStmt{
 		OriginalSQL: `select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=2
@@ -87,19 +86,19 @@ LABEL class INTO model_table;`,
 	}
 }
 
-func mockTrainStmtCross() *ir.TrainStmt {
+func mockTrainStmtCross() *TrainStmt {
 	attrs := make(map[string]interface{})
 	attrs["model.nclasses"] = 2
-	features := make(map[string][]ir.FeatureColumn)
-	c1 := &ir.NumericColumn{
-		FieldDesc: &ir.FieldDesc{Name: "c1", DType: ir.Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
+	features := make(map[string][]FeatureColumn)
+	c1 := &NumericColumn{
+		FieldDesc: &FieldDesc{Name: "c1", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
 	}
-	c2 := &ir.NumericColumn{
-		FieldDesc: &ir.FieldDesc{Name: "c2", DType: ir.Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
+	c2 := &NumericColumn{
+		FieldDesc: &FieldDesc{Name: "c2", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
 	}
-	features["feature_columns"] = []ir.FeatureColumn{
+	features["feature_columns"] = []FeatureColumn{
 		c1, c2,
-		&ir.CrossColumn{
+		&CrossColumn{
 			Keys: []interface{}{
 				c1,
 				c2,
@@ -107,15 +106,15 @@ func mockTrainStmtCross() *ir.TrainStmt {
 			HashBucketSize: 256,
 		},
 	}
-	label := &ir.NumericColumn{FieldDesc: &ir.FieldDesc{
+	label := &NumericColumn{FieldDesc: &FieldDesc{
 		Name:      "class",
-		DType:     ir.Int,
+		DType:     Int,
 		Shape:     []int{1},
 		Delimiter: "",
 		IsSparse:  false,
 	}}
 
-	return &ir.TrainStmt{
+	return &TrainStmt{
 		OriginalSQL: `select c1, c2, c3, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=2
@@ -133,19 +132,19 @@ LABEL class INTO model_table;`,
 
 }
 
-func mockTrainStmtIrisNoColumnClause() *ir.TrainStmt {
+func mockTrainStmtIrisNoColumnClause() *TrainStmt {
 	attrs := make(map[string]interface{})
 	attrs["model.nclasses"] = 3
 	attrs["model.hidden_units"] = []int{10, 10}
-	features := make(map[string][]ir.FeatureColumn)
-	label := &ir.NumericColumn{FieldDesc: &ir.FieldDesc{
+	features := make(map[string][]FeatureColumn)
+	label := &NumericColumn{FieldDesc: &FieldDesc{
 		Name:      "class",
-		DType:     ir.Int,
+		DType:     Int,
 		Shape:     []int{1},
 		Delimiter: "",
 		IsSparse:  false,
 	}}
-	return &ir.TrainStmt{
+	return &TrainStmt{
 		OriginalSQL: `select * from iris.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
@@ -180,59 +179,59 @@ func TestFeatureDerivation(t *testing.T) {
 	a.NoError(e)
 
 	fc1 := trainStmt.Features["feature_columns"][0]
-	nc, ok := fc1.(*ir.NumericColumn)
+	nc, ok := fc1.(*NumericColumn)
 	a.True(ok)
 	a.Equal("c1", nc.FieldDesc.Name)
 	a.Equal([]int{1}, nc.FieldDesc.Shape)
-	a.Equal(ir.Float, nc.FieldDesc.DType)
+	a.Equal(Float, nc.FieldDesc.DType)
 	a.False(nc.FieldDesc.IsSparse)
 
 	fc2 := trainStmt.Features["feature_columns"][1]
-	nc2, ok := fc2.(*ir.NumericColumn)
+	nc2, ok := fc2.(*NumericColumn)
 	a.True(ok)
 	a.Equal("c2", nc2.FieldDesc.Name)
 
 	fc3 := trainStmt.Features["feature_columns"][2]
-	emb, ok := fc3.(*ir.EmbeddingColumn)
+	emb, ok := fc3.(*EmbeddingColumn)
 	a.True(ok)
 	a.NotNil(emb.CategoryColumn)
 	a.Equal(128, emb.Dimension)
 	a.Equal("sum", emb.Combiner)
 	a.Equal("c3", emb.Name)
-	cat, ok := emb.CategoryColumn.(*ir.CategoryIDColumn)
+	cat, ok := emb.CategoryColumn.(*CategoryIDColumn)
 	a.True(ok)
 	a.Equal("c3", cat.FieldDesc.Name)
 	a.Equal([]int{4}, cat.FieldDesc.Shape)
-	a.Equal(ir.Int, cat.FieldDesc.DType)
+	a.Equal(Int, cat.FieldDesc.DType)
 
 	fc4 := trainStmt.Features["feature_columns"][3]
-	nc3, ok := fc4.(*ir.NumericColumn)
+	nc3, ok := fc4.(*NumericColumn)
 	a.True(ok)
 	a.Equal("c4", nc3.FieldDesc.Name)
 	a.Equal([]int{4}, nc3.FieldDesc.Shape)
-	a.Equal(ir.Float, nc3.FieldDesc.DType)
+	a.Equal(Float, nc3.FieldDesc.DType)
 	a.False(nc3.FieldDesc.IsSparse)
 
 	fc5 := trainStmt.Features["feature_columns"][4]
-	emb2, ok := fc5.(*ir.EmbeddingColumn)
+	emb2, ok := fc5.(*EmbeddingColumn)
 	a.True(ok)
 	a.NotNil(emb2.CategoryColumn)
-	cat2, ok := emb2.CategoryColumn.(*ir.CategoryIDColumn)
+	cat2, ok := emb2.CategoryColumn.(*CategoryIDColumn)
 	a.True(ok)
 	a.Equal(int64(10000), cat2.BucketSize)
 	a.Equal("c5", cat2.FieldDesc.Name)
 	a.Equal([]int{10000}, cat2.FieldDesc.Shape)
-	a.Equal(ir.Int, cat2.FieldDesc.DType)
+	a.Equal(Int, cat2.FieldDesc.DType)
 	a.True(cat2.FieldDesc.IsSparse)
 
 	fc6 := trainStmt.Features["feature_columns"][5]
-	cat3, ok := fc6.(*ir.EmbeddingColumn)
+	cat3, ok := fc6.(*EmbeddingColumn)
 	a.True(ok)
-	vocab := cat3.CategoryColumn.(*ir.CategoryIDColumn).FieldDesc.Vocabulary
+	vocab := cat3.CategoryColumn.(*CategoryIDColumn).FieldDesc.Vocabulary
 	a.Equal(3, len(vocab))
 	_, ok = vocab["MALE"]
 	a.True(ok)
-	a.Equal(int64(3), cat3.CategoryColumn.(*ir.CategoryIDColumn).BucketSize)
+	a.Equal(int64(3), cat3.CategoryColumn.(*CategoryIDColumn).BucketSize)
 
 	a.Equal(6, len(trainStmt.Features["feature_columns"]))
 
@@ -241,29 +240,29 @@ func TestFeatureDerivation(t *testing.T) {
 	a.NoError(e)
 
 	fc1 = trainStmt.Features["feature_columns"][0]
-	nc, ok = fc1.(*ir.NumericColumn)
+	nc, ok = fc1.(*NumericColumn)
 	a.True(ok)
 
 	fc2 = trainStmt.Features["feature_columns"][1]
-	nc, ok = fc2.(*ir.NumericColumn)
+	nc, ok = fc2.(*NumericColumn)
 	a.True(ok)
 
 	fc3 = trainStmt.Features["feature_columns"][2]
-	nc, ok = fc3.(*ir.NumericColumn)
+	nc, ok = fc3.(*NumericColumn)
 	a.True(ok)
 
 	fc4 = trainStmt.Features["feature_columns"][3]
-	cc, ok := fc4.(*ir.CrossColumn)
+	cc, ok := fc4.(*CrossColumn)
 	a.True(ok)
 	a.Equal(256, cc.HashBucketSize)
-	nc4, ok := cc.Keys[0].(*ir.NumericColumn)
+	nc4, ok := cc.Keys[0].(*NumericColumn)
 	a.True(ok)
 	a.Equal("c1", nc4.FieldDesc.Name)
-	a.Equal(ir.Float, nc4.FieldDesc.DType)
-	nc5, ok := cc.Keys[1].(*ir.NumericColumn)
+	a.Equal(Float, nc4.FieldDesc.DType)
+	nc5, ok := cc.Keys[1].(*NumericColumn)
 	a.True(ok)
 	a.Equal("c2", nc5.FieldDesc.Name)
-	a.Equal(ir.Float, nc5.FieldDesc.DType)
+	a.Equal(Float, nc5.FieldDesc.DType)
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }
@@ -290,7 +289,7 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 	fc1 := trainStmt.Features["feature_columns"][0]
-	_, ok := fc1.(*ir.NumericColumn)
+	_, ok := fc1.(*NumericColumn)
 	a.True(ok)
 }
 
@@ -299,13 +298,13 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		t.Skip("skip TestFeatureDerivationNoColumnClause for tests not using hive")
 	}
 	a := assert.New(t)
-	trainStmt := &ir.TrainStmt{
+	trainStmt := &TrainStmt{
 		Select:           "select * from iris.train",
 		ValidationSelect: "select * from iris.test",
 		Estimator:        "xgboost.gbtree",
 		Attributes:       map[string]interface{}{},
-		Features:         map[string][]ir.FeatureColumn{},
-		Label:            &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", []int{1}, false, nil, 0}}}
+		Features:         map[string][]FeatureColumn{},
+		Label:            &NumericColumn{&FieldDesc{"class", Int, "", []int{1}, false, nil, 0}}}
 	e := InferFeatureColumns(trainStmt, database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))

@@ -27,6 +27,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/workflow"
 
+	submitter "sqlflow.org/sqlflow/pkg/executor"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/pipe"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -74,7 +75,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			res, err = pb.EncodeHead(s)
 		case []interface{}:
 			res, err = pb.EncodeRow(s)
-		case sf.Figures:
+		case submitter.Figures:
 			res, err = pb.EncodeMessage(s.Image)
 		case string:
 			res, err = pb.EncodeMessage(s)

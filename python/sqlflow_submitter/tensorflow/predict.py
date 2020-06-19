@@ -32,7 +32,7 @@ from tensorflow.estimator import (BoostedTreesClassifier,
 
 from .get_tf_version import tf_is_version2
 from .input_fn import get_dtype, parse_sparse_feature_predict, tf_generator
-from .keras_with_feature_column_input import WrappedKerasModel
+from .keras_with_feature_column_input import init_model_with_feature_column
 
 try:
     import sqlflow_models
@@ -57,19 +57,8 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
                   pai_table, feature_column_names, feature_metas,
                   result_col_name, datasource, select, hdfs_namenode_addr,
                   hive_location, hdfs_user, hdfs_pass):
-    signature = inspect.signature(estimator)
-    has_feature_columns_arg = False
-    for p in signature.parameters:
-        if signature.parameters[p].name == "feature_columns":
-            has_feature_columns_arg = True
-            break
-    if not has_feature_columns_arg:
-        feature_columns = model_params["feature_columns"]
-        del model_params["feature_columns"]
-        classifier = WrappedKerasModel(estimator, model_params,
-                                       feature_columns)
-    else:
-        classifier = estimator(**model_params)
+
+    classifier = init_model_with_feature_column(estimator, model_params)
     classifier_pkg = sys.modules[estimator.__module__]
     conn = None
     if is_pai:

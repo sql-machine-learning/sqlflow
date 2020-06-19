@@ -17,13 +17,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/pkg/test"
 )
 
 func TestDatabaseGetTestingDBSingleton(t *testing.T) {
 	db := GetTestingDBSingleton()
 	a := assert.New(t)
 
-	switch dbms := getEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
+	switch dbms := test.GetEnv("SQLFLOW_TEST_DB", "mysql"); dbms {
 	case "mysql":
 		a.Equal(GetTestingMySQLURL(), db.URL())
 	case "hive":
