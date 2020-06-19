@@ -90,7 +90,7 @@ For the implementation, it's easy to extract the check rule and argument documen
 ``` python
 def attribute_check(estimator, **args):
     # extract argument name, documentation and contract from doc string  
-    contract = extract_doc_string(estimator)
+    contract = extract_symbol(estimator)
     # SQLFlowDiagnosticError message can be pipe to SQLFlow GUI via SQLFlow gRPC server
     diag_err = SQLFLowDiagnosError()
     for name, value in args:
