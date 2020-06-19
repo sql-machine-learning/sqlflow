@@ -16,10 +16,104 @@ package attribute
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestDictionaryNamedTypeChecker(t *testing.T) {
+	a := assert.New(t)
+	name := "any_attr_name"
+
+	assertFunc := func(d Dictionary, value interface{}, ok bool) {
+		err := d.Validate(map[string]interface{}{name: value})
+		if ok {
+			a.NoError(err)
+		} else {
+			a.Error(err)
+		}
+	}
+
+	boolDictWithoutChecker := Dictionary{}.Bool(name, false, "", nil)
+	assertFunc(boolDictWithoutChecker, "abc", false)
+	assertFunc(boolDictWithoutChecker, false, true)
+	assertFunc(boolDictWithoutChecker, true, true)
+	boolDictWithChecker := Dictionary{}.Bool(name, nil, "", func(v bool) error {
+		if v {
+			return fmt.Errorf("attribute %s must be false", name)
+		}
+		return nil
+	})
+	assertFunc(boolDictWithChecker, "abc", false)
+	assertFunc(boolDictWithChecker, false, true)
+	assertFunc(boolDictWithChecker, true, false)
+
+	intDictWithoutChecker := Dictionary{}.Int(name, 0, "", nil)
+	assertFunc(intDictWithoutChecker, "abc", false)
+	assertFunc(intDictWithoutChecker, 3, true)
+	intDictWithChecker := Dictionary{}.Int(name, 0, "", func(v int) error {
+		if v == 3 {
+			return fmt.Errorf("attribute %s cannot be 3", name)
+		}
+		return nil
+	})
+	assertFunc(intDictWithChecker, "abc", false)
+	assertFunc(intDictWithChecker, 3, false)
+	assertFunc(intDictWithChecker, 0, true)
+
+	floatDictWithoutChecker := Dictionary{}.Float(name, nil, "", nil)
+	assertFunc(floatDictWithoutChecker, "abc", false)
+	assertFunc(floatDictWithoutChecker, float32(-1.5), true)
+	floatDictWithChecker := Dictionary{}.Float(name, float32(0), "", func(v float32) error {
+		if v <= float32(-1.0) {
+			return fmt.Errorf("attribute %s must larger than -1.0", name)
+		}
+		return nil
+	})
+	assertFunc(floatDictWithChecker, "abc", false)
+	assertFunc(floatDictWithChecker, float32(-2.0), false)
+	assertFunc(floatDictWithChecker, float32(7.5), true)
+
+	stringDictWithoutChecker := Dictionary{}.String(name, "", "", nil)
+	assertFunc(stringDictWithoutChecker, 1, false)
+	assertFunc(stringDictWithoutChecker, "abc", true)
+	stringDictWithChecker := Dictionary{}.String(name, nil, "", func(v string) error {
+		if !strings.HasPrefix(v, "valid") {
+			return fmt.Errorf("attribute %s must have prefix valid", name)
+		}
+		return nil
+	})
+	assertFunc(stringDictWithChecker, 1, false)
+	assertFunc(stringDictWithChecker, "invalidString", false)
+	assertFunc(stringDictWithChecker, "validString", true)
+
+	intListDictWithoutChecker := Dictionary{}.IntList(name, []int{}, "", nil)
+	assertFunc(intListDictWithoutChecker, "abc", false)
+	assertFunc(intListDictWithoutChecker, []int{1}, true)
+	intListDictWithChecker := Dictionary{}.IntList(name, []int{}, "", func(v []int) error {
+		if len(v) > 2 {
+			return fmt.Errorf("length of attribute %s must be less than or equal to 2", name)
+		}
+		return nil
+	})
+	assertFunc(intListDictWithChecker, "abc", false)
+	assertFunc(intListDictWithChecker, []int{1, 2, 3}, false)
+	assertFunc(intListDictWithChecker, []int{1, 2}, true)
+
+	unknownTypeDict := Dictionary{}.Unknown(name, 1, "", func(v interface{}) error {
+		if _, ok := v.(int); ok {
+			return nil
+		}
+		if _, ok := v.(string); ok {
+			return nil
+		}
+		return fmt.Errorf("attribute %s must be of type int or string", name)
+	})
+	assertFunc(unknownTypeDict, 1, true)
+	assertFunc(unknownTypeDict, "abc", true)
+	assertFunc(unknownTypeDict, float32(1.5), false)
+}
 
 func TestDictionaryValidate(t *testing.T) {
 	a := assert.New(t)
