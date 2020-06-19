@@ -38,7 +38,7 @@ import (
 
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/tablewriter"
+	"sqlflow.org/sqlflow/pkg/step/tablewriter"
 
 	docopt "github.com/docopt/docopt-go"
 )
