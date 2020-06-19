@@ -22,135 +22,89 @@ var equalSign = map[bool]string{true: "=", false: ""}
 // Float32RangeChecker is a helper function to generate range checkers on attributes.
 // lower/upper indicates the lower bound and upper bound of the attribute value.
 // includeLower/includeUpper indicates the inclusion of the bound.
-func Float32RangeChecker(lower, upper float32, includeLower, includeUpper bool) func(interface{}) error {
-	return func(attr interface{}) error {
-		if f, ok := attr.(float32); ok {
-			e := Float32LowerBoundChecker(lower, includeLower)(f)
-			if e == nil {
-				e = Float32UpperBoundChecker(upper, includeUpper)(f)
-			}
-			return e
+func Float32RangeChecker(lower, upper float32, includeLower, includeUpper bool) func(float32) error {
+	return func(f float32) error {
+		e := Float32LowerBoundChecker(lower, includeLower)(f)
+		if e == nil {
+			e = Float32UpperBoundChecker(upper, includeUpper)(f)
 		}
-		return fmt.Errorf("expected type float32, received %T", attr)
+		return e
 	}
 }
 
 // Float32LowerBoundChecker returns a range checker that only checks the lower bound.
-func Float32LowerBoundChecker(lower float32, includeLower bool) func(interface{}) error {
-	return func(attr interface{}) error {
-		if f, ok := attr.(float32); ok {
-			if (!includeLower && f > lower) || (includeLower && f >= lower) {
-				return nil
-			}
-			return fmt.Errorf("range check %v <%v %v failed", lower, equalSign[includeLower], f)
+func Float32LowerBoundChecker(lower float32, includeLower bool) func(float32) error {
+	return func(f float32) error {
+		if (!includeLower && f > lower) || (includeLower && f >= lower) {
+			return nil
 		}
-		return fmt.Errorf("expected type float32, received %T", attr)
+		return fmt.Errorf("range check %v <%v %v failed", lower, equalSign[includeLower], f)
 	}
 }
 
 // Float32UpperBoundChecker returns a range checker that only checks the upper bound.
-func Float32UpperBoundChecker(upper float32, includeUpper bool) func(interface{}) error {
-	return func(attr interface{}) error {
-		if f, ok := attr.(float32); ok {
-			if (!includeUpper && f < upper) || (includeUpper && f <= upper) {
-				return nil
-			}
-			return fmt.Errorf("range check %v >%v %v failed", upper, equalSign[includeUpper], f)
+func Float32UpperBoundChecker(upper float32, includeUpper bool) func(float32) error {
+	return func(f float32) error {
+		if (!includeUpper && f < upper) || (includeUpper && f <= upper) {
+			return nil
 		}
-		return fmt.Errorf("expected type float32, received %T", attr)
+		return fmt.Errorf("range check %v >%v %v failed", upper, equalSign[includeUpper], f)
 	}
 }
 
 // IntRangeChecker is a helper function to generate range checkers on attributes.
 // lower/upper indicates the lower bound and upper bound of the attribute value.
 // includeLower/includeUpper indicates the inclusion of the bound.
-func IntRangeChecker(lower, upper int, includeLower, includeUpper bool) func(interface{}) error {
-	return func(attr interface{}) error {
-		if f, ok := attr.(int); ok {
-			e := IntLowerBoundChecker(lower, includeLower)(f)
-			if e == nil {
-				e = IntUpperBoundChecker(upper, includeUpper)(f)
-			}
-			return e
+func IntRangeChecker(lower, upper int, includeLower, includeUpper bool) func(int) error {
+	return func(i int) error {
+		e := IntLowerBoundChecker(lower, includeLower)(i)
+		if e == nil {
+			e = IntUpperBoundChecker(upper, includeUpper)(i)
 		}
-		return fmt.Errorf("expected type int, received %T", attr)
+		return e
 	}
 }
 
 // IntLowerBoundChecker returns a range checker that only checks the lower bound.
-func IntLowerBoundChecker(lower int, includeLower bool) func(interface{}) error {
-	return func(attr interface{}) error {
-		if f, ok := attr.(int); ok {
-			if f > lower || includeLower && f == lower {
-				return nil
-			}
-			return fmt.Errorf("range check %v <%v %v failed", lower, equalSign[includeLower], f)
+func IntLowerBoundChecker(lower int, includeLower bool) func(int) error {
+	return func(i int) error {
+		if i > lower || includeLower && i == lower {
+			return nil
 		}
-		return fmt.Errorf("expected type int, received %T", attr)
+		return fmt.Errorf("range check %v <%v %v failed", lower, equalSign[includeLower], i)
 	}
 }
 
 // IntUpperBoundChecker returns a range checker that only checks the upper bound.
-func IntUpperBoundChecker(upper int, includeUpper bool) func(interface{}) error {
-	return func(attr interface{}) error {
-		if f, ok := attr.(int); ok {
-			if f < upper || includeUpper && f == upper {
-				return nil
-			}
-			return fmt.Errorf("range check %v >%v %v failed", upper, equalSign[includeUpper], f)
+func IntUpperBoundChecker(upper int, includeUpper bool) func(int) error {
+	return func(i int) error {
+		if i < upper || includeUpper && i == upper {
+			return nil
 		}
-		return fmt.Errorf("expected type int, received %T", attr)
+		return fmt.Errorf("range check %v >%v %v failed", upper, equalSign[includeUpper], i)
 	}
 }
 
 // IntChoicesChecker verifies the attribute value is in a list of choices.
-func IntChoicesChecker(choices ...int) func(interface{}) error {
-	checker := func(e interface{}) error {
-		i, ok := e.(int)
-		if !ok {
-			return fmt.Errorf("expected type int, received %T", e)
-		}
-		found := false
+func IntChoicesChecker(choices ...int) func(int) error {
+	return func(i int) error {
 		for _, possibleValue := range choices {
 			if i == possibleValue {
-				found = true
-				break
+				return nil
 			}
 		}
-		if found == false {
-			return fmt.Errorf("expected value in %v, actual: %v", choices, i)
-		}
-		return nil
+		return fmt.Errorf("expected value in %v, actual: %v", choices, i)
 	}
-	return checker
 }
 
 // StringChoicesChecker verifies the attribute value is in a list of choices.
-func StringChoicesChecker(choices ...string) func(interface{}) error {
-	checker := func(e interface{}) error {
-		s, ok := e.(string)
-		if !ok {
-			return fmt.Errorf("expected type string, received %T", e)
-		}
-		found := false
+func StringChoicesChecker(choices ...string) func(string) error {
+	return func(s string) error {
 		for _, possibleValue := range choices {
 			if s == possibleValue {
-				found = true
-				break
+				return nil
 			}
 		}
-		if found == false {
-			return fmt.Errorf("expected value in %v, actual: %v", choices, s)
-		}
-		return nil
+		return fmt.Errorf("expected value in %v, actual: %v", choices, s)
 	}
-	return checker
-}
-
-// EmptyChecker returns a checker function that do **not** check the input.
-func EmptyChecker() func(interface{}) error {
-	checker := func(e interface{}) error {
-		return nil
-	}
-	return checker
 }

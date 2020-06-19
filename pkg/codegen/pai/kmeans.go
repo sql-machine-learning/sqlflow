@@ -23,22 +23,21 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-var kmeansAttributes = attribute.Dictionary{
-	"center_count": {attribute.Int, 3, `[default=3]
+var kmeansAttributes = attribute.Dictionary{}.
+	Int("center_count", 3, `[default=3]
 The cluster count. range: [1, Infinity]
-`, attribute.IntLowerBoundChecker(1, true)},
-	"idx_table_name": {attribute.String, "", `
+`, attribute.IntLowerBoundChecker(1, true)).
+	String("idx_table_name", "", `
 The output table name which includes
 cluster_index column indicates the cluster result,
 distance column indicates the distance from the center and
-all the columns of input table.`, nil},
-	"excluded_columns": {attribute.String, "", `[default=""]
-excluded the special feature columns from the SELECT statement.`, nil},
-}
+all the columns of input table.`, nil).
+	String("excluded_columns", "", `[default=""]
+excluded the special feature columns from the SELECT statement.`, nil)
 
 // InitializeKMeansAttributes initializes the attributes of KMeans and does type checking for them
 func InitializeKMeansAttributes(trainStmt *ir.TrainStmt) error {
-	kmeansAttributes.FillDefaults(trainStmt.Attributes)
+	kmeansAttributes.ExportDefaults(trainStmt.Attributes)
 	return kmeansAttributes.Validate(trainStmt.Attributes)
 }
 
@@ -55,7 +54,7 @@ func parseExcludedColsMap(attrs map[string]interface{}) map[string]int {
 }
 
 func getTrainKMeansPAICmd(ir *ir.TrainStmt, session *pb.Session) (string, error) {
-	kmeansAttributes.FillDefaults(ir.Attributes)
+	kmeansAttributes.ExportDefaults(ir.Attributes)
 	if e := kmeansAttributes.Validate(ir.Attributes); e != nil {
 		return "", e
 	}

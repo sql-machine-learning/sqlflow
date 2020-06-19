@@ -17,12 +17,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
-	"sqlflow.org/sqlflow/pkg/codegen"
-
 	"sqlflow.org/sqlflow/pkg/attribute"
+	"sqlflow.org/sqlflow/pkg/codegen"
 	tf "sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -38,31 +36,31 @@ func getXGBoostObjectives() (ret []string) {
 // TODO(tony): complete model parameter and training parameter list
 // model parameter list: https://xgboost.readthedocs.io/en/latest/parameter.html#general-parameters
 // training parameter list: https://github.com/dmlc/xgboost/blob/b61d53447203ca7a321d72f6bdd3f553a3aa06c4/python-package/xgboost/training.py#L115-L117
-var attributeDictionary = attribute.Dictionary{
-	"eta": {attribute.Float, float32(0.3), `[default=0.3, alias: learning_rate]
+var attributeDictionary = attribute.Dictionary{}.
+	Float("eta", float32(0.3), `[default=0.3, alias: learning_rate]
 Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
-range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
-	"num_class": {attribute.Int, nil, `Number of classes.
-range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective":        {attribute.String, nil, `Learning objective`, attribute.StringChoicesChecker(getXGBoostObjectives()...)},
-	"eval_metric":      {attribute.String, nil, `eval metric`, nil},
-	"train.disk_cache": {attribute.Bool, false, `whether use external memory to cache train data`, nil},
-	"train.num_boost_round": {attribute.Int, 10, `[default=10]
+range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)).
+	Int("num_class", nil, `Number of classes.
+range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)).
+	String("objective", nil, `Learning objective`, attribute.StringChoicesChecker(getXGBoostObjectives()...)).
+	String("eval_metric", nil, `eval metric`, nil).
+	Bool("train.disk_cache", false, `whether use external memory to cache train data`, nil).
+	Int("train.num_boost_round", 10, `[default=10]
 The number of rounds for boosting.
-range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"train.batch_size": {attribute.Int, -1, `[default=-1]
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)).
+	Int("train.batch_size", -1, `[default=-1]
 Batch size for each iteration, -1 means use all data at once.
-range: [-1, Infinity]`, attribute.IntLowerBoundChecker(-1, true)},
-	"train.epoch": {attribute.Int, 1, `[default=1]
+range: [-1, Infinity]`, attribute.IntLowerBoundChecker(-1, true)).
+	Int("train.epoch", 1, `[default=1]
 Number of rounds to run the training.
-range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"validation.select": {attribute.String, "", `[default=""]
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)).
+	String("validation.select", "", `[default=""]
 Specify the dataset for validation.
-example: "SELECT * FROM boston.train LIMIT 8"`, nil},
-	"train.num_workers": {attribute.Int, 1, `[default=1]
+example: "SELECT * FROM boston.train LIMIT 8"`, nil).
+	Int("train.num_workers", 1, `[default=1]
 Number of workers for distributed train, 1 means stand-alone mode.
-range: [1, 128]`, attribute.IntRangeChecker(1, 128, true, true)},
-}
+range: [1, 128]`, attribute.IntRangeChecker(1, 128, true, true))
+
 var fullAttrValidator = attribute.Dictionary{}
 
 func objectiveChecker(obj interface{}) error {
@@ -135,7 +133,7 @@ func resolveModelParams(ir *ir.TrainStmt) error {
 
 // InitializeAttributes initializes the attributes of XGBoost and does type checking for them
 func InitializeAttributes(trainStmt *ir.TrainStmt) error {
-	attributeDictionary.FillDefaults(trainStmt.Attributes)
+	attributeDictionary.ExportDefaults(trainStmt.Attributes)
 	return fullAttrValidator.Validate(trainStmt.Attributes)
 }
 
@@ -446,23 +444,7 @@ func Evaluate(evalStmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 }
 
 func init() {
-	re := regexp.MustCompile("[^a-z]")
 	// xgboost.gbtree, xgboost.dart, xgboost.gblinear share the same parameter set
 	fullAttrValidator = attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
-	for _, v := range fullAttrValidator {
-		pieces := strings.SplitN(v.Doc, " ", 2)
-		maybeType := re.ReplaceAllString(pieces[0], "")
-		if maybeType == strings.ToLower(maybeType) {
-			switch maybeType {
-			case "float":
-				v.Type = attribute.Float
-			case "int":
-				v.Type = attribute.Int
-			case "string":
-				v.Type = attribute.String
-			}
-			v.Doc = pieces[1]
-		}
-	}
 	fullAttrValidator.Update(attributeDictionary)
 }
