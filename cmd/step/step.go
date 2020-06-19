@@ -20,7 +20,7 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/step"
-	"sqlflow.org/sqlflow/pkg/tablewriter"
+	"sqlflow.org/sqlflow/pkg/step/tablewriter"
 )
 
 const tablePageSize = 1000

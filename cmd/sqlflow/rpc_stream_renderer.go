@@ -23,7 +23,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/executor"
 	"sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/step"
-	"sqlflow.org/sqlflow/pkg/tablewriter"
+	"sqlflow.org/sqlflow/pkg/step/tablewriter"
 )
 
 type renderContext struct {
