@@ -135,6 +135,7 @@ seaborn==0.9.0
 shap==0.28.5
 scikit-learn==0.20.4
 tensorflow-datasets==3.0.0
+statsmodels==0.11.0
 {{if .IsXGBoost }}
 xgboost==0.82
 sklearn2pmml==0.56.0
@@ -144,12 +145,14 @@ sklearn2pmml==0.56.0
 const tfPredictTmplText = tfImportsText + `
 import os
 import types
+import traceback
 from sqlflow_submitter.tensorflow import predict
 
 try:
     import sqlflow_models
 except Exception as e:
     print("error importing sqlflow_models: %s" % e)
+    traceback.print_exc()
 try:
     tf.enable_eager_execution()
 except:
