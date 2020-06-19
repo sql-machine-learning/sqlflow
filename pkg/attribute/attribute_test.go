@@ -101,7 +101,12 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 	assertFunc(intListDictWithChecker, []int{1, 2, 3}, false)
 	assertFunc(intListDictWithChecker, []int{1, 2}, true)
 
-	unknownTypeDict := Dictionary{}.Unknown(name, 1, "", func(v interface{}) error {
+	unknownTypeDictWithoutChecker := Dictionary{}.Unknown(name, nil, "", nil)
+	assertFunc(unknownTypeDictWithoutChecker, 1, true)
+	assertFunc(unknownTypeDictWithoutChecker, float32(-0.5), true)
+	assertFunc(unknownTypeDictWithoutChecker, "abc", true)
+
+	unknownTypeDictWithChecker := Dictionary{}.Unknown(name, 1, "", func(v interface{}) error {
 		if _, ok := v.(int); ok {
 			return nil
 		}
@@ -110,9 +115,9 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 		}
 		return fmt.Errorf("attribute %s must be of type int or string", name)
 	})
-	assertFunc(unknownTypeDict, 1, true)
-	assertFunc(unknownTypeDict, "abc", true)
-	assertFunc(unknownTypeDict, float32(1.5), false)
+	assertFunc(unknownTypeDictWithChecker, 1, true)
+	assertFunc(unknownTypeDictWithChecker, "abc", true)
+	assertFunc(unknownTypeDictWithChecker, float32(1.5), false)
 }
 
 func TestDictionaryValidate(t *testing.T) {

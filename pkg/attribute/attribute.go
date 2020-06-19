@@ -197,9 +197,11 @@ func (d Dictionary) IntList(name string, value interface{}, doc string, checker 
 
 // Unknown declares an attribute of dynamically determined type
 func (d Dictionary) Unknown(name string, value interface{}, doc string, checker func(interface{}) error) Dictionary {
-	err := checker(value)
-	if err != nil {
-		log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
+	if value != nil && checker != nil {
+		err := checker(value)
+		if err != nil {
+			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
+		}
 	}
 
 	d[name] = &Description{
