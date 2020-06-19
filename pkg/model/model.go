@@ -285,7 +285,7 @@ func ExtractMetaFromTarball(tarballName, cwd string) (*Model, error) {
 	if !strings.HasSuffix(tarballName, ".tar.gz") {
 		return nil, fmt.Errorf("given file should be a .tar.gz file")
 	}
-	cmd := exec.Command("tar", "xpf", tarballName, "-C", cwd, modelMetaFileName)
+	cmd := exec.Command("tar", "xpf", tarballName, "-C", cwd, "./"+modelMetaFileName)
 	err := cmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("can't unzip model tarball: %s", tarballName)

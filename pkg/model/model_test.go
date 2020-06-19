@@ -23,7 +23,6 @@ import (
 	"github.com/argoproj/pkg/file"
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
 const modelMeta = `
@@ -74,18 +73,13 @@ func mockModelDir(a *assert.Assertions) (string, string) {
 	return ws, dst
 }
 
-func mockSession() *pb.Session {
-	return &pb.Session{
-		DbConnStr: database.GetTestingMySQLURL(),
-	}
-}
 func TestModelFileStore(t *testing.T) {
 	a := assert.New(t)
 	ws, dst := mockModelDir(a)
 	defer os.RemoveAll(ws)
 	defer os.RemoveAll(dst)
 	model := &Model{workDir: ws}
-	session := mockSession()
+	session := database.GetSessionFromTestingDB()
 	modelURI := fmt.Sprintf("file://%s/model", dst)
 
 	err := model.Save(modelURI, session)
@@ -108,7 +102,7 @@ func TestModelDBStore(t *testing.T) {
 	defer os.RemoveAll(ws)
 	defer os.RemoveAll(dst)
 	model := &Model{workDir: ws}
-	session := mockSession()
+	session := database.GetSessionFromTestingDB()
 
 	table := "iris.my_boost_tree_model"
 	err := model.Save(table, session)
