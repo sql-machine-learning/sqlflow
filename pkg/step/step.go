@@ -29,7 +29,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/executor"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/sql"
-	"sqlflow.org/sqlflow/pkg/tablewriter"
+	"sqlflow.org/sqlflow/pkg/step/tablewriter"
 )
 
 // RunSQLProgramAndPrintResult execute SQL statement and print the logs and select result
