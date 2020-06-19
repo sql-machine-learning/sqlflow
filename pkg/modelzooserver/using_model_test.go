@@ -28,8 +28,8 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/proto"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
+	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 	"sqlflow.org/sqlflow/pkg/sqlfs"
 	"sqlflow.org/sqlflow/pkg/tar"
 )

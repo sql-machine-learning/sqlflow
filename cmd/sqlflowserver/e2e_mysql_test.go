@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/server"
+	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 )
 
 func TestEnd2EndMySQL(t *testing.T) {

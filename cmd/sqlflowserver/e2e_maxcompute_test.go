@@ -19,7 +19,7 @@ import (
 	"os"
 	"testing"
 
-	"sqlflow.org/sqlflow/pkg/server"
+	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 )
 
 func TestEnd2EndMaxCompute(t *testing.T) {

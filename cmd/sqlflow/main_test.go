@@ -38,9 +38,9 @@ import (
 	"sqlflow.org/sqlflow/pkg/attribute"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/proto"
-	srv "sqlflow.org/sqlflow/pkg/server"
 	"sqlflow.org/sqlflow/pkg/sql"
 	"sqlflow.org/sqlflow/pkg/sql/testdata"
+	srv "sqlflow.org/sqlflow/pkg/sqlflowserver"
 	"sqlflow.org/sqlflow/pkg/step"
 )
 

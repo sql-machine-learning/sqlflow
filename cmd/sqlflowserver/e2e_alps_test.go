@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/pkg/server"
+	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 )
 
 func TestEnd2EndMaxComputeALPS(t *testing.T) {
