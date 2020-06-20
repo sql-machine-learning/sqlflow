@@ -284,14 +284,13 @@ python /opt/sqlflow_run/python/ts_feature_extractor.py --time_column=t --value_c
 
 ### MaxCompute
 
-Because MaxCompute requires that the Python program should be executed inside the
-PyODPS task node, we cannot execute the program in the step container just like
-above.
+For MaxCompute, we execute the Python program in the PyODPS task node instead of
+running it in the step container just like above.
 
 - Use [goalisa](https://github.com/sql-machine-learning/goalisa) to submit a
-PyODPS task to MaxCompute in the way of sending a web request. The python
+PyODPS task to MaxCompute in the way of sending a web request. The Python
 program content and its arguments are the payload of the request.
-- Fetch the execution log and wait for the task done.
+- Fetch the execution logs and wait for the task done.
 
 This step executes the following command in the step container:
 
@@ -302,7 +301,7 @@ alisa.submitter /opt/sqlflow_run/python/ts_feature_extractor.py --time_column=t 
 From the users' perspective, submitting PyODPS task using goalisa is the
 private protocol between SQLFlow and MaxCompute and expose too many details.
 And users only want to focus on the data processing logic in the Python
-program and don't want to pay attention to the execution different among
+program and don't want to pay attention to the execution difference among
 various platforms. To cover these details, we propose to add a module
 `sqlflow.runner` and set it as the entry point of the docker image for `TO RUN`.
 This module will get the platform type from the environment variable and decide
