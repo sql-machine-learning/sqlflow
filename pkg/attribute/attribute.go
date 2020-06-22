@@ -52,19 +52,19 @@ type description struct {
 	typ          reflect.Type
 	defaultValue interface{}
 	doc          string
-	checker      func(i interface{}, name string) error
+	checker      func(value interface{}, name string) error
 }
 
 // Int declares an attribute of int-typed in Dictionary d.
 func (d Dictionary) Int(name string, value interface{}, doc string, checker func(int, string) error) Dictionary {
-	interfaceChecker := func(v interface{}, name string) error {
-		if intValue, ok := v.(int); ok {
+	interfaceChecker := func(value interface{}, name string) error {
+		if intValue, ok := value.(int); ok {
 			if checker != nil {
 				return checker(intValue, name)
 			}
 			return nil
 		}
-		return fmt.Errorf("attribute %s must be of type int, but got %T", name, v)
+		return fmt.Errorf("attribute %s must be of type int, but got %T", name, value)
 	}
 
 	if value != nil {
@@ -85,14 +85,14 @@ func (d Dictionary) Int(name string, value interface{}, doc string, checker func
 
 // Float declares an attribute of float32-typed in Dictionary d.
 func (d Dictionary) Float(name string, value interface{}, doc string, checker func(float32, string) error) Dictionary {
-	interfaceChecker := func(v interface{}, name string) error {
+	interfaceChecker := func(value interface{}, name string) error {
 		var fValue float32
-		if floatValue, ok := v.(float32); ok {
+		if floatValue, ok := value.(float32); ok {
 			fValue = floatValue
-		} else if intValue, ok := v.(int); ok { // implicit type conversion from int to float
+		} else if intValue, ok := value.(int); ok { // implicit type conversion from int to float
 			fValue = float32(intValue)
 		} else {
-			return fmt.Errorf("attribute %s must be of type float, but got %T", name, v)
+			return fmt.Errorf("attribute %s must be of type float, but got %T", name, value)
 		}
 
 		if checker != nil {
@@ -128,14 +128,14 @@ func (d Dictionary) Float(name string, value interface{}, doc string, checker fu
 
 // Bool declares an attribute of bool-typed in Dictionary d.
 func (d Dictionary) Bool(name string, value interface{}, doc string, checker func(bool, string) error) Dictionary {
-	interfaceChecker := func(v interface{}, name string) error {
-		if boolValue, ok := v.(bool); ok {
+	interfaceChecker := func(value interface{}, name string) error {
+		if boolValue, ok := value.(bool); ok {
 			if checker != nil {
 				return checker(boolValue, name)
 			}
 			return nil
 		}
-		return fmt.Errorf("attribute %s must be of type bool, but got %T", name, v)
+		return fmt.Errorf("attribute %s must be of type bool, but got %T", name, value)
 	}
 
 	if value != nil {
@@ -156,14 +156,14 @@ func (d Dictionary) Bool(name string, value interface{}, doc string, checker fun
 
 // String declares an attribute of string-typed in Dictionary d.
 func (d Dictionary) String(name string, value interface{}, doc string, checker func(string, string) error) Dictionary {
-	interfaceChecker := func(v interface{}, name string) error {
-		if stringValue, ok := v.(string); ok {
+	interfaceChecker := func(value interface{}, name string) error {
+		if stringValue, ok := value.(string); ok {
 			if checker != nil {
 				return checker(stringValue, name)
 			}
 			return nil
 		}
-		return fmt.Errorf("attribute %s must be of type string, but got %T", name, v)
+		return fmt.Errorf("attribute %s must be of type string, but got %T", name, value)
 	}
 
 	if value != nil {
@@ -184,14 +184,14 @@ func (d Dictionary) String(name string, value interface{}, doc string, checker f
 
 // IntList declares an attribute of []int-typed in Dictionary d.
 func (d Dictionary) IntList(name string, value interface{}, doc string, checker func([]int, string) error) Dictionary {
-	interfaceChecker := func(v interface{}, name string) error {
-		if intListValue, ok := v.([]int); ok {
+	interfaceChecker := func(value interface{}, name string) error {
+		if intListValue, ok := value.([]int); ok {
 			if checker != nil {
 				return checker(intListValue, name)
 			}
 			return nil
 		}
-		return fmt.Errorf("attribute %s must be of type []int, but got %T", name, v)
+		return fmt.Errorf("attribute %s must be of type []int, but got %T", name, value)
 	}
 
 	if value != nil {
