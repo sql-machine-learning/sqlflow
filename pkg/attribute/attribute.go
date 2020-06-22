@@ -53,15 +53,15 @@ type description struct {
 	typ          reflect.Type
 	defaultValue interface{}
 	doc          string
-	checker      func(i interface{}) error
+	checker      func(i interface{}, name string) error
 }
 
 // Int declares an attribute of int-typed in Dictionary d.
-func (d Dictionary) Int(name string, value interface{}, doc string, checker func(int) error) Dictionary {
-	interfaceChecker := func(v interface{}) error {
+func (d Dictionary) Int(name string, value interface{}, doc string, checker func(int, string) error) Dictionary {
+	interfaceChecker := func(v interface{}, name string) error {
 		if intValue, ok := v.(int); ok {
 			if checker != nil {
-				return checker(intValue)
+				return checker(intValue, name)
 			}
 			return nil
 		}
@@ -69,7 +69,7 @@ func (d Dictionary) Int(name string, value interface{}, doc string, checker func
 	}
 
 	if value != nil {
-		err := interfaceChecker(value)
+		err := interfaceChecker(value, name)
 		if err != nil {
 			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
 		}
@@ -85,8 +85,8 @@ func (d Dictionary) Int(name string, value interface{}, doc string, checker func
 }
 
 // Float declares an attribute of float32-typed in Dictionary d.
-func (d Dictionary) Float(name string, value interface{}, doc string, checker func(float32) error) Dictionary {
-	interfaceChecker := func(v interface{}) error {
+func (d Dictionary) Float(name string, value interface{}, doc string, checker func(float32, string) error) Dictionary {
+	interfaceChecker := func(v interface{}, name string) error {
 		var fValue float32
 		if floatValue, ok := v.(float32); ok {
 			fValue = floatValue
@@ -97,13 +97,13 @@ func (d Dictionary) Float(name string, value interface{}, doc string, checker fu
 		}
 
 		if checker != nil {
-			return checker(fValue)
+			return checker(fValue, name)
 		}
 		return nil
 	}
 
 	if value != nil {
-		err := interfaceChecker(value)
+		err := interfaceChecker(value, name)
 		if err != nil {
 			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
 		}
@@ -128,11 +128,11 @@ func (d Dictionary) Float(name string, value interface{}, doc string, checker fu
 }
 
 // Bool declares an attribute of bool-typed in Dictionary d.
-func (d Dictionary) Bool(name string, value interface{}, doc string, checker func(bool) error) Dictionary {
-	interfaceChecker := func(v interface{}) error {
+func (d Dictionary) Bool(name string, value interface{}, doc string, checker func(bool, string) error) Dictionary {
+	interfaceChecker := func(v interface{}, name string) error {
 		if boolValue, ok := v.(bool); ok {
 			if checker != nil {
-				return checker(boolValue)
+				return checker(boolValue, name)
 			}
 			return nil
 		}
@@ -140,7 +140,7 @@ func (d Dictionary) Bool(name string, value interface{}, doc string, checker fun
 	}
 
 	if value != nil {
-		err := interfaceChecker(value)
+		err := interfaceChecker(value, name)
 		if err != nil {
 			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
 		}
@@ -156,11 +156,11 @@ func (d Dictionary) Bool(name string, value interface{}, doc string, checker fun
 }
 
 // String declares an attribute of string-typed in Dictionary d.
-func (d Dictionary) String(name string, value interface{}, doc string, checker func(string) error) Dictionary {
-	interfaceChecker := func(v interface{}) error {
+func (d Dictionary) String(name string, value interface{}, doc string, checker func(string, string) error) Dictionary {
+	interfaceChecker := func(v interface{}, name string) error {
 		if stringValue, ok := v.(string); ok {
 			if checker != nil {
-				return checker(stringValue)
+				return checker(stringValue, name)
 			}
 			return nil
 		}
@@ -168,7 +168,7 @@ func (d Dictionary) String(name string, value interface{}, doc string, checker f
 	}
 
 	if value != nil {
-		err := interfaceChecker(value)
+		err := interfaceChecker(value, name)
 		if err != nil {
 			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
 		}
@@ -184,11 +184,11 @@ func (d Dictionary) String(name string, value interface{}, doc string, checker f
 }
 
 // IntList declares an attribute of []int-typed in Dictionary d.
-func (d Dictionary) IntList(name string, value interface{}, doc string, checker func([]int) error) Dictionary {
-	interfaceChecker := func(v interface{}) error {
+func (d Dictionary) IntList(name string, value interface{}, doc string, checker func([]int, string) error) Dictionary {
+	interfaceChecker := func(v interface{}, name string) error {
 		if intListValue, ok := v.([]int); ok {
 			if checker != nil {
-				return checker(intListValue)
+				return checker(intListValue, name)
 			}
 			return nil
 		}
@@ -196,7 +196,7 @@ func (d Dictionary) IntList(name string, value interface{}, doc string, checker 
 	}
 
 	if value != nil {
-		err := interfaceChecker(value)
+		err := interfaceChecker(value, name)
 		if err != nil {
 			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
 		}
@@ -212,9 +212,9 @@ func (d Dictionary) IntList(name string, value interface{}, doc string, checker 
 }
 
 // Unknown declares an attribute of dynamically determined type
-func (d Dictionary) Unknown(name string, value interface{}, doc string, checker func(interface{}) error) Dictionary {
+func (d Dictionary) Unknown(name string, value interface{}, doc string, checker func(interface{}, string) error) Dictionary {
 	if value != nil && checker != nil {
-		err := checker(value)
+		err := checker(value, name)
 		if err != nil {
 			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
 		}
@@ -278,7 +278,7 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 		}
 
 		if desc.checker != nil {
-			if err := desc.checker(v); err != nil {
+			if err := desc.checker(v, k); err != nil {
 				return err
 			}
 		}
