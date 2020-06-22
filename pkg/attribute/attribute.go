@@ -380,30 +380,34 @@ func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 
 // PremadeModelParamsDocs stores parameters and documents of all known models
 var PremadeModelParamsDocs map[string]map[string]string
-var extractSymbolOnce sync.Once
 
 // OptimizerParamsDocs stores parameters and documents of optimizers
 var OptimizerParamsDocs map[string]map[string]string
 
-// ExtractSymbol extracts parameter documents of Python modules from doc strings
-func ExtractSymbol(module ...string) {
-	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('symbol_extractor').print_param_doc('%s')", strings.Join(module, "', '")))
+func extractSymbol(funcStr string, resultMap *map[string]map[string]string) {
+	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('symbol_extractor').%s", funcStr))
 	output, e := cmd.CombinedOutput()
 	if e != nil {
 		log.Println("ExtractSymbol failed: ", e, string(output))
 	}
 	// json.Unmarshal extends the map rather than reallocate a new one, see golang.org/pkg/encoding/json/#Unmarshal
-	if e := json.Unmarshal(output, &PremadeModelParamsDocs); e != nil {
+	if e := json.Unmarshal(output, resultMap); e != nil {
 		log.Println("ExtractSymbol failed:", e, string(output))
 	}
 }
 
+var extractSymbolOnce sync.Once
+
 // ExtractSymbolOnce extracts parameter documents from python doc strings using sync.Once
 func ExtractSymbolOnce() {
-	extractSymbolOnce.Do(func() { ExtractSymbol("sqlflow_models") })
+	extractSymbolOnce.Do(func() {
+		extractSymbol(fmt.Sprintf("print_param_doc('%s')", "sqlflow_models"), &PremadeModelParamsDocs)
+	})
 }
 
-func removeUnnecessaryParams() {
+func extractTensorFlowSymbols() {
+	extractSymbol("print_tf_model_doc()", &PremadeModelParamsDocs)
+	extractSymbol("print_tf_optimizer_doc()", &OptimizerParamsDocs)
 	// The following parameters of canned estimators are already supported in the COLUMN clause.
 	for _, v := range PremadeModelParamsDocs {
 		delete(v, "feature_columns")
@@ -412,12 +416,11 @@ func removeUnnecessaryParams() {
 	}
 }
 
+func extractXGBoostSymbols() {
+	extractSymbol("print_xgboost_model_doc()", &PremadeModelParamsDocs)
+}
+
 func init() {
-	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
-		panic(err) // assertion
-	}
-	if err := json.Unmarshal([]byte(OptimizerParameterJSON), &OptimizerParamsDocs); err != nil {
-		panic(err) // assertion
-	}
-	removeUnnecessaryParams()
+	extractTensorFlowSymbols()
+	extractXGBoostSymbols()
 }
