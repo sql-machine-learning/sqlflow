@@ -315,10 +315,10 @@ type RunStmt struct {
 }
 
 // SetOriginalSQL sets the original sql string
-func (sql *RunStmt) SetOriginalSQL(s string) { sql.OriginalSQL = s }
+func (cl *RunStmt) SetOriginalSQL(s string) { cl.OriginalSQL = s }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (sql *RunStmt) GetOriginalSQL() string { return sql.OriginalSQL }
+func (cl *RunStmt) GetOriginalSQL() string { return cl.OriginalSQL }
 
 // Execute generates and executes code for TrainStmt
 func (cl *RunStmt) Execute(s Executor) error { return s.ExecuteRun(cl) }

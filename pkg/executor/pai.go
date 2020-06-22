@@ -443,7 +443,7 @@ func (s *paiExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 func (s *paiExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	// For PAI submitter, we won't support `TO RUN`.
 	// If we want to use `TO RUN` on MaxCompute, use alisa Submitter instead.
-	return fmt.Errorf("ExecuteRun is not supported in PAI submitter.")
+	return fmt.Errorf("ExecuteRun is not supported in PAI submitter")
 }
 
 // getOSSModelBucket construct a bucket object. Argument project is used to get OSS checkpoint dir

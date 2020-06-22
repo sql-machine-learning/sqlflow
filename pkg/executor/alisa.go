@@ -257,7 +257,7 @@ func (s *alisaExecutor) ExecuteOptimize(es *ir.OptimizeStmt) error {
 
 func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	// TODO(brightcoder01): Add the implementation in the following PR.
-	return fmt.Errorf("ExecuteRun is not implemeneted in alisa executor yet.")
+	return fmt.Errorf("ExecuteRun is not implemeneted in alisa executor yet")
 }
 
 func (s *alisaExecutor) GetTrainStmtFromModel() bool { return false }

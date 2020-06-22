@@ -315,7 +315,7 @@ SELECT * FROM source_table
 TO RUN a_data_scientist/ts_data_processor:1.0
 CMD "slide_window_to_row"
 INTO output_table;`
-		
+
 		r, e := parser.ParseStatement("mysql", testToRun)
 		a.NoError(e)
 
@@ -335,7 +335,7 @@ SELECT * FROM source_table
 TO RUN a_data_scientist/ts_data_processor:1.0
 CMD "slide_window_to_row"
 INTO output_table_1, output_table_2;`
-		
+
 		r, e := parser.ParseStatement("mysql", testToRun)
 		a.NoError(e)
 

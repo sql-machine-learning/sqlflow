@@ -1135,12 +1135,13 @@ func GenerateOptimizeStmt(optimizeStmt *parser.SQLFlowSelectStmt) (*OptimizeStmt
 	return stmt, nil
 }
 
+// GenerateRunStmt generate the RunStmt result from the parsed result of `TO RUN` statement.
 func GenerateRunStmt(slct *parser.SQLFlowSelectStmt) (*RunStmt, error) {
 	runStmt := &RunStmt{
-		Select: strings.TrimSpace(slct.StandardSelect.String()),
-		ImageName: slct.ImageName,
+		Select:     strings.TrimSpace(slct.StandardSelect.String()),
+		ImageName:  slct.ImageName,
 		Parameters: slct.Parameters,
-		Into: strings.Join(slct.OutputTables, ","),
+		Into:       strings.Join(slct.OutputTables, ","),
 	}
 
 	return runStmt, nil
