@@ -56,11 +56,13 @@ type description struct {
 }
 
 // Int declares an attribute of int-typed in Dictionary d.
-func (d Dictionary) Int(name string, value interface{}, doc string, checker func(int, string) error) Dictionary {
+func (d Dictionary) Int(name string, value interface{}, doc string, checker func(int) error) Dictionary {
 	interfaceChecker := func(value interface{}, name string) error {
 		if intValue, ok := value.(int); ok {
 			if checker != nil {
-				return checker(intValue, name)
+				if err := checker(intValue); err != nil {
+					return fmt.Errorf("attribute %s error: %s", name, err)
+				}
 			}
 			return nil
 		}
@@ -84,7 +86,7 @@ func (d Dictionary) Int(name string, value interface{}, doc string, checker func
 }
 
 // Float declares an attribute of float32-typed in Dictionary d.
-func (d Dictionary) Float(name string, value interface{}, doc string, checker func(float32, string) error) Dictionary {
+func (d Dictionary) Float(name string, value interface{}, doc string, checker func(float32) error) Dictionary {
 	interfaceChecker := func(value interface{}, name string) error {
 		var fValue float32
 		if floatValue, ok := value.(float32); ok {
@@ -96,7 +98,9 @@ func (d Dictionary) Float(name string, value interface{}, doc string, checker fu
 		}
 
 		if checker != nil {
-			return checker(fValue, name)
+			if err := checker(fValue); err != nil {
+				return fmt.Errorf("attribute %s error: %s", name, err)
+			}
 		}
 		return nil
 	}
@@ -127,11 +131,13 @@ func (d Dictionary) Float(name string, value interface{}, doc string, checker fu
 }
 
 // Bool declares an attribute of bool-typed in Dictionary d.
-func (d Dictionary) Bool(name string, value interface{}, doc string, checker func(bool, string) error) Dictionary {
+func (d Dictionary) Bool(name string, value interface{}, doc string, checker func(bool) error) Dictionary {
 	interfaceChecker := func(value interface{}, name string) error {
 		if boolValue, ok := value.(bool); ok {
 			if checker != nil {
-				return checker(boolValue, name)
+				if err := checker(boolValue); err != nil {
+					return fmt.Errorf("attribute %s error: %s", name, err)
+				}
 			}
 			return nil
 		}
@@ -155,11 +161,13 @@ func (d Dictionary) Bool(name string, value interface{}, doc string, checker fun
 }
 
 // String declares an attribute of string-typed in Dictionary d.
-func (d Dictionary) String(name string, value interface{}, doc string, checker func(string, string) error) Dictionary {
+func (d Dictionary) String(name string, value interface{}, doc string, checker func(string) error) Dictionary {
 	interfaceChecker := func(value interface{}, name string) error {
 		if stringValue, ok := value.(string); ok {
 			if checker != nil {
-				return checker(stringValue, name)
+				if err := checker(stringValue); err != nil {
+					return fmt.Errorf("attribute %s error: %s", name, err)
+				}
 			}
 			return nil
 		}
@@ -183,11 +191,13 @@ func (d Dictionary) String(name string, value interface{}, doc string, checker f
 }
 
 // IntList declares an attribute of []int-typed in Dictionary d.
-func (d Dictionary) IntList(name string, value interface{}, doc string, checker func([]int, string) error) Dictionary {
+func (d Dictionary) IntList(name string, value interface{}, doc string, checker func([]int) error) Dictionary {
 	interfaceChecker := func(value interface{}, name string) error {
 		if intListValue, ok := value.([]int); ok {
 			if checker != nil {
-				return checker(intListValue, name)
+				if err := checker(intListValue); err != nil {
+					return fmt.Errorf("attribute %s error: %s", name, err)
+				}
 			}
 			return nil
 		}
@@ -211,9 +221,20 @@ func (d Dictionary) IntList(name string, value interface{}, doc string, checker 
 }
 
 // Unknown declares an attribute of dynamically determined type
-func (d Dictionary) Unknown(name string, value interface{}, doc string, checker func(interface{}, string) error) Dictionary {
-	if value != nil && checker != nil {
-		err := checker(value, name)
+func (d Dictionary) Unknown(name string, value interface{}, doc string, checker func(interface{}) error) Dictionary {
+	var interfaceChecker func(value interface{}, name string) error
+
+	if checker != nil {
+		interfaceChecker = func(value interface{}, name string) error {
+			if err := checker(value); err != nil {
+				return fmt.Errorf("attribute %s error: %s", name, err)
+			}
+			return nil
+		}
+	}
+
+	if value != nil && interfaceChecker != nil {
+		err := interfaceChecker(value, name)
 		if err != nil {
 			log.Panicf("default value of attribute %s is invalid, error is: %s", name, err)
 		}
@@ -223,7 +244,7 @@ func (d Dictionary) Unknown(name string, value interface{}, doc string, checker 
 		typ:          unknownType,
 		defaultValue: value,
 		doc:          doc,
-		checker:      checker,
+		checker:      interfaceChecker,
 	}
 	return d
 }

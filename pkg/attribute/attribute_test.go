@@ -39,7 +39,7 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 	assertFunc(boolDictWithoutChecker, "abc", false)
 	assertFunc(boolDictWithoutChecker, false, true)
 	assertFunc(boolDictWithoutChecker, true, true)
-	boolDictWithChecker := Dictionary{}.Bool(name, nil, "", func(v bool, name string) error {
+	boolDictWithChecker := Dictionary{}.Bool(name, nil, "", func(v bool) error {
 		if v {
 			return fmt.Errorf("attribute %s must be false", name)
 		}
@@ -52,7 +52,7 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 	intDictWithoutChecker := Dictionary{}.Int(name, 0, "", nil)
 	assertFunc(intDictWithoutChecker, "abc", false)
 	assertFunc(intDictWithoutChecker, 3, true)
-	intDictWithChecker := Dictionary{}.Int(name, 0, "", func(v int, name string) error {
+	intDictWithChecker := Dictionary{}.Int(name, 0, "", func(v int) error {
 		if v == 3 {
 			return fmt.Errorf("attribute %s cannot be 3", name)
 		}
@@ -65,7 +65,7 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 	floatDictWithoutChecker := Dictionary{}.Float(name, nil, "", nil)
 	assertFunc(floatDictWithoutChecker, "abc", false)
 	assertFunc(floatDictWithoutChecker, float32(-1.5), true)
-	floatDictWithChecker := Dictionary{}.Float(name, float32(0), "", func(v float32, name string) error {
+	floatDictWithChecker := Dictionary{}.Float(name, float32(0), "", func(v float32) error {
 		if v <= float32(-1.0) {
 			return fmt.Errorf("attribute %s must larger than -1.0", name)
 		}
@@ -78,7 +78,7 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 	stringDictWithoutChecker := Dictionary{}.String(name, "", "", nil)
 	assertFunc(stringDictWithoutChecker, 1, false)
 	assertFunc(stringDictWithoutChecker, "abc", true)
-	stringDictWithChecker := Dictionary{}.String(name, nil, "", func(v string, name string) error {
+	stringDictWithChecker := Dictionary{}.String(name, nil, "", func(v string) error {
 		if !strings.HasPrefix(v, "valid") {
 			return fmt.Errorf("attribute %s must have prefix valid", name)
 		}
@@ -91,7 +91,7 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 	intListDictWithoutChecker := Dictionary{}.IntList(name, []int{}, "", nil)
 	assertFunc(intListDictWithoutChecker, "abc", false)
 	assertFunc(intListDictWithoutChecker, []int{1}, true)
-	intListDictWithChecker := Dictionary{}.IntList(name, []int{}, "", func(v []int, name string) error {
+	intListDictWithChecker := Dictionary{}.IntList(name, []int{}, "", func(v []int) error {
 		if len(v) > 2 {
 			return fmt.Errorf("length of attribute %s must be less than or equal to 2", name)
 		}
@@ -106,7 +106,7 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 	assertFunc(unknownTypeDictWithoutChecker, float32(-0.5), true)
 	assertFunc(unknownTypeDictWithoutChecker, "abc", true)
 
-	unknownTypeDictWithChecker := Dictionary{}.Unknown(name, 1, "", func(v interface{}, name string) error {
+	unknownTypeDictWithChecker := Dictionary{}.Unknown(name, 1, "", func(v interface{}) error {
 		if _, ok := v.(int); ok {
 			return nil
 		}
@@ -123,7 +123,7 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 func TestDictionaryValidate(t *testing.T) {
 	a := assert.New(t)
 
-	checker := func(i int, name string) error {
+	checker := func(i int) error {
 		if i < 0 {
 			return fmt.Errorf("some error")
 		}
@@ -131,7 +131,7 @@ func TestDictionaryValidate(t *testing.T) {
 	}
 	tb := Dictionary{}.Int("a", 1, "attribute a", checker).Float("b", float32(1), "attribute b", nil)
 	a.NoError(tb.Validate(map[string]interface{}{"a": 1}))
-	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
+	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "attribute a error: some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), "attribute a must be of type int, but got float64")
 	a.NoError(tb.Validate(map[string]interface{}{"b": float32(1.0)}))
