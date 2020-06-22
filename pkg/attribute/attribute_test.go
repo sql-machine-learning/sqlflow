@@ -133,7 +133,7 @@ func TestDictionaryValidate(t *testing.T) {
 	a.NoError(tb.Validate(map[string]interface{}{"a": 1}))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
-	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), fmt.Sprintf(errUnexpectedType, "a", "int", 1.))
+	a.EqualError(tb.Validate(map[string]interface{}{"a": 1.0}), "attribute a must be of type int, but got float64")
 	a.NoError(tb.Validate(map[string]interface{}{"b": float32(1.0)}))
 	a.NoError(tb.Validate(map[string]interface{}{"b": 1}))
 }

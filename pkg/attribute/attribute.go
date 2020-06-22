@@ -27,7 +27,6 @@ import (
 
 const (
 	errUnsupportedAttribute = "unsupported attribute %v"
-	errUnexpectedType       = `unexpected type on attribute %v. expect %s, received %[3]v(%[3]T)`
 )
 
 var (
@@ -270,14 +269,7 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 			}
 		}
 
-		if desc.typ != unknownType && desc.typ != reflect.TypeOf(v) {
-			// Allow implicit conversion from int to float to ease typing
-			if !(desc.typ == floatType && reflect.TypeOf(v) == intType) {
-				return fmt.Errorf(errUnexpectedType, k, desc.typ, v)
-			}
-		}
-
-		if desc.checker != nil {
+		if v != nil && desc.checker != nil {
 			if err := desc.checker(v); err != nil {
 				return err
 			}
