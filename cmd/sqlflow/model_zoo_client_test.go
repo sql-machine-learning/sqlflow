@@ -83,13 +83,12 @@ func caseDeleteRepo(t *testing.T) {
 }
 func caseTrainModel(t *testing.T) {
 	err := runStmt(
-		serverAddr,
+		clientOpts,
 		`SELECT * FROM iris.train WHERE class < 2
 		 TO TRAIN test/my_repo:v1.0/DNNClassifier
 		 WITH model.hidden_units=[10,10], model.n_classes=3
 		 LABEL class INTO iris.my_model;`,
-		true,
-		dbConnStr)
+		true)
 	a := assert.New(t)
 	a.NoError(err)
 }

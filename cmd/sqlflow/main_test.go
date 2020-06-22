@@ -45,9 +45,13 @@ import (
 )
 
 var space = regexp.MustCompile(`\s+`)
-var dbConnStr = database.GetTestingMySQLURL()
 var testDBDriver = os.Getenv("SQLFLOW_TEST_DB")
 var serverAddr = "localhost:50051"
+var dbConnStr = database.GetTestingMySQLURL()
+var clientOpts = &options{
+	DataSource:    dbConnStr,
+	SQLFlowServer: serverAddr,
+}
 
 func startServer() func() {
 	var s *grpc.Server
@@ -99,7 +103,7 @@ func waitForServer() {
 func prepareTestDataOrSkip(t *testing.T) error {
 	// disable sixel
 	it2Check = false
-	assertConnectable(serverAddr, dbConnStr)
+	assertConnectable(clientOpts)
 	testDB, err := database.OpenAndConnectDB(dbConnStr)
 	if err != nil {
 		return err
@@ -125,31 +129,31 @@ func TestRunStmt(t *testing.T) {
 	os.Setenv("SQLFLOW_log_dir", "/tmp/")
 	currentDB = ""
 	// TODO(yancey1989): assert should not panics in repl
-	output, err := step.GetStdout(func() error { return runStmt(serverAddr, "show tables", true, dbConnStr) })
+	output, err := step.GetStdout(func() error { return runStmt(clientOpts, "show tables", true) })
 	a.Error(err)
 	a.Contains(output, "Error 1046: No database selected")
-	output, err = step.GetStdout(func() error { return runStmt(serverAddr, "use iris", true, dbConnStr) })
+	output, err = step.GetStdout(func() error { return runStmt(clientOpts, "use iris", true) })
 	a.NoError(err)
 	a.Contains(output, "Database changed to iris")
 
-	output, err = step.GetStdout(func() error { return runStmt(serverAddr, "show tables", true, dbConnStr) })
+	output, err = step.GetStdout(func() error { return runStmt(clientOpts, "show tables", true) })
 	a.NoError(err)
 	a.Contains(output, "| TABLES IN IRIS |")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt(serverAddr, "select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true, dbConnStr)
+		return runStmt(clientOpts, "select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true)
 	})
 	a.NoError(err)
 	a.Contains(output, "'global_step': 110")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt(serverAddr, "select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true, dbConnStr)
+		return runStmt(clientOpts, "select * from train to train xgboost.gbtree WITH objective=reg:squarederror, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_xgb_model;", true)
 	})
 	a.NoError(err)
 	a.Contains(output, "Evaluation result: ")
 
 	output, err = step.GetStdout(func() error {
-		return runStmt(serverAddr, "select * from train to explain sqlflow_models.repl_xgb_model;", true, dbConnStr)
+		return runStmt(clientOpts, "select * from train to explain sqlflow_models.repl_xgb_model;", true)
 	})
 	a.NoError(err)
 	a.Contains(output, "data:text/html, <div align='center'><img src='data:image/png;base64")
@@ -175,7 +179,7 @@ INTO sqlflow_models.repl_dnn_model;
 use sqlflow_models;
 show tables`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
-	output, err := step.GetStdout(func() error { repl(serverAddr, scanner, dbConnStr); return nil })
+	output, err := step.GetStdout(func() error { repl(clientOpts, scanner); return nil })
 	a.Nil(err)
 	a.Contains(output, "Database changed to iris")
 	a.Contains(output, `
@@ -212,7 +216,7 @@ WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * 
 label class
 INTO sqlflow_models.repl_dnn_model`
 	scanner := bufio.NewScanner(strings.NewReader(sql))
-	output, err := step.GetStdout(func() error { repl(serverAddr, scanner, dbConnStr); return nil })
+	output, err := step.GetStdout(func() error { repl(clientOpts, scanner); return nil })
 	a.NoError(err)
 	a.Contains(output, `
 select * from iris.train to train DNNClassifier
@@ -1100,13 +1104,16 @@ func TestParseArgument(t *testing.T) {
 	a.Equal("my_repo", opts.RepoName)
 	a.Equal("v1.0", opts.Version)
 
-	opts, err = getOptions("--data-source=localhost:3306 release model my_model v1.0")
+	opts, err = getOptions([]string{
+		"--data-source=localhost:3306", "release", "model",
+		"--desc=awesome model", "my_model", "v1.0"})
 	a.NoError(err)
 	a.True(opts.Release && opts.Model)
 	a.False(opts.Run || opts.Delete)
 	a.Equal("my_model", opts.ModelName)
 	a.Equal("v1.0", opts.Version)
 	a.Equal("localhost:3306", opts.DataSource)
+	a.Equal("awesome model", opts.Description)
 
 	// delete sub-command
 	opts, err = getOptions("delete repo my_repo v1.0")

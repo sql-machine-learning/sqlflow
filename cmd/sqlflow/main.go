@@ -59,7 +59,7 @@ const usage = `SQLFlow Command-line Tool.
 Usage:
     sqlflow [options] [run] [-e <program> -f <file>]
     sqlflow [options] release repo [--force] <repo_dir> <repo_name> <version>
-    sqlflow [options] release model [--force] <model_name> <version>
+    sqlflow [options] release model [--force] [--desc=<desc>] <model_name> <version>
     sqlflow [options] delete repo <repo_name> <version>
     sqlflow [options] delete model <model_name> <version>
 
@@ -77,7 +77,8 @@ Run Options:
     -f, --file=<file>                 execute program in file
 
 Release Options:
-		--force                  force overwrite existing model`
+        --force                  force overwrite existing model
+        --desc=<desc>            description for this model`
 
 type options struct {
 	CertFile, EnvFile string
@@ -94,6 +95,7 @@ type options struct {
 	RepoName          string `docopt:"<repo_name>"`
 	ModelName         string `docopt:"<model_name>"`
 	Version           string `docopt:"<version>"`
+	Description       string `docopt:"--desc"`
 }
 
 func isSpace(c byte) bool {
@@ -208,13 +210,15 @@ func flagPassed(name ...string) bool {
 	return found
 }
 
-func createRPCConn(serverAddr string) (*grpc.ClientConn, error) {
-	caCrt := os.Getenv("SQLFLOW_CA_CRT")
-	if caCrt != "" {
-		creds, _ := credentials.NewClientTLSFromFile(caCrt, "")
-		return grpc.Dial(serverAddr, grpc.WithTransportCredentials(creds))
+func createRPCConn(opts *options) (*grpc.ClientConn, error) {
+	if opts.CertFile != "" {
+		creds, err := credentials.NewClientTLSFromFile(opts.CertFile, "")
+		if err != nil {
+			return nil, err
+		}
+		return grpc.Dial(opts.SQLFlowServer, grpc.WithTransportCredentials(creds))
 	}
-	return grpc.Dial(serverAddr, grpc.WithInsecure())
+	return grpc.Dial(opts.SQLFlowServer, grpc.WithInsecure())
 }
 
 func sqlRequest(program string, ds string) *pb.Request {
@@ -234,7 +238,7 @@ func isExitStmt(stmt string) bool {
 	return firstStmt == "EXIT" || firstStmt == "QUIT"
 }
 
-func runStmt(serverAddr string, stmt string, isTerminal bool, ds string) error {
+func runStmt(opts *options, stmt string, isTerminal bool) error {
 	if isExitStmt(stmt) {
 		fmt.Println("Goodbye!")
 		os.Exit(0)
@@ -243,12 +247,12 @@ func runStmt(serverAddr string, stmt string, isTerminal bool, ds string) error {
 	// special case, process USE to stick SQL session
 	parts := strings.Fields(strings.ReplaceAll(stmt, ";", ""))
 	if len(parts) == 2 && strings.ToUpper(parts[0]) == "USE" {
-		return switchDatabase(serverAddr, ds, parts[1])
+		return switchDatabase(opts, parts[1])
 	}
-	return runStmtOnServer(serverAddr, stmt, isTerminal, ds)
+	return runStmtOnServer(opts, stmt, isTerminal)
 }
 
-func runStmtOnServer(serverAddr string, stmt string, isTerminal bool, ds string) error {
+func runStmtOnServer(opts *options, stmt string, isTerminal bool) error {
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
@@ -258,7 +262,7 @@ func runStmtOnServer(serverAddr string, stmt string, isTerminal bool, ds string)
 		return err
 	}
 	// connect to sqlflow server and run sql program
-	conn, err := createRPCConn(serverAddr)
+	conn, err := createRPCConn(opts)
 	if err != nil {
 		return err
 	}
@@ -266,7 +270,7 @@ func runStmtOnServer(serverAddr string, stmt string, isTerminal bool, ds string)
 	client := pb.NewSQLFlowClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 36000*time.Second)
 	defer cancel()
-	req := sqlRequest(stmt, ds)
+	req := sqlRequest(stmt, opts.DataSource)
 	stream, err := client.Run(ctx, req)
 	if err != nil {
 		return err
@@ -286,16 +290,15 @@ func runStmtOnServer(serverAddr string, stmt string, isTerminal bool, ds string)
 	return renderRPCRespStream(renderCtx)
 }
 
-func assertConnectable(serverAddr, ds string) {
-	_, err := step.GetStdout(func() error {
-		return runStmtOnServer(serverAddr, `select "I'm alive";`, true, ds)
-	})
+func assertConnectable(opts *options) {
+	conn, err := createRPCConn(opts)
 	if err != nil {
-		log.Fatalf("Can't connect to %s: %v\n", ds, err)
+		log.Fatalf("can't connect to %s: %v", opts.SQLFlowServer, err)
 	}
+	conn.Close()
 }
 
-func repl(serverAddr string, scanner *bufio.Scanner, ds string) {
+func repl(opts *options, scanner *bufio.Scanner) {
 	for {
 		statements, err := readStmt(scanner)
 		if err == io.EOF && len(statements) == 0 {
@@ -309,17 +312,17 @@ func repl(serverAddr string, scanner *bufio.Scanner, ds string) {
 			statements[len(statements)-1] += ";"
 		}
 		for _, stmt := range statements {
-			if err := runStmt(serverAddr, stmt, false, ds); err != nil {
+			if err := runStmt(opts, stmt, false); err != nil {
 				log.Fatalf("run SQL statement failed: %v", err)
 			}
 		}
 	}
 }
 
-func switchDatabase(serverAddr, ds, db string) error {
+func switchDatabase(opts *options, db string) error {
 	stmt := "USE " + db
 	out, err := step.GetStdout(func() error {
-		return runStmtOnServer(serverAddr, stmt, true, ds)
+		return runStmtOnServer(opts, stmt, true)
 	})
 	if err != nil {
 		fmt.Println(out)
@@ -376,10 +379,15 @@ func runSQLFlowClient(opts *options) error {
 	if opts.DataSource == "" {
 		opts.DataSource = os.Getenv("SQLFLOW_DATASOURCE")
 	}
-	assertConnectable(opts.SQLFlowServer, opts.DataSource) // Fast fail if we can't connect to the datasource
+	if opts.DataSource == "" {
+		return fmt.Errorf("data source is not provided")
+	}
+	if opts.CertFile == "" {
+		opts.CertFile = os.Getenv("SQLFLOW_CA_CRT")
+	}
+	assertConnectable(opts) // Fast fail if we can't connect to the datasource
 	var err error
-	currentDB, err = database.GetDatabaseName(opts.DataSource)
-	if err != nil {
+	if currentDB, err = database.GetDatabaseName(opts.DataSource); err != nil {
 		return err
 	}
 
@@ -392,8 +400,7 @@ func runSQLFlowClient(opts *options) error {
 	sqlFile := os.Stdin
 
 	if opts.File != "" && opts.File != "-" {
-		sqlFile, err = os.Open(opts.File)
-		if err != nil {
+		if sqlFile, err = os.Open(opts.File); err != nil {
 			return err
 		}
 		defer sqlFile.Close()
@@ -410,10 +417,10 @@ func runSQLFlowClient(opts *options) error {
 		}
 		// TODO(lorylin): get autocomplete dicts for sqlflow_models from sqlflow_server
 		runPrompt(func(stmt string) {
-			runStmt(opts.SQLFlowServer, stmt, true, opts.DataSource)
+			runStmt(opts, stmt, true)
 		})
 	} else {
-		repl(opts.SQLFlowServer, scanner, opts.DataSource)
+		repl(opts, scanner)
 	}
 	return nil
 }
