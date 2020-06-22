@@ -27,7 +27,6 @@ import (
 
 const (
 	errUnsupportedAttribute = "unsupported attribute %v"
-	errUnexpectedType       = `unexpected type on attribute %v. expect %s, received %[3]v(%[3]T)`
 )
 
 var (
@@ -270,14 +269,7 @@ func (d Dictionary) Validate(attrs map[string]interface{}) error {
 			}
 		}
 
-		if desc.typ != unknownType && desc.typ != reflect.TypeOf(v) {
-			// Allow implicit conversion from int to float to ease typing
-			if !(desc.typ == floatType && reflect.TypeOf(v) == intType) {
-				return fmt.Errorf(errUnexpectedType, k, desc.typ, v)
-			}
-		}
-
-		if desc.checker != nil {
+		if v != nil && desc.checker != nil {
 			if err := desc.checker(v, k); err != nil {
 				return err
 			}
@@ -372,9 +364,6 @@ var extractSymbolOnce sync.Once
 // OptimizerParamsDocs stores parameters and documents of optimizers
 var OptimizerParamsDocs map[string]map[string]string
 
-// XGBoostObjectiveDocs stores options for xgboost objective
-var XGBoostObjectiveDocs map[string]string
-
 // ExtractSymbol extracts parameter documents of Python modules from doc strings
 func ExtractSymbol(module ...string) {
 	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('symbol_extractor').print_param_doc('%s')", strings.Join(module, "', '")))
@@ -408,9 +397,6 @@ func init() {
 	}
 	if err := json.Unmarshal([]byte(OptimizerParameterJSON), &OptimizerParamsDocs); err != nil {
 		panic(err) // assertion
-	}
-	if err := json.Unmarshal([]byte(XGBoostObjectiveJSON), &XGBoostObjectiveDocs); err != nil {
-		panic(err)
 	}
 	removeUnnecessaryParams()
 }
