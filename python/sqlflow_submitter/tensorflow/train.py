@@ -73,11 +73,13 @@ def train(datasource,
           pai_table="",
           pai_val_table="",
           feature_columns_code="",
-          model_repo_image=""):
-    model_meta = collect_model_metadata(select, validation_select,
-                                        estimator_string, model_params,
-                                        feature_columns_code, feature_metas,
-                                        label_meta, None, model_repo_image)
+          model_repo_image="",
+          original_sql=""):
+    model_meta = collect_model_metadata(original_sql, select,
+                                        validation_select, estimator_string,
+                                        model_params, feature_columns_code,
+                                        feature_metas, label_meta, None,
+                                        model_repo_image)
     # import custom model package
     sqlflow_submitter.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)

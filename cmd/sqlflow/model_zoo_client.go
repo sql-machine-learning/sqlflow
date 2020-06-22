@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,15 +64,24 @@ func releaseModel(opts *options) error {
 		return err
 	}
 	defer db.Close()
-	buf, err := model.LoadToBuffer(db, opts.ModelName)
+	dir, err := ioutil.TempDir("/tmp", "upload_model_zoo")
 	if err != nil {
 		return err
 	}
-	modelData := buf.Bytes()
-	// (TODO:lhw) decode the model from the buffer when
-	// more metadata is stored in database, client should
-	// not parse the original model.TrainSelect directly,
-	// because parser should exist only on SQLFlow server
+	defer os.RemoveAll(dir)
+	tarFile, err := model.DumpDBModel(db, opts.ModelName, dir)
+	if err != nil {
+		return err
+	}
+	model, err := model.ExtractMetaFromTarball(tarFile, dir)
+	if err != nil {
+		return err
+	}
+	sendFile, err := os.Open(tarFile)
+	if err != nil {
+		return err
+	}
+	defer sendFile.Close()
 
 	conn, err := getModelZooServerConn(opts)
 	if err != nil {
@@ -89,15 +99,20 @@ func releaseModel(opts *options) error {
 		Tag:  opts.Version,
 		// (TODO: lhw) add following fields from model
 		Description:       "",
-		EvaluationMetrics: "",
-		ModelClassName:    "MyDNNClassifier",
-		// (FIXME: lhw) should extract from the model metadata once
-		// we store it in the database
-		ModelRepoImageUrl: "test/my_repo:v1.0",
-		ContentTar:        modelData,
+		EvaluationMetrics: model.GetMetaAsString("evaluation"),
+		ModelClassName:    model.GetMetaAsString("class_name"),
+		ModelRepoImageUrl: model.GetMetaAsString("model_repo_image"),
+		ContentTar:        nil,
 		ContentUrl:        "",
 	}
-	stream.Send(request)
+	buf := make([]byte, 1024*10)
+	for {
+		if _, e := sendFile.Read(buf); e == io.EOF {
+			break
+		}
+		request.ContentTar = buf
+		stream.Send(request)
+	}
 	resp, err := stream.CloseAndRecv()
 	if err != nil {
 		return err

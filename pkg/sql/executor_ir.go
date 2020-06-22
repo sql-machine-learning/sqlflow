@@ -170,7 +170,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}(time.Now().UnixNano())
 
 	// use system default tmp dir
-	cwd, err := ioutil.TempDir("", "sqlflow_models")
+	cwd, err := ioutil.TempDir("/tmp", "sqlflow_models")
 	if err != nil {
 		return err
 	}

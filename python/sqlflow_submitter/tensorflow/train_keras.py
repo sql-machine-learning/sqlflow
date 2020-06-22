@@ -166,8 +166,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         with open("exported_path", "w") as fn:
             fn.write(export_path_str)
         # write model metadata to model_meta.json
-        save_model_metadata(path.join(export_path_str, "model_meta.json"),
-                            model_meta)
+        save_model_metadata("model_meta.json", model_meta)
         print("Done training, model exported to: %s" % export_path_str)
         return
 

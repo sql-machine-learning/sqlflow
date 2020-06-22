@@ -33,6 +33,7 @@ type trainFiller struct {
 	PAITrainTable       string
 	PAIValidateTable    string
 	ModelRepoImage      string
+	OriginalSQL         string
 }
 
 const tfTrainTemplateText = `
@@ -143,5 +144,6 @@ train(datasource="{{.DataSource}}",
       pai_table="{{.PAITrainTable}}",
       pai_val_table="{{.PAIValidateTable}}",
       feature_columns_code=feature_columns_code,
-      model_repo_image="{{.ModelRepoImage}}")
+      model_repo_image="{{.ModelRepoImage}}",
+      original_sql='''{{.OriginalSQL}}''')
 `
