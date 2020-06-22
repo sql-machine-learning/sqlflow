@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/pkg/database"
 	pb "sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/server"
+	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 	"sqlflow.org/sqlflow/pkg/tar"
 )
 

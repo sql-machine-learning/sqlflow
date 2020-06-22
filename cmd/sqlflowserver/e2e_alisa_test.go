@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"sqlflow.org/sqlflow/pkg/server"
+	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 )
 
 // TestEnd2EndAlisa test cases that run on Alisa, Need to set the

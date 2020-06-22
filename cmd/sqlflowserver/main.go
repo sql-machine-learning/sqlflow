@@ -28,8 +28,8 @@ import (
 
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/proto"
-	"sqlflow.org/sqlflow/pkg/server"
 	sf "sqlflow.org/sqlflow/pkg/sql"
+	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 )
 
 func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
