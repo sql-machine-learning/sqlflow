@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/bitly/go-simplejson"
 	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/pkg/database"
 
@@ -39,9 +39,9 @@ const modelMetaFileName = "model_meta.json"
 
 // Model represent a trained model, which could be saved to a filesystem or sqlfs.
 type Model struct {
-	workDir     string // We don't expose and gob workDir; instead we tar it.
-	TrainSelect string // TrainSelect is gob-encoded during I/O.
-	Meta        []byte // Meta json object
+	workDir     string           // We don't expose and gob workDir; instead we tar it.
+	TrainSelect string           // TrainSelect is gob-encoded during I/O.
+	Meta        *simplejson.Json // Meta json object
 }
 
 // New an empty model.
@@ -56,7 +56,7 @@ func (m *Model) GetMetaAsString(key string) string {
 	if m.Meta == nil {
 		return ""
 	}
-	return jsoniter.Get(m.Meta, key).ToString()
+	return m.Meta.Get(key).MustString()
 }
 
 // Save all files in workDir as a tarball to a filesystem or sqlfs.
@@ -307,8 +307,10 @@ func loadMeta(metaFileName string) (*Model, error) {
 	return model, nil
 }
 
-func decodeMeta(model *Model, meta []byte) error {
-	model.Meta = meta
+func decodeMeta(model *Model, meta []byte) (err error) {
+	if model.Meta, err = simplejson.NewJson(meta); err != nil {
+		return
+	}
 	// (NOTE: lhw) we may decode more info later and make them
 	// as Model's fields
 	// for now, stay compatible with old interface
