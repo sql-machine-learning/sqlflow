@@ -372,9 +372,6 @@ var extractSymbolOnce sync.Once
 // OptimizerParamsDocs stores parameters and documents of optimizers
 var OptimizerParamsDocs map[string]map[string]string
 
-// XGBoostObjectiveDocs stores options for xgboost objective
-var XGBoostObjectiveDocs map[string]string
-
 // ExtractSymbol extracts parameter documents of Python modules from doc strings
 func ExtractSymbol(module ...string) {
 	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('symbol_extractor').print_param_doc('%s')", strings.Join(module, "', '")))
@@ -408,9 +405,6 @@ func init() {
 	}
 	if err := json.Unmarshal([]byte(OptimizerParameterJSON), &OptimizerParamsDocs); err != nil {
 		panic(err) // assertion
-	}
-	if err := json.Unmarshal([]byte(XGBoostObjectiveJSON), &XGBoostObjectiveDocs); err != nil {
-		panic(err)
 	}
 	removeUnnecessaryParams()
 }
