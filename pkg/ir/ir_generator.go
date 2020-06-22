@@ -1137,7 +1137,7 @@ func GenerateOptimizeStmt(optimizeStmt *parser.SQLFlowSelectStmt) (*OptimizeStmt
 
 func GenerateRunStmt(slct *parser.SQLFlowSelectStmt) (*RunStmt, error) {
 	runStmt := &RunStmt{
-		Select: slct.StandardSelect.String(),
+		Select: strings.TrimSpace(slct.StandardSelect.String()),
 		ImageName: slct.ImageName,
 		Parameters: slct.Parameters,
 		Into: strings.Join(slct.OutputTables, ","),

@@ -15,6 +15,7 @@ package ir
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -266,4 +267,111 @@ func TestGenerateTrainStmtModelZoo(t *testing.T) {
 	a.NoError(err)
 	a.Equal("a_data_scientist/regressors:v0.2", trainStmt.ModelImage)
 	a.Equal("MyDNNRegressor", trainStmt.Estimator)
+}
+
+func TestGenerateRunStmt(t *testing.T) {
+	a := assert.New(t)
+
+	{
+		testToRun := `
+SELECT * FROM source_table
+TO RUN a_data_scientist/ts_data_processor:1.0;`
+
+		r, e := parser.ParseStatement("mysql", testToRun)
+		a.NoError(e)
+
+		runStmt, e := GenerateRunStmt(r.SQLFlowSelectStmt)
+		a.NoError(e)
+
+		a.True(runStmt.IsExtended())
+		a.Equal(`SELECT * FROM source_table`, runStmt.Select)
+		a.Equal(`a_data_scientist/ts_data_processor:1.0`, runStmt.ImageName)
+		a.Equal(0, len(runStmt.Parameters))
+		a.Equal(0, len(runStmt.Into))
+	}
+
+	{
+		testToRun := `
+SELECT * FROM source_table
+TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row";`
+
+		r, e := parser.ParseStatement("mysql", testToRun)
+		a.NoError(e)
+
+		runStmt, e := GenerateRunStmt(r.SQLFlowSelectStmt)
+		a.NoError(e)
+
+		a.True(runStmt.IsExtended())
+		a.Equal(`SELECT * FROM source_table`, runStmt.Select)
+		a.Equal(`a_data_scientist/ts_data_processor:1.0`, runStmt.ImageName)
+		a.True(reflect.DeepEqual(runStmt.Parameters, []string{`slide_window_to_row`}))
+		a.Equal(0, len(runStmt.Into))
+	}
+
+	{
+		testToRun := `
+SELECT * FROM source_table 
+TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row"
+INTO output_table;`
+		
+		r, e := parser.ParseStatement("mysql", testToRun)
+		a.NoError(e)
+
+		runStmt, e := GenerateRunStmt(r.SQLFlowSelectStmt)
+		a.NoError(e)
+
+		a.True(runStmt.IsExtended())
+		a.Equal(`SELECT * FROM source_table`, runStmt.Select)
+		a.Equal(`a_data_scientist/ts_data_processor:1.0`, runStmt.ImageName)
+		a.True(reflect.DeepEqual(runStmt.Parameters, []string{`slide_window_to_row`}))
+		a.Equal(`output_table`, runStmt.Into)
+	}
+
+	{
+		testToRun := `
+SELECT * FROM source_table 
+TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row"
+INTO output_table_1, output_table_2;`
+		
+		r, e := parser.ParseStatement("mysql", testToRun)
+		a.NoError(e)
+
+		runStmt, e := GenerateRunStmt(r.SQLFlowSelectStmt)
+		a.NoError(e)
+
+		a.True(runStmt.IsExtended())
+		a.Equal(`SELECT * FROM source_table`, runStmt.Select)
+		a.Equal(`a_data_scientist/ts_data_processor:1.0`, runStmt.ImageName)
+		a.True(reflect.DeepEqual(runStmt.Parameters, []string{`slide_window_to_row`}))
+		a.Equal(`output_table_1,output_table_2`, runStmt.Into)
+	}
+
+	{
+		testToRun := `
+SELECT * FROM source_table 
+TO RUN a_data_scientist/ts_data_processor:1.0
+CMD "slide_window_to_row", "--param_a=value_a", "--param_b=value_b"
+INTO output_table_1, output_table_2;`
+
+		r, e := parser.ParseStatement("mysql", testToRun)
+		a.NoError(e)
+
+		runStmt, e := GenerateRunStmt(r.SQLFlowSelectStmt)
+		a.NoError(e)
+
+		a.True(runStmt.IsExtended())
+		a.Equal(`SELECT * FROM source_table`, runStmt.Select)
+		a.Equal(`a_data_scientist/ts_data_processor:1.0`, runStmt.ImageName)
+		a.True(reflect.DeepEqual(
+			runStmt.Parameters,
+			[]string{
+				`slide_window_to_row`,
+				`--param_a=value_a`,
+				`--param_b=value_b`,
+			}))
+		a.Equal(`output_table_1,output_table_2`, runStmt.Into)
+	}
 }
