@@ -25,15 +25,16 @@ import (
 // Executor is a visitor that generates and executes code for SQLFlowStmt
 // TODO(yancey1989) decompose Executor from IR
 type Executor interface {
+	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
 	ExecuteQuery(*NormalStmt) error
 	ExecuteTrain(*TrainStmt) error
 	ExecutePredict(*PredictStmt) error
 	ExecuteExplain(*ExplainStmt) error
 	ExecuteEvaluate(*EvaluateStmt) error
 	ExecuteShowTrain(*ShowTrainStmt) error
-	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
-	GetTrainStmtFromModel() bool
 	ExecuteOptimize(*OptimizeStmt) error
+	ExecuteRun(*RunStmt) error
+	GetTrainStmtFromModel() bool
 }
 
 // SQLFlowStmt has multiple implementations: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
@@ -298,3 +299,29 @@ func (sql *OptimizeStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (sql *OptimizeStmt) GetOriginalSQL() string { return sql.OriginalSQL }
+
+// RunStmt is the intermediate representation of `SELECT TO RUN` statement
+type RunStmt struct {
+	// OriginalSQL is the `SELECT TO RUN` statement.
+	OriginalSQL string
+	// Select is the select statement before TO RUN clause.
+	Select string
+	// ImageName is the name of the docker image after TO RUN keyword.
+	ImageName string
+	// Parameters is the command line parameters for the docker image.
+	Parameters []string
+	// Into is the output table names (0~N, comma separated) after INTO keyword.
+	Into string
+}
+
+// SetOriginalSQL sets the original sql string
+func (sql *RunStmt) SetOriginalSQL(s string) { sql.OriginalSQL = s }
+
+// GetOriginalSQL returns the original SQL statement used to get current IR result
+func (sql *RunStmt) GetOriginalSQL() string { return sql.OriginalSQL }
+
+// Execute generates and executes code for TrainStmt
+func (cl *RunStmt) Execute(s Executor) error { return s.ExecuteRun(cl) }
+
+// IsExtended returns whether a SQLFlowStmt is an extended SQL statement
+func (cl *RunStmt) IsExtended() bool { return true }

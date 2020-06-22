@@ -309,6 +309,11 @@ func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 	return fmt.Errorf("ExecuteOptimize is not supported in default submitter")
 }
 
+func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
+	// TODO(minghong): Add the implementation in the following PR.
+	return fmt.Errorf("ExecuteRun is not implemeneted in default executor yet.")
+}
+
 func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {
 	dropStmt := fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tableName)
 	var e error

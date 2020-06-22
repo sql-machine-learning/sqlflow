@@ -440,6 +440,12 @@ func (s *paiExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 	return err
 }
 
+func (s *paiExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
+	// For PAI submitter, we won't support `TO RUN`.
+	// If we want to use `TO RUN` on MaxCompute, use alisa Submitter instead.
+	return fmt.Errorf("ExecuteRun is not supported in PAI submitter.")
+}
+
 // getOSSModelBucket construct a bucket object. Argument project is used to get OSS checkpoint dir
 // from environment variable for current MaxCompute project.
 // FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models
