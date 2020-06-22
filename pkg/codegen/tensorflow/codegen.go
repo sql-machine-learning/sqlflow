@@ -28,46 +28,45 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-var commonAttributes = attribute.Dictionary{
-	"train.batch_size": {attribute.Int, 1, `[default=1]
+var commonAttributes = attribute.Dictionary{}.
+	Int("train.batch_size", 1, `[default=1]
 The training batch size.
-range: [1,Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"train.epoch": {attribute.Int, 1, `[default=1]
+range: [1,Infinity]`, attribute.IntLowerBoundChecker(1, true)).
+	Int("train.epoch", 1, `[default=1]
 Number of epochs the training will run.
-range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)},
-	"train.verbose": {attribute.Int, 0, `[default=0]
+range: [1, Infinity]`, attribute.IntLowerBoundChecker(1, true)).
+	Int("train.verbose", 0, `[default=0]
 Show verbose logs when training.
-possible values: 0, 1, 2`, attribute.IntChoicesChecker(0, 1, 2)},
-	"train.max_steps": {attribute.Int, 0, `[default=0]
-Max steps to run training.`, attribute.IntLowerBoundChecker(0, true)},
-	"train.save_checkpoints_steps": {attribute.Int, 100, `[default=100]
-Steps to run between saving checkpoints.`, attribute.IntLowerBoundChecker(1, true)},
-	"train.log_every_n_iter": {attribute.Int, 10, `[default=10]
-Print logs every n iterations`, attribute.IntLowerBoundChecker(1, true)},
-	"validation.start_delay_secs": {attribute.Int, 0, `[default=0]
-Seconds to wait before starting validation.`, attribute.IntLowerBoundChecker(0, true)},
-	"validation.throttle_secs": {attribute.Int, 0, `[default=0]
-Seconds to wait when need to run validation again.`, attribute.IntLowerBoundChecker(0, true)},
-	"validation.metrics": {attribute.String, "Accuracy", `[default=""]
+possible values: 0, 1, 2`, attribute.IntChoicesChecker(0, 1, 2)).
+	Int("train.max_steps", 0, `[default=0]
+Max steps to run training.`, attribute.IntLowerBoundChecker(0, true)).
+	Int("train.save_checkpoints_steps", 100, `[default=100]
+Steps to run between saving checkpoints.`, attribute.IntLowerBoundChecker(1, true)).
+	Int("train.log_every_n_iter", 10, `[default=10]
+Print logs every n iterations`, attribute.IntLowerBoundChecker(1, true)).
+	Int("validation.start_delay_secs", 0, `[default=0]
+Seconds to wait before starting validation.`, attribute.IntLowerBoundChecker(0, true)).
+	Int("validation.throttle_secs", 0, `[default=0]
+Seconds to wait when need to run validation again.`, attribute.IntLowerBoundChecker(0, true)).
+	String("validation.metrics", "Accuracy", `[default=""]
 Specify metrics when training and evaluating.
-example: "Accuracy,AUC"`, nil},
-	"validation.select": {attribute.String, "", `[default=""]
+example: "Accuracy,AUC"`, nil).
+	String("validation.select", "", `[default=""]
 Specify the dataset for validation.
-example: "SELECT * FROM iris.train LIMIT 100"`, nil},
-	"validation.steps": {attribute.Int, 1, `[default=1]
-Specify steps for validation.`, attribute.IntLowerBoundChecker(1, true)},
-}
-var distributedTrainingAttributes = attribute.Dictionary{
-	"train.num_ps":        {attribute.Int, 0, "", nil},
-	"train.num_workers":   {attribute.Int, 1, "", nil},
-	"train.worker_cpu":    {attribute.Int, 400, "", nil},
-	"train.worker_gpu":    {attribute.Int, 0, "", nil},
-	"train.ps_cpu":        {attribute.Int, 200, "", nil},
-	"train.ps_gpu":        {attribute.Int, 0, "", nil},
-	"train.num_evaluator": {attribute.Int, 0, "", nil},
-	"train.evaluator_cpu": {attribute.Int, 200, "", nil},
-	"train.evaluator_gpu": {attribute.Int, 0, "", nil},
-}
+example: "SELECT * FROM iris.train LIMIT 100"`, nil).
+	Int("validation.steps", 1, `[default=1]
+Specify steps for validation.`, attribute.IntLowerBoundChecker(1, true))
+
+var distributedTrainingAttributes = attribute.Dictionary{}.
+	Int("train.num_ps", 0, "", nil).
+	Int("train.num_workers", 1, "", nil).
+	Int("train.worker_cpu", 400, "", nil).
+	Int("train.worker_gpu", 0, "", nil).
+	Int("train.ps_cpu", 200, "", nil).
+	Int("train.ps_gpu", 0, "", nil).
+	Int("train.num_evaluator", 0, "", nil).
+	Int("train.evaluator_cpu", 200, "", nil).
+	Int("train.evaluator_gpu", 0, "", nil)
 
 func attrToPythonValue(attr interface{}) string {
 	switch attr.(type) {
@@ -232,7 +231,7 @@ func constructLosses(trainStmt *ir.TrainStmt) {
 // InitializeAttributes initializes the attributes of TensorFlow and does type checking for them
 func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	attribute.ExtractSymbolOnce()
-	commonAttributes.FillDefaults(trainStmt.Attributes)
+	commonAttributes.ExportDefaults(trainStmt.Attributes)
 
 	modelAttr := attribute.NewDictionaryFromModelDefinition(trainStmt.Estimator, "model.")
 	// TODO(shendiaomo): Restrict optimizer parameters to the available set
@@ -240,16 +239,17 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	constructLosses(trainStmt)
 	if len(modelAttr) == 0 {
 		// TODO(shendiaomo): Use the same mechanism as `sqlflow_models` to extract parameters automatically
-		// Unknown custom models
-		modelAttr.Update(attribute.Dictionary{"model.*": {attribute.Unknown, nil, "Any model parameters defined in custom models", nil}})
+		// unknownType custom models
+		modelAttr.Update(attribute.Dictionary{}.
+			Unknown("model.*", nil, "Any model parameters defined in custom models", nil))
 	}
 	attrValidator := modelAttr.Update(commonAttributes)
 	if strings.HasPrefix(trainStmt.Estimator, "sqlflow_models.") {
 		// Special attributes defined as global variables in `sqlflow_models`
-		modelAttr.Update(attribute.Dictionary{
-			"model.optimizer": {attribute.Unknown, nil, "Specify optimizer", nil},
-			"model.loss":      {attribute.Unknown, nil, "Specify loss", nil},
-			"model.*":         {attribute.Unknown, nil, "Any model parameters defined in custom models", nil}})
+		modelAttr.Update(attribute.Dictionary{}.
+			Unknown("model.optimizer", nil, "Specify optimizer", nil).
+			Unknown("model.loss", nil, "Specify loss", nil).
+			Unknown("model.*", nil, "Any model parameters defined in custom models", nil))
 	}
 	if IsPAI() {
 		modelAttr.Update(distributedTrainingAttributes)

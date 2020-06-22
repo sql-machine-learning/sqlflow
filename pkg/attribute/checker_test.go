@@ -23,7 +23,7 @@ func TestFloat32RangeChecker(t *testing.T) {
 	a := assert.New(t)
 
 	checker := Float32RangeChecker(0.0, 1.0, true, true)
-	a.Error(checker(1))
+	a.NoError(checker(1))
 	a.Error(checker(float32(-1)))
 	a.NoError(checker(float32(0)))
 	a.NoError(checker(float32(0.5)))
@@ -31,7 +31,7 @@ func TestFloat32RangeChecker(t *testing.T) {
 	a.Error(checker(float32(2)))
 
 	checker2 := Float32RangeChecker(0.0, 1.0, false, false)
-	a.Error(checker(1))
+	a.NoError(checker(1))
 	a.Error(checker2(float32(-1)))
 	a.Error(checker2(float32(0)))
 	a.NoError(checker2(float32(0.5)))
@@ -43,7 +43,7 @@ func TestIntRangeChecker(t *testing.T) {
 	a := assert.New(t)
 
 	checker := IntRangeChecker(0, 2, true, true)
-	a.Error(checker(1.0))
+	a.NoError(checker(1.0))
 	a.Error(checker(int(-1)))
 	a.NoError(checker(int(0)))
 	a.NoError(checker(int(1)))
@@ -51,7 +51,7 @@ func TestIntRangeChecker(t *testing.T) {
 	a.Error(checker(int(3)))
 
 	checker2 := IntRangeChecker(0, 2, false, false)
-	a.Error(checker(1.0))
+	a.NoError(checker(1.0))
 	a.Error(checker2(int(-1)))
 	a.Error(checker2(int(0)))
 	a.NoError(checker2(int(1)))
@@ -63,7 +63,6 @@ func TestIntChoicesChecker(t *testing.T) {
 	a := assert.New(t)
 
 	checker := IntChoicesChecker(0, 1, 2)
-	a.Error(checker(1.0))
 	a.Error(checker(-1))
 	a.NoError(checker(0))
 	a.NoError(checker(1))
@@ -75,8 +74,6 @@ func TestStringChoicesChecker(t *testing.T) {
 	a := assert.New(t)
 
 	checker := StringChoicesChecker("0", "1", "2")
-	a.Error(checker(1.0))
-	a.Error(checker(-1))
 	a.NoError(checker("0"))
 	a.NoError(checker("1"))
 	a.NoError(checker("2"))

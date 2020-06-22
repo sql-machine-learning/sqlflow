@@ -22,19 +22,18 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 )
 
-var attributeDictionary = attribute.Dictionary{
-	"eta": {attribute.Float, float32(0.3), `[default=0.3, alias: learning_rate]
+var attributeDictionary = attribute.Dictionary{}.
+	Float("eta", float32(0.3), `[default=0.3, alias: learning_rate]
 Step size shrinkage used in update to prevents overfitting. After each boosting step, we can directly get the weights of new features, and eta shrinks the feature weights to make the boosting process more conservative.
-range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)},
-	"num_class": {attribute.Int, nil, `Number of classes.
-range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)},
-	"objective":       {attribute.String, nil, `Learning objective`, nil},
-	"range.num_round": {attribute.IntList, nil, `[ default=[50, 100] ] The range of number of rounds for boosting.`, nil},
-	"range.max_depth": {attribute.IntList, nil, `[ default=[2, 8] ] The range of max depth during training.`, nil},
-	"validation.select": {attribute.String, nil, `[default=""]
+range: [0,1]`, attribute.Float32RangeChecker(0, 1, true, true)).
+	Int("num_class", nil, `Number of classes.
+range: [2, Infinity]`, attribute.IntLowerBoundChecker(2, true)).
+	String("objective", nil, `Learning objective`, nil).
+	IntList("range.num_round", nil, `[ default=[50, 100] ] The range of number of rounds for boosting.`, nil).
+	IntList("range.max_depth", nil, `[ default=[2, 8] ] The range of max depth during training.`, nil).
+	String("validation.select", nil, `[default=""]
 Specify the dataset for validation.
-example: "SELECT * FROM boston.train LIMIT 8"`, nil},
-}
+example: "SELECT * FROM boston.train LIMIT 8"`, nil)
 
 func resolveModelType(estimator string) (string, string, error) {
 	switch strings.ToUpper(estimator) {

@@ -79,7 +79,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 <tr>
 	<td>max_bin</td>
 	<td>%!s(<nil>)</td>
-	<td>used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features.</td>
+	<td>Only used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features.</td>
 </tr>
 <tr>
 	<td>max_delta_step</td>
@@ -153,7 +153,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>silent</td>
-	<td>%!s(<nil>)</td>
+	<td>bool</td>
 	<td>Whether to print messages while running boosting. Deprecated. Use verbosity instead.</td>
 </tr>
 <tr>

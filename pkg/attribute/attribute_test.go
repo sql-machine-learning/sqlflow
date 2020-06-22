@@ -123,17 +123,13 @@ func TestDictionaryNamedTypeChecker(t *testing.T) {
 func TestDictionaryValidate(t *testing.T) {
 	a := assert.New(t)
 
-	checker := func(i interface{}) error {
-		ii, ok := i.(int)
-		if !ok {
-			return fmt.Errorf("%T %v should of type integer", i, i)
-		}
-		if ii < 0 {
+	checker := func(i int) error {
+		if i < 0 {
 			return fmt.Errorf("some error")
 		}
 		return nil
 	}
-	tb := Dictionary{"a": {Int, 1, "attribute a", checker}, "b": {Float, 1, "attribute b", nil}}
+	tb := Dictionary{}.Int("a", 1, "attribute a", checker).Float("b", float32(1), "attribute b", nil)
 	a.NoError(tb.Validate(map[string]interface{}{"a": 1}))
 	a.EqualError(tb.Validate(map[string]interface{}{"a": -1}), "some error")
 	a.EqualError(tb.Validate(map[string]interface{}{"_a": -1}), fmt.Sprintf(errUnsupportedAttribute, "_a"))
@@ -165,7 +161,7 @@ func TestParamsDocs(t *testing.T) {
 func TestNewAndUpdateDictionary(t *testing.T) {
 	a := assert.New(t)
 
-	commonAttrs := Dictionary{"a": {Int, 1, "attribute a", nil}}
+	commonAttrs := Dictionary{}.Int("a", 1, "attribute a", nil)
 	specificAttrs := NewDictionaryFromModelDefinition("DNNClassifier", "model.")
 	a.Equal(len(specificAttrs), 12)
 	a.Equal(len(specificAttrs.Update(specificAttrs)), 12)
@@ -180,12 +176,12 @@ func TestNewAndUpdateDictionary(t *testing.T) {
 
 func TestDictionary_GenerateTableInHTML(t *testing.T) {
 	a := assert.New(t)
-	tb := Dictionary{
-		"a": {Int, 1, `this is a
+	tb := Dictionary{}.
+		Int("a", 1, `this is a
 multiple line
-doc string.`, nil},
-		"世界": {String, "", `42`, nil},
-	}
+doc string.`, nil).
+		String("世界", "", `42`, nil)
+
 	expected := `<table>
 <tr>
 	<td>Name</td>
