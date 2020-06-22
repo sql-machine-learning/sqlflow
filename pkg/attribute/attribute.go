@@ -321,8 +321,14 @@ func (d Dictionary) GenerateTableInHTML() string {
 	<td>%s</td>
 	<td>%s</td>
 </tr>`
+
+		var typ interface{} = desc.typ
+		if typ == nil {
+			typ = "undetermined"
+		}
+
 		// NOTE(tony): if the doc string has multiple lines, need to replace \n with <br>
-		s := fmt.Sprintf(t, k, desc.typ, strings.Replace(desc.doc, "\n", `<br>`, -1))
+		s := fmt.Sprintf(t, k, typ, strings.Replace(desc.doc, "\n", `<br>`, -1))
 		l = append(l, s)
 	}
 
