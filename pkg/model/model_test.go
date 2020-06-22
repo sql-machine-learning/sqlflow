@@ -42,12 +42,10 @@ const modelMeta = `
       "feature_name": "sepal_length",
       "dtype": "float32",
       "delimiter": "",
-      "shape": [
-        1
-      ],
+      "shape": [ 1 ],
       "is_sparse": false,
       "name": "sepal_length"
-    },
+    }
   },
   "label": {
     "feature_name": "class",
@@ -56,8 +54,8 @@ const modelMeta = `
     "shape": [],
     "is_sparse": false
   },
-  "evaluation": null,
- `
+  "evaluation": null
+}`
 
 func mockModelDir(a *assert.Assertions) (string, string) {
 	ws, err := ioutil.TempDir("/tmp", "model_ws")
@@ -93,7 +91,7 @@ func TestModelFileStore(t *testing.T) {
 	meta, err := ioutil.ReadFile(path.Join(dst, modelMetaFileName))
 	a.NoError(err)
 	a.Equal(modelMeta, string(meta))
-	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMeta("estimator"))
+	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMetaAsString("estimator"))
 }
 
 func TestModelDBStore(t *testing.T) {
@@ -118,11 +116,11 @@ func TestModelDBStore(t *testing.T) {
 	meta, err := ioutil.ReadFile(path.Join(dst, modelMetaFileName))
 	a.NoError(err)
 	a.Equal(modelMeta, string(meta))
-	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMeta("estimator"))
+	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMetaAsString("estimator"))
 
 	// only load meta
 	model, err = Load(table, "", db)
 	a.NoError(err)
-	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMeta("estimator"))
-	a.Equal("SELECT * FROM iris.train where class!=2", model.GetMeta("select"))
+	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMetaAsString("estimator"))
+	a.Equal("SELECT * FROM iris.train where class!=2", model.GetMetaAsString("select"))
 }

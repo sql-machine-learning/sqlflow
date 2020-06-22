@@ -99,9 +99,9 @@ func releaseModel(opts *options) error {
 		Tag:  opts.Version,
 		// (TODO: lhw) add following fields from model
 		Description:       "",
-		EvaluationMetrics: model.GetMeta("evaluation"),
-		ModelClassName:    model.GetMeta("class_name"),
-		ModelRepoImageUrl: model.GetMeta("model_repo_image"),
+		EvaluationMetrics: model.GetMetaAsString("evaluation"),
+		ModelClassName:    model.GetMetaAsString("class_name"),
+		ModelRepoImageUrl: model.GetMetaAsString("model_repo_image"),
 		ContentTar:        nil,
 		ContentUrl:        "",
 	}

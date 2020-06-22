@@ -51,8 +51,8 @@ func New(cwd, trainSelect string) *Model {
 		TrainSelect: trainSelect}
 }
 
-// GetMeta return specified metadata as string
-func (m *Model) GetMeta(key string) string {
+// GetMetaAsString return specified metadata as string
+func (m *Model) GetMetaAsString(key string) string {
 	if m.Meta == nil {
 		return ""
 	}
@@ -312,6 +312,6 @@ func decodeMeta(model *Model, meta []byte) error {
 	// (NOTE: lhw) we may decode more info later and make them
 	// as Model's fields
 	// for now, stay compatible with old interface
-	model.TrainSelect = model.GetMeta("original_sql")
+	model.TrainSelect = model.GetMetaAsString("original_sql")
 	return nil
 }
