@@ -310,7 +310,7 @@ func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 }
 
 func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
-	// TODO(minghong): Add the implementation in the following PR.
+	// TODO(brightcoder01): Add the implementation in the following PR.
 	return fmt.Errorf("ExecuteRun is not implemeneted in default executor yet.")
 }
 
