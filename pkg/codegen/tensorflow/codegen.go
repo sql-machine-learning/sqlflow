@@ -230,7 +230,7 @@ func constructLosses(trainStmt *ir.TrainStmt) {
 
 // InitializeAttributes initializes the attributes of TensorFlow and does type checking for them
 func InitializeAttributes(trainStmt *ir.TrainStmt) error {
-	attribute.ExtractSymbolOnce()
+	attribute.ExtractSQLFlowModelsSymbolOnce()
 	commonAttributes.ExportDefaults(trainStmt.Attributes)
 
 	modelAttr := attribute.NewDictionaryFromModelDefinition(trainStmt.Estimator, "model.")

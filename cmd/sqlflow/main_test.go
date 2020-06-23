@@ -593,7 +593,7 @@ LABEL class INTO sqlflow_models.my_model;`
 }
 
 func TestInputNavigation(t *testing.T) {
-	attribute.ExtractSymbolOnce()
+	attribute.ExtractSQLFlowModelsSymbolOnce()
 	a := assert.New(t)
 	s := newPromptState()
 	his1 := "history 1"
@@ -625,7 +625,7 @@ func TestInputNavigation(t *testing.T) {
 }
 
 func TestComplete(t *testing.T) {
-	attribute.ExtractSymbolOnce()
+	attribute.ExtractSQLFlowModelsSymbolOnce()
 	a := assert.New(t)
 	s := newPromptState()
 	p := prompt.NewBuffer()

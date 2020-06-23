@@ -378,13 +378,6 @@ func NewDictionaryFromModelDefinition(estimator, prefix string) Dictionary {
 	return d
 }
 
-// PremadeModelParamsDocs stores parameters and documents of all known models
-var PremadeModelParamsDocs map[string]map[string]string
-var extractSymbolOnce sync.Once
-
-// OptimizerParamsDocs stores parameters and documents of optimizers
-var OptimizerParamsDocs map[string]map[string]string
-
 // ExtractSymbol extracts parameter documents of Python modules from doc strings
 func ExtractSymbol(module ...string) {
 	cmd := exec.Command("python", "-uc", fmt.Sprintf("__import__('symbol_extractor').print_param_doc('%s')", strings.Join(module, "', '")))
@@ -398,9 +391,11 @@ func ExtractSymbol(module ...string) {
 	}
 }
 
-// ExtractSymbolOnce extracts parameter documents from python doc strings using sync.Once
-func ExtractSymbolOnce() {
-	extractSymbolOnce.Do(func() { ExtractSymbol("sqlflow_models") })
+var extractSQLFlowModelsSymbolOnce sync.Once
+
+// ExtractSQLFlowModelsSymbolOnce extracts parameter documents from python doc strings using sync.Once
+func ExtractSQLFlowModelsSymbolOnce() {
+	extractSQLFlowModelsSymbolOnce.Do(func() { ExtractSymbol("sqlflow_models") })
 }
 
 func removeUnnecessaryParams() {
@@ -413,11 +408,5 @@ func removeUnnecessaryParams() {
 }
 
 func init() {
-	if err := json.Unmarshal([]byte(ModelParameterJSON), &PremadeModelParamsDocs); err != nil {
-		panic(err) // assertion
-	}
-	if err := json.Unmarshal([]byte(OptimizerParameterJSON), &OptimizerParamsDocs); err != nil {
-		panic(err) // assertion
-	}
 	removeUnnecessaryParams()
 }
