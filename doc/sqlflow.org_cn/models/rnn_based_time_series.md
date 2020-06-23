@@ -1,6 +1,6 @@
 # RNNBasedTimeSeriesModel
 
-[RNNBasedTimeSeriesModel](https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/rnn_based_time_series.py) 是基于 LSTM 结构实现的神经网络模型，常用于时间序列场景的数据预测。
+[RNNBasedTimeSeriesModel](https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/rnn_based_time_series.py) 是基于 RNN 结构实现的神经网络模型，常用于时间序列场景的数据预测。
 
 ## 输入数据格式
 
