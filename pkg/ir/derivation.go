@@ -162,13 +162,18 @@ func newDefaultFieldDesc(fieldName string) *FieldDesc {
 
 // fillCSVFieldDesc will set fieldDescMap[fieldName] = FieldDesc for parsing the CSV data
 func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) error {
+	size := 1
+	for s := range fieldDescMap[fieldName].Shape {
+		size *= s
+	}
+
 	values := strings.Split(cellData, ",")
 	// set shape only when the column is "DENSE"
 	if fieldDescMap[fieldName].IsSparse == false && fieldDescMap[fieldName].Shape == nil {
 		fieldDescMap[fieldName].Shape = []int{len(values)}
 	}
-	if fieldDescMap[fieldName].IsSparse == false && fieldDescMap[fieldName].Shape[0] != len(values) {
-		return fmt.Errorf("column %s is csv format sparse tensor, but got DENSE column or not specified", fieldName)
+	if fieldDescMap[fieldName].IsSparse == false && size != len(values) {
+		return fmt.Errorf("column %s should be csv format dense tensor of %d element(s), but got %d element(s)", fieldName, size, len(values))
 	}
 	fieldDescMap[fieldName].Delimiter = ","
 	// get dtype for csv values, use int64 and float32 only
@@ -191,7 +196,7 @@ func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName stri
 }
 
 // fillNonCSVFieldDesc will set fieldDescMap[fieldName] = FieldDesc for parsing the numerical and string data
-func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) error {
+func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) {
 	_, err := strconv.ParseInt(cellData, 10, 32)
 	if err != nil {
 		_, err := strconv.ParseFloat(cellData, 32)
@@ -220,7 +225,6 @@ func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName s
 			fieldDescMap[fieldName].Shape = []int{1}
 		}
 	}
-	return nil
 }
 
 func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap) error {
@@ -246,7 +250,10 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		case "CHAR", "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
 			if csvRegex.MatchString(*cellData) {
-				fillCSVFieldDesc(*cellData, fieldDescMap, fld)
+				err := fillCSVFieldDesc(*cellData, fieldDescMap, fld)
+				if err != nil {
+					return err
+				}
 			} else {
 				fillNonCSVFieldDesc(*cellData, fieldDescMap, fld)
 			}
