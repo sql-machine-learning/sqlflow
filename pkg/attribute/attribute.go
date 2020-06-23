@@ -324,7 +324,7 @@ func (d Dictionary) GenerateTableInHTML() string {
 
 		var typ interface{} = desc.typ
 		if typ == nil {
-			typ = "undetermined"
+			typ = "unknown"
 		}
 
 		// NOTE(tony): if the doc string has multiple lines, need to replace \n with <br>

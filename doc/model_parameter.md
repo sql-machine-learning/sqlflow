@@ -78,7 +78,7 @@ INTO sqlflow_models.my_xgb_regression_model;
 </tr>
 <tr>
 	<td>max_bin</td>
-	<td>undetermined</td>
+	<td>unknown</td>
 	<td>Only used if tree_method is set to hist, Maximum number of discrete bins to bucket continuous features.</td>
 </tr>
 <tr>
