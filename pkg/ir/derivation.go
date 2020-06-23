@@ -173,7 +173,11 @@ func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName stri
 		fieldDescMap[fieldName].Shape = []int{len(values)}
 	}
 	if fieldDescMap[fieldName].IsSparse == false && size != len(values) {
-		return fmt.Errorf("column %s should be csv format dense tensor of %d element(s), but got %d element(s)", fieldName, size, len(values))
+		if size > 1 {
+			return fmt.Errorf("column %s should be csv format dense tensor of %d element(s), but got %d element(s)", fieldName, size, len(values))
+		}
+		// implicit set shape if shape is not provided in SQL COLUMN clause
+		fieldDescMap[fieldName].Shape = []int{len(values)}
 	}
 	fieldDescMap[fieldName].Delimiter = ","
 	// get dtype for csv values, use int64 and float32 only
