@@ -940,24 +940,11 @@ func parseShape(e *parser.Expr) ([]int, error) {
 	return shape, nil
 }
 
-func parseAttrsGroup(attrs map[string]interface{}, group string) map[string]interface{} {
-	g := make(map[string]interface{})
-	for k, v := range attrs {
-		if strings.HasPrefix(k, group) {
-			subk := strings.SplitN(k, group, 2)
-			if len(subk[1]) > 0 {
-				g[subk[1]] = v
-			}
-		}
-	}
-	return g
-}
-
 func parseValidationSelect(attrs map[string]interface{}) (string, error) {
-	validation := parseAttrsGroup(attrs, "validation.")
-	ds, ok := validation["select"].(string)
-	if ok {
-		return ds, nil
+	if attr, ok := attrs["validation.select"]; ok {
+		if attrStr, ok := attr.(string); ok {
+			return attrStr, nil
+		}
 	}
 	return "", fmt.Errorf("validation.select not found")
 }

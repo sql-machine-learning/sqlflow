@@ -65,14 +65,6 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 	return rd
 }
 
-func isXGBoostModel(estimator string) bool {
-	return strings.HasPrefix(strings.ToUpper(estimator), `XGB`)
-}
-
-func isKMeansModel(estimator string) bool {
-	return strings.ToUpper(estimator) == "KMEANS"
-}
-
 func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
 	switch s := stmt.(type) {
 	case *ir.TrainStmt:
