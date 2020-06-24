@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/model"
 	pb "sqlflow.org/sqlflow/pkg/proto"
@@ -33,7 +34,18 @@ func getModelZooServerConn(opts *options) (*grpc.ClientConn, error) {
 	if opts.ModelZooServer == "" {
 		return nil, fmt.Errorf("Model Zoo server is not specified")
 	}
-	conn, err := grpc.Dial(opts.ModelZooServer, grpc.WithInsecure())
+
+	var err error
+	var conn *grpc.ClientConn
+	if opts.CertFile != "" {
+		creds, err := credentials.NewClientTLSFromFile(opts.CertFile, "")
+		if err != nil {
+			return nil, err
+		}
+		conn, err = grpc.Dial(opts.ModelZooServer, grpc.WithTransportCredentials(creds))
+	} else {
+		conn, err = grpc.Dial(opts.ModelZooServer, grpc.WithInsecure())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create client error: %v", err)
 	}
@@ -95,10 +107,9 @@ func releaseModel(opts *options) error {
 	}
 	nameParts := strings.Split(opts.ModelName, ".")
 	request := &pb.ReleaseModelRequest{
-		Name: nameParts[len(nameParts)-1],
-		Tag:  opts.Version,
-		// (TODO: lhw) add following fields from model
-		Description:       "",
+		Name:              nameParts[len(nameParts)-1],
+		Tag:               opts.Version,
+		Description:       opts.Description,
 		EvaluationMetrics: model.GetMetaAsString("evaluation"),
 		ModelClassName:    model.GetMetaAsString("class_name"),
 		ModelRepoImageUrl: model.GetMetaAsString("model_repo_image"),
