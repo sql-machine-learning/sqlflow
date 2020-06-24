@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"sqlflow.org/sqlflow/pkg/database"
@@ -26,7 +27,7 @@ import (
 
 const numSamples = 1000
 
-// FetchSamples returns Rows accoding to the input Query
+// FetchSamples returns Rows according to the input Query
 func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
 	re, err := regexp.Compile("(?i)LIMIT [0-9]+")
 	if err != nil {
@@ -38,7 +39,14 @@ func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
 	} else {
 		// TODO(typhoonzero): there may be complex SQL statements that contain multiple
 		// LIMIT clause, using regex replace will replace them all.
-		re.ReplaceAllString(query, fmt.Sprintf("LIMIT %d", numSamples))
+		query = re.ReplaceAllStringFunc(query, func(limitClause string) string {
+			splitted := strings.SplitN(limitClause, " ", 2)
+			limitNum, _ := strconv.Atoi(splitted[1])
+			if limitNum > numSamples {
+				limitNum = numSamples
+			}
+			return fmt.Sprintf("LIMIT %d", limitNum)
+		})
 	}
 	return db.Query(query)
 }

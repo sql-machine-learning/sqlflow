@@ -167,7 +167,6 @@ func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 			return e
 		}
 	}
-	ioutil.WriteFile("train_program.py", []byte(code), 0644)
 	if e := s.runCommand(code, false); e != nil {
 		return e
 	}
@@ -308,6 +307,11 @@ func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *pytho
 func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 	// TODO(sneaxiy): to be implemented
 	return fmt.Errorf("ExecuteOptimize is not supported in default submitter")
+}
+
+func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
+	// TODO(brightcoder01): Add the implementation in the following PR.
+	return fmt.Errorf("ExecuteRun is not implemeneted in default executor yet")
 }
 
 func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {

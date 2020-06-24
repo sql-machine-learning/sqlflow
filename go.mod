@@ -10,6 +10,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 	github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f // indirect
 	github.com/beltran/gohive v1.0.0 // indirect
+	github.com/bitly/go-simplejson v0.5.0
 	github.com/c-bata/go-prompt v0.0.0-20190826134812-0f95e1d1de2e
 	github.com/cosiner/argv v0.0.1 // indirect
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815

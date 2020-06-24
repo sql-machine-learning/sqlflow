@@ -142,7 +142,7 @@ func TestParamsDocs(t *testing.T) {
 	a := assert.New(t)
 
 	a.Equal(11, len(PremadeModelParamsDocs))
-	ExtractSymbolOnce()
+	ExtractSQLFlowModelsSymbolOnce()
 	a.Equal(20, len(PremadeModelParamsDocs))
 	a.Equal(len(PremadeModelParamsDocs["DNNClassifier"]), 12)
 	a.NotContains(PremadeModelParamsDocs["DNNClassifier"], "feature_columns")
