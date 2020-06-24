@@ -305,7 +305,7 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		return s.submitAlisaPyODPSTask(string(code), strings.Join(args, " "))
 	}
 
-	return fmt.Errorf("Alisa executor only supports Python program and cannot execute %s", program)
+	return fmt.Errorf("Alisa executor only supports Python program but cannot execute %s", program)
 }
 
 func (s *alisaExecutor) GetTrainStmtFromModel() bool { return false }
