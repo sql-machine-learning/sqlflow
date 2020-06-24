@@ -314,48 +314,59 @@ func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 
 func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	if (len(runStmt.Parameters) == 0) {
-		return fmt.Errorf("")
+		return fmt.Errorf("Parameters shouldn't be empty")
 	}
 
-	// The first parameter is the executable name
-	executable := runStmt.Parameters[0]
-	fileExtension := filepath.Ext(executable)
+    context := map[string]string {
+		"SQLFLOW_TO_RUN_SELECT": runStmt.Select,
+		"SQLFLOW_TO_RUN_INTO": runStmt.Into,
+	}
+
+	// The first parameter is the program name
+	program := runStmt.Parameters[0]
+	fileExtension := filepath.Ext(program)
 	if len(fileExtension) == 0 {
 		// If the file extension is empty, it's an executable binary.
-
-	}
-	else if fileExtension == ".py" {
-		// If the first parameter is python Program
-		if _, e := os.Stat(executable); e != nil {
-			return fmt.Errorf("Failed to get the file %s", executable)
-		}
-
-		// Build the arguments
-		args := runStmt.Parameters[1:]
-
-		// Build the environment variables
-		os.Setenv("SQLFLOW_TO_RUN_SELECT", runStmt.Select)
-		os.Setenv("SQLFLOW_TO_RUN_INTO", runStmt.Into)
-
-		cmd := exec.Command("python", executable, strings.Join(args, " "))
+		// Build the command
+		cmd := exec.Command(program, runStmt.Parameters[1:]...)
 		cmd.Dir = s.Cwd
 
-		var stderr bytes.Buffer
-		var stdout bytes.Buffer
-		wStdout := bufio.NewWriter(&stdout)
-		wStderr := bufio.NewWriter(&stderr)
-		cmd.Stdout, cmd.Stderr = wStdout, wStderr
-
-		if e := cmd.Run(); e != nil {
-			fmt.Printf("The program error is: %s\n", stderr.String())
-			return e
+		return executeCommand(cmd, context)
+	} else if fileExtension == ".py" {
+		// If the first parameter is python Program
+		if _, e := os.Stat(program); e != nil {
+			return fmt.Errorf("Failed to get the python file %s", program)
 		}
 
-		fmt.Printf("The program output is: %s\n", stdout.String())
-		return nil
+		// Build the command
+		cmd := exec.Command("python", runStmt.Parameters...)
+		cmd.Dir = s.Cwd
+
+		return executeCommand(cmd, context)
+	} else {
+		// TODO(brightcoder01): Implement the execution of the program built using other script languages.
+		return fmt.Errorf("The other executable except Python program is not supported yet")
+	}
+}
+
+func executeCommand(cmd *exec.Cmd, context map[string]string) error {
+	for k, v := range context {
+		os.Setenv(k, v)
 	}
 
-	return fmt.Errorf("The other executable except Python program is not supported yet")
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+	wStdout := bufio.NewWriter(&stdout)
+	wStderr := bufio.NewWriter(&stderr)
+	cmd.Stdout, cmd.Stderr = wStdout, wStderr
+
+	if e := cmd.Run(); e != nil {
+		fmt.Printf("The program error is: %s\n", stderr.String())
+		return e
+	}
+
+	fmt.Printf("The program output is: %s\n", stdout.String())
+	return nil
 }
 
 func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {

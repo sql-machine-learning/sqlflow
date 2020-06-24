@@ -278,15 +278,16 @@ func (s *alisaExecutor) ExecuteOptimize(es *ir.OptimizeStmt) error {
 func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	// TODO(brightcoder01): Add the implementation in the following PR.
 	if (len(runStmt.Parameters) == 0) {
-		return nil
+		return fmt.Errorf("Parameters shouldn't be empty")
 	}
 
-	// If the first parameter is python Program
-	executable := runStmt.Parameters[0]
-	fileExtension := filepath.Ext(executable)
+	program := runStmt.Parameters[0]
+	fileExtension := filepath.Ext(program)
+
+	// If the first parameter is a Python program
 	if fileExtension == ".py" {
-		if _, e := os.Stat(executable); e != nil {
-			return fmt.Errorf("Failed to get the file %s", executable)
+		if _, e := os.Stat(program); e != nil {
+			return fmt.Errorf("Cannot find the Python file %s", program)
 		}
 
 		// Build the arguments
@@ -295,7 +296,7 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		args = append(args, fmt.Sprintf("SQLFLOW_TO_RUN_INTO=%s", runStmt.Into))
 
 		// Read the content of Python program
-		code, e := ioutil.ReadFile(executable)
+		code, e := ioutil.ReadFile(program)
 		if e != nil {
 			return e
 		}
@@ -304,7 +305,7 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		return s.submitAlisaPyODPSTask(string(code), strings.Join(args, " "))
 	}
 
-	return fmt.Errorf("The other executable except Python program is not supported yet")
+	return fmt.Errorf("Alisa executor only supports Python program and cannot execute %s", program)
 }
 
 func (s *alisaExecutor) GetTrainStmtFromModel() bool { return false }
