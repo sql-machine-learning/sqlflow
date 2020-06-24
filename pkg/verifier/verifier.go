@@ -45,7 +45,7 @@ func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
 			if limitNum > numSamples {
 				limitNum = numSamples
 			}
-			return fmt.Sprintf("LIMIT %d", numSamples)
+			return fmt.Sprintf("LIMIT %d", limitNum)
 		})
 	}
 	return db.Query(query)
