@@ -249,17 +249,24 @@ func runStmt(serverAddr string, stmt string, isTerminal bool, ds string) error {
 }
 
 func runStmtOnServer(serverAddr string, stmt string, isTerminal bool, ds string) error {
+	// render output according to environment
+	logFlags := log.Flags()
+	log.SetFlags(0)
+	defer log.SetFlags(logFlags)
+
 	if !isTerminal {
 		fmt.Println("sqlflow>", stmt)
 	}
 
 	table, err := tablewriter.Create("ascii", tablePageSize, os.Stdout)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	// connect to sqlflow server and run sql program
 	conn, err := createRPCConn(serverAddr)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer conn.Close()
@@ -269,12 +276,10 @@ func runStmtOnServer(serverAddr string, stmt string, isTerminal bool, ds string)
 	req := sqlRequest(stmt, ds)
 	stream, err := client.Run(ctx, req)
 	if err != nil {
+		log.Println(err) // log the connection failure
 		return err
 	}
-	// render output according to environment
-	logFlags := log.Flags()
-	log.SetFlags(0)
-	defer log.SetFlags(logFlags)
+
 	renderCtx := &renderContext{
 		client:     client,
 		ctx:        ctx,
