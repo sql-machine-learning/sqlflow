@@ -39,7 +39,7 @@ func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
 	} else {
 		// TODO(typhoonzero): there may be complex SQL statements that contain multiple
 		// LIMIT clause, using regex replace will replace them all.
-		re.ReplaceAllStringFunc(query, func(limitClause string) string {
+		query = re.ReplaceAllStringFunc(query, func(limitClause string) string {
 			splitted := strings.SplitN(limitClause, " ", 2)
 			limitNum, _ := strconv.Atoi(splitted[1])
 			if limitNum > numSamples {
