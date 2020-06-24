@@ -169,6 +169,8 @@ def read_feature(raw_val, feature_spec, feature_name):
         else:
             raise ValueError('unrecognize dtype {}'.format(
                 feature_spec[feature_name]["dtype"]))
+    elif feature_spec["dtype"] == "string":
+        return (str(raw_val), )
     else:
         return (raw_val, )
 

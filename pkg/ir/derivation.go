@@ -62,41 +62,22 @@ func makeColumnMap(parsedFeatureColumns map[string][]FeatureColumn) ColumnMap {
 }
 
 func initColumnMap(fcMap ColumnMap, fc FeatureColumn, target string) {
-	// CrossColumn use two columns as input, record the key for each column
-	if cc, ok := fc.(*CrossColumn); ok {
-		for idx, k := range cc.Keys {
-			// if the key of CrossColumn is a string, generate a default numeric column.
-			if strKey, ok := k.(string); ok {
-				cc.Keys[idx] = &NumericColumn{
-					FieldDesc: &FieldDesc{
-						Name:      strKey,
-						DType:     Float,
-						Delimiter: "",
-						Shape:     []int{1},
-						IsSparse:  false,
-					},
-				}
-				fcMap[target][strKey] = append(fcMap[target][strKey], cc)
-			} else if nc, ok := k.(*NumericColumn); ok {
-				fcMap[target][nc.FieldDesc.Name] = append(fcMap[target][nc.FieldDesc.Name], cc)
-			}
+	switch c := fc.(type) {
+	// embedding/indicator column may got len(GetFieldDesc()) == 0
+	case *EmbeddingColumn:
+		if len(fc.GetFieldDesc()) == 0 {
+			fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+			return
 		}
-	} else {
-		switch c := fc.(type) {
-		// embedding/indicator column may got len(GetFieldDesc()) == 0
-		case *EmbeddingColumn:
-			if len(fc.GetFieldDesc()) == 0 {
-				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
-				return
-			}
 
-		case *IndicatorColumn:
-			if len(fc.GetFieldDesc()) == 0 {
-				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
-				return
-			}
+	case *IndicatorColumn:
+		if len(fc.GetFieldDesc()) == 0 {
+			fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+			return
 		}
-		fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
+	}
+	for _, fd := range fc.GetFieldDesc() {
+		fcMap[target][fd.Name] = append(fcMap[target][fd.Name], fc)
 	}
 }
 
@@ -510,33 +491,24 @@ func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTa
 	for _, target := range columnTargets {
 		targetFeatureColumnMap := fcMap[target]
 		trainStmt.Features[target] = []FeatureColumn{}
-		// append cross columns at the end of all selected fields.
-		crossColumns := []*CrossColumn{}
 		for _, slctKey := range selectFieldNames {
 			// label should not be added to feature columns
 			if slctKey == trainStmt.Label.GetFieldDesc()[0].Name {
 				continue
 			}
+
 			for _, fc := range targetFeatureColumnMap[slctKey] {
-				if cc, ok := fc.(*CrossColumn); ok {
-					crossColumns = append(crossColumns, cc)
-					continue
+				exists := false
+				for _, resultFC := range trainStmt.Features[target] {
+					if fc == resultFC {
+						exists = true
+						break
+					}
 				}
-				trainStmt.Features[target] = append(trainStmt.Features[target], fc)
-			}
-		}
-		// remove duplicated CrossColumns pointers, for CROSS(c1, c2), both fcMap[c1], fcMap[c2] will
-		// record the CrossColumn pointer
-		for i := 0; i < len(crossColumns); i++ {
-			exists := false
-			for v := 0; v < i; v++ {
-				if crossColumns[v] == crossColumns[i] {
-					exists = true
-					break
+
+				if !exists {
+					trainStmt.Features[target] = append(trainStmt.Features[target], fc)
 				}
-			}
-			if !exists {
-				trainStmt.Features[target] = append(trainStmt.Features[target], crossColumns[i])
 			}
 		}
 	}

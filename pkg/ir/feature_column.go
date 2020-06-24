@@ -21,6 +21,12 @@ type FeatureColumn interface {
 	ApplyTo(*FieldDesc) (FeatureColumn, error)
 }
 
+// CategoricalColumn corresponds to categorical column
+type CategoricalColumn interface {
+	FeatureColumn
+	NumClass() int64
+}
+
 // FieldDesc describes a field used as the input to a feature column.
 type FieldDesc struct {
 	Name      string `json:"name"`      // the name for a field, e.g. "petal_length"
@@ -85,19 +91,28 @@ func (c *BucketColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	}, nil
 }
 
+// NumClass returns class number of BucketColumn
+func (c *BucketColumn) NumClass() int64 {
+	return int64(len(c.Boundaries)) + 1
+}
+
 // CrossColumn represents `tf.feature_column.crossed_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/crossed_column
 type CrossColumn struct {
 	Keys           []interface{}
-	HashBucketSize int
+	HashBucketSize int64
 }
 
 // GetFieldDesc returns FieldDesc member
 func (c *CrossColumn) GetFieldDesc() []*FieldDesc {
 	var retKeys []*FieldDesc
 	for idx, k := range c.Keys {
-		if _, ok := k.(string); ok {
-			continue
+		if strKey, ok := k.(string); ok {
+			retKeys = append(retKeys, &FieldDesc{
+				Name:  strKey,
+				DType: String,
+				Shape: []int{1},
+			})
 		} else if _, ok := k.(FeatureColumn); ok {
 			retKeys = append(retKeys, c.Keys[idx].(*NumericColumn).GetFieldDesc()[0])
 		}
@@ -110,6 +125,11 @@ func (c *CrossColumn) GetFieldDesc() []*FieldDesc {
 // ApplyTo applies the FeatureColumn to a new field
 func (c *CrossColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	return nil, fmt.Errorf("CrossColumn doesn't support the method ApplyTo")
+}
+
+// NumClass returns class number of CrossColumn
+func (c *CrossColumn) NumClass() int64 {
+	return c.HashBucketSize
 }
 
 // CategoryIDColumn represents `tf.feature_column.categorical_column_with_identity`
@@ -129,6 +149,11 @@ func (c *CategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	return &CategoryIDColumn{other, c.BucketSize}, nil
 }
 
+// NumClass returns class number of CategoryIDColumn
+func (c *CategoryIDColumn) NumClass() int64 {
+	return c.BucketSize
+}
+
 // CategoryHashColumn represents `tf.feature_column.categorical_column_with_hash_bucket`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_hash_bucket
 type CategoryHashColumn struct {
@@ -146,11 +171,16 @@ func (c *CategoryHashColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	return &CategoryHashColumn{other, c.BucketSize}, nil
 }
 
+// NumClass returns class number of CategoryHashColumn
+func (c *CategoryHashColumn) NumClass() int64 {
+	return c.BucketSize
+}
+
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/sequence_categorical_column_with_identity
 type SeqCategoryIDColumn struct {
 	FieldDesc  *FieldDesc
-	BucketSize int
+	BucketSize int64
 }
 
 // GetFieldDesc returns FieldDesc member
@@ -163,10 +193,15 @@ func (c *SeqCategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	return &SeqCategoryIDColumn{other, c.BucketSize}, nil
 }
 
+// NumClass returns class number of SeqCategoryIDColumn
+func (c *SeqCategoryIDColumn) NumClass() int64 {
+	return c.BucketSize
+}
+
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/embedding_column
 type EmbeddingColumn struct {
-	CategoryColumn FeatureColumn
+	CategoryColumn CategoricalColumn
 	Dimension      int
 	Combiner       string
 	Initializer    string
@@ -193,9 +228,15 @@ func (c *EmbeddingColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	}
 	if c.CategoryColumn != nil {
 		var err error
-		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(other)
+		fc, err := c.CategoryColumn.ApplyTo(other)
 		if err != nil {
 			return nil, err
+		}
+
+		if categoryFc, ok := fc.(CategoricalColumn); !ok {
+			ret.CategoryColumn = categoryFc
+		} else {
+			return nil, fmt.Errorf("invalid EmbeddingColumn.ApplyTo return value")
 		}
 	}
 	return ret, nil
