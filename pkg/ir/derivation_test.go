@@ -242,27 +242,30 @@ func TestFeatureDerivation(t *testing.T) {
 	fc1 = trainStmt.Features["feature_columns"][0]
 	nc, ok = fc1.(*NumericColumn)
 	a.True(ok)
+	a.Equal("c1", nc.FieldDesc.Name)
 
 	fc2 = trainStmt.Features["feature_columns"][1]
-	nc, ok = fc2.(*NumericColumn)
+	cc, ok := fc2.(*CrossColumn)
 	a.True(ok)
+	a.Equal(int64(256), cc.HashBucketSize)
+	crossNc2, ok := cc.Keys[0].(*NumericColumn)
+	a.True(ok)
+	a.Equal("c1", crossNc2.FieldDesc.Name)
+	a.Equal(Float, crossNc2.FieldDesc.DType)
+	crossNc3, ok := cc.Keys[1].(*NumericColumn)
+	a.True(ok)
+	a.Equal("c2", crossNc3.FieldDesc.Name)
+	a.Equal(Float, crossNc3.FieldDesc.DType)
 
 	fc3 = trainStmt.Features["feature_columns"][2]
 	nc, ok = fc3.(*NumericColumn)
 	a.True(ok)
+	a.Equal("c2", nc.FieldDesc.Name)
 
 	fc4 = trainStmt.Features["feature_columns"][3]
-	cc, ok := fc4.(*CrossColumn)
+	nc, ok = fc4.(*NumericColumn)
 	a.True(ok)
-	a.Equal(256, cc.HashBucketSize)
-	nc4, ok := cc.Keys[0].(*NumericColumn)
-	a.True(ok)
-	a.Equal("c1", nc4.FieldDesc.Name)
-	a.Equal(Float, nc4.FieldDesc.DType)
-	nc5, ok := cc.Keys[1].(*NumericColumn)
-	a.True(ok)
-	a.Equal("c2", nc5.FieldDesc.Name)
-	a.Equal(Float, nc5.FieldDesc.DType)
+	a.Equal("c3", nc.FieldDesc.Name)
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }
