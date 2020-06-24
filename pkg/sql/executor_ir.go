@@ -103,6 +103,9 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 			} else if sql.Evaluate {
 				logger.Info("resolveSQL:evaluate")
 				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else if sql.Run {
+				logger.Info("resolveSQL:run")
+				r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
 			} else {
 				return nil, fmt.Errorf("unknown extended SQL statement type")
 			}
@@ -189,6 +192,8 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Optimize {
 			r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
+		} else if sql.Run {
+			r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
 		}
 
 	} else {

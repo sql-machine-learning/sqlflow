@@ -21,7 +21,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -311,8 +313,49 @@ func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 }
 
 func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
-	// TODO(brightcoder01): Add the implementation in the following PR.
-	return fmt.Errorf("ExecuteRun is not implemeneted in default executor yet")
+	if (len(runStmt.Parameters) == 0) {
+		return fmt.Errorf("")
+	}
+
+	// The first parameter is the executable name
+	executable := runStmt.Parameters[0]
+	fileExtension := filepath.Ext(executable)
+	if len(fileExtension) == 0 {
+		// If the file extension is empty, it's an executable binary.
+
+	}
+	else if fileExtension == ".py" {
+		// If the first parameter is python Program
+		if _, e := os.Stat(executable); e != nil {
+			return fmt.Errorf("Failed to get the file %s", executable)
+		}
+
+		// Build the arguments
+		args := runStmt.Parameters[1:]
+
+		// Build the environment variables
+		os.Setenv("SQLFLOW_TO_RUN_SELECT", runStmt.Select)
+		os.Setenv("SQLFLOW_TO_RUN_INTO", runStmt.Into)
+
+		cmd := exec.Command("python", executable, strings.Join(args, " "))
+		cmd.Dir = s.Cwd
+
+		var stderr bytes.Buffer
+		var stdout bytes.Buffer
+		wStdout := bufio.NewWriter(&stdout)
+		wStderr := bufio.NewWriter(&stderr)
+		cmd.Stdout, cmd.Stderr = wStdout, wStderr
+
+		if e := cmd.Run(); e != nil {
+			fmt.Printf("The program error is: %s\n", stderr.String())
+			return e
+		}
+
+		fmt.Printf("The program output is: %s\n", stdout.String())
+		return nil
+	}
+
+	return fmt.Errorf("The other executable except Python program is not supported yet")
 }
 
 func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {

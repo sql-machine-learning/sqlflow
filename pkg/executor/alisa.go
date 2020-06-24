@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -60,7 +61,26 @@ func (s *alisaExecutor) submitAlisaTask(submitCode, codeResourceURL, paramsResou
 		return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
 	}
 	return nil
+}
 
+func (s *alisaExecutor) submitAlisaPyODPSTask(submitCode, args string) error {
+	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	cfg, e := goalisa.ParseDSN(dsName)
+	if e != nil {
+		return e
+	}
+
+	cfg.Verbose = true
+	alisa := goalisa.New(cfg)
+	var b bytes.Buffer
+	w := io.MultiWriter(os.Stdout, &b)
+	if e := alisa.ExecPyODPSWithWriter(submitCode, args, w); e != nil {
+		return fmt.Errorf("PyODPS task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
+	}
+	return nil
 }
 
 func (s *alisaExecutor) ExecuteTrain(ts *ir.TrainStmt) (e error) {
@@ -257,7 +277,34 @@ func (s *alisaExecutor) ExecuteOptimize(es *ir.OptimizeStmt) error {
 
 func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	// TODO(brightcoder01): Add the implementation in the following PR.
-	return fmt.Errorf("ExecuteRun is not implemeneted in alisa executor yet")
+	if (len(runStmt.Parameters) == 0) {
+		return nil
+	}
+
+	// If the first parameter is python Program
+	executable := runStmt.Parameters[0]
+	fileExtension := filepath.Ext(executable)
+	if fileExtension == ".py" {
+		if _, e := os.Stat(executable); e != nil {
+			return fmt.Errorf("Failed to get the file %s", executable)
+		}
+
+		// Build the arguments
+		args := runStmt.Parameters[1:]
+		args = append(args, fmt.Sprintf("SQLFLOW_TO_RUN_SELECT=%s", runStmt.Select))
+		args = append(args, fmt.Sprintf("SQLFLOW_TO_RUN_INTO=%s", runStmt.Into))
+
+		// Read the content of Python program
+		code, e := ioutil.ReadFile(executable)
+		if e != nil {
+			return e
+		}
+
+		// Submit a PyODPS task
+		return s.submitAlisaPyODPSTask(string(code), strings.Join(args, " "))
+	}
+
+	return fmt.Errorf("The other executable except Python program is not supported yet")
 }
 
 func (s *alisaExecutor) GetTrainStmtFromModel() bool { return false }
