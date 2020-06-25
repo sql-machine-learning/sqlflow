@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,7 +37,7 @@ function get_domain_from_url() {
 
 # Find the fastest URL. The parameter consists of URLS separated by whitespace.
 function find_fastest_url() {
-    local speed=99999.9
+    local speed=99999
     # shellcheck disable=SC2068
     for i in $@; do
         local domain
@@ -48,10 +49,11 @@ function find_fastest_url() {
         cur_speed=$(ping -c 4 -W 2 "$domain" | tail -1 \
                            | grep "/avg/" | awk '{print $4}'\
                            | cut -d '/' -f 2)
-        cur_speed=${cur_speed:-99999.9}
+        cur_speed=${cur_speed:-99999}
+        cur_speed=${cur_speed/.*/}
 
         # c.f. https://stackoverflow.com/a/31087503/724872
-        if (( $(echo "$cur_speed < $speed" | bc -l) )); then
+        if [[ $cur_speed -lt $speed ]]; then
             local best_domain="$i"
             speed="$cur_speed"
         fi
@@ -243,5 +245,19 @@ function choose_fastest_pip_source() {
     echo "Find fastest PIP mirror ..."
     mkdir -p "$HOME"/.pip
     find_fastest_pip_mirror > "$HOME"/.pip/pip.conf
+}
+
+function choose_fastest_alpine_source() {
+    default="http://dl-cdn.alpinelinux.org"
+    read -r -d '\t' urls <<EOM
+$default
+http://mirrors.tuna.tsinghua.edu.cn
+\t
+EOM
+
+    best=$(find_fastest_url $urls)
+    if [[ "$best" != "$default" ]]; then
+        sed -i "s=http://dl-cdn.alpinelinux.org=$best=g" /etc/apk/repositories
+    fi
 }
 
