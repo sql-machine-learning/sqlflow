@@ -39,10 +39,12 @@ WITH
   n_classes = 3,
   hidden_units = [10, 20]
 COLUMN
-  employee.name,
+	employee.name,
   bucketize(last_name, 1000),
   cross(embedding(employee.name), bucketize(last_name, 1000)),
-  cross(indicator(employee.name), bucketize(last_name, 1000))
+	cross(indicator(employee.name), bucketize(last_name, 1000)),
+	concat(",", employee.col1, employee.col2),
+	concat(',', employee.col1, employee.col2)
 COLUMN
   cross(embedding(employee.name), bucketize(last_name, 1000)),
   cross(indicator(employee.name), bucketize(last_name, 1000)) FOR C2
@@ -98,6 +100,14 @@ func TestExtendedSyntaxParseToTrainWithMultiColumns(t *testing.T) {
 	a.Equal(
 		`cross(indicator(employee.name), bucketize(last_name, 1000))`,
 		r.Columns["feature_columns"][3].String())
+	// test function argument with double quotes
+	a.Equal(
+		`concat(",", employee.col1, employee.col2)`,
+		r.Columns["feature_columns"][4].String())
+	// test function argument with single quotes
+	a.Equal(
+		`concat(',', employee.col1, employee.col2)`,
+		r.Columns["feature_columns"][5].String())
 	a.Equal(
 		`cross(embedding(employee.name), bucketize(last_name, 1000))`,
 		r.Columns["C2"][0].String())
