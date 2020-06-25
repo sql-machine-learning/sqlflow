@@ -46,7 +46,7 @@ type ExprList []*Expr
 // IsLiteral returns true if e is a literal value; otherwise, we say that e is a
 // compound expression.
 func (e Expr) IsLiteral() bool {
-	return e.typ == 0
+	return e.typ != 0
 }
 
 // IsFuncall returns true if the expression represents a function call.
@@ -83,6 +83,54 @@ func NewLiteral(typ int, val string) (*Expr, error) {
 	}, nil
 }
 
+// NewUnary returns a unary exprression.
+func NewUnary(typ int, op string, od1 *Expr) (*Expr, error) {
+	oprt, e := NewLiteral(typ, op)
+	if e != nil {
+		return nil, e
+	}
+	if od1 == nil {
+		return nil, fmt.Errorf("The operand of a unary expression is nil")
+	}
+	return &Expr{
+		sexp: append(ExprList{oprt}, od1),
+	}, nil
+}
+
+// NewBinary returns a binary expression.
+func NewBinary(typ int, op string, od1 *Expr, od2 *Expr) (*Expr, error) {
+	oprt, e := NewLiteral(typ, op)
+	if e != nil {
+		return nil, e
+	}
+	if od1 == nil {
+		return nil, fmt.Errorf("The left operand of a binary expression is nil")
+	}
+	if od2 == nil {
+		return nil, fmt.Errorf("The right operand of a binary expression is nil")
+	}
+	return &Expr{
+		sexp: append(ExprList{oprt}, od1, od2),
+	}, nil
+}
+
+// NewVariadic returns a variadic expression.
+func NewVariadic(typ int, op string, ods ExprList) (*Expr, error) {
+	if typ != '[' && typ != '(' {
+		return nil, fmt.Errorf("Only [ and ( are supported with variadic expression")
+	}
+	if op != fmt.Sprintf("%c", typ) {
+		return nil, fmt.Errorf("Given typ %c, op must be \"%c\", got \"%s\"", typ, typ, op)
+	}
+	oprt, e := NewLiteral(typ, op)
+	if e != nil {
+		return nil, e
+	}
+	return &Expr{
+		sexp: append(ExprList{oprt}, ods...),
+	}, nil
+}
+
 // NewFuncall returns an expression representing a function call.
 func NewFuncall(typ int, op string, oprd ExprList) (*Expr, error) {
 	fn, e := NewLiteral(typ, op)
@@ -92,39 +140,6 @@ func NewFuncall(typ int, op string, oprd ExprList) (*Expr, error) {
 	return &Expr{
 		sexp:    append(ExprList{fn}, oprd...),
 		funcall: true,
-	}, nil
-}
-
-// NewUnary returns a unary exprression.
-func NewUnary(typ int, op string, od1 *Expr) (*Expr, error) {
-	oprt, e := NewLiteral(typ, op)
-	if e != nil {
-		return nil, e
-	}
-	return &Expr{
-		sexp: append(ExprList{oprt}, od1),
-	}, nil
-}
-
-// NewBinary returns a binary expression.
-func NewBinary(typ int, od1 *Expr, op string, od2 *Expr) (*Expr, error) {
-	oprt, e := NewLiteral(typ, op)
-	if e != nil {
-		return nil, e
-	}
-	return &Expr{
-		sexp: append(ExprList{oprt}, od1, od2),
-	}, nil
-}
-
-// NewVariadic returns a variadic expression.
-func NewVariadic(typ int, op string, ods ExprList) (*Expr, error) {
-	oprt, e := NewLiteral(typ, op)
-	if e != nil {
-		return nil, e
-	}
-	return &Expr{
-		sexp: append(ExprList{oprt}, ods...),
 	}, nil
 }
 
