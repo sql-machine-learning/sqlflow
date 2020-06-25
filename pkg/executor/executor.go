@@ -131,7 +131,7 @@ func (s *pythonExecutor) runProgram(program string, logStderr bool) error {
 	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
 	cmd.Stdin = bytes.NewBufferString(program)
 
-	e, errorLog := s.runCommand(cmd, nil, logStderr)
+	errorLog, e := s.runCommand(cmd, nil, logStderr)
 	if e != nil {
 		// return the diagnostic message
 		sub := rePyDiagnosis.FindStringSubmatch(errorLog)
@@ -144,7 +144,7 @@ func (s *pythonExecutor) runProgram(program string, logStderr bool) error {
 	return nil
 }
 
-func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, logStderr bool) (error, string) {
+func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, logStderr bool) (string, error) {
 	cw := &logChanWriter{wr: s.Writer}
 	defer cw.Close()
 
@@ -348,7 +348,7 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command(program, runStmt.Parameters[1:]...)
 		cmd.Dir = s.Cwd
 
-		e, _ := s.runCommand(cmd, context, false)
+		_, e := s.runCommand(cmd, context, false)
 
 		return e
 	} else if fileExtension == ".py" {
@@ -361,7 +361,7 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command("python", runStmt.Parameters...)
 		cmd.Dir = s.Cwd
 
-		e, _ := s.runCommand(cmd, context, false)
+		_, e := s.runCommand(cmd, context, false)
 
 		return e
 	} else {
