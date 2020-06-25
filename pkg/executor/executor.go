@@ -154,6 +154,26 @@ func (s *pythonExecutor) runCommand(program string, logStderr bool) error {
 	return nil
 }
 
+func executeCommand(cmd *exec.Cmd, context map[string]string) error {
+	for k, v := range context {
+		os.Setenv(k, v)
+	}
+
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+	wStdout := bufio.NewWriter(&stdout)
+	wStderr := bufio.NewWriter(&stderr)
+	cmd.Stdout, cmd.Stderr = wStdout, wStderr
+
+	if e := cmd.Run(); e != nil {
+		fmt.Printf("The program error is: %s\n", stderr.String())
+		return e
+	}
+
+	fmt.Printf("The program output is: %s\n", stdout.String())
+	return nil
+}
+
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
 	return runNormalStmt(s.Writer, string(*stmt), s.Db)
 }
@@ -347,26 +367,6 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		// TODO(brightcoder01): Implement the execution of the program built using other script languages.
 		return fmt.Errorf("The other executable except Python program is not supported yet")
 	}
-}
-
-func executeCommand(cmd *exec.Cmd, context map[string]string) error {
-	for k, v := range context {
-		os.Setenv(k, v)
-	}
-
-	var stderr bytes.Buffer
-	var stdout bytes.Buffer
-	wStdout := bufio.NewWriter(&stdout)
-	wStderr := bufio.NewWriter(&stderr)
-	cmd.Stdout, cmd.Stderr = wStdout, wStderr
-
-	if e := cmd.Run(); e != nil {
-		fmt.Printf("The program error is: %s\n", stderr.String())
-		return e
-	}
-
-	fmt.Printf("The program output is: %s\n", stdout.String())
-	return nil
 }
 
 func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {
