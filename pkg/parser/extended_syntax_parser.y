@@ -440,8 +440,6 @@ expr
 | STRING         { $$ = atomic(STRING, $1) }
 | pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
-| '"' STRING '"'	{ $$ = unary('"', "quota", atomic(STRING,$2)) }
-| '\'' STRING '\''	{ $$ = unary('\'', "quota", atomic(STRING,$2)) }
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
 | expr '-' expr  { $$ = binary('-', $1, $2, $3) }
