@@ -165,10 +165,10 @@ func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, lo
 	}
 
 	if e := cmd.Run(); e != nil {
-		return e, stderr.String()
+		return stderr.String(), e
 	}
 
-	return nil, ``
+	return ``, nil
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
@@ -186,7 +186,6 @@ func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 			return e
 		}
 	}
-	ioutil.WriteFile("train_program.py", []byte(code), 0644)
 	if e := s.runProgram(code, false); e != nil {
 		return e
 	}

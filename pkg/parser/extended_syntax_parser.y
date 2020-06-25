@@ -440,8 +440,6 @@ expr
 | STRING         { $$ = atomic(STRING, $1) }
 | pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
-| '"' STRING '"'	{ $$ = unary('"', "quota", atomic(STRING,$2)) }
-| '\'' STRING '\''	{ $$ = unary('\'', "quota", atomic(STRING,$2)) }
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
 | expr '-' expr  { $$ = binary('-', $1, $2, $3) }
@@ -478,6 +476,14 @@ func (el ExprList) Strings() (r []string) {
 	return r
 }
 
+// ToTokens returns the token list of Expr.
+// FIXME(sneaxiy): Currently, it is only used to get objective/constraint
+// expression tokens in optimize codegen. For example, the SQLFlow objective
+// "SUM(product)" would be split to be ["SUM", "(", "product", ")"], which
+// would be translated into Pyomo Python code:
+// "sum([model.x[i] for i in model.x])". But it is not a graceful way to do
+// codegen. We need a AST package to do the same codegen in the future.
+// Please see https://github.com/sql-machine-learning/sqlflow/issues/2531.
 func (e *Expr) ToTokens() []string {
     if e.Type != 0 {
         return []string{e.Value}
