@@ -277,7 +277,7 @@ func (s *alisaExecutor) ExecuteOptimize(es *ir.OptimizeStmt) error {
 
 func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	// TODO(brightcoder01): Add the implementation in the following PR.
-	if (len(runStmt.Parameters) == 0) {
+	if len(runStmt.Parameters) == 0 {
 		return fmt.Errorf("Parameters shouldn't be empty")
 	}
 

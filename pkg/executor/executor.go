@@ -127,51 +127,48 @@ func (s *pythonExecutor) SaveModel(cl *ir.TrainStmt) error {
 	return m.Save(modelURI, s.Session)
 }
 
-func (s *pythonExecutor) runCommand(program string, logStderr bool) error {
-	cw := &logChanWriter{wr: s.Writer}
-	defer cw.Close()
+func (s *pythonExecutor) runProgram(program string, logStderr bool) error {
 	cmd := sqlflowCmd(s.Cwd, s.Db.DriverName)
-	var stderr bytes.Buffer
-	var stdout bytes.Buffer
-	if logStderr {
-		w := io.MultiWriter(cw, &stderr)
-		wStdout := bufio.NewWriter(&stdout)
-		cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), wStdout, w
-	} else {
-		w := io.MultiWriter(cw, &stdout)
-		wStderr := bufio.NewWriter(&stderr)
-		cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewBufferString(program), w, wStderr
-	}
-	if e := cmd.Run(); e != nil {
+	cmd.Stdin = bytes.NewBufferString(program)
+
+	e, errorLog := s.runCommand(cmd, nil, logStderr)
+	if e != nil {
 		// return the diagnostic message
-		sub := rePyDiagnosis.FindStringSubmatch(stderr.String())
+		sub := rePyDiagnosis.FindStringSubmatch(errorLog)
 		if len(sub) == 2 {
 			return fmt.Errorf("%s", sub[1])
 		}
 		// if no diagnostic message, return the full stack trace
-		return fmt.Errorf("failed: %v\n%sGenerated Code:%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, stderr.String())
+		return fmt.Errorf("failed: %v\n%sGenerated Code:%[2]s\n%s\n%[2]sOutput%[2]s\n%[4]v", e, "==========", program, errorLog)
 	}
 	return nil
 }
 
-func executeCommand(cmd *exec.Cmd, context map[string]string) error {
+func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, logStderr bool) (error, string) {
+	cw := &logChanWriter{wr: s.Writer}
+	defer cw.Close()
+
 	for k, v := range context {
 		os.Setenv(k, v)
 	}
 
 	var stderr bytes.Buffer
 	var stdout bytes.Buffer
-	wStdout := bufio.NewWriter(&stdout)
-	wStderr := bufio.NewWriter(&stderr)
-	cmd.Stdout, cmd.Stderr = wStdout, wStderr
-
-	if e := cmd.Run(); e != nil {
-		fmt.Printf("The program error is: %s\n", stderr.String())
-		return e
+	if logStderr {
+		w := io.MultiWriter(cw, &stderr)
+		wStdout := bufio.NewWriter(&stdout)
+		cmd.Stdout, cmd.Stderr = wStdout, w
+	} else {
+		w := io.MultiWriter(cw, &stdout)
+		wStderr := bufio.NewWriter(&stderr)
+		cmd.Stdout, cmd.Stderr = w, wStderr
 	}
 
-	fmt.Printf("The program output is: %s\n", stdout.String())
-	return nil
+	if e := cmd.Run(); e != nil {
+		return e, stderr.String()
+	}
+
+	return nil, ``
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
@@ -190,7 +187,7 @@ func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		}
 	}
 	ioutil.WriteFile("train_program.py", []byte(code), 0644)
-	if e := s.runCommand(code, false); e != nil {
+	if e := s.runProgram(code, false); e != nil {
 		return e
 	}
 	return s.SaveModel(cl)
@@ -212,7 +209,7 @@ func (s *pythonExecutor) ExecutePredict(cl *ir.PredictStmt) (e error) {
 			return e
 		}
 	}
-	return s.runCommand(code, false)
+	return s.runProgram(code, false)
 }
 
 func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -240,7 +237,7 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if err != nil {
 		return err
 	}
-	if err = s.runCommand(code, false); err != nil {
+	if err = s.runProgram(code, false); err != nil {
 		return err
 	}
 	img, err := readExplainResult(path.Join(s.Cwd, "summary.png"))
@@ -290,7 +287,7 @@ func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 			return err
 		}
 	}
-	if err = s.runCommand(code, false); err != nil {
+	if err = s.runProgram(code, false); err != nil {
 		return err
 	}
 	return nil
@@ -321,7 +318,7 @@ func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *pytho
 	}
 
 	// Note: OptFlow submit API logs on stderr but not stdout
-	if err = submitter.runCommand(submitCode, true); err != nil {
+	if err = submitter.runProgram(submitCode, true); err != nil {
 		return err
 	}
 	return nil
@@ -333,13 +330,13 @@ func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 }
 
 func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
-	if (len(runStmt.Parameters) == 0) {
+	if len(runStmt.Parameters) == 0 {
 		return fmt.Errorf("Parameters shouldn't be empty")
 	}
 
-    context := map[string]string {
+	context := map[string]string{
 		"SQLFLOW_TO_RUN_SELECT": runStmt.Select,
-		"SQLFLOW_TO_RUN_INTO": runStmt.Into,
+		"SQLFLOW_TO_RUN_INTO":   runStmt.Into,
 	}
 
 	// The first parameter is the program name
@@ -351,7 +348,9 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command(program, runStmt.Parameters[1:]...)
 		cmd.Dir = s.Cwd
 
-		return executeCommand(cmd, context)
+		e, _ := s.runCommand(cmd, context, false)
+
+		return e
 	} else if fileExtension == ".py" {
 		// If the first parameter is python Program
 		if _, e := os.Stat(program); e != nil {
@@ -362,7 +361,9 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command("python", runStmt.Parameters...)
 		cmd.Dir = s.Cwd
 
-		return executeCommand(cmd, context)
+		e, _ := s.runCommand(cmd, context, false)
+
+		return e
 	} else {
 		// TODO(brightcoder01): Implement the execution of the program built using other script languages.
 		return fmt.Errorf("The other executable except Python program is not supported yet")
