@@ -21,16 +21,8 @@ type Expr struct {
 type ExprList []*Expr
 
 type Constraint struct {
-	expr *Expr
-	groupby string
-}
-
-func (e *Constraint) Expression() *Expr {
-    return e.expr
-}
-
-func (e *Constraint) GroupBy() string {
-    return e.groupby
+	*Expr
+	GroupBy string
 }
 
 type ConstraintList []*Constraint
@@ -410,8 +402,8 @@ ExprList
 ;
 
 Constraint
-: expr { $$ = &Constraint{expr: $1, groupby: ""} }
-| expr GROUP BY IDENT { $$ = &Constraint{expr: $1, groupby: $4} }
+: expr { $$ = &Constraint{Expr: $1, GroupBy: ""} }
+| expr GROUP BY IDENT { $$ = &Constraint{Expr: $1, GroupBy: $4} }
 ;
 
 ConstraintList
