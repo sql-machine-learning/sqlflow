@@ -19,15 +19,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func atomicOrDie(typ int, val string) *Expr {
-	l, e := NewAtomic(typ, val)
+func atomicOrDie(token int, val string) *Expr {
+	l, e := NewAtomic(token, val)
 	if e != nil {
 		panic(e)
 	}
 	return l
 }
 
-func TestSpecialTypeZero(t *testing.T) {
+func TestSpecialTokenZero(t *testing.T) {
 	var (
 		expr *Expr
 		e    error
