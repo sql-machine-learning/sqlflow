@@ -191,8 +191,8 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
-%type  <ctexp> Constraint
-%type  <ctexpl> ConstraintList
+%type  <ctexp> constraint
+%type  <ctexpl> constraint_list
 %type  <atrs> attr
 %type  <atrs> attrs
 %type  <tbls> stringlist, identlist
@@ -320,7 +320,7 @@ run_clause
 ;
 
 optimize_clause
-: TO MAXIMIZE expr CONSTRAINT ConstraintList WITH attrs USING IDENT INTO IDENT {
+: TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -328,14 +328,14 @@ optimize_clause
 	$$.Solver = $9;
 	$$.OptimizeInto = $11;
 }
-| TO MAXIMIZE expr CONSTRAINT ConstraintList WITH attrs INTO IDENT {
+| TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
 	$$.OptimizeAttrs = $7;
 	$$.OptimizeInto = $9;
 }
-| TO MINIMIZE expr CONSTRAINT ConstraintList WITH attrs USING IDENT INTO IDENT {
+| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -343,7 +343,7 @@ optimize_clause
 	$$.Solver = $9;
 	$$.OptimizeInto = $11;
 }
-| TO MINIMIZE expr CONSTRAINT ConstraintList WITH attrs INTO IDENT {
+| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -401,14 +401,14 @@ ExprList
 | ExprList ',' expr { $$ = append($1, $3) }
 ;
 
-Constraint
+constraint
 : expr { $$ = &Constraint{Expr: $1, GroupBy: ""} }
 | expr GROUP BY IDENT { $$ = &Constraint{Expr: $1, GroupBy: $4} }
 ;
 
-ConstraintList
-: Constraint { $$ = ConstraintList{$1} }
-| ConstraintList ',' Constraint { $$ = append($1, $3) }
+constraint_list
+: constraint { $$ = ConstraintList{$1} }
+| constraint_list ',' constraint { $$ = append($1, $3) }
 ;
 
 pythonlist
