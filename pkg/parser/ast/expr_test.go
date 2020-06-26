@@ -19,8 +19,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func atomicOrDie(token int, value string) *Expr {
-	l, e := NewAtomic(token, value)
+func literalOrDie(token int, value string) *Expr {
+	l, e := NewLiteral(token, value)
 	if e != nil {
 		panic(e)
 	}
@@ -33,15 +33,15 @@ func TestSpecialTokenZero(t *testing.T) {
 		e    error
 	)
 
-	expr, e = NewAtomic(0, "")
+	expr, e = NewLiteral(0, "")
 	assert.Nil(t, expr)
 	assert.Error(t, e)
 
-	expr, e = NewAtomic(0, "something")
+	expr, e = NewLiteral(0, "something")
 	assert.Nil(t, expr)
 	assert.Error(t, e)
 
-	oprd := ExprList{atomicOrDie(1, "123")}
+	oprd := ExprList{literalOrDie(1, "123")}
 
 	expr, e = NewFuncall(0, "something", oprd)
 	assert.Nil(t, expr)
@@ -65,11 +65,11 @@ func TestUnary(t *testing.T) {
 	assert.Nil(t, u)
 	assert.Error(t, e) // for the operand is nil.
 
-	u, e = NewUnary('-', "-", atomicOrDie(1, "1"))
+	u, e = NewUnary('-', "-", literalOrDie(1, "1"))
 	assert.NotNil(t, u)
 	assert.NoError(t, e)
 
-	assert.False(t, u.IsAtomic())
+	assert.False(t, u.IsLiteral())
 	assert.False(t, u.IsFuncall())
 	assert.False(t, u.IsBinary())
 	assert.True(t, u.IsUnary())
@@ -81,7 +81,7 @@ func TestUnary(t *testing.T) {
 	assert.NotNil(t, u)
 	assert.NoError(t, e) // nested unary expression is OK.
 
-	assert.False(t, u.IsAtomic())
+	assert.False(t, u.IsLiteral())
 	assert.False(t, u.IsFuncall())
 	assert.False(t, u.IsBinary())
 	assert.True(t, u.IsUnary())
@@ -91,19 +91,19 @@ func TestUnary(t *testing.T) {
 }
 
 func TestBinary(t *testing.T) {
-	b, e := NewBinary('+', "+", nil, atomicOrDie(1, "2"))
+	b, e := NewBinary('+', "+", nil, literalOrDie(1, "2"))
 	assert.Nil(t, b)
 	assert.Error(t, e)
 
-	b, e = NewBinary('-', "-", atomicOrDie(1, "2"), nil)
+	b, e = NewBinary('-', "-", literalOrDie(1, "2"), nil)
 	assert.Nil(t, b)
 	assert.Error(t, e)
 
-	b, e = NewBinary('+', "+", atomicOrDie(1, "1"), atomicOrDie(1, "2"))
+	b, e = NewBinary('+', "+", literalOrDie(1, "1"), literalOrDie(1, "2"))
 	assert.NotNil(t, b)
 	assert.NoError(t, e)
 
-	assert.False(t, b.IsAtomic())
+	assert.False(t, b.IsLiteral())
 	assert.False(t, b.IsFuncall())
 	assert.True(t, b.IsBinary())
 	assert.False(t, b.IsUnary())
@@ -111,11 +111,11 @@ func TestBinary(t *testing.T) {
 
 	assert.Equal(t, "1 + 2", b.String())
 
-	b, e = NewBinary('+', "+", atomicOrDie(1, "3"), b)
+	b, e = NewBinary('+', "+", literalOrDie(1, "3"), b)
 	assert.NotNil(t, b)
 	assert.NoError(t, e)
 
-	assert.False(t, b.IsAtomic())
+	assert.False(t, b.IsLiteral())
 	assert.False(t, b.IsFuncall())
 	assert.True(t, b.IsBinary())
 	assert.False(t, b.IsUnary())
@@ -133,7 +133,7 @@ func TestVariadic(t *testing.T) {
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.False(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())
@@ -145,7 +145,7 @@ func TestVariadic(t *testing.T) {
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.False(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())
@@ -153,11 +153,11 @@ func TestVariadic(t *testing.T) {
 
 	assert.Equal(t, "[]", v.String())
 
-	v, e = NewVariadic('[', "[", ExprList{atomicOrDie(1, "2")})
+	v, e = NewVariadic('[', "[", ExprList{literalOrDie(1, "2")})
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.False(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())
@@ -165,11 +165,11 @@ func TestVariadic(t *testing.T) {
 
 	assert.Equal(t, "[2]", v.String())
 
-	v, e = NewVariadic('(', "(", ExprList{v, atomicOrDie(1, "1")})
+	v, e = NewVariadic('(', "(", ExprList{v, literalOrDie(1, "1")})
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.False(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())
@@ -177,7 +177,7 @@ func TestVariadic(t *testing.T) {
 
 	assert.Equal(t, "([2], 1)", v.String())
 
-	v, e = NewVariadic('<', "<", ExprList{v, atomicOrDie(1, "3")})
+	v, e = NewVariadic('<', "<", ExprList{v, literalOrDie(1, "3")})
 	assert.Nil(t, v)
 	assert.Error(t, e)
 }
@@ -187,7 +187,7 @@ func TestFuncall(t *testing.T) {
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.True(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())
@@ -199,7 +199,7 @@ func TestFuncall(t *testing.T) {
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.True(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())
@@ -207,11 +207,11 @@ func TestFuncall(t *testing.T) {
 
 	assert.Equal(t, "[()", v.String())
 
-	v, e = NewFuncall(1, "sum", ExprList{atomicOrDie(1, "2")})
+	v, e = NewFuncall(1, "sum", ExprList{literalOrDie(1, "2")})
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.True(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())
@@ -219,11 +219,11 @@ func TestFuncall(t *testing.T) {
 
 	assert.Equal(t, "sum(2)", v.String())
 
-	v, e = NewFuncall(1, "print", ExprList{v, atomicOrDie(1, "1")})
+	v, e = NewFuncall(1, "print", ExprList{v, literalOrDie(1, "1")})
 	assert.NotNil(t, v)
 	assert.NoError(t, e)
 
-	assert.False(t, v.IsAtomic())
+	assert.False(t, v.IsLiteral())
 	assert.True(t, v.IsFuncall())
 	assert.False(t, v.IsBinary())
 	assert.False(t, v.IsUnary())

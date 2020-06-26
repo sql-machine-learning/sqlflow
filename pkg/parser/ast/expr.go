@@ -20,8 +20,8 @@ import (
 
 // Expr defines an expression.
 type Expr struct {
-	// The design inherits from Lisp's S-expression.  It represents a atomic
-	// if token is zero.  The type of the atomic is identified by token, in
+	// The design inherits from Lisp's S-expression.  It represents a literal
+	// if token is zero.  The type of the literal is identified by token, in
 	// particular, NUMBER, IDENT, or STRING, defined by token and val, and
 	// the printing form is in val; otherwise, token and value are
 	// ignorable, but sexp it is a Lisp S-expression and funcall indicate if
@@ -61,7 +61,7 @@ type Expr struct {
 	//  funcall:false}
 	//
 	// For more and update-to-date information, please refer to constructors
-	// like NewAtomic, NewUnary, NewBinary, NewVariadic, NewFuncall.
+	// like NewLiteral, NewUnary, NewBinary, NewVariadic, NewFuncall.
 	token   int
 	value   string
 	sexp    ExprList
@@ -72,37 +72,37 @@ type Expr struct {
 // an ExprList from parameters of a function call.
 type ExprList []*Expr
 
-// IsAtomic returns true if e is a atomic value; otherwise, we say that e is a
+// IsLiteral returns true if e is a literal value; otherwise, we say that e is a
 // compound expression.
-func (e Expr) IsAtomic() bool {
+func (e Expr) IsLiteral() bool {
 	return e.token != 0
 }
 
 // IsFuncall returns true if the expression represents a function call.
 func (e Expr) IsFuncall() bool {
-	return !e.IsAtomic() && e.funcall
+	return !e.IsLiteral() && e.funcall
 }
 
 // IsVariadic returns true if the expression is a list "[...]".
 func (e Expr) IsVariadic() bool {
-	return !e.IsAtomic() && !e.IsFuncall() && len(e.sexp) > 0 &&
+	return !e.IsLiteral() && !e.IsFuncall() && len(e.sexp) > 0 &&
 		(e.sexp[0].token == '[' || e.sexp[0].token == '(')
 }
 
 // IsUnary returns true if e is a binary expression.
 func (e Expr) IsUnary() bool {
-	return !e.IsAtomic() && !e.IsFuncall() && !e.IsVariadic() &&
+	return !e.IsLiteral() && !e.IsFuncall() && !e.IsVariadic() &&
 		len(e.sexp) == 2
 }
 
 // IsBinary returns true if e is a binary expression.
 func (e Expr) IsBinary() bool {
-	return !e.IsAtomic() && !e.IsFuncall() && !e.IsVariadic() &&
+	return !e.IsLiteral() && !e.IsFuncall() && !e.IsVariadic() &&
 		len(e.sexp) == 3
 }
 
-// NewAtomic returns a atomic expression.
-func NewAtomic(token int, value string) (*Expr, error) {
+// NewLiteral returns a literal expression.
+func NewLiteral(token int, value string) (*Expr, error) {
 	if token == 0 {
 		return nil, fmt.Errorf("token 0 is hold as special and cannot be used")
 	}
@@ -114,7 +114,7 @@ func NewAtomic(token int, value string) (*Expr, error) {
 
 // NewUnary returns a unary exprression.
 func NewUnary(token int, op string, od1 *Expr) (*Expr, error) {
-	oprt, e := NewAtomic(token, op)
+	oprt, e := NewLiteral(token, op)
 	if e != nil {
 		return nil, e
 	}
@@ -128,7 +128,7 @@ func NewUnary(token int, op string, od1 *Expr) (*Expr, error) {
 
 // NewBinary returns a binary expression.
 func NewBinary(token int, op string, od1 *Expr, od2 *Expr) (*Expr, error) {
-	oprt, e := NewAtomic(token, op)
+	oprt, e := NewLiteral(token, op)
 	if e != nil {
 		return nil, e
 	}
@@ -151,7 +151,7 @@ func NewVariadic(token int, op string, ods ExprList) (*Expr, error) {
 	if op != fmt.Sprintf("%c", token) {
 		return nil, fmt.Errorf("Given token %c, op must be \"%c\", got \"%s\"", token, token, op)
 	}
-	oprt, e := NewAtomic(token, op)
+	oprt, e := NewLiteral(token, op)
 	if e != nil {
 		return nil, e
 	}
@@ -162,7 +162,7 @@ func NewVariadic(token int, op string, ods ExprList) (*Expr, error) {
 
 // NewFuncall returns an expression representing a function call.
 func NewFuncall(token int, op string, oprd ExprList) (*Expr, error) {
-	fn, e := NewAtomic(token, op)
+	fn, e := NewLiteral(token, op)
 	if e != nil {
 		return nil, e
 	}
@@ -173,7 +173,7 @@ func NewFuncall(token int, op string, oprd ExprList) (*Expr, error) {
 }
 
 func (e *Expr) String() string {
-	if !e.IsAtomic() { /* a compound expression */
+	if !e.IsLiteral() { /* a compound expression */
 		switch {
 		case e.IsBinary():
 			return fmt.Sprintf("%s %s %s", e.sexp[1], e.sexp[0].value, e.sexp[2])
