@@ -19,8 +19,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func atomicOrDie(token int, val string) *Expr {
-	l, e := NewAtomic(token, val)
+func atomicOrDie(token int, value string) *Expr {
+	l, e := NewAtomic(token, value)
 	if e != nil {
 		panic(e)
 	}
