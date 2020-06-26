@@ -21,7 +21,7 @@ import (
 // Expr defines an expression.
 type Expr struct {
 	// The design inherits from Lisp's S-expression.  It represents a
-	// literal if typ is zero.  The type of the literal is identified by
+	// atomic if typ is zero.  The type of the atomic is identified by
 	// typ, in particular, NUMBER, IDENT, or STRING, defined by typ and val,
 	// and the printing form is in val; otherwise, typ and val are
 	// ignorable, but sexp it is a Lisp S-expression and funcall indicate if
@@ -43,37 +43,37 @@ type Expr struct {
 // an ExprList from parameters of a function call.
 type ExprList []*Expr
 
-// IsLiteral returns true if e is a literal value; otherwise, we say that e is a
+// IsAtomic returns true if e is a atomic value; otherwise, we say that e is a
 // compound expression.
-func (e Expr) IsLiteral() bool {
+func (e Expr) IsAtomic() bool {
 	return e.typ != 0
 }
 
 // IsFuncall returns true if the expression represents a function call.
 func (e Expr) IsFuncall() bool {
-	return !e.IsLiteral() && e.funcall
+	return !e.IsAtomic() && e.funcall
 }
 
 // IsVariadic returns true if the expression is a list "[...]".
 func (e Expr) IsVariadic() bool {
-	return !e.IsLiteral() && !e.IsFuncall() && len(e.sexp) > 0 &&
+	return !e.IsAtomic() && !e.IsFuncall() && len(e.sexp) > 0 &&
 		(e.sexp[0].typ == '[' || e.sexp[0].typ == '(')
 }
 
 // IsUnary returns true if e is a binary expression.
 func (e Expr) IsUnary() bool {
-	return !e.IsLiteral() && !e.IsFuncall() && !e.IsVariadic() &&
+	return !e.IsAtomic() && !e.IsFuncall() && !e.IsVariadic() &&
 		len(e.sexp) == 2
 }
 
 // IsBinary returns true if e is a binary expression.
 func (e Expr) IsBinary() bool {
-	return !e.IsLiteral() && !e.IsFuncall() && !e.IsVariadic() &&
+	return !e.IsAtomic() && !e.IsFuncall() && !e.IsVariadic() &&
 		len(e.sexp) == 3
 }
 
-// NewLiteral returns a literal expression.
-func NewLiteral(typ int, val string) (*Expr, error) {
+// NewAtomic returns a atomic expression.
+func NewAtomic(typ int, val string) (*Expr, error) {
 	if typ == 0 {
 		return nil, fmt.Errorf("typ 0 is hold as special and cannot be used")
 	}
@@ -85,7 +85,7 @@ func NewLiteral(typ int, val string) (*Expr, error) {
 
 // NewUnary returns a unary exprression.
 func NewUnary(typ int, op string, od1 *Expr) (*Expr, error) {
-	oprt, e := NewLiteral(typ, op)
+	oprt, e := NewAtomic(typ, op)
 	if e != nil {
 		return nil, e
 	}
@@ -99,7 +99,7 @@ func NewUnary(typ int, op string, od1 *Expr) (*Expr, error) {
 
 // NewBinary returns a binary expression.
 func NewBinary(typ int, op string, od1 *Expr, od2 *Expr) (*Expr, error) {
-	oprt, e := NewLiteral(typ, op)
+	oprt, e := NewAtomic(typ, op)
 	if e != nil {
 		return nil, e
 	}
@@ -122,7 +122,7 @@ func NewVariadic(typ int, op string, ods ExprList) (*Expr, error) {
 	if op != fmt.Sprintf("%c", typ) {
 		return nil, fmt.Errorf("Given typ %c, op must be \"%c\", got \"%s\"", typ, typ, op)
 	}
-	oprt, e := NewLiteral(typ, op)
+	oprt, e := NewAtomic(typ, op)
 	if e != nil {
 		return nil, e
 	}
@@ -133,7 +133,7 @@ func NewVariadic(typ int, op string, ods ExprList) (*Expr, error) {
 
 // NewFuncall returns an expression representing a function call.
 func NewFuncall(typ int, op string, oprd ExprList) (*Expr, error) {
-	fn, e := NewLiteral(typ, op)
+	fn, e := NewAtomic(typ, op)
 	if e != nil {
 		return nil, e
 	}
@@ -144,7 +144,7 @@ func NewFuncall(typ int, op string, oprd ExprList) (*Expr, error) {
 }
 
 func (e *Expr) String() string {
-	if !e.IsLiteral() { /* a compound expression */
+	if !e.IsAtomic() { /* a compound expression */
 		switch {
 		case e.IsBinary():
 			return fmt.Sprintf("%s %s %s", e.sexp[1], e.sexp[0].val, e.sexp[2])
