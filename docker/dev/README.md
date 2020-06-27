@@ -7,7 +7,7 @@ code of SQLFlow.
 
 ## Build the DevBox Image
 
-In the root directory of this project, run the following command. 
+In the root directory of this project, run the following command.
 
 ```bash
 docker build -t sqlflow:dev -f docker/dev/Dockerfile .
