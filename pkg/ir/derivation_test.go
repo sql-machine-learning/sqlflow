@@ -96,8 +96,22 @@ func mockTrainStmtCross() *TrainStmt {
 	c2 := &NumericColumn{
 		FieldDesc: &FieldDesc{Name: "c2", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
 	}
+	c4 := &NumericColumn{
+		FieldDesc: &FieldDesc{Name: "c4", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
+	}
+	c5 := &NumericColumn{
+		FieldDesc: &FieldDesc{Name: "c5", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
+	}
+
 	features["feature_columns"] = []FeatureColumn{
 		c1, c2,
+		&CrossColumn{
+			Keys: []interface{}{
+				c4,
+				c5,
+			},
+			HashBucketSize: 128,
+		},
 		&CrossColumn{
 			Keys: []interface{}{
 				c1,
@@ -115,12 +129,12 @@ func mockTrainStmtCross() *TrainStmt {
 	}}
 
 	return &TrainStmt{
-		OriginalSQL: `select c1, c2, c3, class from feature_derivation_case.train
+		OriginalSQL: `select c1, c2, c3, c4, c5, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=2
-COLUMN c1, c2, CROSS([c1, c2], 256)
+COLUMN c1, c2, CROSS([c4, c5], 128), CROSS([c1, c2], 256)
 LABEL class INTO model_table;`,
-		Select:           "select c1, c2, c3, class from feature_derivation_case.train",
+		Select:           "select c1, c2, c3, c4, c5, class from feature_derivation_case.train",
 		ValidationSelect: "",
 		ModelImage:       "",
 		Estimator:        "tf.estimator.DNNClassifier",
@@ -239,6 +253,8 @@ func TestFeatureDerivation(t *testing.T) {
 	e = InferFeatureColumns(trainStmt, db)
 	a.NoError(e)
 
+	a.Equal(5, len(trainStmt.Features["feature_columns"]))
+
 	fc1 = trainStmt.Features["feature_columns"][0]
 	nc, ok = fc1.(*NumericColumn)
 	a.True(ok)
@@ -254,17 +270,27 @@ func TestFeatureDerivation(t *testing.T) {
 	fc4 = trainStmt.Features["feature_columns"][3]
 	cc, ok := fc4.(*CrossColumn)
 	a.True(ok)
-	a.Equal(256, cc.HashBucketSize)
+	a.Equal(int64(128), cc.HashBucketSize)
 	nc4, ok := cc.Keys[0].(*NumericColumn)
 	a.True(ok)
-	a.Equal("c1", nc4.FieldDesc.Name)
+	a.Equal("c4", nc4.FieldDesc.Name)
 	a.Equal(Float, nc4.FieldDesc.DType)
 	nc5, ok := cc.Keys[1].(*NumericColumn)
 	a.True(ok)
+	a.Equal("c5", nc5.FieldDesc.Name)
+
+	fc5 = trainStmt.Features["feature_columns"][4]
+	cc, ok = fc5.(*CrossColumn)
+	a.True(ok)
+	a.Equal(int64(256), cc.HashBucketSize)
+	nc4, ok = cc.Keys[0].(*NumericColumn)
+	a.True(ok)
+	a.Equal("c1", nc4.FieldDesc.Name)
+	a.Equal(Float, nc4.FieldDesc.DType)
+	nc5, ok = cc.Keys[1].(*NumericColumn)
+	a.True(ok)
 	a.Equal("c2", nc5.FieldDesc.Name)
 	a.Equal(Float, nc5.FieldDesc.DType)
-
-	a.Equal(4, len(trainStmt.Features["feature_columns"]))
 }
 
 func TestFeatureDerivationNoColumnClause(t *testing.T) {

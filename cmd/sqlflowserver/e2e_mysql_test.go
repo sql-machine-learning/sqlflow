@@ -73,7 +73,9 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// Cases for diagnosis
 	t.Run("CaseDiagnosisMissingModelParams", CaseDiagnosisMissingModelParams)
 
-	t.Run("CaseTrainARIMAWithSTLDecompostionModel", caseTrainARIMAWithSTLDecompostionModel)
+	t.Run("CaseTrainARIMAWithSTLDecompositionModel", caseTrainARIMAWithSTLDecompositionModel)
+
+	t.Run("CaseEnd2EndCrossFeatureColumn", caseEnd2EndCrossFeatureColumn)
 }
 
 func CaseShouldError(t *testing.T) {
@@ -393,7 +395,7 @@ INTO iris.explain_result;`, // explain tf boosted trees model
 	}
 }
 
-func caseTrainARIMAWithSTLDecompostionModel(t *testing.T) {
+func caseTrainARIMAWithSTLDecompositionModel(t *testing.T) {
 	a := assert.New(t)
 
 	trainSQL := `
@@ -420,4 +422,32 @@ INTO fund.%[1]s_model;
 	redeemTrainSQL := fmt.Sprintf(trainSQL, "redeem", dateFormat)
 	_, _, _, err = connectAndRunSQL(redeemTrainSQL)
 	a.NoError(err)
+}
+
+func caseEnd2EndCrossFeatureColumn(t *testing.T) {
+	sqls := []string{`SELECT * FROM iris.train 
+TO TRAIN DNNClassifier 
+WITH 
+	model.n_classes = 3, 
+	model.hidden_units=[10, 20] 
+COLUMN EMBEDDING(CROSS([petal_width, petal_length], 10), 128, 'sum')
+LABEL class 
+INTO iris.cross_tf_e2e_test_model;
+`,
+		`SELECT petal_width, petal_length, class FROM iris.train 
+TO TRAIN DNNClassifier 
+WITH 
+	model.n_classes = 3, 
+	model.hidden_units=[10, 20] 
+COLUMN EMBEDDING(CROSS([petal_width, petal_length], 10), 128, 'sqrtn')
+LABEL class 
+INTO iris.cross_tf_e2e_test_model;
+`,
+	}
+
+	a := assert.New(t)
+	for _, sql := range sqls {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err)
+	}
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 )
 
 /* expr defines an expression as a Lisp list.  If len(val)>0,
@@ -20,20 +19,12 @@ type Expr struct {
 
 type ExprList []*Expr
 
-type ConstraintExpr struct {
-	expr *Expr
-	groupby string
+type Constraint struct {
+	*Expr
+	GroupBy string
 }
 
-func (e *ConstraintExpr) Expression() *Expr {
-    return e.expr
-}
-
-func (e *ConstraintExpr) GroupBy() string {
-    return e.groupby
-}
-
-type ConstraintExprList []*ConstraintExpr
+type ConstraintList []*Constraint
 
 /* construct an atomic expr */
 func atomic(typ int, val string) *Expr {
@@ -141,7 +132,7 @@ type OptimizeClause struct {
 	// Direction can be MAXIMIZE or MINIMIZE
 	Direction string
 	Objective *Expr
-	Constrants ConstraintExprList
+	Constrants ConstraintList
 	OptimizeAttrs Attributes
 	Solver string
 	OptimizeInto string
@@ -150,8 +141,6 @@ type OptimizeClause struct {
 type ShowTrainClause struct {
 	ModelName string
 }
-
-var parseResult *SQLFlowSelectStmt
 
 func attrsUnion(as1, as2 Attributes) Attributes {
 	for k, v := range as2 {
@@ -170,10 +159,10 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   tbls []string
   expr *Expr
   expl ExprList
-  ctexp  *ConstraintExpr
-  ctexpl ConstraintExprList
+  ctexp  *Constraint
+  ctexpl ConstraintList
   atrs Attributes
-  eslt SQLFlowSelectStmt
+  eslt *SQLFlowSelectStmt
   slct StandardSelect
   tran TrainClause
   colc columnClause
@@ -199,8 +188,8 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
-%type  <ctexp> ConstraintExpr
-%type  <ctexpl> ConstraintExprList
+%type  <ctexp> constraint
+%type  <ctexpl> constraint_list
 %type  <atrs> attr
 %type  <atrs> attrs
 %type  <tbls> stringlist, identlist
@@ -220,46 +209,53 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 
 sqlflow_select_stmt
 : train_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Train: true,
 		TrainClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | predict_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Predict: true,
 		PredictClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | explain_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Explain: true,
 		ExplainClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | evaluate_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Evaluate: true,
 		EvaluateClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | run_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Run: true,
 		RunClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | optimize_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Optimize: true,
 		OptimizeClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
 }
 | show_train_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		ShowTrain: true,
 		ShowTrainClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
 }
 ;
 
@@ -328,7 +324,7 @@ run_clause
 ;
 
 optimize_clause
-: TO MAXIMIZE expr CONSTRAINT ConstraintExprList WITH attrs USING IDENT INTO IDENT {
+: TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -336,14 +332,14 @@ optimize_clause
 	$$.Solver = $9;
 	$$.OptimizeInto = $11;
 }
-| TO MAXIMIZE expr CONSTRAINT ConstraintExprList WITH attrs INTO IDENT {
+| TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
 	$$.OptimizeAttrs = $7;
 	$$.OptimizeInto = $9;
 }
-| TO MINIMIZE expr CONSTRAINT ConstraintExprList WITH attrs USING IDENT INTO IDENT {
+| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -351,7 +347,7 @@ optimize_clause
 	$$.Solver = $9;
 	$$.OptimizeInto = $11;
 }
-| TO MINIMIZE expr CONSTRAINT ConstraintExprList WITH attrs INTO IDENT {
+| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -409,14 +405,14 @@ ExprList
 | ExprList ',' expr { $$ = append($1, $3) }
 ;
 
-ConstraintExpr
-: expr { $$ = &ConstraintExpr{expr: $1, groupby: ""} }
-| expr GROUP BY IDENT { $$ = &ConstraintExpr{expr: $1, groupby: $4} }
+constraint
+: expr { $$ = &Constraint{Expr: $1, GroupBy: ""} }
+| expr GROUP BY IDENT { $$ = &Constraint{Expr: $1, GroupBy: $4} }
 ;
 
-ConstraintExprList
-: ConstraintExpr { $$ = ConstraintExprList{$1} }
-| ConstraintExprList ',' ConstraintExpr { $$ = append($1, $3) }
+constraint_list
+: constraint { $$ = ConstraintList{$1} }
+| constraint_list ',' constraint { $$ = append($1, $3) }
 ;
 
 pythonlist
@@ -440,8 +436,6 @@ expr
 | STRING         { $$ = atomic(STRING, $1) }
 | pythonlist     { $$ = variadic('[', "square", $1) }
 | '(' expr ')'   { $$ = unary('(', "paren", $2) } /* take '(' as the operator */
-| '"' STRING '"'	{ $$ = unary('"', "quota", atomic(STRING,$2)) }
-| '\'' STRING '\''	{ $$ = unary('\'', "quota", atomic(STRING,$2)) }
 | funcall        { $$ = $1 }
 | expr '+' expr  { $$ = binary('+', $1, $2, $3) }
 | expr '-' expr  { $$ = binary('-', $1, $2, $3) }
@@ -478,6 +472,14 @@ func (el ExprList) Strings() (r []string) {
 	return r
 }
 
+// ToTokens returns the token list of Expr.
+// FIXME(sneaxiy): Currently, it is only used to get objective/constraint
+// expression tokens in optimize codegen. For example, the SQLFlow objective
+// "SUM(product)" would be split to be ["SUM", "(", "product", ")"], which
+// would be translated into Pyomo Python code:
+// "sum([model.x[i] for i in model.x])". But it is not a graceful way to do
+// codegen. We need a AST package to do the same codegen in the future.
+// Please see https://github.com/sql-machine-learning/sqlflow/issues/2531.
 func (e *Expr) ToTokens() []string {
     if e.Type != 0 {
         return []string{e.Value}
@@ -583,7 +585,6 @@ func (s StandardSelect) String() string {
 	return s.origin
 }
 
-var mu sync.Mutex // Protect the use of global variable parseResult.
 
 func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	defer func() {
@@ -596,16 +597,11 @@ func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 		}
 	}()
 
-	mu.Lock()
-	defer mu.Unlock()
-
-	parseResult = nil // Important! Clear out result from previous call.
 	lex := newLexer(s)
 	extendedSyntaxParse(lex) // extendedSyntaxParse is auto generated.
 	idx = lex.pos
 	if lex.err != nil {
-		parseResult = nil
 		idx = lex.previous
 	}
-	return parseResult, idx, lex.err
+	return lex.result, idx, lex.err
 }

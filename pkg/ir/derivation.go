@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -62,41 +63,22 @@ func makeColumnMap(parsedFeatureColumns map[string][]FeatureColumn) ColumnMap {
 }
 
 func initColumnMap(fcMap ColumnMap, fc FeatureColumn, target string) {
-	// CrossColumn use two columns as input, record the key for each column
-	if cc, ok := fc.(*CrossColumn); ok {
-		for idx, k := range cc.Keys {
-			// if the key of CrossColumn is a string, generate a default numeric column.
-			if strKey, ok := k.(string); ok {
-				cc.Keys[idx] = &NumericColumn{
-					FieldDesc: &FieldDesc{
-						Name:      strKey,
-						DType:     Float,
-						Delimiter: "",
-						Shape:     []int{1},
-						IsSparse:  false,
-					},
-				}
-				fcMap[target][strKey] = append(fcMap[target][strKey], cc)
-			} else if nc, ok := k.(*NumericColumn); ok {
-				fcMap[target][nc.FieldDesc.Name] = append(fcMap[target][nc.FieldDesc.Name], cc)
-			}
+	switch c := fc.(type) {
+	// embedding/indicator column may got len(GetFieldDesc()) == 0
+	case *EmbeddingColumn:
+		if len(fc.GetFieldDesc()) == 0 {
+			fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+			return
 		}
-	} else {
-		switch c := fc.(type) {
-		// embedding/indicator column may got len(GetFieldDesc()) == 0
-		case *EmbeddingColumn:
-			if len(fc.GetFieldDesc()) == 0 {
-				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
-				return
-			}
 
-		case *IndicatorColumn:
-			if len(fc.GetFieldDesc()) == 0 {
-				fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
-				return
-			}
+	case *IndicatorColumn:
+		if len(fc.GetFieldDesc()) == 0 {
+			fcMap[target][c.Name] = append(fcMap[target][c.Name], fc)
+			return
 		}
-		fcMap[target][fc.GetFieldDesc()[0].Name] = append(fcMap[target][fc.GetFieldDesc()[0].Name], fc)
+	}
+	for _, fd := range fc.GetFieldDesc() {
+		fcMap[target][fd.Name] = append(fcMap[target][fd.Name], fc)
 	}
 }
 
@@ -162,13 +144,22 @@ func newDefaultFieldDesc(fieldName string) *FieldDesc {
 
 // fillCSVFieldDesc will set fieldDescMap[fieldName] = FieldDesc for parsing the CSV data
 func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) error {
+	size := 1
+	for s := range fieldDescMap[fieldName].Shape {
+		size *= s
+	}
+
 	values := strings.Split(cellData, ",")
 	// set shape only when the column is "DENSE"
 	if fieldDescMap[fieldName].IsSparse == false && fieldDescMap[fieldName].Shape == nil {
 		fieldDescMap[fieldName].Shape = []int{len(values)}
 	}
-	if fieldDescMap[fieldName].IsSparse == false && fieldDescMap[fieldName].Shape[0] != len(values) {
-		return fmt.Errorf("column %s is csv format sparse tensor, but got DENSE column or not specified", fieldName)
+	if fieldDescMap[fieldName].IsSparse == false && size != len(values) {
+		if size > 1 {
+			return fmt.Errorf("column %s should be csv format dense tensor of %d element(s), but got %d element(s)", fieldName, size, len(values))
+		}
+		// implicit set shape if shape is not provided in SQL COLUMN clause
+		fieldDescMap[fieldName].Shape = []int{len(values)}
 	}
 	fieldDescMap[fieldName].Delimiter = ","
 	// get dtype for csv values, use int64 and float32 only
@@ -191,7 +182,7 @@ func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName stri
 }
 
 // fillNonCSVFieldDesc will set fieldDescMap[fieldName] = FieldDesc for parsing the numerical and string data
-func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) error {
+func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) {
 	_, err := strconv.ParseInt(cellData, 10, 32)
 	if err != nil {
 		_, err := strconv.ParseFloat(cellData, 32)
@@ -220,7 +211,6 @@ func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName s
 			fieldDescMap[fieldName].Shape = []int{1}
 		}
 	}
-	return nil
 }
 
 func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap) error {
@@ -246,7 +236,10 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		case "CHAR", "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
 			if csvRegex.MatchString(*cellData) {
-				fillCSVFieldDesc(*cellData, fieldDescMap, fld)
+				err := fillCSVFieldDesc(*cellData, fieldDescMap, fld)
+				if err != nil {
+					return err
+				}
 			} else {
 				fillNonCSVFieldDesc(*cellData, fieldDescMap, fld)
 			}
@@ -497,37 +490,71 @@ func newFeatureColumn(fcTargetMap map[string][]FeatureColumn, fmMap FieldDescMap
 // setDerivedFeatureColumnToIR set derived feature column information back to the original IR structure.
 func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
 	for _, target := range columnTargets {
+		// NOTE: some feature columns may contain more than 1 FieldDescs.
+		// For example, "CROSS" may contain 2 or more FieldDescs. If there
+		// is any feature column that contains more than 1 FieldDescs, they
+		// would be placed at the end of TrainStmt.Features[target] according
+		// to the order they appear in COLUMN clause. Therefore, we split the
+		// feature columns to be 2 slices: singleColumnFC and multiColumnFC.
+		// In order to know the order each feature column appears in COLUMN
+		// clause, we should collect all feature columns that contain more than
+		// 1 FieldDescs beforehand, i.e., allMultiColumnFeatures, so that we
+		// can sort multiColumnFC afterwards.
+		allMultiColumnFeatures := make([]FeatureColumn, 0)
+		for _, fc := range trainStmt.Features[target] {
+			if len(fc.GetFieldDesc()) > 1 {
+				allMultiColumnFeatures = append(allMultiColumnFeatures, fc)
+			}
+		}
+
 		targetFeatureColumnMap := fcMap[target]
-		trainStmt.Features[target] = []FeatureColumn{}
-		// append cross columns at the end of all selected fields.
-		crossColumns := []*CrossColumn{}
+		singleColumnFC := make([]FeatureColumn, 0)
+		multiColumnFC := make([]FeatureColumn, 0)
+		allColumnFCs := make([]FeatureColumn, 0)
 		for _, slctKey := range selectFieldNames {
 			// label should not be added to feature columns
 			if slctKey == trainStmt.Label.GetFieldDesc()[0].Name {
 				continue
 			}
+
 			for _, fc := range targetFeatureColumnMap[slctKey] {
-				if cc, ok := fc.(*CrossColumn); ok {
-					crossColumns = append(crossColumns, cc)
-					continue
+				exists := false
+				for _, resultFC := range allColumnFCs {
+					if fc == resultFC {
+						exists = true
+						break
+					}
 				}
-				trainStmt.Features[target] = append(trainStmt.Features[target], fc)
+
+				if !exists {
+					allColumnFCs = append(allColumnFCs, fc)
+					if len(fc.GetFieldDesc()) == 1 {
+						singleColumnFC = append(singleColumnFC, fc)
+					} else {
+						multiColumnFC = append(multiColumnFC, fc)
+					}
+				}
 			}
 		}
-		// remove duplicated CrossColumns pointers, for CROSS(c1, c2), both fcMap[c1], fcMap[c2] will
-		// record the CrossColumn pointer
-		for i := 0; i < len(crossColumns); i++ {
-			exists := false
-			for v := 0; v < i; v++ {
-				if crossColumns[v] == crossColumns[i] {
-					exists = true
-					break
+
+		if len(multiColumnFC) > 0 {
+			indices := make([]int, 0)
+			for _, fcRet := range multiColumnFC {
+				for j, v := range allMultiColumnFeatures {
+					if fcRet == v {
+						indices = append(indices, j)
+						break
+					}
 				}
 			}
-			if !exists {
-				trainStmt.Features[target] = append(trainStmt.Features[target], crossColumns[i])
-			}
+
+			// sort multiColumnFC according to the order they appear in allMultiColumnFeatures,
+			// i.e., the order they appear in COLUMN clause.
+			sort.Slice(multiColumnFC, func(i, j int) bool { return indices[i] < indices[j] })
+			allColumnFCs = append(singleColumnFC, multiColumnFC...)
 		}
+
+		trainStmt.Features[target] = allColumnFCs
 	}
 }
 
