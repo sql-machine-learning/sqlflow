@@ -542,19 +542,7 @@ func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTa
 			allColumnFCs = append(singleColumnFC, multiColumnFC...)
 		}
 
-		trainStmt.Features[target] = make([]FeatureColumn, 0)
-		for _, fc := range allColumnFCs {
-			if categoryFC, ok := fc.(CategoricalColumn); ok {
-				embeddingFC := &EmbeddingColumn{
-					CategoryColumn: categoryFC,
-					Dimension:      int(categoryFC.NumClass()),
-					Combiner:       "mean",
-				}
-				trainStmt.Features[target] = append(trainStmt.Features[target], embeddingFC)
-			} else {
-				trainStmt.Features[target] = append(trainStmt.Features[target], fc)
-			}
-		}
+		trainStmt.Features[target] = allColumnFCs
 	}
 }
 

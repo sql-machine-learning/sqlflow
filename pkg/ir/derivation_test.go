@@ -268,10 +268,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.True(ok)
 
 	fc4 = trainStmt.Features["feature_columns"][3]
-	embeddingFC1, ok := fc4.(*EmbeddingColumn)
-	a.True(ok)
-	a.Equal("mean", embeddingFC1.Combiner)
-	cc, ok := embeddingFC1.CategoryColumn.(*CrossColumn)
+	cc, ok := fc4.(*CrossColumn)
 	a.True(ok)
 	a.Equal(int64(128), cc.HashBucketSize)
 	nc4, ok := cc.Keys[0].(*NumericColumn)
@@ -283,10 +280,7 @@ func TestFeatureDerivation(t *testing.T) {
 	a.Equal("c5", nc5.FieldDesc.Name)
 
 	fc5 = trainStmt.Features["feature_columns"][4]
-	embeddingFC2, ok := fc5.(*EmbeddingColumn)
-	a.True(ok)
-	a.Equal("mean", embeddingFC2.Combiner)
-	cc, ok = embeddingFC2.CategoryColumn.(*CrossColumn)
+	cc, ok = fc5.(*CrossColumn)
 	a.True(ok)
 	a.Equal(int64(256), cc.HashBucketSize)
 	nc4, ok = cc.Keys[0].(*NumericColumn)

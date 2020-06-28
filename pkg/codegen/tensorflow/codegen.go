@@ -282,6 +282,14 @@ func deriveFeatureColumnCodeAndFieldDescs(trainStmt *ir.TrainStmt) (featureColum
 		perTargetFeatureColumnsCode := []string{}
 		for _, fc := range fcList {
 			fcCode, err := codegen.GenerateFeatureColumnCode(fc, "tf")
+			// FIXME(sneaxiy): auto fill embedding layer to categorical column
+			// This cannot be moved to codegen.GenerateFeatureColumnCode, because
+			// XGBoost model does not support embedding feature column
+			if categoryFC, ok := fc.(ir.CategoricalColumn); ok {
+				fcCode = fmt.Sprintf("tf.feature_column.embedding_column(%s, dimension=%d, combiner=\"%s\")",
+					fcCode, categoryFC.NumClass(), "mean")
+			}
+
 			if err != nil {
 				return nil, nil, err
 			}
