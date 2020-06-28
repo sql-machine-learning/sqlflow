@@ -425,12 +425,22 @@ INTO fund.%[1]s_model;
 }
 
 func caseEnd2EndCrossFeatureColumn(t *testing.T) {
-	sqls := []string{`SELECT * FROM iris.train 
+	sqls := []string{`SELECT * FROM iris.train
+		TO TRAIN DNNClassifier
+		WITH
+		model.n_classes = 3,
+		model.hidden_units=[10, 20]
+		COLUMN CROSS([petal_width, petal_length], 10)
+		LABEL class
+		INTO iris.cross_tf_e2e_test_model;
+		`,
+
+		`SELECT * FROM iris.train 
 TO TRAIN DNNClassifier 
 WITH 
 	model.n_classes = 3, 
 	model.hidden_units=[10, 20] 
-COLUMN EMBEDDING(CROSS([petal_width, petal_length], 10), 128, 'mean')
+COLUMN EMBEDDING(CROSS([petal_width, petal_length], 10), 128, 'sum')
 LABEL class 
 INTO iris.cross_tf_e2e_test_model;
 `,
@@ -439,7 +449,7 @@ TO TRAIN DNNClassifier
 WITH 
 	model.n_classes = 3, 
 	model.hidden_units=[10, 20] 
-COLUMN EMBEDDING(CROSS([petal_width, petal_length], 10), 128, 'mean')
+COLUMN EMBEDDING(CROSS([petal_width, petal_length], 10), 128, 'sqrtn')
 LABEL class 
 INTO iris.cross_tf_e2e_test_model;
 `,

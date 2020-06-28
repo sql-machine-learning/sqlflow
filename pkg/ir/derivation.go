@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -489,8 +490,17 @@ func newFeatureColumn(fcTargetMap map[string][]FeatureColumn, fmMap FieldDescMap
 // setDerivedFeatureColumnToIR set derived feature column information back to the original IR structure.
 func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
 	for _, target := range columnTargets {
+		allMultiColumnFeatures := make([]FeatureColumn, 0)
+		for _, fc := range trainStmt.Features[target] {
+			if len(fc.GetFieldDesc()) > 1 {
+				allMultiColumnFeatures = append(allMultiColumnFeatures, fc)
+			}
+		}
+
 		targetFeatureColumnMap := fcMap[target]
-		trainStmt.Features[target] = []FeatureColumn{}
+		singleColumnFC := make([]FeatureColumn, 0)
+		multiColumnFC := make([]FeatureColumn, 0)
+		allColumnFCs := make([]FeatureColumn, 0)
 		for _, slctKey := range selectFieldNames {
 			// label should not be added to feature columns
 			if slctKey == trainStmt.Label.GetFieldDesc()[0].Name {
@@ -499,7 +509,7 @@ func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTa
 
 			for _, fc := range targetFeatureColumnMap[slctKey] {
 				exists := false
-				for _, resultFC := range trainStmt.Features[target] {
+				for _, resultFC := range allColumnFCs {
 					if fc == resultFC {
 						exists = true
 						break
@@ -507,8 +517,42 @@ func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTa
 				}
 
 				if !exists {
-					trainStmt.Features[target] = append(trainStmt.Features[target], fc)
+					allColumnFCs = append(allColumnFCs, fc)
+					if len(fc.GetFieldDesc()) == 1 {
+						singleColumnFC = append(singleColumnFC, fc)
+					} else {
+						multiColumnFC = append(multiColumnFC, fc)
+					}
 				}
+			}
+		}
+
+		if len(multiColumnFC) > 0 {
+			indices := make([]int, 0)
+			for _, fcRet := range multiColumnFC {
+				for j, v := range allMultiColumnFeatures {
+					if fcRet == v {
+						indices = append(indices, j)
+						break
+					}
+				}
+			}
+
+			sort.Slice(multiColumnFC, func(i, j int) bool { return indices[i] < indices[j] })
+			allColumnFCs = append(singleColumnFC, multiColumnFC...)
+		}
+
+		trainStmt.Features[target] = make([]FeatureColumn, 0)
+		for _, fc := range allColumnFCs {
+			if categoryFC, ok := fc.(CategoricalColumn); ok {
+				embeddingFC := &EmbeddingColumn{
+					CategoryColumn: categoryFC,
+					Dimension:      int(categoryFC.NumClass()),
+					Combiner:       "mean",
+				}
+				trainStmt.Features[target] = append(trainStmt.Features[target], embeddingFC)
+			} else {
+				trainStmt.Features[target] = append(trainStmt.Features[target], fc)
 			}
 		}
 	}
