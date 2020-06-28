@@ -635,7 +635,7 @@ func parseCrossColumn(el *parser.ExprList) (*CrossColumn, error) {
 	}
 	return &CrossColumn{
 		Keys:           key.([]interface{}),
-		HashBucketSize: bucketSize}, nil
+		HashBucketSize: int64(bucketSize)}, nil
 }
 
 func parseCategoryIDColumn(el *parser.ExprList) (*CategoryIDColumn, error) {
@@ -710,7 +710,7 @@ func parseSeqCategoryIDColumn(el *parser.ExprList) (*SeqCategoryIDColumn, error)
 	}
 	return &SeqCategoryIDColumn{
 		FieldDesc:  fieldDesc,
-		BucketSize: bucketSize,
+		BucketSize: int64(bucketSize),
 	}, nil
 }
 
@@ -751,8 +751,8 @@ func parseCategoryHashColumn(el *parser.ExprList) (*CategoryHashColumn, error) {
 	}, nil
 }
 
-func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (FeatureColumn, string, error) {
-	var catColumn FeatureColumn
+func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoryColumn, string, error) {
+	var catColumn CategoryColumn
 	sourceExprList := (*el)[1]
 	if sourceExprList.Type != 0 {
 		// 1. key is a IDET string: EMBEDDING(col_name, size), fill a nil in CategoryColumn for later
@@ -765,7 +765,6 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (FeatureColumn,
 	}
 	source, err := parseFeatureColumn(&sourceExprList.Sexp)
 	if err != nil {
-		var tmpCatColumn FeatureColumn
 		// 2. source is a FieldDesc like EMBEDDING(SPARSE(...), size)
 		fm, err := parseFieldDesc(&sourceExprList.Sexp)
 		if err != nil {
@@ -776,23 +775,15 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (FeatureColumn,
 		if len(fm.Shape) < 1 {
 			return nil, "", fmt.Errorf("invalid FieldDesc Shape: %v", sourceExprList)
 		}
-		tmpCatColumn = &CategoryIDColumn{
+		catColumn = &CategoryIDColumn{
 			FieldDesc:  fm,
 			BucketSize: int64(fm.Shape[0]),
 		}
-		catColumn = tmpCatColumn
 	} else {
-		var tmpCatColumn FeatureColumn
 		// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)
-		tmpCatColumn, ok := source.(*CategoryIDColumn)
+		tmpCatColumn, ok := source.(CategoryColumn)
 		if !ok {
-			tmpCatColumn, ok = source.(*SeqCategoryIDColumn)
-			if !ok {
-				tmpCatColumn, ok = source.(*CategoryHashColumn)
-				if !ok {
-					return nil, "", fmt.Errorf("key of EMBEDDING must be categorical column")
-				}
-			}
+			return nil, "", fmt.Errorf("key of EMBEDDING must be categorical column")
 		}
 		catColumn = tmpCatColumn
 	}
@@ -972,10 +963,11 @@ func resolveDelimiter(delimiter string) (string, error) {
 }
 
 func expression2string(e interface{}) (string, error) {
-	// resolved, _, err := resolveExpression(e)
 	if expr, ok := e.(*parser.Expr); ok {
 		if expr.Type != 0 {
-			return strings.Trim(expr.Value, "\""), nil
+			if stringValue, ok := inferStringValue(expr.Value).(string); ok {
+				return stringValue, nil
+			}
 		}
 	}
 	return "", fmt.Errorf("expression expected to be string, actual: %s", e)
