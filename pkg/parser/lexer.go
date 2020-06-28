@@ -37,6 +37,8 @@ type lexer struct {
 	width    int    // width of last rune read from input
 	err      error  // the parser could return the error
 	previous int    // previous start, recorded for error position
+	// parse result
+	result *SQLFlowSelectStmt
 }
 
 func newLexer(input string) *lexer {
