@@ -20,20 +20,12 @@ type Expr struct {
 
 type ExprList []*Expr
 
-type ConstraintExpr struct {
-	expr *Expr
-	groupby string
+type Constraint struct {
+	*Expr
+	GroupBy string
 }
 
-func (e *ConstraintExpr) Expression() *Expr {
-    return e.expr
-}
-
-func (e *ConstraintExpr) GroupBy() string {
-    return e.groupby
-}
-
-type ConstraintExprList []*ConstraintExpr
+type ConstraintList []*Constraint
 
 /* construct an atomic expr */
 func atomic(typ int, val string) *Expr {
@@ -141,7 +133,7 @@ type OptimizeClause struct {
 	// Direction can be MAXIMIZE or MINIMIZE
 	Direction string
 	Objective *Expr
-	Constrants ConstraintExprList
+	Constrants ConstraintList
 	OptimizeAttrs Attributes
 	Solver string
 	OptimizeInto string
@@ -170,8 +162,8 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   tbls []string
   expr *Expr
   expl ExprList
-  ctexp  *ConstraintExpr
-  ctexpl ConstraintExprList
+  ctexp  *Constraint
+  ctexpl ConstraintList
   atrs Attributes
   eslt SQLFlowSelectStmt
   slct StandardSelect
@@ -199,8 +191,8 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <val> optional_using
 %type  <expr> expr funcall column
 %type  <expl> ExprList pythonlist columns
-%type  <ctexp> ConstraintExpr
-%type  <ctexpl> ConstraintExprList
+%type  <ctexp> constraint
+%type  <ctexpl> constraint_list
 %type  <atrs> attr
 %type  <atrs> attrs
 %type  <tbls> stringlist, identlist
@@ -328,7 +320,7 @@ run_clause
 ;
 
 optimize_clause
-: TO MAXIMIZE expr CONSTRAINT ConstraintExprList WITH attrs USING IDENT INTO IDENT {
+: TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -336,14 +328,14 @@ optimize_clause
 	$$.Solver = $9;
 	$$.OptimizeInto = $11;
 }
-| TO MAXIMIZE expr CONSTRAINT ConstraintExprList WITH attrs INTO IDENT {
+| TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
 	$$.OptimizeAttrs = $7;
 	$$.OptimizeInto = $9;
 }
-| TO MINIMIZE expr CONSTRAINT ConstraintExprList WITH attrs USING IDENT INTO IDENT {
+| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -351,7 +343,7 @@ optimize_clause
 	$$.Solver = $9;
 	$$.OptimizeInto = $11;
 }
-| TO MINIMIZE expr CONSTRAINT ConstraintExprList WITH attrs INTO IDENT {
+| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
 	$$.Constrants = $5;
@@ -409,14 +401,14 @@ ExprList
 | ExprList ',' expr { $$ = append($1, $3) }
 ;
 
-ConstraintExpr
-: expr { $$ = &ConstraintExpr{expr: $1, groupby: ""} }
-| expr GROUP BY IDENT { $$ = &ConstraintExpr{expr: $1, groupby: $4} }
+constraint
+: expr { $$ = &Constraint{Expr: $1, GroupBy: ""} }
+| expr GROUP BY IDENT { $$ = &Constraint{Expr: $1, GroupBy: $4} }
 ;
 
-ConstraintExprList
-: ConstraintExpr { $$ = ConstraintExprList{$1} }
-| ConstraintExprList ',' ConstraintExpr { $$ = append($1, $3) }
+constraint_list
+: constraint { $$ = ConstraintList{$1} }
+| constraint_list ',' constraint { $$ = append($1, $3) }
 ;
 
 pythonlist
