@@ -55,7 +55,7 @@ func createTable(db *sql.DB, dbms, table string) error {
 // the database name, e.g., "db.tbl", it doesn't try to remove the
 // database.
 func dropTableIfExists(db *sql.DB, table string) error {
-	stmt := fmt.Sprintf("DROP TABLE IF EXISTS %s", table)
+	stmt := fmt.Sprintf("DROP TABLE IF EXISTS %s;", table)
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("dropTableIfExists %s: %v", table, e)
 	}

@@ -39,6 +39,7 @@ go install ./...
 # ref: https://stackoverflow.com/a/23840896
 # TODO(Yancey1989): enable all the unit test for the maxcompute
 gotest -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
+gotest -p 1 -v ./pkg/sqlfs/...
 
 # TODO(shendiaomo): fix CI after the PAI service initiated in the MaxCompute project
 # export SQLFLOW_submitter=pai
