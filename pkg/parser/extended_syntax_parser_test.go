@@ -218,10 +218,9 @@ func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 	}
 	{
 		// unmatched quotation right after the statement
-		r, idx, e := parseSQLFlowStmt(`to train a with b = c label d into e;"`)
+		_, idx, e := parseSQLFlowStmt(`to train a with b = c label d into e;"`)
 		a.Error(e)
 		a.Equal(len(`to train a with b = c label d into e;`), idx)
-		a.Nil(r)
 	}
 
 }

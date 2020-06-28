@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 )
 
 /* expr defines an expression as a Lisp list.  If len(val)>0,
@@ -143,8 +142,6 @@ type ShowTrainClause struct {
 	ModelName string
 }
 
-var parseResult *SQLFlowSelectStmt
-
 func attrsUnion(as1, as2 Attributes) Attributes {
 	for k, v := range as2 {
 		if _, ok := as1[k]; ok {
@@ -165,7 +162,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   ctexp  *Constraint
   ctexpl ConstraintList
   atrs Attributes
-  eslt SQLFlowSelectStmt
+  eslt *SQLFlowSelectStmt
   slct StandardSelect
   tran TrainClause
   colc columnClause
@@ -212,46 +209,53 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 
 sqlflow_select_stmt
 : train_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Train: true,
 		TrainClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | predict_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Predict: true,
 		PredictClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | explain_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Explain: true,
 		ExplainClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | evaluate_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Evaluate: true,
 		EvaluateClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | run_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Run: true,
 		RunClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
   }
 | optimize_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		Optimize: true,
 		OptimizeClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
 }
 | show_train_clause end_of_stmt {
-	parseResult = &SQLFlowSelectStmt{
+	$$ = &SQLFlowSelectStmt{
 		Extended: true,
 		ShowTrain: true,
 		ShowTrainClause: $1}
+	extendedSyntaxlex.(*lexer).result = $$
 }
 ;
 
@@ -581,7 +585,6 @@ func (s StandardSelect) String() string {
 	return s.origin
 }
 
-var mu sync.Mutex // Protect the use of global variable parseResult.
 
 func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 	defer func() {
@@ -594,16 +597,11 @@ func parseSQLFlowStmt(s string) (r *SQLFlowSelectStmt, idx int, e error) {
 		}
 	}()
 
-	mu.Lock()
-	defer mu.Unlock()
-
-	parseResult = nil // Important! Clear out result from previous call.
 	lex := newLexer(s)
 	extendedSyntaxParse(lex) // extendedSyntaxParse is auto generated.
 	idx = lex.pos
 	if lex.err != nil {
-		parseResult = nil
 		idx = lex.previous
 	}
-	return parseResult, idx, lex.err
+	return lex.result, idx, lex.err
 }
