@@ -215,9 +215,9 @@ func TestFetch(t *testing.T) {
 	a.Contains(concatedLogs, "SQLFlow Step: [3/3] Status: Succeeded")
 	// confirm columns and rows of sql: SELECT 1;
 	a.Equal([]string{"1"}, columns)
-	v := &wrappers.Int64Value{}
+	v := &wrappers.Int32Value{}
 	a.NoError(ptypes.UnmarshalAny(rows[0][0], v))
-	a.Equal(v.GetValue(), int64(1))
+	a.Equal(v.GetValue(), int32(1))
 }
 
 func waitUntilPodRunning(podID string) error {

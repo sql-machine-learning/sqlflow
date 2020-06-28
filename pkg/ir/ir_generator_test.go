@@ -97,7 +97,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.True(ok)
 	a.Equal("c1", cross.Keys[0].(string))
 	a.Equal("c2", cross.Keys[1].(string))
-	a.Equal(64, cross.HashBucketSize)
+	a.Equal(int64(64), cross.HashBucketSize)
 
 	bucket, ok := trainStmt.Features["feature_columns"][5].(*BucketColumn)
 	a.True(ok)

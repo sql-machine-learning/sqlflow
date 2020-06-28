@@ -21,12 +21,7 @@
 # populating datasets, and the container running sqlflow:ci can use
 # inotifywait to wait for the creation of this file before it go on
 # running tests.
-FROM ubuntu:18.04
-
-COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-
-COPY docker/mysql/install-mysql-server.bash /
-RUN /install-mysql-server.bash
+FROM alpine:3.12
 
 # Install sample datasets for CI and demo.
 COPY doc/datasets/popularize_churn.sql \
@@ -36,6 +31,12 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_imdb.sql \
      doc/datasets/create_model_db.sql \
      /datasets/
+
+COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
+RUN /bin/sh -c "source find_fastest_resources.sh && \
+    choose_fastest_alpine_source"
+
+RUN apk add --no-cache mysql mysql-client >/dev/null
 
 VOLUME /var/lib/mysql
 

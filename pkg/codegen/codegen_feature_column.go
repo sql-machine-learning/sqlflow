@@ -106,13 +106,27 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		var keysGenerated = make([]string, len(c.Keys))
 		for idx, key := range c.Keys {
 			if c, ok := key.(ir.FeatureColumn); ok {
-				code, err := GenerateFeatureColumnCode(c, module)
-				if err != nil {
-					return "", err
+				if nc, ok := c.(*ir.NumericColumn); ok {
+					size := 1
+					for s := range nc.FieldDesc.Shape {
+						size *= s
+					}
+
+					if size > 1 {
+						return "", fmt.Errorf("CROSS does not support shape not equal to 1")
+					}
+					keysGenerated[idx] = fmt.Sprintf("\"%s\"", nc.FieldDesc.Name)
+				} else {
+					code, err := GenerateFeatureColumnCode(c, module)
+					if err != nil {
+						return "", err
+					}
+					keysGenerated[idx] = code
 				}
-				keysGenerated[idx] = code
+			} else if strKey, ok := key.(string); ok {
+				keysGenerated[idx] = fmt.Sprintf("\"%s\"", strKey)
 			} else {
-				return "", fmt.Errorf("field in cross column is not a FeatureColumn type: %v", key)
+				return "", fmt.Errorf("field in cross column is not a FeatureColumn or string type: %v", key)
 			}
 		}
 		return fmt.Sprintf(
