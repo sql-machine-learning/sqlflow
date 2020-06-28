@@ -73,7 +73,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// Cases for diagnosis
 	t.Run("CaseDiagnosisMissingModelParams", CaseDiagnosisMissingModelParams)
 
-	t.Run("CaseTrainARIMAWithSTLDecompositionModel", caseTrainARIMAWithSTLDecompostionModel)
+	t.Run("CaseTrainARIMAWithSTLDecompositionModel", caseTrainARIMAWithSTLDecompositionModel)
 }
 
 func CaseShouldError(t *testing.T) {
@@ -393,7 +393,7 @@ INTO iris.explain_result;`, // explain tf boosted trees model
 	}
 }
 
-func caseTrainARIMAWithSTLDecompostionModel(t *testing.T) {
+func caseTrainARIMAWithSTLDecompositionModel(t *testing.T) {
 	a := assert.New(t)
 
 	trainSQL := `
