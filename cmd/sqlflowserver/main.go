@@ -82,7 +82,7 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 
 func main() {
 	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
-	logPath := flag.String("log", "", "path/to/log, e.g.: /var/log/sqlflow.log")
+	logPath := flag.String("log", "-", "path/to/log, e.g.: /var/log/sqlflow.log")
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
 	port := flag.Int("port", 50051, "TCP port to listen on.")
