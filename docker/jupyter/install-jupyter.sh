@@ -17,7 +17,9 @@ set -e
 
 # install jupyterhub Python package so that this image can be used as jupyterhub
 # singleuser notebook server, ref: https://github.com/jupyterhub/jupyterhub/tree/master/singleuser
-# Install pandas pre-compiled apk, we do not want to build this python package locally because it relies on gcc and other build tools, which make the image very large
+# Install pandas pre-compiled apk, we do not want to build
+# this python package locally because it relies on gcc and
+# other build tools, which make the image very large
 wget -q http://cdn.sqlflow.tech/alpine/py3-pandas-1.0.3-r0.apk
 wget -q -P /etc/apk/keys/ http://cdn.sqlflow.tech/alpine/sqlflow-5ef80180.rsa.pub
 apk add py3-pandas-1.0.3-r0.apk && rm py3-pandas-1.0.3-r0.apk
