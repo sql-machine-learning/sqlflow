@@ -157,7 +157,6 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		case *ir.RunStmt:
-			fmt.Println("This is a RunStmt IR")
 			sqlStmt := &sqlStatement{
 				OriginalSQL:   sqlIR.GetOriginalSQL(),
 				IsExtendedSQL: sqlIR.IsExtended(),

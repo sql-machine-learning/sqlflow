@@ -350,7 +350,7 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		_, e := s.runCommand(cmd, context, false)
 
 		return e
-	} else if fileExtension == ".py" {
+	} else if strings.EqualFold(fileExtension, ".py") {
 		// If the first parameter is python Program
 		if _, e := os.Stat(program); e != nil {
 			return fmt.Errorf("Failed to get the python file %s", program)

@@ -284,7 +284,7 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	fileExtension := filepath.Ext(program)
 
 	// If the first parameter is a Python program
-	if fileExtension == ".py" {
+	if strings.EqualFold(fileExtension, ".py") {
 		if _, e := os.Stat(program); e != nil {
 			return fmt.Errorf("Cannot find the Python file %s", program)
 		}
