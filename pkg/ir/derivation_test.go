@@ -15,7 +15,6 @@ package ir
 
 import (
 	"os"
-	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,17 +23,13 @@ import (
 )
 
 func TestCSVRegex(t *testing.T) {
-	csvRegex, err := regexp.Compile("(\\-?[0-9\\.]\\,)+(\\-?[0-9\\.])")
-	if err != nil {
-		t.Errorf("%v", err)
-	}
 	csvStings := []string{
 		"1,2,3,4",
 		"1.3,-3.2,132,32",
 		"33,-33",
 	}
 	for _, s := range csvStings {
-		if !csvRegex.MatchString(s) {
+		if inferStringDataFormat(s) != csv {
 			t.Errorf("%s is not matched", s)
 		}
 	}
@@ -46,10 +41,35 @@ func TestCSVRegex(t *testing.T) {
 		"1.23",
 	}
 	for _, s := range nonCSVStings {
-		if csvRegex.MatchString(s) {
+		if inferStringDataFormat(s) != csv {
 			t.Errorf("%s should not be matched", s)
 		}
 	}
+}
+
+func TestLibSVMRegex(t *testing.T) {
+	libSVMStrings := []string{
+		"1:3 2:4\t 3:5  4:9",
+		"0:1.3 10:-3.2 20:132 7:32",
+		"3:33",
+	}
+	for _, s := range libSVMStrings {
+		if inferStringDataFormat(s) != libsvm {
+			t.Errorf("%s is not matched", s)
+		}
+	}
+	nonLibSVMStrings := []string{
+		"100",
+		"-10:100",
+		"10.2:23,",
+		"0:abc",
+	}
+	for _, s := range nonLibSVMStrings {
+		if inferStringDataFormat(s) != libsvm {
+			t.Errorf("%s should not be matched", s)
+		}
+	}
+
 }
 
 func mockTrainStmtNormal() *TrainStmt {
@@ -330,7 +350,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		Estimator:        "xgboost.gbtree",
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]FeatureColumn{},
-		Label:            &NumericColumn{&FieldDesc{"class", Int, "", []int{1}, false, nil, 0}}}
+		Label:            &NumericColumn{&FieldDesc{"class", Int, "", "", []int{1}, false, nil, 0}}}
 	e := InferFeatureColumns(trainStmt, database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))

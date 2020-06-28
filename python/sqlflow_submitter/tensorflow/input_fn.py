@@ -24,7 +24,10 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
         if feature_metas[name]["is_sparse"]:
-            features_dict[name] = tf.SparseTensor(*col)
+            tensor = tf.SparseTensor(*col)
+            if feature_metas[name]["format"] == "libsvm":
+                tensor = tf.sparse.to_dense(tensor)
+            features_dict[name] = tensor
         else:
             features_dict[name] = col
     return features_dict, label

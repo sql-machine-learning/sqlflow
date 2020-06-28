@@ -149,11 +149,19 @@ def connect(driver,
 def read_feature(raw_val, feature_spec, feature_name):
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["is_sparse"]:
-        indices = np.fromstring(raw_val,
-                                dtype=int,
-                                sep=feature_spec["delimiter"])
-        indices = indices.reshape(indices.size, 1)
-        values = np.ones([indices.size], dtype=np.int32)
+        if feature_spec["format"] == "libsvm":
+            items = raw_val.split()
+            items = [item.split(':', 2) for item in items]
+            indices = np.array([int(item[0]) for item in items], dtype=int)
+            values = np.array([float(item[1]) for item in items],
+                              dtype=feature_spec["dtype"])
+        else:
+            indices = np.fromstring(raw_val,
+                                    dtype=int,
+                                    sep=feature_spec["delimiter"])
+            indices = indices.reshape(indices.size, 1)
+            values = np.ones([indices.size], dtype=np.int32)
+
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return (indices, values, dense_shape)
     elif feature_spec["delimiter"] != "":

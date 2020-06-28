@@ -178,6 +178,7 @@ type FieldMeta struct {
 	FeatureName string `json:"feature_name"`
 	DType       string `json:"dtype"`
 	Delimiter   string `json:"delimiter"`
+	Format      string `json:"format"`
 	Shap        []int  `json:"shape"`
 	IsSparse    bool   `json:"is_sparse"`
 }
@@ -187,6 +188,7 @@ func resolveFieldMeta(desc *ir.FieldDesc) FieldMeta {
 		FeatureName: desc.Name,
 		DType:       tf.DTypeToString(desc.DType),
 		Delimiter:   desc.Delimiter,
+		Format:      desc.Format,
 		Shap:        desc.Shape,
 		IsSparse:    desc.IsSparse,
 	}

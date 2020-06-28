@@ -181,8 +181,8 @@ func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName stri
 	return nil
 }
 
-// fillNonCSVFieldDesc will set fieldDescMap[fieldName] = FieldDesc for parsing the numerical and string data
-func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) {
+// fillFieldDescByDataType will set fieldDescMap[fieldName] = FieldDesc for parsing the numerical and string data
+func fillFieldDescByDataType(cellData string, fieldDescMap FieldDescMap, fieldName string) {
 	_, err := strconv.ParseInt(cellData, 10, 32)
 	if err != nil {
 		_, err := strconv.ParseFloat(cellData, 32)
@@ -213,11 +213,27 @@ func fillNonCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName s
 	}
 }
 
-func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap) error {
-	csvRegex, err := regexp.Compile("(\\-?[0-9\\.]\\,)+(\\-?[0-9\\.])")
-	if err != nil {
-		return err
+const (
+	csv    = "csv"
+	libsvm = "libsvm"
+)
+
+func inferStringDataFormat(strData string) string {
+	const realNumberRegex = "((\\+|-)?([0-9]+)(\\.[0-9]+)?)|((\\+|-)?\\.?[0-9]+)"
+
+	csvRegex := regexp.MustCompile(fmt.Sprintf("^(%s,)+(%s)$", realNumberRegex, realNumberRegex))
+	if csvRegex.MatchString(strData) {
+		return csv
 	}
+
+	libsvmRegex := regexp.MustCompile(fmt.Sprintf("^([0-9]+:(%s)\\s*)+$", realNumberRegex))
+	if libsvmRegex.MatchString(strData) {
+		return libsvm
+	}
+	return ""
+}
+
+func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap, rowCount int) error {
 	for idx, ct := range columnTypeList {
 		_, fld := decomp(ct.Name())
 		// add a default ColumnSpec for updating.
@@ -235,13 +251,32 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 			fieldDescMap[fld].Shape = []int{1}
 		case "CHAR", "VARCHAR", "TEXT", "STRING":
 			cellData := rowdata[idx].(*string)
-			if csvRegex.MatchString(*cellData) {
+
+			// Infer feature column type when rowCount == 0
+			if rowCount == 0 {
+				fieldDescMap[fld].Format = inferStringDataFormat(*cellData)
+				if fieldDescMap[fld].Format == libsvm {
+					fieldDescMap[fld].IsSparse = true // force to be sparse
+					fieldDescMap[fld].DType = Float   // force to be float type
+
+					size := 1
+					for s := range fieldDescMap[fld].Shape {
+						size *= s
+					}
+
+					if size == 1 {
+						return fmt.Errorf("size cannot be 1 when data format of %s is LibSVM", fld)
+					}
+				}
+			}
+
+			if fieldDescMap[fld].Format == csv {
 				err := fillCSVFieldDesc(*cellData, fieldDescMap, fld)
 				if err != nil {
 					return err
 				}
-			} else {
-				fillNonCSVFieldDesc(*cellData, fieldDescMap, fld)
+			} else if fieldDescMap[fld].Format == "" {
+				fillFieldDescByDataType(*cellData, fieldDescMap, fld)
 			}
 		default:
 			return fmt.Errorf("fillFieldDesc: unsupported database column type: %s", typeName)
@@ -399,7 +434,7 @@ func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDe
 		if err != nil {
 			return err
 		}
-		err = fillFieldDesc(columnTypes, rowData, fmMap)
+		err = fillFieldDesc(columnTypes, rowData, fmMap, rowCount)
 		if err != nil {
 			return err
 		}
