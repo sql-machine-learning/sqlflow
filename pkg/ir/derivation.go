@@ -490,6 +490,16 @@ func newFeatureColumn(fcTargetMap map[string][]FeatureColumn, fmMap FieldDescMap
 // setDerivedFeatureColumnToIR set derived feature column information back to the original IR structure.
 func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTargets []string, selectFieldNames []string) {
 	for _, target := range columnTargets {
+		// NOTE: some feature columns may contain more than 1 FieldDescs.
+		// For example, "CROSS" may contain 2 or more FieldDescs. If there
+		// is any feature column that contains more than 1 FieldDescs, they
+		// would be placed at the end of TrainStmt.Features[target] according
+		// to the order they appear in COLUMN clause. Therefore, we split the
+		// feature columns to be 2 slices: singleColumnFC and multiColumnFC.
+		// In order to know the order each feature column appears in COLUMN
+		// clause, we should collect all feature columns that contain more than
+		// 1 FieldDescs beforehand, i.e., allMultiColumnFeatures, so that we
+		// can sort multiColumnFC afterwards.
 		allMultiColumnFeatures := make([]FeatureColumn, 0)
 		for _, fc := range trainStmt.Features[target] {
 			if len(fc.GetFieldDesc()) > 1 {
@@ -538,6 +548,8 @@ func setDerivedFeatureColumnToIR(trainStmt *TrainStmt, fcMap ColumnMap, columnTa
 				}
 			}
 
+			// sort multiColumnFC according to the order they appear in allMultiColumnFeatures,
+			// i.e., the order they appear in COLUMN clause.
 			sort.Slice(multiColumnFC, func(i, j int) bool { return indices[i] < indices[j] })
 			allColumnFCs = append(singleColumnFC, multiColumnFC...)
 		}

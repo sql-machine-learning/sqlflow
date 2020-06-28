@@ -21,8 +21,8 @@ type FeatureColumn interface {
 	ApplyTo(*FieldDesc) (FeatureColumn, error)
 }
 
-// CategoricalColumn corresponds to categorical column
-type CategoricalColumn interface {
+// CategoryColumn corresponds to categorical column
+type CategoryColumn interface {
 	FeatureColumn
 	NumClass() int64
 }
@@ -201,10 +201,10 @@ func (c *SeqCategoryIDColumn) NumClass() int64 {
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/embedding_column
 type EmbeddingColumn struct {
-	CategoryColumn CategoricalColumn
-	Dimension      int
-	Combiner       string
-	Initializer    string
+	CategoryColumn
+	Dimension   int
+	Combiner    string
+	Initializer string
 	// only used when EMBEDDING(col_name, ...) this will set CategoryColumn = nil
 	// will fill the feature column details using feature_derivation
 	Name string
@@ -233,7 +233,7 @@ func (c *EmbeddingColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 			return nil, err
 		}
 
-		if categoryFc, ok := fc.(CategoricalColumn); !ok {
+		if categoryFc, ok := fc.(CategoryColumn); !ok {
 			ret.CategoryColumn = categoryFc
 		} else {
 			return nil, fmt.Errorf("invalid EmbeddingColumn.ApplyTo return value")

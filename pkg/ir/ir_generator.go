@@ -751,8 +751,8 @@ func parseCategoryHashColumn(el *parser.ExprList) (*CategoryHashColumn, error) {
 	}, nil
 }
 
-func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoricalColumn, string, error) {
-	var catColumn CategoricalColumn
+func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoryColumn, string, error) {
+	var catColumn CategoryColumn
 	sourceExprList := (*el)[1]
 	if sourceExprList.Type != 0 {
 		// 1. key is a IDET string: EMBEDDING(col_name, size), fill a nil in CategoryColumn for later
@@ -781,7 +781,7 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoricalCol
 		}
 	} else {
 		// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)
-		tmpCatColumn, ok := source.(CategoricalColumn)
+		tmpCatColumn, ok := source.(CategoryColumn)
 		if !ok {
 			return nil, "", fmt.Errorf("key of EMBEDDING must be categorical column")
 		}
