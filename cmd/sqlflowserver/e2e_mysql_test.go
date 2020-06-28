@@ -73,7 +73,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// Cases for diagnosis
 	t.Run("CaseDiagnosisMissingModelParams", CaseDiagnosisMissingModelParams)
 
-	t.Run("CaseTrainARIMAWithSTLDecompostionModel", caseTrainARIMAWithSTLDecompostionModel)
+	t.Run("CaseTrainARIMAWithSTLDecompositionModel", caseTrainARIMAWithSTLDecompostionModel)
 }
 
 func CaseShouldError(t *testing.T) {
