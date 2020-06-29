@@ -263,7 +263,6 @@ func (c *IndicatorColumn) GetFieldDesc() []*FieldDesc {
 func (c *IndicatorColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	ret := &IndicatorColumn{Name: other.Name}
 	if c.CategoryColumn != nil {
-		var err error
 		fc, err := c.CategoryColumn.ApplyTo(other)
 		if err != nil {
 			return nil, err
