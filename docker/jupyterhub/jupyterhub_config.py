@@ -67,9 +67,9 @@ c.KubeSpawner.profile_list = [{
     'Brings SQL and AI together. <a href="https://sqlflow.org">https://sqlflow.org</a>'
 }]
 c.KubeSpawner.cmd = [
-    "bash", "-c",
+    "sh", "-c",
     "export SQLFLOW_DATASOURCE=mysql://root:root@tcp\(${MY_POD_IP}:3306\)/?maxAllowedPacket=0 && \
-    export SQLFLOW_SERVER=${SQLFLOW_SERVER_SERVICE_HOST}:${SQLFLOW_SERVER_SERVICE_PORT} && start-notebook.sh"
+    export SQLFLOW_SERVER=${SQLFLOW_SERVER_SERVICE_HOST}:${SQLFLOW_SERVER_SERVICE_PORT} && jupyterhub-singleuser jupyter notebook --ip=0.0.0.0 --port=8888 --allow-root --notebook-dir=/workspace/"
 ]
 
 c.KubeSpawner.extra_containers = [{

@@ -23,8 +23,11 @@ set -e
 wget -q http://cdn.sqlflow.tech/alpine/py3-pandas-1.0.3-r0.apk
 wget -q -P /etc/apk/keys/ http://cdn.sqlflow.tech/alpine/sqlflow-5ef80180.rsa.pub
 apk add py3-pandas-1.0.3-r0.apk && rm py3-pandas-1.0.3-r0.apk
+# Dependencies for jupyterhub
+apk add py3-cryptography py3-ruamel.yaml.clib py3-requests
 
 pip -q install \
+    jupyterhub==1.1.0 \
     notebook \
     sqlflow==0.10.0
 
@@ -32,7 +35,7 @@ pip -q install \
 # automatically. c.f. https://stackoverflow.com/a/32683001.
 IPYTHON_STARTUP="/root/.ipython/profile_default/startup/"
 mkdir -p "$IPYTHON_STARTUP"
-mkdir -p /workspace
+mkdir -p /workspace/jupyter
 { echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")';
   echo 'get_ipython().magic(u"%reload_ext autoreload")';
   echo 'get_ipython().magic(u"%autoreload 2")'; } \
