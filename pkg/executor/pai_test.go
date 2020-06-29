@@ -41,3 +41,12 @@ func TestPickPAILogViwerURL(t *testing.T) {
 		"http://logview.odps.com:8080/logview/?h=http://service.sqlflow.com/api&p=my_project&id=2"}, pickPAILogViewerURL(mockPAIOutput))
 
 }
+func TestDownloadModelOSS(t *testing.T) {
+	ossModelPath := "alifin_jtest_dev/unknown/e2etest_predict_categorical_feature/"
+	project := "alifin_jtest_dev"
+	err := downloadOSSModel(ossModelPath, project)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	// os.RemoveAll("e2etest_predict_categorical_feature")
+}
