@@ -41,7 +41,7 @@ func TestCSVRegex(t *testing.T) {
 		"1.23",
 	}
 	for _, s := range nonCSVStings {
-		if inferStringDataFormat(s) != csv {
+		if inferStringDataFormat(s) == csv {
 			t.Errorf("%s should not be matched", s)
 		}
 	}
@@ -65,11 +65,26 @@ func TestLibSVMRegex(t *testing.T) {
 		"0:abc",
 	}
 	for _, s := range nonLibSVMStrings {
-		if inferStringDataFormat(s) != libsvm {
+		if inferStringDataFormat(s) == libsvm {
 			t.Errorf("%s should not be matched", s)
 		}
 	}
+}
 
+func TestGetMaxIndexOfLibSVMString(t *testing.T) {
+	a := assert.New(t)
+
+	index, err := getMaxIndexOfLibSVMData("1:2 3:4 2:1")
+	a.NoError(err)
+	a.Equal(3, index)
+
+	index, err = getMaxIndexOfLibSVMData("7:2\t 3:-4 10:20")
+	a.NoError(err)
+	a.Equal(10, index)
+
+	index, err = getMaxIndexOfLibSVMData("1:2")
+	a.NoError(err)
+	a.Equal(1, index)
 }
 
 func mockTrainStmtNormal() *TrainStmt {

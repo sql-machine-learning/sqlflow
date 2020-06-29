@@ -221,7 +221,7 @@ const (
 func inferStringDataFormat(strData string) string {
 	const realNumberRegex = "((\\+|-)?([0-9]+)(\\.[0-9]+)?)|((\\+|-)?\\.?[0-9]+)"
 
-	csvRegex := regexp.MustCompile(fmt.Sprintf("^(%s,)+(%s)$", realNumberRegex, realNumberRegex))
+	csvRegex := regexp.MustCompile(fmt.Sprintf("^((%s)\\,)+(%s)$", realNumberRegex, realNumberRegex))
 	if csvRegex.MatchString(strData) {
 		return csv
 	}
@@ -233,7 +233,30 @@ func inferStringDataFormat(strData string) string {
 	return ""
 }
 
-func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap, rowCount int) error {
+func getMaxIndexOfLibSVMData(str string) (int, error) {
+	maxIndex := 0
+	// LibSVM string is like:
+	// index:value index:value ...
+	re := regexp.MustCompile("\\s+")
+	for _, s := range re.Split(str, -1) {
+		split := strings.SplitN(s, ":", 2)
+		if len(split) != 2 {
+			return 0, fmt.Errorf("invalid LibSVM format string %s", s)
+		}
+
+		index, err := strconv.Atoi(split[0])
+		if err != nil {
+			return 0, fmt.Errorf("invalid LibSVM format string %s", s)
+		}
+
+		if index > maxIndex {
+			maxIndex = index
+		}
+	}
+	return maxIndex, nil
+}
+
+func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap, rowCount int, originalSizes map[string]int) error {
 	for idx, ct := range columnTypeList {
 		_, fld := decomp(ct.Name())
 		// add a default ColumnSpec for updating.
@@ -255,27 +278,32 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 			// Infer feature column type when rowCount == 0
 			if rowCount == 0 {
 				fieldDescMap[fld].Format = inferStringDataFormat(*cellData)
-				if fieldDescMap[fld].Format == libsvm {
-					fieldDescMap[fld].IsSparse = true // force to be sparse
-					fieldDescMap[fld].DType = Float   // force to be float type
-
-					size := 1
-					for s := range fieldDescMap[fld].Shape {
-						size *= s
-					}
-
-					if size == 1 {
-						return fmt.Errorf("size cannot be 1 when data format of %s is LibSVM", fld)
-					}
-				}
 			}
 
-			if fieldDescMap[fld].Format == csv {
+			switch fieldDescMap[fld].Format {
+			case csv:
 				err := fillCSVFieldDesc(*cellData, fieldDescMap, fld)
 				if err != nil {
 					return err
 				}
-			} else if fieldDescMap[fld].Format == "" {
+			case libsvm:
+				fieldDescMap[fld].IsSparse = true // force to be sparse
+				fieldDescMap[fld].DType = Float   // force to be float type
+				// Only infer the dense shape when the original size is 1
+				if size, ok := originalSizes[fld]; !ok || size == 1 {
+					if rowCount == 0 {
+						fieldDescMap[fld].Shape = []int{1}
+					}
+
+					curMaxIndex, err := getMaxIndexOfLibSVMData(*cellData)
+					if err != nil {
+						return err
+					}
+					if curMaxIndex+1 > fieldDescMap[fld].Shape[0] {
+						fieldDescMap[fld].Shape[0] = curMaxIndex + 1
+					}
+				}
+			case "":
 				fillFieldDescByDataType(*cellData, fieldDescMap, fld)
 			}
 		default:
@@ -316,7 +344,17 @@ func InferFeatureColumns(trainStmt *TrainStmt, db *database.DB) error {
 		selectFieldNames = append(selectFieldNames, fld)
 	}
 
-	err = fillFieldDescs(rows, columnTypes, fmMap)
+	// get original size of each FieldDesc
+	originalSizes := make(map[string]int, 0)
+	for name, fc := range fmMap {
+		size := 1
+		for _, s := range fc.Shape {
+			size *= s
+		}
+		originalSizes[name] = size
+	}
+
+	err = fillFieldDescs(rows, columnTypes, fmMap, originalSizes)
 	if err != nil {
 		return err
 	}
@@ -423,7 +461,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDes
 	return nil
 }
 
-func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDescMap) error {
+func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDescMap, originalSizes map[string]int) error {
 	rowCount := 0
 	for rows.Next() {
 		rowData, err := newRowValue(columnTypes)
@@ -434,7 +472,7 @@ func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDe
 		if err != nil {
 			return err
 		}
-		err = fillFieldDesc(columnTypes, rowData, fmMap, rowCount)
+		err = fillFieldDesc(columnTypes, rowData, fmMap, rowCount, originalSizes)
 		if err != nil {
 			return err
 		}
