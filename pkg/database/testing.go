@@ -123,8 +123,13 @@ func testingMaxComputeConfig() *gomaxcompute.Config {
 				kvList := strings.Split(kv, "=")
 				if len(kvList) == 2 && kvList[0] == "scheme" {
 					endpoint = fmt.Sprintf("%s://%s", kvList[1], urlAndArgs[0])
+					break
 				}
 			}
+		}
+	} else {
+		if !(strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://")) {
+			log.Fatal("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT must be the form of http://service-maxcompute.com/api or service-maxcompute.com/api?scheme=http")
 		}
 	}
 	return &gomaxcompute.Config{
