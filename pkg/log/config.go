@@ -53,7 +53,7 @@ func setOutput(filename string) {
 	filename = strings.Trim(filename, " ")
 	if filename == "/dev/null" {
 		logrus.SetOutput(ioutil.Discard)
-	} else if filename == "-" {
+	} else if filename == "" {
 		logrus.SetOutput(os.Stdout)
 	} else if len(filename) > 0 {
 		logrus.SetOutput(&lumberjack.Logger{
