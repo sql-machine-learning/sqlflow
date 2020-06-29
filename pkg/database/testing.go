@@ -16,6 +16,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"sqlflow.org/gomaxcompute"
@@ -111,11 +112,31 @@ func createTestingHiveDB() *DB {
 }
 
 func testingMaxComputeConfig() *gomaxcompute.Config {
+	endpoint := test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT", "http://service-maxcompute.com/api")
+	urlAndArgs := strings.Split(endpoint, "?")
+	// accept format like http://service-maxcompute.com/api
+	// if got service-maxcompute.com/api?curr_project=xxxx&scheme=http, reformat to http://service-maxcompute.com/api
+	if len(urlAndArgs) == 2 {
+		if !(strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://")) {
+			argList := strings.Split(urlAndArgs[1], "&")
+			for _, kv := range argList {
+				kvList := strings.Split(kv, "=")
+				if len(kvList) == 2 && kvList[0] == "scheme" {
+					endpoint = fmt.Sprintf("%s://%s", kvList[1], urlAndArgs[0])
+					break
+				}
+			}
+		}
+	} else {
+		if !(strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://")) {
+			log.Fatal("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT must be the form of http://service-maxcompute.com/api or service-maxcompute.com/api?scheme=http")
+		}
+	}
 	return &gomaxcompute.Config{
 		AccessID:  test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK", "test"),
 		AccessKey: test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK", "test"),
 		Project:   test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT", "test"),
-		Endpoint:  test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT", "http://service-maxcompute.com/api"),
+		Endpoint:  endpoint,
 	}
 }
 

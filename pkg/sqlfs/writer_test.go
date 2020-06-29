@@ -23,9 +23,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	_ "sqlflow.org/gohive"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/test"
 )
 
-const testDatabaseName = `sqlfs_test`
+var testDatabaseName = `sqlfs_test`
 
 var (
 	createSQLFSTestingDatabaseOnce sync.Once
@@ -33,9 +34,14 @@ var (
 
 func createSQLFSTestingDatabase() {
 	db := database.GetTestingDBSingleton()
-	stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName)
-	if _, e := db.Exec(stmt); e != nil {
-		log.Fatalf("Cannot create sqlfs testing database %s: %v", testDatabaseName, e)
+	if db.DriverName == "maxcompute" {
+		// maxcompute database is pre created
+		testDatabaseName = test.GetEnv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT", "test")
+	} else {
+		stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", testDatabaseName)
+		if _, e := db.Exec(stmt); e != nil {
+			log.Fatalf("Cannot create sqlfs testing database %s: %v", testDatabaseName, e)
+		}
 	}
 }
 

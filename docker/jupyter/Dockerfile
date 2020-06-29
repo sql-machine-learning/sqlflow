@@ -1,32 +1,23 @@
 # This Dockerfile containers Jupyter Notebook server with many
 # SQLFlow tutorials and SQLFlow magic command.
 
-FROM jupyter/base-notebook
+FROM alpine:3.12
 
-# using root user to avoid permission deni
-USER root
-# Choose fastest mirrors for apt-get and pip
-COPY docker/dev/find_fastest_resources.sh /usr/local/bin/find_fastest_resources.sh
-RUN /bin/bash -c 'source find_fastest_resources.sh \
-  && echo "Choose the fastest APT source ..." \
-  && choose_fastest_apt_source \
-  && echo "Choose the fastest PIP source ..." \
-  && choose_fastest_pip_source'
+COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
+RUN /bin/sh -c "source find_fastest_resources.sh && \
+    choose_fastest_alpine_source && \
+    choose_fastest_pip_source"
 
-# Install dependencies.
-COPY docker/jupyter/js /jupyter/js
-
-RUN apt-get -qq update
-
-COPY docker/jupyter/install-jupyter.bash /jupyter
-RUN /jupyter/install-jupyter.bash
-
-# switch back to the default user to avoid accidental container runs as root,
-# this env comes from base Dockerfile:  https://github.com/jupyter/docker-stacks/blob/master/base-notebook/Dockerfile#L13
-USER $NB_UID
+RUN apk add --no-cache python3 py3-pip py3-pyzmq py3-grpcio
 
 # Install IPythono Notebook tutorials
+COPY /docker/jupyter/js /jupyter/js/
 COPY build/tutorial /workspace
+COPY docker/jupyter/install-jupyter.sh /jupyter/install-jupyter.sh
+RUN /bin/sh /jupyter/install-jupyter.sh
+
+# Cleanup
+RUN apk del --purge py3-pip
 
 # The following SQLFlow gRPC server endpoint implies the server runs in a container,
 # and if container has the option --net=container:sqlflow_server_container, SQLFlow magic

@@ -13,7 +13,7 @@
 
 package ast
 
-// Constraint represents a constaint in the description of a mathematical
+// Constraint represents a constraint in the description of a mathematical
 // optimization problem.  A constraint is an expression with an optional GroupBy
 // name.
 type Constraint struct {
