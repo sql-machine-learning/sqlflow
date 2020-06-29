@@ -178,12 +178,12 @@ func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		}
 	}
 
-	// NOTE(sneaxiy): should be careful whether there would be file conflict
-	// if we do not remove the original OSS files.
 	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
 	if e != nil {
 		return e
 	}
+	// NOTE(sneaxiy): should be careful whether there would be file conflict
+	// if we do not remove the original OSS files.
 	if ossModelPathToLoad == "" || ossModelPathToSave != ossModelPathToLoad {
 		e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
 		if e != nil {
@@ -207,7 +207,6 @@ func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	// download model from OSS to local cwd and save to sqlfs
 	// NOTE(typhoonzero): model in sqlfs will be used by sqlflow model zoo currently
 	// should use the model in sqlfs when predicting.
-	fmt.Printf("downloading model from %s\n", ossModelPathToSave)
 	if e = downloadOSSModel(ossModelPathToSave+"/", currProject); e != nil {
 		return e
 	}
