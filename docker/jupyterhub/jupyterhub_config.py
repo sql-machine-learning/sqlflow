@@ -18,6 +18,9 @@ import socket
 
 from kubernetes import client
 
+sqlflow_jupyter_image = os.getenv("SQLFLOW_JUPYTER_IMAGE")
+sqlflow_mysql_image = os.getenv("SQLFLOW_MYSQL_IMAGE")
+
 c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
 
 c.JupyterHub.ip = '0.0.0.0'
@@ -61,7 +64,7 @@ c.KubeSpawner.profile_list = [{
     'default':
     True,
     'kubespawner_override': {
-        'image': 'sqlflow/sqlflow:jupyter',
+        'image': sqlflow_jupyter_image,
     },
     'description':
     'Brings SQL and AI together. <a href="https://sqlflow.org">https://sqlflow.org</a>'
@@ -76,7 +79,7 @@ c.KubeSpawner.extra_containers = [{
     "name":
     "sqlflow",
     "image":
-    "sqlflow/sqlflow:mysql",
+    sqlflow_mysql_image,
     "imagePullPolicy":
     "Always",
     "livenessProbe": {
