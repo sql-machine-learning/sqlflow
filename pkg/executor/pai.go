@@ -207,7 +207,8 @@ func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	// download model from OSS to local cwd and save to sqlfs
 	// NOTE(typhoonzero): model in sqlfs will be used by sqlflow model zoo currently
 	// should use the model in sqlfs when predicting.
-	if e = downloadOSSModel(ossModelPathToSave, currProject); e != nil {
+	fmt.Printf("downloading model from %s\n", ossModelPathToSave)
+	if e = downloadOSSModel(ossModelPathToSave+"/", currProject); e != nil {
 		return e
 	}
 	m := model.New(s.Cwd, cl.OriginalSQL)
@@ -220,7 +221,7 @@ func downloadOSSModel(ossModelPath, project string) error {
 		return err
 	}
 	if !strings.HasSuffix(ossModelPath, "/") {
-		return fmt.Errorf("dir to delete must end with /")
+		return fmt.Errorf("dir to download must end with /")
 	}
 	localDirParts := strings.Split(ossModelPath, "/")
 	localDir := localDirParts[len(localDirParts)-2] // the last char must be /
