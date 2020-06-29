@@ -40,9 +40,9 @@
 
 下列参数在调优效果时，一般会用到：
 
-1. `model.stack_units=[128,256]`, 神经网络中隐层神经元的数量，一般数量越多效果越好，训练越慢。
-1. `train.epochs=N`, 其中 `N >= 1`, 表示完整的数据集在神经网络中传递 N 次。可以观察每个 epoch 的训练效果，如果跨度较大，可以调大此参数增加数据在神经网络中传递的次数，直至效果收敛。
-1. `train.batch_size=N`, 其中 `N >= 1`, 完整的数据集如果不能一次性的通过整个网络时，需要将其切成几个小的 batch，每个 batch 包含 N 个样本。
+1. `model.stack_units=[128,256]`, 神经网络中隐层神经元的数量，默认值`[128, 256]`, 通常增加神经元数量会使效果有所提升，同时训练速度降低。
+1. `train.epochs=N`, 其中 `N >= 1`, 表示完整的数据集在神经网络中传递 N 次, 默认为 `10`。可以观察每个 epoch 的训练效果，如果跨度较大，可以调大此参数增加数据在神经网络中传递的次数，直至效果收敛。
+1. `train.batch_size=N`, 其中 `N >= 1`, 默认值为 `8`。完整的数据集如果不能一次性的通过整个网络时，需要将其切成几个小的 batch，每个 batch 包含 N 个样本。
 
 ### 模型验证
 
@@ -66,7 +66,7 @@ CREATE TABLE tmp_train AS
     LEAD(pv, 1) OVER (ORDER BY date_str) AS pv2,
     LEAD(uv, 2) OVER (ORDER BY date_str) AS uv3,
     LEAD(pv, 2) OVER (ORDER BY date_str) AS pv3,
-    CONCAt_WS(",",
+    CONCAT_WS(",",
             LEAD(pv, 3) OVER (ORDER BY date_str),
             LEAD(pv, 4) OVER (ORDER BY date_str)) AS target
   FROM app_traffic;

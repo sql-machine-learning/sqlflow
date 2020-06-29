@@ -21,11 +21,11 @@ SQLFlow 模型库(Model Zoo) 中提供了很多算法、模型，您可以根据
 1. [RNNBasedTimeSeriesModel](/doc/sqlflow.org_cn/models/rnn_based_time_series.md) 基于过去一段时间的数据，预测未来一段时间内的趋势，用来预测一组基于时间序列的数值。
 1. [XGBoost Regression](#) 基于树模型的的回归模型。
 
-| 模型| 训练速度 | 图形化模型解释 |
-| -- | -- | -- |
-| DNNRegresssion | 慢 | 支持 |
-| RNNBasedTimeSeriesModel| 慢 | 不支持 |
-| XGBoost Regression | 快 |支持|
+| 模型| 训练速度 | 图形化模型解释 | 是否支持大规模数据 |
+| -- | -- | -- | -- |
+| DNNRegresssion | 慢 | 支持 | 支持 |
+| [RNNBasedTimeSeriesModel](/doc/sqlflow.org_cn/models/rnn_based_time_series.md)| 慢 | 不支持 | 不支持 |
+| XGBoost Regression | 快 |支持| 支持 |
 
 ### 分类预测
 
@@ -34,8 +34,8 @@ SQLFlow 模型库(Model Zoo) 中提供了很多算法、模型，您可以根据
 1. [XGBoost Binary Classification](#) 基于树模型的二分类模型。
 1. [XGBoost Multiple Classification](#) 基于树模型的多分类模型。
 
-| 模型| 训练速度 | 图形化模型解释 |
-| -- | -- | -- |
-| DNNClassifier | 慢 | 支持 |
-| XGBoost Binary Classification |快|支持|
-| XGBoost Multiple Classification|快|支持|
+| 模型| 训练速度 | 图形化模型解释 | 是否支持大规模数据集 |
+| -- | -- | -- | -- |
+| DNNClassifier | 慢 | 支持 | 支持 |
+| XGBoost Binary Classification |快|支持| 支持|
+| XGBoost Multiple Classification|快|支持| 支持|
