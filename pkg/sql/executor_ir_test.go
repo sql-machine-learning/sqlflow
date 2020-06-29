@@ -283,7 +283,8 @@ func TestSQLLexerError(t *testing.T) {
 	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
 	a.False(test.GoodStream(stream.ReadAll()))
 }
-func TestGenerateTrainStmtWithTypeCheck(t *testing.T) {
+
+func TestInitializeAndCheckAttributes(t *testing.T) {
 	a := assert.New(t)
 	wrong := "SELECT * FROM t1 TO TRAIN DNNClassifier WITH model.stddev=0.1 LABEL c INTO m;"
 	r, e := parser.ParseStatement("mysql", wrong)
