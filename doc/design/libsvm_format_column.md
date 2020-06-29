@@ -47,10 +47,10 @@ Currently, SQLFlow only supports loading the column value which is a number, a s
 
 There are 2 ways to support the LibSVM format column in SQLFlow:
 
-- `TO RUN` statements. It can support any user-defined data pre-processing. We can release a docker image to convert the data from the LibSVM format column to a dense Tensor, create columns for each element of the dense Tensor, and write the data into the result table. However, if the data is highly sparse, it would create too many columns in the result table, and consume lots of time and memories to do the transformation.
+- `TO RUN` statements. It can support any user-defined data pre-processing. We can release a docker image to convert the data from the LibSVM format column to a dense tensor, create columns for each element of the dense tensor, and write the data into the result table. However, if the data is highly sparse, it would create too many columns in the result table, and consume lots of time and memories to do the transformation.
 - `COLUMN` clauses. The `COLUMN` clauses in SQLFlow support some commonly used feature columns, like `NUMERIC`, `CATEGORY_ID`, `EMBEDDING`, etc. If we want to support loading the data from the LibSVM format column, where would be 2 optional methods:
     - Add a new `COLUMN` clause, like `LIBSVM` or `NUMERIC_KV`. It introduces complexity and disobeys the Occam's Razor principle.
-    - Extend the `NUMERIC` column clause to support columns in different data formats. Currently, we have supported CSV format implicitly in `NUMERIC` column clause: in feature derivation stage, we would infer whether the column data is in CSV format (see [here](https://github.com/sql-machine-learning/sqlflow/blob/3b70a0599beef573cd99f15dd41cc0a194634b75/pkg/ir/derivation.go#L146)), and convert the values in CSV format into Tensors in Python side (see [here](https://github.com/sql-machine-learning/sqlflow/blob/develop/python/sqlflow_submitter/db.py#L159)). We can do the same implicit feature derivation and conversion for the LibSVM format column.
+    - Extend the `NUMERIC` column clause to support columns in different data formats. Currently, we have supported CSV format implicitly in `NUMERIC` column clause: in feature derivation stage, we would infer whether the column data is in CSV format (see [here](https://github.com/sql-machine-learning/sqlflow/blob/3b70a0599beef573cd99f15dd41cc0a194634b75/pkg/ir/derivation.go#L146)), and convert the values in CSV format into tensors in Python side (see [here](https://github.com/sql-machine-learning/sqlflow/blob/develop/python/sqlflow_submitter/db.py#L159)). We can do the same implicit feature derivation and conversion for the LibSVM format column.
     
 In conclusion, we would choose to extend the `NUMERIC` column to support the LibSVM format column in this design.
 
@@ -114,7 +114,7 @@ func InferFeatureColumns() {
 
 ### Convert the Values of the LibSVM Format Column to Sparse Tensor in Python side
 
-After we have inferred the format of each column in the feature derivation stage, and the data format information would be used in Python code generation. In the Python side, we would first read the raw data from the database, and then convert the data from the LibSVM format column into sparse Tensor for training, prediction, evaluating, and explaining.
+After we have inferred the format of each column in the feature derivation stage, and the data format information would be used in Python code generation. In the Python side, we would first read the raw data from the database, and then convert the data from the LibSVM format column into sparse tensors for training, prediction, evaluating, and explaining.
 
 ### SQL Statement Example
 
