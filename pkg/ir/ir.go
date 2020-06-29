@@ -185,13 +185,13 @@ type ExplainStmt struct {
 func (stmt *ExplainStmt) Execute(e Executor) error { return e.ExecuteExplain(stmt) }
 
 // SetOriginalSQL sets the original sql string
-func (cl *ExplainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (stmt *ExplainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (cl *ExplainStmt) IsExtended() bool { return true }
+func (stmt *ExplainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+func (stmt *ExplainStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // EvaluateStmt is the intermediate representation for code generation of an evaluation job
 type EvaluateStmt struct {
