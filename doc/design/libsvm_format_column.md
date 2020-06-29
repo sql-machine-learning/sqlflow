@@ -31,12 +31,12 @@ A **LibSVM format column** is a DBMS table column, whose value of each row is in
 For example, in the following table, `c1` is a LibSVM format column, while `c2` is not a LibSVM format column.
 
 ```
-+-------------------- +------+
-| c1                  | c2   |
-+---------------------+------+
-| 0 1:2.1 3:4.5 5:6.0 |  2.8 |
-| 1 7:-3.2 9:2.3      |  3.1 |
-+---------------------+------+
++-------------------+------+
+| c1                | c2   |
++-------------------+------+
+| 1:2.1 3:4.5 5:6.0 |  2.8 |
+| 7:-3.2 9:2.3      |  3.1 |
++-------------------+------+
 ```
 
 ## Background
@@ -112,7 +112,7 @@ func InferFeatureColumns() {
 }
 ```
 
-### Convert the Values of the LibSVM Format Column to Sparse Tensor in Python side
+### Convert the Values of the LibSVM Format Column to Sparse Tensor in Python Side
 
 After we have inferred the format of each column in the feature derivation stage, and the data format information would be used in Python code generation. In the Python side, we would first read the raw data from the database, and then convert the data from the LibSVM format column into sparse tensors for training, prediction, evaluating, and explaining.
 
