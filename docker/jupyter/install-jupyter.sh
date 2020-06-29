@@ -27,7 +27,7 @@ apk add py3-pandas-1.0.3-r0.apk && rm py3-pandas-1.0.3-r0.apk
 apk add py3-cryptography py3-ruamel.yaml.clib py3-requests
 
 pip -q install \
-    jupyterhub \
+    jupyterhub==1.1.0 \
     notebook \
     sqlflow==0.10.0
 
