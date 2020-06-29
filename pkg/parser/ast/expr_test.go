@@ -19,15 +19,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func literalOrDie(typ int, val string) *Expr {
-	l, e := NewLiteral(typ, val)
+func literalOrDie(token int, value string) *Expr {
+	l, e := NewLiteral(token, value)
 	if e != nil {
 		panic(e)
 	}
 	return l
 }
 
-func TestSpecialTypeZero(t *testing.T) {
+func TestSpecialTokenZero(t *testing.T) {
 	var (
 		expr *Expr
 		e    error
