@@ -40,3 +40,14 @@ func TestBuildAndPush(t *testing.T) {
 	a.NoError(err)
 	// TODO(typhoonzero): add actual push tests
 }
+
+func TestBuildAndPushKaniko(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("only test build and push to model zoo when SQLFLOW_TEST_DB=mysql")
+	}
+	a := assert.New(t)
+	dir, err := mockTmpModelRepo()
+	a.NoError(err)
+	err = buildAndPushImageKaniko(dir, "typhoonzero/mytest_model_image", "v0.1", false)
+	a.NoError(err)
+}

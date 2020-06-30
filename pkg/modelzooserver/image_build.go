@@ -16,6 +16,7 @@ package modelzooserver
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -101,6 +102,101 @@ func buildAndPushImage(dir, name, tag string, dryrun bool) error {
 	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("run docker push err: %v, stderr: %s", err, cmdStderr.String())
+	}
+	return nil
+}
+
+func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
+	k8sHost := os.Getenv("KUBERNETES_SERVICE_HOST")
+	k8sPort := os.Getenv("KUBERNETES_SERVICE_PORT")
+	if k8sHost == "" || k8sPort == "" {
+		return fmt.Errorf("buildAndPushImageKaniko must be called when model zoo server is deployed in Kubernetes cluster")
+	}
+	dockerUsername := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER")
+	dockerPasswd := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS")
+	if dockerUsername == "" || dockerPasswd == "" {
+		return fmt.Errorf("need to set SQLFLOW_MODEL_ZOO_REGISTRY_USER and SQLFLOW_MODEL_ZOO_REGISTRY_PASS for model zoo server")
+	}
+
+	// TODO(typhoonzero): support any registry servers
+	// TODO(typhoonzero): use a random
+	// create docker registry credentials
+	cmd := fmt.Sprintf(`kubectl create secret docker-registry kaniko-regcred --docker-server=https://index.docker.io/v1/ --docker-username=%s --docker-password=%s`, dockerUsername, dockerPasswd)
+	cmdList := strings.Split(cmd, " ")
+	c := exec.Command(cmdList[0], cmdList[1:]...)
+	fmt.Println(cmd)
+	if err := c.Run(); err != nil {
+		return err
+	}
+
+	destination := fmt.Sprintf("%s:%s", name, tag)
+	podTemplate := fmt.Sprintf(`'{
+  "apiVersion": "v1",
+  "spec": {
+    "containers": [
+    {
+      "name": "kaniko",
+      "image": "daocloud.io/gcr-mirror/kaniko-project-executor:latest",
+      "stdin": true,
+      "stdinOnce": true,
+      "args": [
+        "--dockerfile=Dockerfile",
+        "--context=tar://stdin",
+        "--destination=%s" ],
+      "volumeMounts": [
+        {
+          "name": "docker-config",
+          "mountPath": "/kaniko/.docker/"
+      }]
+    }],
+    "volumes": [
+    {
+      "name": "docker-config",
+      "configMap": {
+		  "name": "docker-config" }}
+    ]
+  }
+}'`, destination)
+
+	fmt.Println("before submit build...")
+	tarContextCmd := exec.Command("tar", "-czf", "-", dir)
+	kanikoBuildCmdStdin := exec.Command("kubectl", "run", "kaniko", "--rm",
+		"--stdin=true",
+		"--image=daocloud.io/gcr-mirror/kaniko-project-executor:latest",
+		fmt.Sprintf("--overrides=%s", podTemplate))
+	r, w := io.Pipe()
+	tarContextCmd.Stdout = w
+	kanikoBuildCmdStdin.Stdin = r
+	var output bytes.Buffer
+	var outputErr bytes.Buffer
+	kanikoBuildCmdStdin.Stdout = &output
+	kanikoBuildCmdStdin.Stderr = &outputErr
+	if err := tarContextCmd.Start(); err != nil {
+		fmt.Println("tarContextCmd.Start")
+		return err
+	}
+	if err := kanikoBuildCmdStdin.Start(); err != nil {
+		fmt.Println("kanikoBuildCmdStdin.Start")
+		return err
+	}
+	if err := tarContextCmd.Wait(); err != nil {
+		fmt.Println("tarContextCmd.Wait")
+		return err
+	}
+	if err := w.Close(); err != nil {
+		fmt.Println("w.Close")
+		return err
+	}
+
+	if err := kanikoBuildCmdStdin.Wait(); err != nil {
+		io.Copy(os.Stdout, &outputErr)
+		fmt.Println("kanikoBuildCmdStdin.Wait")
+		return err
+	}
+
+	cmdDeleteSecret := exec.Command("kubectl", "delete", "secret", "kaniko-regcred")
+	if err := cmdDeleteSecret.Run(); err != nil {
+		return err
 	}
 	return nil
 }
