@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/model"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/test"
 )
@@ -379,6 +380,7 @@ INTO output_table_1, output_table_2;`
 		a.Equal(`output_table_1,output_table_2`, runStmt.Into)
 	}
 }
+
 func TestGeneratePredictStmt(t *testing.T) {
 	if test.GetEnv("SQLFLOW_TEST_DB", "mysql") == "hive" {
 		t.Skip(fmt.Sprintf("%s: skip Hive test", test.GetEnv("SQLFLOW_TEST_DB", "mysql")))
@@ -396,6 +398,11 @@ USING sqlflow_models.mymodel;`
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(cwd)
+	a.NoError(model.MockInDB(cwd, `SELECT * FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=3, model.hidden_units=[10,20]
+LABEL class
+INTO sqlflow_models.mymodel;`, "sqlflow_models.mymodel"))
 
 	predStmt, err := GeneratePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), "", cwd, true)
 	a.NoError(err)
@@ -421,6 +428,15 @@ func TestGenerateExplainStmt(t *testing.T) {
 	a.Nil(e)
 	defer os.RemoveAll(cwd)
 	modelDir := ""
+	a.NoError(model.MockInDB(cwd, `SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+  objective="multi:softprob",
+  train.num_boost_round = 30,
+  eta = 0.4,
+  num_class = 3
+LABEL class
+INTO sqlflow_models.my_xgboost_model;`, "sqlflow_models.my_xgboost_model"))
 
 	pr, e := parser.ParseStatement("mysql", `
 	SELECT *
