@@ -224,9 +224,6 @@ func downloadOSSModel(ossModelPath, project string) error {
 	}
 	localDirParts := strings.Split(ossModelPath, "/")
 	localDir := localDirParts[len(localDirParts)-2] // the last char must be /
-	if err := os.Mkdir(localDir, 0755); err != nil {
-		return err
-	}
 	return downloadDirRecursive(bucket, ossModelPath, localDir+"/")
 }
 
