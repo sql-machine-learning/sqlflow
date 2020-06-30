@@ -791,10 +791,11 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoryColumn
 }
 
 func parseEmbeddingColumn(el *parser.ExprList) (*EmbeddingColumn, error) {
-	help := "EMBEDDING([CATEGORY_ID(...)|col_name], SIZE, COMBINER[, INITIALIZER])"
-	if len(*el) < 4 || len(*el) > 5 {
+	help := "EMBEDDING([CATEGORY_ID(...)|col_name], SIZE[, COMBINER, INITIALIZER])"
+	if len(*el) < 3 || len(*el) > 5 {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s, should be like: %s", *el, help)
 	}
+
 	catColumn, colName, err := buildCategoryIDForEmbeddingOrIndicator(el)
 	if err != nil {
 		return nil, err
@@ -803,10 +804,15 @@ func parseEmbeddingColumn(el *parser.ExprList) (*EmbeddingColumn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].Value, err)
 	}
-	combiner, err := expression2string((*el)[3])
-	if err != nil {
-		return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+
+	combiner := "sum"
+	if len(*el) >= 4 {
+		combiner, err = expression2string((*el)[3])
+		if err != nil {
+			return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+		}
 	}
+
 	initializer := ""
 	if len(*el) == 5 {
 		initializer, err = expression2string((*el)[4])

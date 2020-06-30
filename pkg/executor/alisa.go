@@ -32,8 +32,11 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-var resourceName = "job.tar.gz"
-var entryFile = "entry.py"
+const (
+	resourceName = "job.tar.gz"
+	entryFile    = "entry.py"
+)
+
 var reOSS = regexp.MustCompile(`oss://([^/]+).*host=([^&]+)`)
 
 type alisaExecutor struct {
@@ -60,11 +63,10 @@ func (s *alisaExecutor) submitAlisaTask(submitCode, codeResourceURL, paramsResou
 		return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
 	}
 	return nil
-
 }
 
 func (s *alisaExecutor) ExecuteTrain(ts *ir.TrainStmt) (e error) {
-	if e = preExecuteTrainOnpPA(ts, s.Session); e != nil {
+	if e = preExecuteTrainOnPAI(ts, s.Session); e != nil {
 		return e
 	}
 	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)
@@ -257,7 +259,7 @@ func (s *alisaExecutor) ExecuteOptimize(es *ir.OptimizeStmt) error {
 
 func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	// TODO(brightcoder01): Add the implementation in the following PR.
-	return fmt.Errorf("ExecuteRun is not implemeneted in alisa executor yet")
+	return fmt.Errorf("ExecuteRun is not implemented in alisa executor yet")
 }
 
 func (s *alisaExecutor) GetTrainStmtFromModel() bool { return false }
@@ -279,7 +281,7 @@ func getModelBucket(project string) (*oss.Bucket, error) {
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
 	if ak == "" || sk == "" || ep == "" {
-		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_CHECKPOINT_DIR, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
+		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
 	}
 
 	cli, e := oss.New(ep, ak, sk)
