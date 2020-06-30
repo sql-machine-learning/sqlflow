@@ -74,9 +74,7 @@ Therefore, we choose to only support the LibSVM format column without label valu
 
 ## Design
 
-### Add Format Field in FieldDesc
-
-Add a field named `format` in `FieldDesc`. It may be `CSV`, `LibSVM`, or other data format we would support in the future.
+We would add a field named `format` in `FieldDesc`. It may be `CSV`, `LibSVM`, or other data format we would support in the future.
 
 ```go
 type FieldDesc struct {
@@ -89,8 +87,6 @@ type FieldDesc struct {
    ...
 }
 ```
-
-### Implicit Data Format Derivation in Feature Derivation Stage
 
 In the feature derivation stage, we can use a regular expression to check whether the column is a LibSVM format column. To avoid too much regular expression matching, this checking would be done only once when inferring the first row of the fetched samples in feature derivation stage. That is to say (in pseudo codes):
 
@@ -112,11 +108,14 @@ func InferFeatureColumns() {
 }
 ```
 
-### Convert the Values of the LibSVM Format Column to Sparse Tensor in Python Side
+After we have inferred the format of each column in the feature derivation stage, the data format information would be used in Python code generation. 
 
-After we have inferred the format of each column in the feature derivation stage, and the data format information would be used in Python code generation. In the Python side, we would first read the raw data from the database, and then convert the data from the LibSVM format column into sparse tensors for training, prediction, evaluating, and explaining.
+In the Python side, we would first read the raw data from the database, and then:
 
-### SQL Statement Example
+- For TensorFlow models: we would convert that data from the LibSVM format column into `tensorflow.SparseTensor` for training, prediction, evaluating, and explaining.
+- For XGBoost models: we would dump the data from the LibSVM format column into LibSVM format files, which would be loaded as `xgboost.DMatrix` for training, prediction, evaluating, and explaining.
+
+## SQL Statement Example
 
 The SQL statement to read data from LibSVM format column would be like:
 
@@ -131,4 +130,4 @@ LABEL label
 INTO result_table;
 ```
 
-where `NUMERIC(column_name, shape)` column clause is optional. If users provide the `NUMERIC` column clause in the SQL statement, `shape` parameter in `NUMERIC` is required to indicate the dense shape of the sparse data; if not, we would derive the dense shape of the data in feature derivation stage.
+where `NUMERIC(column_name, shape)` column clause is optional. If users provide the `NUMERIC` column clause in the SQL statement, the `shape` parameter in `NUMERIC` is required to indicate the dense shape of the sparse data; if not, we would derive the dense shape of the data in feature derivation stage.
