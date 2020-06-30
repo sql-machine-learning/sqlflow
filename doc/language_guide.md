@@ -115,7 +115,7 @@ COLUMN column_expr [, column_expr ...]
     [COLUMN column_expr [, column_expr ...] FOR column_name ...]
 ```
 
-- *column_expr* indicates the field name and the preprocessing method on the field content. e.g. `sepal_length`, `NUMERIC(dense, 3)`. Please refer to [Feature columns](#feature-columns) for preprocessing details.
+- *column_expr* indicates the field name and the preprocessing method on the field content. e.g. `sepal_length`, `DENSE(dense, 3)`. Please refer to [Feature columns](#feature-columns) for preprocessing details.
 - *column_name* indicates the feature column names for the model inputs. Some models such as [DNNLinearCombinedClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNLinearCombinedClassifier) have`linear_feature_columns` and `dnn_feature_columns` as feature column input.
 
 For example, if you want to use fields `sepal_length`, `sepal_width`, `petal_length`, and `petal_width` as the features without any pre-processing, you can write the following statement:
@@ -158,15 +158,15 @@ SQLFlow supports specifying various feature columns in the column clause and lab
  feature column type | usage | field type | example
 ---|---|---|---
  X | field | int/float/double | 3.14
- NUMERIC | NUMERIC(field, n[,delimiter]) | string/varchar[n] | "0.2,1.7,0.6"
+ DENSE | DENSE(field, n[,delimiter]) | string/varchar[n] | "0.2,1.7,0.6"
  CATEGORY_ID | CATEGORY_ID(field, n[,delimiter]) | string/varchar[n] | "66,67,42,68,48,69,70"
  SEQ_CATEGORY_ID | SEQ_CATEGORY_ID(field, n[, delimiter]) | string/varchar[n] | "20,48,80,81,82,0,0,0,0"
  EMBEDDING | EMBEDDING(category_column, dimension[, combiner]) | X | X
 
 ```text
-NUMERIC(field, n[, delimiter=comma])
+DENSE(field, n[, delimiter=comma])
 /*
-NUMERIC converts a delimiter separated string to a n dimensional Tensor
+DENSE converts a delimiter separated string to a n dimensional dense Tensor
     field:
         A string specifying the field name of the standard select result.
         e.g. dense, column1.
@@ -178,7 +178,7 @@ NUMERIC converts a delimiter separated string to a n dimensional Tensor
         default: comma.
 
 Example:
-    NUMERIC(dense, 3). "0.2,1.7,0.6" => Tensor(0.2, 1.7, 0.6)
+    DENSE(dense, 3). "0.2,1.7,0.6" => Tensor(0.2, 1.7, 0.6)
 
 Error:
     Invalid field type. field type has to be string/varchar[n]

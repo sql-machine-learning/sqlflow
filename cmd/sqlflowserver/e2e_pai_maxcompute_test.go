@@ -347,7 +347,7 @@ func CasePAIMaxComputeTrainDenseCol(t *testing.T) {
 FROM %s
 TO TRAIN DNNClassifier
 WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=32
-COLUMN NUMERIC(f1, 4)
+COLUMN DENSE(f1, 4)
 LABEL class
 INTO e2etest_dense_input;`, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
@@ -363,7 +363,7 @@ func CasePAIMaxComputeTrainDenseColWithoutIndicatingShape(t *testing.T) {
 	trainSQL := fmt.Sprintf(`SELECT class, sepal_length, sepal_width, petal_length, petal_width
 FROM %s
 TO TRAIN DNNClassifier WITH model.hidden_units=[64,32], model.n_classes=3, train.batch_size=32
-COLUMN NUMERIC(sepal_length)
+COLUMN DENSE(sepal_length)
 LABEL class
 INTO e2etest_dense_input_without_indicating_shape;`, caseTrainTable)
 

@@ -31,12 +31,12 @@ func TestGenerateTrainStmt(t *testing.T) {
 		train.optimizer="adam",
 		model.hidden_units=[128,64],
 		validation.select="SELECT c1, c2, c3, c4 FROM my_table LIMIT 10"
-	COLUMN c1,NUMERIC(c2, [128, 32]),CATEGORY_ID(c3, 512),
+	COLUMN c1,DENSE(c2, [128, 32]),CATEGORY_ID(c3, 512),
 		SEQ_CATEGORY_ID(c3, 512),
 		CROSS([c1,c2], 64),
-		BUCKET(NUMERIC(c1, [100]), 100),
+		BUCKET(DENSE(c1, [100]), 100),
 		EMBEDDING(CATEGORY_ID(c3, 512), 128, mean),
-		NUMERIC(DENSE(c1, 64, COMMA), [128]),
+		DENSE(c1, 64, COMMA),
 		CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
 		SEQ_CATEGORY_ID(SPARSE(c2, 10000, COMMA), 128),
 		EMBEDDING(c1, 128, sum),
@@ -113,7 +113,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.Equal("c3", embInner.FieldDesc.Name)
 	a.Equal(int64(512), embInner.BucketSize)
 
-	// NUMERIC(DENSE(c1, [64], COMMA), [128])
+	// DENSE(c1, [64], COMMA), [128]
 	nc, ok = trainStmt.Features["feature_columns"][7].(*NumericColumn)
 	a.True(ok)
 	a.Equal(64, nc.FieldDesc.Shape[0])
@@ -235,15 +235,15 @@ func bucketColumnParserTestMain(bucketStr string) error {
 
 func TestBucketColumnParser(t *testing.T) {
 	a := assert.New(t)
-	a.NoError(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [0, 10]"))
-	a.NoError(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [-10, -5, 10]"))
+	a.NoError(bucketColumnParserTestMain("DENSE(petal_length, 1), [0, 10]"))
+	a.NoError(bucketColumnParserTestMain("DENSE(petal_length, 1), [-10, -5, 10]"))
 	a.NoError(bucketColumnParserTestMain("petal_length, [10, 20]"))
 	a.NoError(bucketColumnParserTestMain("petal_length, [-100]"))
 	a.NoError(bucketColumnParserTestMain("petal_length, [-100, -50]"))
 
-	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [10, 0]"))
-	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [-10, -10]"))
-	a.Error(bucketColumnParserTestMain("NUMERIC(petal_length, 1), [5, 5]"))
+	a.Error(bucketColumnParserTestMain("DENSE(petal_length, 1), [10, 0]"))
+	a.Error(bucketColumnParserTestMain("DENSE(petal_length, 1), [-10, -10]"))
+	a.Error(bucketColumnParserTestMain("DENSE(petal_length, 1), [5, 5]"))
 }
 
 func TestGenerateTrainStmtModelZoo(t *testing.T) {

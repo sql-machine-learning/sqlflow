@@ -27,7 +27,7 @@ SQLFlow `COLUMN` clauses support the following listed feature columns, and they 
 
 | SQLFlow keywords | TensorFlow API                                              | Description                                                          | 
 |------------------|-------------------------------------------------------------|----------------------------------------------------------------------|
-| NUMERIC          | tf.feature_column.numeric_column                            | Raw numeric feature column without any pre-processing                | 
+| DENSE|SPARSE     | tf.feature_column.numeric_column                            | Raw numeric feature column without any pre-processing                | 
 | BUCKET           | tf.feature_column.bucketized_column                         | Transform input integer to be the bucket id divided by boundaries    |
 | CATEGORY_ID      | tf.feature_column.categorical_column_with_identity          | Identity mapping of integer feature column                           |
 | CATEGORY_HASH    | tf.feature_column.categorical_column_with_hash_bucket       | Using hash algorithm to map string or integer to category id         |

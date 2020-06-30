@@ -81,7 +81,7 @@ TO TRAIN
 WITH
 	...
 COLUMN
-	NUMERIC(...) FOR linear_feature_columns
+	DENSE(...) FOR linear_feature_columns
 COLUMN
 	BUCKET(...) FOR dnn_feature_columns
 ...
@@ -113,7 +113,6 @@ represents that the `c1` field is the dense format and the `c2` field is the spa
 |------------|------------------------------------------------------------------|------------------------------------|
 | dense      | 1. field name (str) <br> 2. dense shape (list of integer) <br> 3. separator (str)  | dense(c1, [100, 200], comma)              |
 | sparse     | 1. field name (str) <br> 2. sparse shape (integer) <br> 3. separator (str) | sparse(c2, 10000, comma)           |
-| numeric    | 1. field name (str) <br> 2. shape (integer)                           | numeric(c1, 100)                   |
 | bucket     | 1. key (numeric) <br> 2. bucket size (integer)                        | bucket(numeric(c1, 100), 20)       |
 | cat_id     | 1. field name (str) <br> 2. bucket size (integer)                     | cat_id(c2, 10000)                  |
 | embedding  | 1. key (cat_id) <br> 2. dimension (integer) <br> 3. combiner (str)         | embedding(cat_id(c2, 10000), mean) |
