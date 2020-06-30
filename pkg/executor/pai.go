@@ -501,14 +501,6 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 
 // deleteDirRecursive recursively delete a directory on the OSS
 func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
-	exists, err := bucket.IsObjectExist(dir)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		// if directory not exist, just go on.
-		return nil
-	}
 	if !strings.HasSuffix(dir, "/") {
 		return fmt.Errorf("dir to delete must end with /")
 	}
