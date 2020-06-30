@@ -33,8 +33,11 @@ import (
 	pb "sqlflow.org/sqlflow/pkg/proto"
 )
 
-var resourceName = "job.tar.gz"
-var entryFile = "entry.py"
+const (
+	resourceName = "job.tar.gz"
+	entryFile    = "entry.py"
+)
+
 var reOSS = regexp.MustCompile(`oss://([^/]+).*host=([^&]+)`)
 
 type alisaExecutor struct {
@@ -326,7 +329,7 @@ func getModelBucket(project string) (*oss.Bucket, error) {
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
 	if ak == "" || sk == "" || ep == "" {
-		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_CHECKPOINT_DIR, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
+		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
 	}
 
 	cli, e := oss.New(ep, ak, sk)

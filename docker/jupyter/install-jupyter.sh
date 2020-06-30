@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,25 +15,34 @@
 
 set -e
 
-# This file depends on install-python.bash.
 # install jupyterhub Python package so that this image can be used as jupyterhub
 # singleuser notebook server, ref: https://github.com/jupyterhub/jupyterhub/tree/master/singleuser
-pip install --quiet \
+# Install pandas pre-compiled apk, we do not want to build
+# this python package locally because it relies on gcc and
+# other build tools, which make the image very large
+wget -q http://cdn.sqlflow.tech/alpine/py3-pandas-1.0.3-r0.apk
+wget -q -P /etc/apk/keys/ http://cdn.sqlflow.tech/alpine/sqlflow-5ef80180.rsa.pub
+apk add py3-pandas-1.0.3-r0.apk && rm py3-pandas-1.0.3-r0.apk
+# Dependencies for jupyterhub
+apk add py3-cryptography py3-ruamel.yaml.clib py3-requests
+
+pip -q install \
     jupyterhub==1.1.0 \
-    sqlflow==0.10.0 # sqlflow is the Python client of SQLFlow server.
+    notebook \
+    sqlflow==0.12.0
 
 # Load SQLFlow's Jupyter magic command
 # automatically. c.f. https://stackoverflow.com/a/32683001.
 IPYTHON_STARTUP="/root/.ipython/profile_default/startup/"
 mkdir -p "$IPYTHON_STARTUP"
-mkdir -p /workspace
+mkdir -p /workspace/jupyter
 { echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")';
   echo 'get_ipython().magic(u"%reload_ext autoreload")';
   echo 'get_ipython().magic(u"%autoreload 2")'; } \
     >> "$IPYTHON_STARTUP"/00-first.py
 
 # Enable highlighting, see https://stackoverflow.com/questions/43641362
-NOTEBOOK_DIR=$(python -c "print(__import__('notebook').__path__[0])")
+NOTEBOOK_DIR=$(python3 -c "print(__import__('notebook').__path__[0])")
 CODE_MIRROR_MODE_PATH=$NOTEBOOK_DIR/static/components/codemirror/mode
 mkdir -p "$HOME"/.jupyter/custom/
 mkdir -p "$CODE_MIRROR_MODE_PATH"/sqlflow

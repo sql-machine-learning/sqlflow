@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/sh
+
 # Copyright 2020 The SQLFlow Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +15,38 @@
 
 set -e
 
+
+echo "Init mysqld if needed ..."
+if [[ -d "/docker-entrypoint-initdb.d" ]]; then
+    echo "Skip"
+else
+    mkdir -p /var/run/mysqld
+    mkdir -p /var/lib/mysql
+    chown mysql:mysql /var/run/mysqld
+    chown mysql:mysql /var/lib/mysql
+    mkdir -p /docker-entrypoint-initdb.d
+
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql >dev/null
+    mysqld --user=mysql --bootstrap --verbose=0 \
+        --skip-name-resolve --skip-networking=0 >/dev/null <<EOF
+FLUSH PRIVILEGES;
+DELETE FROM mysql.user;
+GRANT ALL ON *.* TO 'root'@'%' identified by 'root' WITH GRANT OPTION;
+DROP DATABASE IF EXISTS test;
+FLUSH PRIVILEGES;
+EOF
+fi
+
+
 echo "Start mysqld ..."
 # Important to make mysqld bind to 0.0.0.0 -- all IPs.  I explained
 # the reason in https://stackoverflow.com/a/61887788/724872.
 MYSQL_HOST=${MYSQL_HOST:-0.0.0.0}
 MYSQL_PORT=${MYSQL_PORT:-3306}
-sed -i "s/.*bind-address.*/bind-address = $MYSQL_HOST/" \
-    /etc/mysql/mysql.conf.d/mysqld.cnf
-service mysql start
+
+nohup mysqld --user=mysql --console \
+    --skip-name-resolve --skip-networking=0 >/dev/null 2>&1 &
+sleep 2
 
 
 echo "Sleep until MySQL server is ready ..."
@@ -31,26 +56,16 @@ until mysql -u root -proot \
             --port "$MYSQL_PORT" \
             -e ";" ; do
     sleep 1
-    read -r -p "Can't connect, retrying..."
+    echo "Can't connect, retrying..."
 done
 
 
-# Grant all privileges to all the remote hosts so that the sqlflow
-# server can be scaled to more than one replicas.
-#
-# NOTE: should notice this authorization on the production
-# environment, it's not safe.
-mysql -uroot -proot \
-      -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'' IDENTIFIED BY 'root' WITH GRANT OPTION;"
-
-
-# FIXME(typhoonzero): should let docker-entrypoint.sh do this work
+echo "Populate datasets ..."
 for f in /datasets/*; do
-    echo "Populate datasets $f ..."
-    mysql -uroot -proot \
-          --host "$MYSQL_HOST" --port "$MYSQL_PORT" \
-          < "$f"
+    echo "$f"
+    mysql -uroot -proot < "$f"
 done
+echo "Done."
 
 
 # If we run the contaienr with -v host_dir:/work, then the following
@@ -59,4 +74,10 @@ done
 # file using the trick https://unix.stackexchange.com/a/185370/325629.
 mkdir -p /work && touch /work/mysql-inited
 
-sleep infinity
+
+# c.f. https://stackoverflow.com/questions/2935183/bash-infinite-sleep-infinite-blocking for BusyBox
+echo "Serving ..."
+while true; 
+    do sleep 1d;
+done
+

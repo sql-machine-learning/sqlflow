@@ -218,10 +218,9 @@ func TestExtendedSyntaxParseUnmatchedQuotation(t *testing.T) {
 	}
 	{
 		// unmatched quotation right after the statement
-		r, idx, e := parseSQLFlowStmt(`to train a with b = c label d into e;"`)
+		_, idx, e := parseSQLFlowStmt(`to train a with b = c label d into e;"`)
 		a.Error(e)
 		a.Equal(len(`to train a with b = c label d into e;`), idx)
-		a.Nil(r)
 	}
 
 }
@@ -245,7 +244,7 @@ INTO db.table;`
 	a.True(r.Optimize)
 	a.Equal("MAXIMIZE", r.Direction)
 	a.Equal("SUM((price - materials_cost - other_cost) * product)", r.Objective.String())
-	a.Equal("SUM(finishing * product) <= 100", r.Constrants[0].expr.String())
+	a.Equal("SUM(finishing * product) <= 100", r.Constrants[0].String())
 	a.Equal("db.table", r.OptimizeInto)
 	a.Equal("glpk", r.Solver)
 
@@ -260,7 +259,7 @@ INTO db.table;`
 	a.NoError(e)
 	a.Equal("MINIMIZE", r.Direction)
 	a.Equal("db.table", r.OptimizeInto)
-	a.Equal("product", r.Constrants[0].groupby)
+	a.Equal("product", r.Constrants[0].GroupBy)
 	a.Equal("", r.Solver)
 }
 
