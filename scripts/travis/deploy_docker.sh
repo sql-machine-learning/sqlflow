@@ -56,8 +56,8 @@ fi
 echo "$DOCKER_PASSWORD" |
     docker login --username "$DOCKER_USERNAME" --password-stdin
 
-echo "$ALIYUN_DOCKER_PASSWOD" |
-    docker login --username "$ALIYUN_DOCKER_USERNAME" --password-stdin
+echo "$ALIYUN_DOCKER_PASSWORD" |
+    docker login --username "$ALIYUN_DOCKER_USERNAME" --password-stdin registry.cn-hangzhou.aliyuncs.com
 
 function push_image() {
     LOCAL_TAG=$1
