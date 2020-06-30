@@ -145,20 +145,21 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
         "--destination=%s" ],
       "volumeMounts": [
         {
-          "name": "docker-config",
+          "name": "kaniko-secret",
           "mountPath": "/kaniko/.docker/"
       }]
     }],
     "volumes": [
     {
-      "name": "docker-config",
-      "configMap": {
-		  "name": "docker-config" }}
+	  "name": "kaniko-secret",
+      "secret": {
+		  "secretName": "kaniko-regcred",
+		  "items": [{"key": ".dockerconfigjson", "path": "config.json"}]
+	  }}
     ]
   }
 }'`, destination)
 
-	fmt.Println("before submit build...")
 	tarContextCmd := exec.Command("tar", "-czf", "-", dir)
 	kanikoBuildCmdStdin := exec.Command("kubectl", "run", "kaniko", "--rm",
 		"--stdin=true",
