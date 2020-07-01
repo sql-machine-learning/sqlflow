@@ -144,6 +144,44 @@ COLUMN SPARSE(c1, 10), SPARSE(c2, 10)
 INTO result_table;
 ```
 
+In the previous design, `NUMERIC` can be used with other `COLUMN` clauses together in SQL statements, like `BUCKET(NUMERIC())`, `EMBEDDING(NUMERIC())`, etc. In the new design, the `NUMERIC` in these SQL statements can be replaced with the `DENSE` or `SPARSE`.
+
+- Example 1: we want to load the dense data from a numeric column and then transform the data using a `BUCKET` clause. The previous SQL statement would be:
+    ```sql
+    SELECT c1, c2, label FROM train_table
+    TO TRAIN DNNRegressor
+    LABEL label
+    COLUMN BUCKET(NUMERIC(c1, 10), 100)
+    INTO result_table;
+    ```
+    
+    In the new design, the SQL statement would be (just replace `NUMERIC` with `DENSE`):
+    ```sql
+    SELECT c1, c2, label FROM train_table
+    TO TRAIN DNNRegressor
+    LABEL label
+    COLUMN BUCKET(DENSE(c1, 10), 100)
+    INTO result_table;
+    ```
+
+- Example 2: we want to load the sparse data from a numeric column and then transform the data using an `EMBEDDING` clause. The previous SQL statement would be:
+    ```sql
+    SELECT c1, c2, label FROM train_table
+    TO TRAIN DNNRegressor
+    LABEL label
+    COLUMN EMBEDDING(NUMERIC(SPARSE(c1, 10)), 128)
+    INTO result_table;
+    ```
+
+    In the new design, the SQL statement would be (just remove `NUMERIC`):
+    ```sql
+    SELECT c1, c2, label FROM train_table
+    TO TRAIN DNNRegressor
+    LABEL label
+    COLUMN EMBEDDING(SPARSE(c1, 10), 128)
+    INTO result_table;
+    ```
+
 ### Changes on the Implementation
 
 Although we would remove `NUMERIC` in the APIs, we can still unify both the `DENSE` and `SPARSE` feature columns as [`NumericColumn`](https://github.com/sql-machine-learning/sqlflow/blob/b9986f20eb0201845fb673684f885abe361aca02/pkg/ir/feature_column.go#L56) in Go side, because both of them are numeric features. 
