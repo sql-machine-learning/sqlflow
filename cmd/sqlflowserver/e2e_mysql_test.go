@@ -407,7 +407,6 @@ WITH
   model.date_format="%[2]s",
   model.forecast_start='2014-09-01',
   model.forecast_end='2014-09-30'
-COLUMN time, %[1]s
 LABEL %[1]s
 INTO fund.%[1]s_model;
 `
