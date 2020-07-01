@@ -48,13 +48,18 @@ function build_sqlflow_image() {
     echo "Build sqlflow:${1} by loading $TRAVIS_BUILD_DIR/build ..."
     if docker pull sqlflow/sqlflow:"${1}" 2> /dev/null; then
        echo " using sqlflow/sqlflow:${1} as the cache image"
-       docker build --cache-from sqlflow/sqlflow:"${1}" -t sqlflow/sqlflow:"${1}" \
+       docker build --cache-from sqlflow/sqlflow:"${1}" -t sqlflow:"${1}" \
               -f docker/"${1}"/Dockerfile "${TRAVIS_BUILD_DIR}"
     else
-       docker build -t sqlflow/sqlflow:"${1}" \
+       docker build -t sqlflow:"${1}" \
            -f docker/"${1}"/Dockerfile "$TRAVIS_BUILD_DIR"
     fi
 }
+
+if [[ "$TRAVIS_BUILD_STAGE_NAME" != "Deploy" ]]; then
+    echo "Skip build SQLFlow deployment Docker images"
+    exit 0
+fi
 
 # Build SQLFlow componenets Docker images
 build_sqlflow_image server
