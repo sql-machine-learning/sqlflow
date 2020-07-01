@@ -56,7 +56,7 @@ type alisaTaskContext struct {
 	paramsResourceURL string
 }
 
-func (s *alisaExecutor) submitAlisaTask(taskType int, submitCode, args string, context *alisaTaskContext) error {
+func (s *alisaExecutor) submitAlisaTask(taskType int, submitCode string, args string, context *alisaTaskContext) error {
 	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
 	if err != nil {
 		return err
