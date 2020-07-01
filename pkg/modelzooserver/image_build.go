@@ -189,14 +189,9 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
 }'`, kanikoImage, destination, regSecret)
 
 	tarContextCmd := exec.Command("tar", "czf", "-", ".")
-	kanikoBuildCmdStdin := exec.Command("kubectl", "run", "kaniko",
-		"--rm",
-		"--stdin=true",
-		"--restart=Never",
-		fmt.Sprintf("--image=%s", kanikoImage),
-		fmt.Sprintf("--overrides=%s", podTemplate))
-
-	fmt.Println(kanikoBuildCmdStdin.String())
+	// exec.Command can not handle quotes correctly, use bach -c here.
+	kanikoBuildCmdStr := fmt.Sprintf(`kubectl run kaniko --rm --stdin=true --restart=Never --image=%s --overrides=%s`, kanikoImage, podTemplate)
+	kanikoBuildCmdStdin := exec.Command("bash", "-c", kanikoBuildCmdStr)
 
 	r, w := io.Pipe()
 	tarContextCmd.Dir = dir
