@@ -42,12 +42,12 @@ func TestBuildAndPush(t *testing.T) {
 }
 
 func TestBuildAndPushKaniko(t *testing.T) {
-	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
-		t.Skip("only test build and push to model zoo when SQLFLOW_TEST_DB=mysql")
+	if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
+		t.Skip("skip TestBuildAndPushKaniko when not in kubernetes cluster")
 	}
 	a := assert.New(t)
 	dir, err := mockTmpModelRepo()
 	a.NoError(err)
-	err = buildAndPushImageKaniko(dir, "typhoonzero/mytest_model_image", "v0.1", false)
+	err = buildAndPushImageKaniko(dir, "typhoon1986/mytest_model_image", "v0.1", false)
 	a.NoError(err)
 }

@@ -15,7 +15,7 @@ package modelzooserver
 
 const sampleInitCode = `from .my_test_model import DNNClassifier`
 
-const sampleDockerfile = `FROM sqlflow/sqlflow
+const sampleDockerfile = `FROM ubuntu
 ADD my_test_models /models/my_test_models/
 ENV PYTHONPATH=/models:/usr/local/sqlflow/python
 `

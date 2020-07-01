@@ -22,7 +22,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"sqlflow.org/sqlflow/pkg/randstring"
 )
+
+const kanikoImage = "registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/kaniko-executor"
 
 func imageExistsOnRegistry(imageName, tag string) bool {
 	var imageNamePart string
@@ -112,20 +116,43 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
 	if k8sHost == "" || k8sPort == "" {
 		return fmt.Errorf("buildAndPushImageKaniko must be called when model zoo server is deployed in Kubernetes cluster")
 	}
-	dockerUsername := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER")
-	dockerPasswd := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS")
-	if dockerUsername == "" || dockerPasswd == "" {
+	reg := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY")
+	// default push to dockerhub
+	if reg == "" {
+		reg = "https://index.docker.io/v1/"
+	}
+	regUsername := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER")
+	regPasswd := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS")
+	regEmail := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_EMAIL")
+	if regUsername == "" || regPasswd == "" {
 		return fmt.Errorf("need to set SQLFLOW_MODEL_ZOO_REGISTRY_USER and SQLFLOW_MODEL_ZOO_REGISTRY_PASS for model zoo server")
 	}
+	regSecret := fmt.Sprintf("kaniko-regcred-%s", strings.ToLower(randstring.Generate(8)))
 
 	// TODO(typhoonzero): support any registry servers
 	// TODO(typhoonzero): use a random
 	// create docker registry credentials
-	cmd := fmt.Sprintf(`kubectl create secret docker-registry kaniko-regcred --docker-server=https://index.docker.io/v1/ --docker-username=%s --docker-password=%s`, dockerUsername, dockerPasswd)
+	cmd := fmt.Sprintf(`kubectl create secret docker-registry %s --docker-server=%s --docker-username=%s --docker-password=%s --docker-email=%s`, regSecret, reg, regUsername, regPasswd, regEmail)
 	cmdList := strings.Split(cmd, " ")
 	c := exec.Command(cmdList[0], cmdList[1:]...)
-	fmt.Println(cmd)
 	if err := c.Run(); err != nil {
+		return err
+	}
+	defer func() error {
+		cmdDeleteSecret := exec.Command("kubectl", "delete", "secret", regSecret)
+		if err := cmdDeleteSecret.Run(); err != nil {
+			return err
+		}
+		return nil
+	}()
+
+	// cd into dir to tar the context
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	defer os.Chdir(cwd)
+	if err := os.Chdir(dir); err != nil {
 		return err
 	}
 
@@ -136,13 +163,14 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
     "containers": [
     {
       "name": "kaniko",
-      "image": "daocloud.io/gcr-mirror/kaniko-project-executor:latest",
+      "image": "%s",
+      "imagePullPolicy": "Never",
       "stdin": true,
       "stdinOnce": true,
       "args": [
         "--dockerfile=Dockerfile",
         "--context=tar://stdin",
-        "--destination=%s" ],
+        "--destination=%s"],
       "volumeMounts": [
         {
           "name": "kaniko-secret",
@@ -151,53 +179,49 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
     }],
     "volumes": [
     {
-	  "name": "kaniko-secret",
+      "name": "kaniko-secret",
       "secret": {
-		  "secretName": "kaniko-regcred",
-		  "items": [{"key": ".dockerconfigjson", "path": "config.json"}]
-	  }}
+        "secretName": "%s",
+        "items": [{"key": ".dockerconfigjson", "path": "config.json"}]
+      }}
     ]
   }
-}'`, destination)
+}'`, kanikoImage, destination, regSecret)
 
-	tarContextCmd := exec.Command("tar", "-czf", "-", dir)
-	kanikoBuildCmdStdin := exec.Command("kubectl", "run", "kaniko", "--rm",
+	tarContextCmd := exec.Command("tar", "czf", "-", ".")
+	kanikoBuildCmdStdin := exec.Command("kubectl", "run", "kaniko",
+		"--rm",
 		"--stdin=true",
-		"--image=daocloud.io/gcr-mirror/kaniko-project-executor:latest",
+		"--restart=Never",
+		fmt.Sprintf("--image=%s", kanikoImage),
 		fmt.Sprintf("--overrides=%s", podTemplate))
+
+	fmt.Println(kanikoBuildCmdStdin.String())
+
 	r, w := io.Pipe()
+	tarContextCmd.Dir = dir
 	tarContextCmd.Stdout = w
 	kanikoBuildCmdStdin.Stdin = r
-	var output bytes.Buffer
 	var outputErr bytes.Buffer
-	kanikoBuildCmdStdin.Stdout = &output
 	kanikoBuildCmdStdin.Stderr = &outputErr
 	if err := tarContextCmd.Start(); err != nil {
-		fmt.Println("tarContextCmd.Start")
 		return err
 	}
 	if err := kanikoBuildCmdStdin.Start(); err != nil {
-		fmt.Println("kanikoBuildCmdStdin.Start")
 		return err
 	}
 	if err := tarContextCmd.Wait(); err != nil {
-		fmt.Println("tarContextCmd.Wait")
 		return err
 	}
 	if err := w.Close(); err != nil {
-		fmt.Println("w.Close")
 		return err
 	}
 
 	if err := kanikoBuildCmdStdin.Wait(); err != nil {
+		// TODO(typhoonzero): use log to output error messages.
 		io.Copy(os.Stdout, &outputErr)
-		fmt.Println("kanikoBuildCmdStdin.Wait")
 		return err
 	}
 
-	cmdDeleteSecret := exec.Command("kubectl", "delete", "secret", "kaniko-regcred")
-	if err := cmdDeleteSecret.Run(); err != nil {
-		return err
-	}
 	return nil
 }

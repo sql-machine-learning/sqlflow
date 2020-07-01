@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -33,6 +32,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/model"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/randstring"
 )
 
 const (
@@ -48,25 +48,13 @@ var reODPSLogURL = regexp.MustCompile(`http://logview.*`)
 
 type paiExecutor struct{ *pythonExecutor }
 
-func randStringRunes(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	const lettersAndDigits = letters + "0123456789"
-	b := make([]byte, n)
-	// do not start from digit
-	b[0] = letters[rand.Intn(len(letters))]
-	for i := 1; i < len(b); i++ {
-		b[i] = lettersAndDigits[rand.Intn(len(lettersAndDigits))]
-	}
-	return string(b)
-}
-
 func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, error) {
 	db, err := database.OpenAndConnectDB(dataSource)
 	if err != nil {
 		return "", "", err
 	}
 	defer db.Close()
-	tableName := randStringRunes(16)
+	tableName := randstring.Generate(16)
 	// FIXME(typhoonzero): only work if specify database name in connect string.
 	databaseName, err := database.GetDatabaseName(dataSource)
 	if err != nil {

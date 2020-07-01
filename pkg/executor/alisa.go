@@ -30,6 +30,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/randstring"
 )
 
 const (
@@ -146,7 +147,7 @@ func (s *alisaExecutor) ExecutePredict(ps *ir.PredictStmt) error {
 
 func (s *alisaExecutor) uploadResourceAndSubmitAlisaTask(entryCode, requirements, alisaExecCode, estimator string) error {
 	// upload generated program to OSS and submit an Alisa task.
-	ossCodeObjectName := randStringRunes(16)
+	ossCodeObjectName := randstring.Generate(16)
 	alisaBucket, e := getAlisaBucket()
 	if e != nil {
 		return e
@@ -157,7 +158,7 @@ func (s *alisaExecutor) uploadResourceAndSubmitAlisaTask(entryCode, requirements
 	}
 	defer alisaBucket.DeleteObject(ossCodeObjectName)
 	// upload params.txt for additional training parameters.
-	ossParamsObjectName := randStringRunes(16)
+	ossParamsObjectName := randstring.Generate(16)
 	paramResourceURL, e := uploadResource(s.Cwd, paramsFile, ossParamsObjectName, alisaBucket)
 	defer alisaBucket.DeleteObject(ossParamsObjectName)
 
