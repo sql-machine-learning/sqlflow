@@ -127,7 +127,7 @@ USING sqlflow_models.my_dnn_model;`, // predict using feature derivation model
 		`SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
 TO TRAIN DNNClassifier
 WITH model.n_classes=3, model.hidden_units=[10,10]
-COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32, sum)
+COLUMN EMBEDDING(c3, 32, sum), EMBEDDING(SPARSE(c5, 64, COMMA), 32)
 LABEL class
 INTO sqlflow_models.my_dnn_model;`, // general case to derive all column types
 		`SELECT c1, c2, c3, c4, c5, class from feature_derivation_case.train
@@ -407,7 +407,6 @@ WITH
   model.date_format="%[2]s",
   model.forecast_start='2014-09-01',
   model.forecast_end='2014-09-30'
-COLUMN time, %[1]s
 LABEL %[1]s
 INTO fund.%[1]s_model;
 `

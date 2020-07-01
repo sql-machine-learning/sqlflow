@@ -92,7 +92,7 @@ func (s *alisaExecutor) submitAlisaTask(taskType int, submitCode string, args st
 }
 
 func (s *alisaExecutor) ExecuteTrain(ts *ir.TrainStmt) (e error) {
-	if e = preExecuteTrainOnpPA(ts, s.Session); e != nil {
+	if e = preExecuteTrainOnPAI(ts, s.Session); e != nil {
 		return e
 	}
 	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)

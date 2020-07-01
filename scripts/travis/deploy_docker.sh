@@ -31,10 +31,7 @@ echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
 # set to the tag’s name.
 echo "TRAVIS_TAG $TRAVIS_TAG"
 
-if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-    echo "Skip deployment on pull request"
-    exit 0
-fi
+
 
 # Figure out the tag to push sqlflow:ci.
 if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
@@ -53,11 +50,10 @@ fi
 # Build sqlflow:dev, sqlflow:ci, and sqlflow:release.
 "$(dirname "$0")"/build.sh
 
-echo "$DOCKER_PASSWORD" |
-    docker login --username "$DOCKER_USERNAME" --password-stdin
-
-echo "$ALIYUN_DOCKER_PASSWOD" |
-    docker login --username "$ALIYUN_DOCKER_USERNAME" --password-stdin
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "Skip deployment on pull request"
+    exit 0
+fi
 
 function push_image() {
     LOCAL_TAG=$1
@@ -73,6 +69,12 @@ function push_image() {
     docker tag sqlflow:"$LOCAL_TAG" registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG"
     docker push registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG" 
 }
+
+echo "$DOCKER_PASSWORD" |
+    docker login --username "$DOCKER_USERNAME" --password-stdin
+
+echo "$ALIYUN_DOCKER_PASSWORD" |
+    docker login --username "$ALIYUN_DOCKER_USERNAME" --password-stdin registry.cn-hangzhou.aliyuncs.com
 
 push_image dev dev
 push_image ci "$DOCKER_TAG"
