@@ -31,7 +31,8 @@ RUN /bin/bash -c 'source find_fastest_resources.sh \
     shap==0.30.1 \
     plotille==3.7 \
     seaborn==0.9.0 \
-    dill==0.3.0"
+    dill==0.3.0 \
+	sklearn2pmml==0.56.0"
 
 
 ADD build/step /usr/bin/
