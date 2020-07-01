@@ -38,35 +38,25 @@ const (
 	entryFile    = "entry.py"
 )
 
+const (
+	// AlisaTaskTypePAI is PAI task in the Alisa task enumeration
+	AlisaTaskTypePAI = iota
+	// AlisaTaskTypePyODPS is PyODPS task in the Alisa task enumeration
+	AlisaTaskTypePyODPS
+)
+
 var reOSS = regexp.MustCompile(`oss://([^/]+).*host=([^&]+)`)
 
 type alisaExecutor struct {
 	*pythonExecutor
 }
 
-func (s *alisaExecutor) submitAlisaTask(submitCode, codeResourceURL, paramsResourceURL string) error {
-	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
-	if err != nil {
-		return err
-	}
-	cfg, e := goalisa.ParseDSN(dsName)
-	if e != nil {
-		return e
-	}
-
-	cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{"downloadUrl":"%s", "resourceName":"%s"}, {"downloadUrl":"%s", "resourceName":"%s"}]`,
-		codeResourceURL, resourceName, paramsResourceURL, paramsFile)
-	cfg.Verbose = true
-	alisa := goalisa.New(cfg)
-	var b bytes.Buffer
-	w := io.MultiWriter(os.Stdout, &b)
-	if e := alisa.ExecWithWriter(submitCode, w); e != nil {
-		return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
-	}
-	return nil
+type alisaTaskContext struct {
+	codeResourceURL   string
+	paramsResourceURL string
 }
 
-func (s *alisaExecutor) submitAlisaPyODPSTask(submitCode, args string) error {
+func (s *alisaExecutor) submitAlisaTask(taskType int, submitCode, args string, context *alisaTaskContext) error {
 	_, dsName, err := database.ParseURL(s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -76,13 +66,28 @@ func (s *alisaExecutor) submitAlisaPyODPSTask(submitCode, args string) error {
 		return e
 	}
 
+	if taskType == AlisaTaskTypePAI {
+		cfg.Env["RES_DOWNLOAD_URL"] = fmt.Sprintf(`[{"downloadUrl":"%s", "resourceName":"%s"}, {"downloadUrl":"%s", "resourceName":"%s"}]`,
+			context.codeResourceURL, resourceName, context.paramsResourceURL, paramsFile)
+	}
 	cfg.Verbose = true
 	alisa := goalisa.New(cfg)
 	var b bytes.Buffer
 	w := io.MultiWriter(os.Stdout, &b)
-	if e := alisa.ExecPyODPSWithWriter(submitCode, args, w); e != nil {
-		return fmt.Errorf("PyODPS task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
+
+	switch taskType {
+	case AlisaTaskTypePAI:
+		if e := alisa.ExecWithWriter(submitCode, w); e != nil {
+			return fmt.Errorf("PAI task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
+		}
+	case AlisaTaskTypePyODPS:
+		if e := alisa.ExecPyODPSWithWriter(submitCode, args, w); e != nil {
+			return fmt.Errorf("PyODPS task failed, please go to check details error logs in the LogViewer website: %s", strings.Join(pickPAILogViewerURL(b.String()), "\n"))
+		}
+	default:
+		return fmt.Errorf("Unknown AlisaTaskType %d", taskType)
 	}
+
 	return nil
 }
 
@@ -182,7 +187,14 @@ func (s *alisaExecutor) uploadResourceAndSubmitAlisaTask(entryCode, requirements
 	paramResourceURL, e := uploadResource(s.Cwd, paramsFile, ossParamsObjectName, alisaBucket)
 	defer alisaBucket.DeleteObject(ossParamsObjectName)
 
-	return s.submitAlisaTask(alisaExecCode, codeResourceURL, paramResourceURL)
+	return s.submitAlisaTask(
+		AlisaTaskTypePAI,
+		alisaExecCode,
+		``,
+		&alisaTaskContext{
+			codeResourceURL:   codeResourceURL,
+			paramsResourceURL: paramResourceURL,
+		})
 }
 
 func (s *alisaExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
@@ -304,7 +316,7 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		}
 
 		// Submit a PyODPS task
-		return s.submitAlisaPyODPSTask(string(code), strings.Join(args, " "))
+		return s.submitAlisaTask(AlisaTaskTypePyODPS, string(code), strings.Join(args, " "), nil)
 	}
 
 	return fmt.Errorf("Alisa executor only supports Python program but cannot execute %s", program)
