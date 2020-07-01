@@ -90,7 +90,7 @@ type logChanWriter struct {
 // as the discussion of https://github.com/sql-machine-learning/sqlflow/issues/2574,
 // SQLFlow would generate target code instead of interpret an IR.
 func Run(it Interpreter, stmt ir.SQLFlowStmt) error {
-	switch stmt.(type) {
+	switch v := stmt.(type) {
 	case *ir.TrainStmt:
 		return it.ExecuteTrain(stmt.(*ir.TrainStmt))
 	case *ir.PredictStmt:
@@ -105,10 +105,13 @@ func Run(it Interpreter, stmt ir.SQLFlowStmt) error {
 		return it.ExecuteRun(stmt.(*ir.RunStmt))
 	case *ir.NormalStmt:
 		return it.ExecuteQuery(stmt.(*ir.NormalStmt))
+	case *ir.ShowTrainStmt:
+		return it.ExecuteShowTrain(stmt.(*ir.ShowTrainStmt))
 	default:
-		return fmt.Errorf("")
+		return fmt.Errorf("unregistered SQLFlow IR type: %s", v)
 	}
 }
+
 func (cw *logChanWriter) Write(p []byte) (n int, err error) {
 	// Both cmd.Stdout and cmd.Stderr are writing to cw
 	cw.m.Lock()
