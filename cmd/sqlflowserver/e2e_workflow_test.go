@@ -267,7 +267,7 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	a.NoError(checkWorkflow(ctx, cli, stream))
 }
 
-func CaseWorkflowRunSimple(t *testing.T) {
+func CaseWorkflowRunBinary(t *testing.T) {
 	a := assert.New(t)
 	runSQL := fmt.Sprintf(`
 	SELECT * FROM %s
