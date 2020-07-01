@@ -29,7 +29,7 @@ apk add py3-cryptography py3-ruamel.yaml.clib py3-requests
 pip -q install \
     jupyterhub==1.1.0 \
     notebook \
-    sqlflow==0.12.0
+    sqlflow==0.13.0
 
 # Load SQLFlow's Jupyter magic command
 # automatically. c.f. https://stackoverflow.com/a/32683001.
