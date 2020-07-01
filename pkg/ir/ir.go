@@ -155,9 +155,6 @@ type ExplainStmt struct {
 	TrainStmt *TrainStmt
 }
 
-// Execute generates and executes code for ExplainStmt
-//func (stmt *ExplainStmt) Execute(e Executor) error { return e.ExecuteExplain(stmt) }
-
 // SetOriginalSQL sets the original sql string
 func (stmt *ExplainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
@@ -191,9 +188,6 @@ func (stmt *EvaluateStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 // NormalStmt is a SQL statement without using SQLFlow syntax extension.
 type NormalStmt string
 
-// Execute generates and executes code for NormalStmt
-//func (stmt *NormalStmt) Execute(e Executor) error { return e.ExecuteQuery(stmt) }
-
 // SetOriginalSQL sets the original sql string
 func (stmt *NormalStmt) SetOriginalSQL(sql string) {}
 
@@ -210,9 +204,6 @@ type ShowTrainStmt struct {
 	// The model to show the train sql
 	ModelName string
 }
-
-// Execute generates and executes code for ShowTrainStmt
-//func (stmt *ShowTrainStmt) Execute(e Executor) error { return e.ExecuteShowTrain(stmt) }
 
 // SetOriginalSQL sets the original sql string
 func (stmt *ShowTrainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
