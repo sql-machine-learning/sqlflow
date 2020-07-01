@@ -30,6 +30,7 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_creditcardfraud.sql \
      doc/datasets/popularize_imdb.sql \
      doc/datasets/create_model_db.sql \
+     doc/datasets/popularize_energy.sql \
      /datasets/
 
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
