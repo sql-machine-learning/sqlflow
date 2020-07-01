@@ -173,7 +173,6 @@ func GenerateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	}
 
 	slct.TrainClause = trainSlct.TrainClause
-
 	return GenerateTrainStmtWithInferredColumns(trainSlct, connStr, "", "", false, false)
 }
 
