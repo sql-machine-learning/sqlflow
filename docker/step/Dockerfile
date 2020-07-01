@@ -37,6 +37,8 @@ RUN /bin/bash -c 'source find_fastest_resources.sh \
 ADD build/step /usr/bin/
 ADD build/*.jar /opt/sqlflow/parser/
 ADD python/sqlflow_submitter /opt/sqlflow/python/sqlflow_submitter/
+ADD python/symbol_extractor.py /opt/sqlflow/python/
+ADD python/plotille_text_backend.py /opt/sqlflow/python/
 ADD build/models/sqlflow_models /opt/sqlflow/python/sqlflow_models/
 
 ENV PYTHONPATH /opt/sqlflow/python
