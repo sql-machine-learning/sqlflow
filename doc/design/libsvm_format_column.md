@@ -1,6 +1,6 @@
-# Support LibSVM Format Column in SQLFlow
+# Load Sparse Tensors From LibSVM Format Column by SPARSE Column Clause in SQLFlow
 
-## Definition
+## Definitions
 
 ### LibSVM Format File
 
@@ -18,7 +18,7 @@ where:
 For example, the text line `0 1:2 3:4 5:6` in a LibSVM format file indicates that:
 
 - there is a sparse sample `x`, and `x[1]=2`, `x[3]=4`, `x[5]=6`, and the other values of sample `x` are zeros.
-- the label corresponding to the sample is 0.
+- the label corresponding to the sample `x` is 0.
 
 This kind of file was firstly introduced in [LibSVM](https://www.csie.ntu.edu.tw/~cjlin/libsvm), a library for Support Vector Machines algorithms. After that, this kind of file is widely used in many other machine learning frameworks. For example, [Spark MLLib](https://spark.apache.org/docs/1.0.2/api/python/pyspark.mllib.util.MLUtils-class.html), [XGBoost](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html) and [SkLearn](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_svmlight_file.html) officially support loading data from this kind of file for training and prediction.
 
@@ -43,23 +43,34 @@ For example, in the following table, `c1` is a LibSVM format column, while `c2` 
 
 SQLFlow extends SQL syntax to support the end-to-end machine learning pipeline. However, due to the variety of data formats, data pre-processing is usually a tough task for users. SQLFlow should do some automatic data pre-processing to make the end-to-end machine learning pipeline easier.
 
-Currently, SQLFlow only supports loading the column value which is a number, a string, or a number list in CSV format. We should support loading data from the LibSVM format column in SQLFlow, because the LibSVM format column is a common way to store the sparse data in DBMS, and there have been [some issues](https://github.com/sql-machine-learning/sqlflow/issues/2323) that require SQLFlow should support loading data from the LibSVM format column.
+Currently, SQLFlow has supported loading the column data whose value of each row is:
 
-There are 2 ways to support the LibSVM format column in SQLFlow:
+- a number, like `10`, `-0.5`, etc.
+- a string, like `"apple"`, etc.
+- a number list encoded in the CSV format, like `"3,5,7"`, etc. The number list encoded in the CSV format may represent a dense or sparse vector.
+    - If `"3,5,7"` represents a dense vector, it is `[3, 5, 7]`.
+    - If `"3,5,7"` represents a sparse vector, each value of the sparse tensor `x` would only be 0 or 1, and `x[3] = x[5] = x[7] = 1`. 
+
+We should support loading data from the LibSVM format column in SQLFlow, because:
+
+- The LibSVM format column is a common way to store the sparse data in DBMS.
+- There is [an issue](https://github.com/sql-machine-learning/sqlflow/issues/2323) that requires SQLFlow should support loading data from the LibSVM format column.
+
+There would be 2 ways to load data from the LibSVM format column in SQLFlow:
 
 - `TO RUN` statements. It can support any user-defined data pre-processing. We can release a docker image to convert the data from the LibSVM format column to a dense tensor, create columns for each element of the dense tensor, and write the data into the result table. However, if the data is highly sparse, it would create too many columns in the result table, and consume lots of time and memories to do the transformation.
-- `COLUMN` clauses. The `COLUMN` clauses in SQLFlow support some commonly used feature columns, like `NUMERIC`, `CATEGORY_ID`, `EMBEDDING`, etc. If we want to support loading the data from the LibSVM format column, where would be 2 optional methods:
-    - Add a new `COLUMN` clause, like `LIBSVM` or `NUMERIC_KV`. It introduces complexity and disobeys the Occam's Razor principle.
-    - Extend the `NUMERIC` column clause to support columns in different data formats. Currently, we have supported CSV format implicitly in `NUMERIC` column clause: in feature derivation stage, we would infer whether the column data is in CSV format (see [here](https://github.com/sql-machine-learning/sqlflow/blob/3b70a0599beef573cd99f15dd41cc0a194634b75/pkg/ir/derivation.go#L146)), and convert the values in CSV format into tensors in Python side (see [here](https://github.com/sql-machine-learning/sqlflow/blob/develop/python/sqlflow_submitter/db.py#L159)). We can do the same implicit feature derivation and conversion for the LibSVM format column.
+- `COLUMN` clauses. The `COLUMN` clauses in SQLFlow support some commonly used feature columns, like `DENSE`, `SPARSE`, `CATEGORY_ID`, `EMBEDDING`, etc. If we want to support loading the data from the LibSVM format column, where would be 2 optional methods:
+    - Add a new `COLUMN` clause, like `LIBSVM` or `SPARSE_KV`. It introduces complexity and disobeys the principle of Occam's Razor.
+    - Extend the `SPARSE` column clause to support columns in different data formats. Currently, we have supported loading the number list encoded in the CSV format implicitly by the `SPARSE` column clause: in feature derivation stage, we would infer whether the column data is in the CSV format (see [here](https://github.com/sql-machine-learning/sqlflow/blob/3b70a0599beef573cd99f15dd41cc0a194634b75/pkg/ir/derivation.go#L146)), and convert the values in the CSV format into tensors in Python side (see [here](https://github.com/sql-machine-learning/sqlflow/blob/develop/python/sqlflow_submitter/db.py#L159)). We can do the same implicit feature derivation and data conversion for the LibSVM format column.
     
-In conclusion, we would choose to extend the `NUMERIC` column to support the LibSVM format column in this design.
+In conclusion, we would choose to extend the `SPARSE` column clause to support the LibSVM format column in this design.
 
 ## Only Support LibSVM Format Column Without Label Value
 
 There are 2 kinds of LibSVM format column: with label value (e.g. `1 0:1.2 2:3.4`) and without label value (e.g. `0:1.2 2:3.4`). In this design, we only support the LibSVM format column without label value. It is because:
 
 - The actual label value used for training would be confused if the LibSVM format column contains label value.
-    - Users may choose the label in the LibSVM format column as the training label, but we have not supported to choose partial data of a column as training label yet.
+    - Users may choose the label in the LibSVM format column as the training label, but we have not supported to choose partial data of a column as the training label yet.
     - Users may choose another column as the training label, which is different from the label value in the LibSVM format column.
 - If the LibSVM format column contains label value, users can easily split the label values into a separate column. For example, the SQL statement in MySQL is like:
     ```sql
@@ -72,7 +83,7 @@ There are 2 kinds of LibSVM format column: with label value (e.g. `1 0:1.2 2:3.4
     
 Therefore, we choose to only support the LibSVM format column without label value in this design. If the LibSVM format column contains label value, users can split the label values to a separate column using the SQL statement above.
 
-## Design
+## Proposed Design
 
 We would add a field named `format` in `FieldDesc`. It may be `CSV`, `LibSVM`, or other data format we would support in the future.
 
@@ -117,7 +128,7 @@ In the Python side, we would first read the raw data from the database, and then
 
 ## SQL Statement Example
 
-The SQL statement to read data from LibSVM format column would be like:
+The SQL statement to read data from the LibSVM format column would be like:
 
 ```sql
 SELECT * FROM train_table
@@ -125,9 +136,11 @@ TO TRAIN xgboost.gbtree
 WITH
     objective="reg:squarederror",
     train.num_boost_round = 30
-COLUMN NUMERIC(libsvm_column_name, 10000)
+COLUMN SPARSE(libsvm_column_name, 10000)
 LABEL label
 INTO result_table;
 ```
 
-where `NUMERIC(column_name, shape)` column clause is optional. If users provide the `NUMERIC` column clause in the SQL statement, the `shape` parameter in `NUMERIC` is required to indicate the dense shape of the sparse data; if not, we would derive the dense shape of the data in feature derivation stage.
+where users should write `SPARSE(column_name, shape)` to indicate that the column `column_name` stores sparse data. We would detect whether the `column_name` is a LibSVM format column in the feature derivation stage automatically.
+
+The `shape` parameter in `SPARSE` is not required. If the `shape` is not provided, we would derive the dense shape of the data in the feature derivation stage.
