@@ -16,31 +16,11 @@ package ir
 
 import (
 	"strings"
-
-	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/pipe"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 )
-
-// Executor is a visitor that generates and executes code for SQLFlowStmt
-// TODO(yancey1989) decompose Executor from IR
-type Executor interface {
-	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
-	ExecuteQuery(*NormalStmt) error
-	ExecuteTrain(*TrainStmt) error
-	ExecutePredict(*PredictStmt) error
-	ExecuteExplain(*ExplainStmt) error
-	ExecuteEvaluate(*EvaluateStmt) error
-	ExecuteShowTrain(*ShowTrainStmt) error
-	ExecuteOptimize(*OptimizeStmt) error
-	ExecuteRun(*RunStmt) error
-	GetTrainStmtFromModel() bool
-}
 
 // SQLFlowStmt has multiple implementations: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
 type SQLFlowStmt interface {
 	SetOriginalSQL(string)
-	Execute(Executor) error
 	IsExtended() bool
 	GetOriginalSQL() string
 }
@@ -106,9 +86,6 @@ func (stmt *TrainStmt) GetModelKind() int {
 	return TensorFlow
 }
 
-// Execute generates and executes code for TrainStmt
-func (stmt *TrainStmt) Execute(e Executor) error { return e.ExecuteTrain(stmt) }
-
 // SetOriginalSQL sets the original sql string
 func (stmt *TrainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
@@ -145,9 +122,6 @@ type PredictStmt struct {
 	TmpPredictTable string
 }
 
-// Execute generates and executes code for PredictStmt
-func (stmt *PredictStmt) Execute(e Executor) error { return e.ExecutePredict(stmt) }
-
 // SetOriginalSQL sets the original sql string
 func (stmt *PredictStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
@@ -181,9 +155,6 @@ type ExplainStmt struct {
 	TrainStmt *TrainStmt
 }
 
-// Execute generates and executes code for ExplainStmt
-func (stmt *ExplainStmt) Execute(e Executor) error { return e.ExecuteExplain(stmt) }
-
 // SetOriginalSQL sets the original sql string
 func (stmt *ExplainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
@@ -205,9 +176,6 @@ type EvaluateStmt struct {
 	TrainStmt        *TrainStmt
 }
 
-// Execute generates and executes code for EvaluateStmt
-func (stmt *EvaluateStmt) Execute(e Executor) error { return e.ExecuteEvaluate(stmt) }
-
 // SetOriginalSQL sets the original sql string
 func (stmt *EvaluateStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
@@ -219,9 +187,6 @@ func (stmt *EvaluateStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // NormalStmt is a SQL statement without using SQLFlow syntax extension.
 type NormalStmt string
-
-// Execute generates and executes code for NormalStmt
-func (stmt *NormalStmt) Execute(e Executor) error { return e.ExecuteQuery(stmt) }
 
 // SetOriginalSQL sets the original sql string
 func (stmt *NormalStmt) SetOriginalSQL(sql string) {}
@@ -239,9 +204,6 @@ type ShowTrainStmt struct {
 	// The model to show the train sql
 	ModelName string
 }
-
-// Execute generates and executes code for ShowTrainStmt
-func (stmt *ShowTrainStmt) Execute(e Executor) error { return e.ExecuteShowTrain(stmt) }
 
 // SetOriginalSQL sets the original sql string
 func (stmt *ShowTrainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
@@ -288,9 +250,6 @@ type OptimizeStmt struct {
 	ResultTable string
 }
 
-// Execute generates and executes code for OptimizeStmt
-func (stmt *OptimizeStmt) Execute(e Executor) error { return e.ExecuteOptimize(stmt) }
-
 // SetOriginalSQL sets the original sql string
 func (stmt *OptimizeStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
@@ -319,9 +278,6 @@ func (stmt *RunStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
 func (stmt *RunStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
-
-// Execute generates and executes code for TrainStmt
-func (stmt *RunStmt) Execute(e Executor) error { return e.ExecuteRun(stmt) }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
 func (stmt *RunStmt) IsExtended() bool { return true }

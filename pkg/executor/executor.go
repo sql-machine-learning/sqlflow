@@ -48,8 +48,22 @@ type Figures struct {
 	Text  string
 }
 
+// Executor call code geneartor to generate submitter program and execute it.
+type Executor interface {
+	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
+	ExecuteQuery(*ir.NormalStmt) error
+	ExecuteTrain(*ir.TrainStmt) error
+	ExecutePredict(*ir.PredictStmt) error
+	ExecuteExplain(*ir.ExplainStmt) error
+	ExecuteEvaluate(*ir.EvaluateStmt) error
+	ExecuteShowTrain(*ir.ShowTrainStmt) error
+	ExecuteOptimize(*ir.OptimizeStmt) error
+	ExecuteRun(*ir.RunStmt) error
+	GetTrainStmtFromModel() bool
+}
+
 // New returns a proper Submitter from configurations in environment variables.
-func New(executor string) ir.Executor {
+func New(executor string) Executor {
 	if executor == "" {
 		executor = os.Getenv("SQLFLOW_submitter")
 	}
@@ -71,6 +85,33 @@ type logChanWriter struct {
 	m    sync.Mutex
 	buf  bytes.Buffer
 	prev string
+}
+
+// Run interprets the SQLFlow IR.
+// TODO(yancey1989): this is a temporary way to decouple executor from the ir package,
+// as the discussion of https://github.com/sql-machine-learning/sqlflow/issues/2494,
+// SQLFlow would generate target code instead of interpret an IR.
+func Run(it Executor, stmt ir.SQLFlowStmt) error {
+	switch v := stmt.(type) {
+	case *ir.TrainStmt:
+		return it.ExecuteTrain(stmt.(*ir.TrainStmt))
+	case *ir.PredictStmt:
+		return it.ExecutePredict(stmt.(*ir.PredictStmt))
+	case *ir.ExplainStmt:
+		return it.ExecuteExplain(stmt.(*ir.ExplainStmt))
+	case *ir.EvaluateStmt:
+		return it.ExecuteEvaluate(stmt.(*ir.EvaluateStmt))
+	case *ir.OptimizeStmt:
+		return it.ExecuteOptimize(stmt.(*ir.OptimizeStmt))
+	case *ir.RunStmt:
+		return it.ExecuteRun(stmt.(*ir.RunStmt))
+	case *ir.NormalStmt:
+		return it.ExecuteQuery(stmt.(*ir.NormalStmt))
+	case *ir.ShowTrainStmt:
+		return it.ExecuteShowTrain(stmt.(*ir.ShowTrainStmt))
+	default:
+		return fmt.Errorf("unregistered SQLFlow IR type: %s", v)
+	}
 }
 
 func (cw *logChanWriter) Write(p []byte) (n int, err error) {
