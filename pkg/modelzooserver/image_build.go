@@ -26,8 +26,6 @@ import (
 	"sqlflow.org/sqlflow/pkg/randstring"
 )
 
-const kanikoImage = "registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/kaniko-executor"
-
 func imageExistsOnRegistry(imageName, tag string) bool {
 	var imageNamePart string
 	var registryPart string
@@ -156,6 +154,10 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
 		return err
 	}
 
+	kanikoImage := os.Getenv("SQLFLOW_MODEL_ZOO_KANIKO_IMAGE")
+	if kanikoImage == "" {
+		kanikoImage = "registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/kaniko-executor"
+	}
 	destination := fmt.Sprintf("%s:%s", name, tag)
 	podTemplate := fmt.Sprintf(`'{
   "apiVersion": "v1",
