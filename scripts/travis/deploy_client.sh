@@ -96,7 +96,7 @@ $F account "$QINIU_AK" "$QINIU_SK" "wu"
 retry=0
 while [[ $retry -lt 5 ]]; do
   if $F rput --overwrite \
-        sqlflow-release \
+        sqlflow-release-na \
         "$RELEASE_TAG/$TRAVIS_OS_NAME/sqlflow" \
         "$PWD"/build/sqlflow*; then
     break
