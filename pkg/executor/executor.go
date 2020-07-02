@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interpreter
+package executor
 
 import (
 	"bufio"
@@ -89,7 +89,7 @@ type logChanWriter struct {
 
 // Run interprets the SQLFlow IR.
 // TODO(yancey1989): this is a temporary way to decouple executor from the ir package,
-// as the discussion of https://github.com/sql-machine-learning/sqlflow/issues/2574,
+// as the discussion of https://github.com/sql-machine-learning/sqlflow/issues/2494,
 // SQLFlow would generate target code instead of interpret an IR.
 func Run(it Executor, stmt ir.SQLFlowStmt) error {
 	switch v := stmt.(type) {

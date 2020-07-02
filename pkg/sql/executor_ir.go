@@ -25,7 +25,7 @@ import (
 	"sqlflow.org/sqlflow/pkg/codegen/tensorflow"
 	"sqlflow.org/sqlflow/pkg/codegen/xgboost"
 	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/interpreter"
+	"sqlflow.org/sqlflow/pkg/executor"
 	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/log"
 	"sqlflow.org/sqlflow/pkg/parser"
@@ -175,7 +175,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}(cwd)
 	var r ir.SQLFlowStmt
 
-	generateTrainStmtFromModel := interpreter.New(session.Submitter).GetTrainStmtFromModel()
+	generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
 
 	if sql.IsExtendedSyntax() {
 		if sql.Train {
@@ -208,9 +208,10 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	r.SetOriginalSQL(sql.Original)
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
-	it := interpreter.New(session.Submitter)
-	it.Setup(wr, db, modelDir, cwd, session)
-	return interpreter.Run(it, r)
+
+	exec := executor.New(session.Submitter)
+	exec.Setup(wr, db, modelDir, cwd, session)
+	return executor.Run(exec, r)
 }
 
 // RewriteStatementsWithHints combines the hints into the standard SQL(s)
