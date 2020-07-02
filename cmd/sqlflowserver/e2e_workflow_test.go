@@ -267,6 +267,32 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	a.NoError(checkWorkflow(ctx, cli, stream))
 }
 
+func CaseWorkflowRunBinary(t *testing.T) {
+	a := assert.New(t)
+	runSQL := fmt.Sprintf(`
+	SELECT * FROM %s
+	TO RUN sqlflow/sqlflow:step
+	CMD "echo", "Hello World"
+	`, caseTrainTable)
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: runSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
 func CaseBackticksInSQL(t *testing.T) {
 	driverName, _, _ := database.ParseURL(testDatasource)
 	if driverName != "mysql" {
