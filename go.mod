@@ -60,7 +60,7 @@ require (
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
 	k8s.io/apimachinery v0.17.0 // indirect
 	mvdan.cc/xurls/v2 v2.2.0 // indirect
-	sqlflow.org/goalisa v0.0.0-20200426073517-e08494be06fc
+	sqlflow.org/goalisa v0.0.0-20200618020317-68d3aad1344c
 	sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38
 	sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c
 	vitess.io/vitess v3.0.0-rc.3+incompatible
