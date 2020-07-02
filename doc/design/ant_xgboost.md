@@ -52,7 +52,7 @@ WITH
   train_eval_ratio = 0.8
 COLUMN
   c1,
-  NUMERIC(c2, 10),
+  DENSE(c2, 10),
   BUCKET(c3, [0, 10, 100]),
   c4
 LABEL class
