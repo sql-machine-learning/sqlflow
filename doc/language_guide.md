@@ -159,6 +159,7 @@ SQLFlow supports specifying various feature columns in the column clause and lab
 ---|---|---|---
  X | field | int/float/double | 3.14
  DENSE | DENSE(field, n[,delimiter]) | string/varchar[n] | "0.2,1.7,0.6"
+ SPARSE | SPARSE(field, n[,delimiter]) | string/varchar[n] | "3,5,7"
  CATEGORY_ID | CATEGORY_ID(field, n[,delimiter]) | string/varchar[n] | "66,67,42,68,48,69,70"
  SEQ_CATEGORY_ID | SEQ_CATEGORY_ID(field, n[, delimiter]) | string/varchar[n] | "20,48,80,81,82,0,0,0,0"
  EMBEDDING | EMBEDDING(category_column, dimension[, combiner]) | X | X
@@ -166,7 +167,7 @@ SQLFlow supports specifying various feature columns in the column clause and lab
 ```text
 DENSE(field, n[, delimiter=comma])
 /*
-DENSE converts a delimiter separated string to a n dimensional dense Tensor
+DENSE converts a delimiter separated string to a n dimensional dense tensor.
     field:
         A string specifying the field name of the standard select result.
         e.g. dense, column1.
@@ -181,14 +182,35 @@ Example:
     DENSE(dense, 3). "0.2,1.7,0.6" => Tensor(0.2, 1.7, 0.6)
 
 Error:
-    Invalid field type. field type has to be string/varchar[n]
-    Invalid dimension. e.g. convert "0.2,1.7,0.6" to dimension 2.
+    Invalid field type. Field type has to be string/varchar[n].
+    Invalid dimension. E.g. convert "0.2,1.7,0.6" to dimension 2.
 */
 
+SPARSE(field, n[, delimiter=comma])
+/*
+SPARSE converts a delimiter separated string to a n dimensional sparse tensor,
+whose values are 0 or 1. The numbers in the string are the indices where the 
+tensor values are 1.
+   field:
+       A string specifying the field name of the standard select result.
+       e.g. sparse_column, column1.
+   n:
+       An integer specifying the tensor dimension.
+       e.g. 12.
+   delimiter:
+       A string specifying the delimiter.
+       default: comma.
+
+Example:
+   SPARSE(sparse_column, 8). "3,5,7" => Tensor(0, 0, 0, 1, 0, 1, 0, 1)
+
+Error:
+   Invalid field type. Field type has to be string/varchar[n].
+*/
 
 CATEGORY_ID(field, n[, delimiter=comma])
 /*
-CATEGORY_ID splits the input field by delimiter and returns identity values
+CATEGORY_ID splits the input field by delimiter and returns identity values.
     field:
         A string specifying the field name of the standard select result.
         e.g. title, id, column1.
@@ -203,13 +225,13 @@ Example:
     CATEGORY_ID(title, 100). "1,2,3,4" => Tensor(1, 2, 3, 4)
 
 Error:
-    Invalid field type. field type has to be string/varchar[n]
+    Invalid field type. Field type has to be string/varchar[n].
 */
 
 
 SEQ_CATEGORY_ID(field, n[, delimiter=comma])
 /*
-SEQ_CATEGORY_ID splits the input field by delimiter and returns identity values
+SEQ_CATEGORY_ID splits the input field by delimiter and returns identity values.
     field:
         A string specifying the field name of the standard select result.
         e.g. title, id, column1.
@@ -224,13 +246,13 @@ Example:
     SEQ_CATEGORY_ID(title, 100). "1,2,3,4" => Tensor(1, 2, 3, 4)
 
 Error:
-    Invalid field type. field type has to be string/varchar[n]
+    Invalid field type. Field type has to be string/varchar[n].
 */
 
 
 EMBEDDING(category_column, n[, combiner])
 /*
-EMBEDDING converts a delimiter separated string to an n-dimensional Tensor
+EMBEDDING converts a delimiter separated string to an n-dimensional tensor.
     category_column:
         A category column created by CATEGORY_ID*
         e.g. CATEGORY_ID(title, 100).
