@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/ir"
 	"sqlflow.org/sqlflow/pkg/parser"
 	"sqlflow.org/sqlflow/pkg/test"
 )
@@ -227,7 +228,7 @@ model.hidden_units = [10, 20],
 train.epoch = 200,
 train.batch_size = 10,
 train.verbose = 1
-COLUMN NUMERIC(dense, 4)
+COLUMN DENSE(dense, 4)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model;`
 		stream := RunSQLProgram(trainSQL, "", database.GetSessionFromTestingDB())
@@ -281,4 +282,66 @@ func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
 	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
 	a.False(test.GoodStream(stream.ReadAll()))
+}
+
+func TestInitializeAndCheckAttributes(t *testing.T) {
+	a := assert.New(t)
+	wrong := "SELECT * FROM t1 TO TRAIN DNNClassifier WITH model.stddev=0.1 LABEL c INTO m;"
+	r, e := parser.ParseStatement("mysql", wrong)
+	a.NoError(e)
+	trainStmt, err := ir.GenerateTrainStmt(r.SQLFlowSelectStmt)
+	a.Error(initializeAndCheckAttributes(trainStmt))
+
+	normal := `SELECT c1, c2, c3, c4 FROM my_table
+	TO TRAIN DNNClassifier
+	WITH
+		model.n_classes=2,
+		model.optimizer="adam",
+		model.hidden_units=[128,64]
+	LABEL c4
+	INTO mymodel;
+	`
+	r, e = parser.ParseStatement("mysql", normal)
+	a.NoError(e)
+
+	trainStmt, err = ir.GenerateTrainStmt(r.SQLFlowSelectStmt)
+	a.NoError(initializeAndCheckAttributes(trainStmt))
+	a.NoError(err)
+	a.Equal("DNNClassifier", trainStmt.Estimator)
+	a.Equal("SELECT c1, c2, c3, c4 FROM my_table\n	", trainStmt.Select)
+	extendedAttr := map[string]bool{
+		"train.epoch":                  true,
+		"train.verbose":                true,
+		"train.save_checkpoints_steps": true,
+		"train.log_every_n_iter":       true,
+		"train.max_steps":              true,
+		"validation.steps":             true,
+		"validation.metrics":           true,
+		"validation.start_delay_secs":  true,
+		"train.batch_size":             true,
+		"validation.throttle_secs":     true,
+		"validation.select":            true,
+	}
+	a.Equal(14, len(trainStmt.Attributes))
+
+	for key, attr := range trainStmt.Attributes {
+		if key == "model.n_classes" {
+			a.Equal(2, attr.(int))
+		} else if key == "model.optimizer" {
+			a.Equal("adam()", attr.(string))
+		} else if key == "model.hidden_units" {
+			l, ok := attr.([]interface{})
+			a.True(ok)
+			a.Equal(128, l[0].(int))
+			a.Equal(64, l[1].(int))
+		} else if _, ok := extendedAttr[key]; !ok {
+			a.Failf("error key", key)
+		}
+	}
+
+	l, ok := trainStmt.Label.(*ir.NumericColumn)
+	a.True(ok)
+	a.Equal("c4", l.FieldDesc.Name)
+
+	a.Equal("mymodel", trainStmt.Into)
 }

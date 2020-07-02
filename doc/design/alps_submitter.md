@@ -1,6 +1,6 @@
 # ALPS Submitter
 
-ALPS (Ant Learning and Prediction Suite) provides a common algorithm-driven framework in Ant Financial, focusing on providing users with an efficient and easy-to-use machine learning programming framework and a financial learning machine learning algorithm solution.
+ALPS (Ant Learning and Prediction Suite) provides a common algorithm-driven framework in Ant Group, focusing on providing users with an efficient and easy-to-use machine learning programming framework and a financial learning machine learning algorithm solution.
 
 This module is used to submit ALPS machine learning training tasks in SQLFlow.
 
@@ -125,7 +125,7 @@ In SQLFlow, we use Feature Expressions to represent the feature engineering proc
 
 <b>Feature Expressions</b>
 ```
-NUMERIC(key, dtype, shape)
+DENSE(key, shape)
 
 BUCKETIZED(source_column, boundaries)
 
@@ -152,7 +152,7 @@ TO TRAIN DNNClassifier
 WITH
   ...
 COLUMN
-  CROSS([NUMERIC(c1), BUCKETIZED(NUMERIC(c2), [0, 10, 100])])
+  CROSS([DENSE(c1), BUCKETIZED(DENSE(c2), [0, 10, 100])])
 LABEL class
 
 ```
@@ -166,7 +166,7 @@ TO TRAIN DNNClassifier
 WITH
     ...
 COLUMN
-    NUMERIC(f1 * 10)
+    DENSE(f1 * 10)
 ```
 
 ### Feature Columns Code Generation
@@ -212,7 +212,7 @@ WITH
     train_spec.max_steps = 2000,
     input_fn.batch_size = 512
 COLUMN
-    CROSS([NUMERIC(c1), BUCKETIZED(NUMERIC(c2), [0, 10, 100])])
+    CROSS([DENSE(c1), BUCKETIZED(DENSE(c2), [0, 10, 100])])
 LABEL class
 ...
 ```
@@ -229,7 +229,7 @@ WITH
   dnn_feature_columns = [fc3]
   ...
 COLUMN
-  NUMERIC(f1) as fc1,
+  DENSE(f1) as fc1,
   BUCKETIZED(fc1, [0, 10, 100]) as fc2,
   CROSS([fc1, fc2, f3]) as fc3
 LABEL class

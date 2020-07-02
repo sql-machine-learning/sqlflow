@@ -216,7 +216,7 @@ func (c *EmbeddingColumn) GetFieldDesc() []*FieldDesc {
 	if c.CategoryColumn == nil {
 		return []*FieldDesc{}
 	}
-	return c.CategoryColumn.(FeatureColumn).GetFieldDesc()
+	return c.CategoryColumn.GetFieldDesc()
 }
 
 // ApplyTo applies the FeatureColumn to a new field
@@ -237,7 +237,7 @@ func (c *EmbeddingColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 		if categoryFc, ok := fc.(CategoryColumn); !ok {
 			ret.CategoryColumn = categoryFc
 		} else {
-			return nil, fmt.Errorf("invalid EmbeddingColumn.ApplyTo return value")
+			return nil, fmt.Errorf("Embedding.ApplyTo should return CategoryColumn")
 		}
 	}
 	return ret, nil
@@ -246,7 +246,7 @@ func (c *EmbeddingColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 // IndicatorColumn represents `tf.feature_column.indicator_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/indicator_column
 type IndicatorColumn struct {
-	CategoryColumn FeatureColumn
+	CategoryColumn
 	// only used when INDICATOR(col_name, ...) this will set CategoryColumn = nil
 	// will fill the feature column details using feature_derivation
 	Name string
@@ -257,17 +257,22 @@ func (c *IndicatorColumn) GetFieldDesc() []*FieldDesc {
 	if c.CategoryColumn == nil {
 		return []*FieldDesc{}
 	}
-	return c.CategoryColumn.(FeatureColumn).GetFieldDesc()
+	return c.CategoryColumn.GetFieldDesc()
 }
 
 // ApplyTo applies the FeatureColumn to a new field
 func (c *IndicatorColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	ret := &IndicatorColumn{Name: other.Name}
 	if c.CategoryColumn != nil {
-		var err error
-		ret.CategoryColumn, err = c.CategoryColumn.ApplyTo(other)
+		fc, err := c.CategoryColumn.ApplyTo(other)
 		if err != nil {
 			return nil, err
+		}
+
+		if catColumn, ok := fc.(CategoryColumn); ok {
+			ret.CategoryColumn = catColumn
+		} else {
+			return nil, fmt.Errorf("Indicator.ApplyTo should return CategoryColumn")
 		}
 	}
 	return ret, nil

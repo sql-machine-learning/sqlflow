@@ -40,3 +40,14 @@ func TestBuildAndPush(t *testing.T) {
 	a.NoError(err)
 	// TODO(typhoonzero): add actual push tests
 }
+
+func TestBuildAndPushKaniko(t *testing.T) {
+	if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
+		t.Skip("skip TestBuildAndPushKaniko when not in kubernetes cluster")
+	}
+	a := assert.New(t)
+	dir, err := mockTmpModelRepo()
+	a.NoError(err)
+	err = buildAndPushImageKaniko(dir, "typhoon1986/mytest_model_image", "v0.1", false)
+	a.NoError(err)
+}

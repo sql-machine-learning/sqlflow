@@ -11,16 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ast
+package randstring
 
-// Constraint represents a constraint in the description of a mathematical
-// optimization problem.  A constraint is an expression with an optional GroupBy
-// name.
-type Constraint struct {
-	*Expr
-	GroupBy string
+import "math/rand"
+
+// Generate returns a random string containing letters and digits of length n.
+func Generate(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	const lettersAndDigits = letters + "0123456789"
+	b := make([]byte, n)
+	// do not start from digit
+	b[0] = letters[rand.Intn(len(letters))]
+	for i := 1; i < len(b); i++ {
+		b[i] = lettersAndDigits[rand.Intn(len(lettersAndDigits))]
+	}
+	return string(b)
 }
-
-// ConstraintList is a list of constraints.  The parser generates a
-// ConstraintList from the TO MAXIMIZE/MINIMIZE clause.
-type ConstraintList []*Constraint

@@ -26,7 +26,6 @@ import (
 
 const (
 	sparse        = "SPARSE"
-	numeric       = "NUMERIC"
 	cross         = "CROSS"
 	categoryID    = "CATEGORY_ID"
 	seqCategoryID = "SEQ_CATEGORY_ID"
@@ -34,7 +33,6 @@ const (
 	embedding     = "EMBEDDING"
 	indicator     = "INDICATOR"
 	bucket        = "BUCKET"
-	square        = "SQUARE"
 	dense         = "DENSE"
 	comma         = "COMMA"
 	negative      = "-"
@@ -173,7 +171,6 @@ func GenerateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, mode
 	}
 
 	slct.TrainClause = trainSlct.TrainClause
-
 	return GenerateTrainStmtWithInferredColumns(trainSlct, connStr, "", "", false, false)
 }
 
@@ -406,8 +403,8 @@ func generateAttributeIR(attrs *parser.Attributes) (map[string]interface{}, erro
 // 1                 ->  int(1)
 // "string"          ->  string("string")
 // [1,2,3]           ->  []int{1,2,3}
-// NUMERIC(c1)       ->  &NumericColumn{Key: "c1"...}
-// [NUMERIC(c1), c2] ->  [&NumericColumn{Key: "c1"...}, string("c2")]
+// DENSE(c1)       ->  &NumericColumn{Key: "c1"...}
+// [DENSE(c1), c2] ->  [&NumericColumn{Key: "c1"...}, string("c2")]
 //
 // parameter e could be type `*expr` or `*parser.ExprList` for recursive call.
 func parseExpression(e interface{}) (interface{}, error) {
@@ -424,7 +421,7 @@ func parseExpression(e interface{}) (interface{}, error) {
 
 	headTyp := (*el)[0].Type
 	if headTyp == parser.IDENT {
-		// expression is a function call format like `NUMERIC(c1)`
+		// expression is a function call format like `DENSE(c1)`
 		return parseFeatureColumn(el)
 	} else if headTyp == '[' {
 		// expression is a list of things
@@ -492,11 +489,11 @@ func inferStringValue(expr string) interface{} {
 func parseFeatureColumn(el *parser.ExprList) (FeatureColumn, error) {
 	head := (*el)[0].Value
 	if head == "" {
-		return nil, fmt.Errorf("column description expects format like NUMERIC(key) etc, got %v", el)
+		return nil, fmt.Errorf("column description expects format like DENSE(key) etc, got %v", el)
 	}
 
 	switch strings.ToUpper(head) {
-	case numeric:
+	case dense, sparse:
 		return parseNumericColumn(el)
 	case bucket:
 		return parseBucketColumn(el)
@@ -533,47 +530,17 @@ func parseDefaultNumericColumn(el *parser.Expr) (*NumericColumn, error) {
 }
 
 func parseNumericColumn(el *parser.ExprList) (*NumericColumn, error) {
-	help := "NUMERIC([DENSE()|SPARSE()|col_name][, SHAPE])"
-
-	// 'shape' is optional in NUMERIC, so len(*el) may be 2 or 3
-	if len(*el) != 2 && len(*el) != 3 {
-		return nil, fmt.Errorf("bad NUMERIC expression format: %s, should be like: %s", *el, help)
-	}
-
-	// 1. NUMERIC(DENSE()/SPARSE()) phrases
-	if (*el)[1].Type == 0 {
-		fieldDesc, err := parseFieldDesc(&(*el)[1].Sexp)
-		if err != nil {
-			return nil, err
-		}
-		return &NumericColumn{FieldDesc: fieldDesc}, nil
-	}
-	// 1. NUMERIC(col_name, ...) phrases
-	key, err := expression2string((*el)[1])
+	fieldDesc, err := parseFieldDesc(el)
 	if err != nil {
-		return nil, fmt.Errorf("bad NUMERIC key: %s, err: %s, should be like: %s", (*el)[1], err, help)
+		return nil, err
 	}
-
-	shape := []int{1}
-	if len(*el) == 3 {
-		shape, err = parseShape((*el)[2])
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	return &NumericColumn{
-		FieldDesc: &FieldDesc{
-			Name:     key,
-			DType:    Float, // default use float dtype if no DENSE()/SPARSE() provided
-			Shape:    shape,
-			IsSparse: false,
-		},
+		FieldDesc: fieldDesc,
 	}, nil
 }
 
 func parseBucketColumn(el *parser.ExprList) (*BucketColumn, error) {
-	help := "BUCKET([NUMERIC(...)|col_name], BOUNDARIES)"
+	help := "BUCKET([DENSE(...)|col_name], BOUNDARIES)"
 	if len(*el) != 3 {
 		return nil, fmt.Errorf("bad BUCKET expression format: %s, should be like: %s", *el, help)
 	}
@@ -587,15 +554,15 @@ func parseBucketColumn(el *parser.ExprList) (*BucketColumn, error) {
 	if sourceExprList.Type != 0 {
 		source, err = parseDefaultNumericColumn(sourceExprList)
 		if err != nil {
-			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", sourceExprList.Value)
+			return nil, fmt.Errorf("key of BUCKET must be DENSE or column name, which is %s", sourceExprList.Value)
 		}
 	} else {
 		source, err = parseFeatureColumn(&sourceExprList.Sexp)
 		if err != nil {
-			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", sourceExprList.Sexp)
+			return nil, fmt.Errorf("key of BUCKET must be DENSE or column name, which is %s", sourceExprList.Sexp)
 		}
 		if _, ok := source.(*NumericColumn); !ok {
-			return nil, fmt.Errorf("key of BUCKET must be NUMERIC or column name, which is %s", source)
+			return nil, fmt.Errorf("key of BUCKET must be DENSE or column name, which is %s", source)
 		}
 	}
 
@@ -765,19 +732,20 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoryColumn
 	}
 	source, err := parseFeatureColumn(&sourceExprList.Sexp)
 	if err != nil {
+		return nil, "", err
+	}
+
+	if nc, ok := source.(*NumericColumn); ok {
 		// 2. source is a FieldDesc like EMBEDDING(SPARSE(...), size)
-		fm, err := parseFieldDesc(&sourceExprList.Sexp)
-		if err != nil {
-			return nil, "", err
-		}
+		fd := nc.FieldDesc
 		// generate default CategoryIDColumn according to FieldDesc, use shape[0]
 		// as category_id_column bucket size.
-		if len(fm.Shape) < 1 {
+		if len(fd.Shape) < 1 {
 			return nil, "", fmt.Errorf("invalid FieldDesc Shape: %v", sourceExprList)
 		}
 		catColumn = &CategoryIDColumn{
-			FieldDesc:  fm,
-			BucketSize: int64(fm.Shape[0]),
+			FieldDesc:  fd,
+			BucketSize: int64(fd.Shape[0]),
 		}
 	} else {
 		// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)
@@ -791,10 +759,11 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoryColumn
 }
 
 func parseEmbeddingColumn(el *parser.ExprList) (*EmbeddingColumn, error) {
-	help := "EMBEDDING([CATEGORY_ID(...)|col_name], SIZE, COMBINER[, INITIALIZER])"
-	if len(*el) < 4 || len(*el) > 5 {
+	help := "EMBEDDING([CATEGORY_ID(...)|col_name], SIZE[, COMBINER, INITIALIZER])"
+	if len(*el) < 3 || len(*el) > 5 {
 		return nil, fmt.Errorf("bad EMBEDDING expression format: %s, should be like: %s", *el, help)
 	}
+
 	catColumn, colName, err := buildCategoryIDForEmbeddingOrIndicator(el)
 	if err != nil {
 		return nil, err
@@ -803,10 +772,15 @@ func parseEmbeddingColumn(el *parser.ExprList) (*EmbeddingColumn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("bad EMBEDDING dimension: %s, err: %s", (*el)[2].Value, err)
 	}
-	combiner, err := expression2string((*el)[3])
-	if err != nil {
-		return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+
+	combiner := "sum"
+	if len(*el) >= 4 {
+		combiner, err = expression2string((*el)[3])
+		if err != nil {
+			return nil, fmt.Errorf("bad EMBEDDING combiner: %s, err: %s", (*el)[3], err)
+		}
 	}
+
 	initializer := ""
 	if len(*el) == 5 {
 		initializer, err = expression2string((*el)[4])
@@ -837,74 +811,96 @@ func parseIndicatorColumn(el *parser.ExprList) (*IndicatorColumn, error) {
 }
 
 func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
-	help := "DENSE|SPARSE(col_name, SHAPE, DELIMITER[, DTYPE])"
-	if len(*el) != 4 && len(*el) != 5 {
-		return nil, fmt.Errorf("bad FieldDesc format: %s, should be like: %s", *el, help)
+	help := "DENSE|SPARSE(col_name[, SHAPE, DELIMITER, DTYPE])"
+
+	if len(*el) < 2 || len(*el) > 5 {
+		return nil, fmt.Errorf("bad DENSE|SPARSE format: %v, should be like: %s", *el, help)
 	}
+
 	call, err := expression2string((*el)[0])
 	if err != nil {
-		return nil, fmt.Errorf("bad FieldDesc format: %v, should be like: %s", err, help)
+		return nil, fmt.Errorf("bad DENSE|SPARSE format: %v, should be like: %s", err, help)
 	}
+
 	var isSparse bool
-	if strings.ToUpper(call) == "DENSE" {
+	head := strings.ToUpper(call)
+	if head == dense {
 		isSparse = false
-	} else if strings.ToUpper(call) == "SPARSE" {
+	} else if head == sparse {
 		isSparse = true
 	} else {
-		return nil, fmt.Errorf("bad FieldDesc: %s, should be like: %s", call, help)
+		return nil, fmt.Errorf("bad DENSE|SPARSE format: %v, should be like: %s", *el, help)
 	}
+
+	help = head + "(col_name[, SHAPE, DELIMITER, DTYPE])"
 
 	name, err := expression2string((*el)[1])
 	if err != nil {
-		return nil, fmt.Errorf("bad FieldDesc name: %s, err: %s", (*el)[1], err)
-	}
-	var shape []int
-	intShape, err := strconv.Atoi((*el)[2].Value)
-	if err != nil {
-		strShape, err := expression2string((*el)[2])
-		if err != nil {
-			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].Value, err)
-		}
-		if strShape != "none" {
-			return nil, fmt.Errorf("bad FieldDesc shape: %s, err: %s", (*el)[2].Value, err)
-		}
-	} else {
-		shape = append(shape, intShape)
-	}
-	unresolvedDelimiter, err := expression2string((*el)[3])
-	if err != nil {
-		return nil, fmt.Errorf("bad FieldDesc delimiter: %s, err: %s", (*el)[1], err)
+		return nil, fmt.Errorf("bad %s name: %s, err: %s", head, (*el)[1], err)
 	}
 
-	delimiter, err := resolveDelimiter(unresolvedDelimiter)
-	if err != nil {
-		return nil, err
+	shape := make([]int, 0)
+	if len(*el) >= 3 {
+		shapeInterface, err := parseExpression((*el)[2])
+		if err != nil {
+			return nil, fmt.Errorf("bad %s shape: %v, err: %s", head, (*el)[2], err)
+		}
+
+		switch s := shapeInterface.(type) {
+		case int:
+			shape = append(shape, s)
+		case []interface{}:
+			for _, item := range s {
+				if intItem, ok := item.(int); ok {
+					shape = append(shape, intItem)
+				} else {
+					return nil, fmt.Errorf("bad %s shape: %v", head, (*el)[2])
+				}
+			}
+		case string:
+			if s != "none" {
+				return nil, fmt.Errorf("bad %s shape: %s", head, s)
+			}
+		default:
+			return nil, fmt.Errorf("bad %s shape: %v", head, (*el)[2])
+		}
+	}
+
+	delimiter := ""
+	if len(*el) >= 4 {
+		unresolvedDelimiter, err := expression2string((*el)[3])
+		if err != nil {
+			return nil, fmt.Errorf("bad %s delimiter: %s, err: %s", head, (*el)[1], err)
+		}
+
+		delimiter, err = resolveDelimiter(unresolvedDelimiter)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	dtype := Float
-	if isSparse {
-		dtype = Int
-	}
 	if len(*el) == 5 {
 		dtypeStr, err := expression2string((*el)[4])
 		if err != nil {
 			return nil, err
 		}
-		if dtypeStr == "float" {
+		if strings.EqualFold(dtypeStr, "float") {
 			dtype = Float
-		} else if dtypeStr == "int" {
+		} else if strings.EqualFold(dtypeStr, "int") {
 			dtype = Int
 		} else {
-			return nil, fmt.Errorf("bad FieldDesc data type %s", dtypeStr)
+			return nil, fmt.Errorf("bad %s data type %s", head, dtypeStr)
 		}
 	}
+
 	return &FieldDesc{
 		Name:      name,
 		IsSparse:  isSparse,
 		Shape:     shape,
 		DType:     dtype,
 		Delimiter: delimiter,
-		MaxID:     0}, nil
+	}, nil
 }
 
 // -------------------------- parse utilities --------------------------------------
@@ -920,10 +916,10 @@ func parseShape(e *parser.Expr) ([]int, error) {
 		if list, ok := list.([]interface{}); ok {
 			shape, err = transformToIntList(list)
 			if err != nil {
-				return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", e.Value, err)
+				return nil, fmt.Errorf("bad shape: %s, err: %s", e.Value, err)
 			}
 		} else {
-			return nil, fmt.Errorf("bad NUMERIC shape: %s, err: %s", e.Value, err)
+			return nil, fmt.Errorf("bad shape: %s, err: %s", e.Value, err)
 		}
 	} else {
 		shape = append(shape, intVal)

@@ -16,31 +16,11 @@ package ir
 
 import (
 	"strings"
-
-	"sqlflow.org/sqlflow/pkg/database"
-	"sqlflow.org/sqlflow/pkg/pipe"
-	pb "sqlflow.org/sqlflow/pkg/proto"
 )
-
-// Executor is a visitor that generates and executes code for SQLFlowStmt
-// TODO(yancey1989) decompose Executor from IR
-type Executor interface {
-	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
-	ExecuteQuery(*NormalStmt) error
-	ExecuteTrain(*TrainStmt) error
-	ExecutePredict(*PredictStmt) error
-	ExecuteExplain(*ExplainStmt) error
-	ExecuteEvaluate(*EvaluateStmt) error
-	ExecuteShowTrain(*ShowTrainStmt) error
-	ExecuteOptimize(*OptimizeStmt) error
-	ExecuteRun(*RunStmt) error
-	GetTrainStmtFromModel() bool
-}
 
 // SQLFlowStmt has multiple implementations: TrainStmt, PredictStmt, ExplainStmt and standard SQL.
 type SQLFlowStmt interface {
 	SetOriginalSQL(string)
-	Execute(Executor) error
 	IsExtended() bool
 	GetOriginalSQL() string
 }
@@ -95,8 +75,8 @@ const (
 )
 
 // GetModelKind returns the kind of model in the TrainStmt
-func (cl *TrainStmt) GetModelKind() int {
-	estimator := strings.ToUpper(cl.Estimator)
+func (stmt *TrainStmt) GetModelKind() int {
+	estimator := strings.ToUpper(stmt.Estimator)
 	if strings.HasPrefix(estimator, "XGB") {
 		return XGBoost
 	}
@@ -106,17 +86,14 @@ func (cl *TrainStmt) GetModelKind() int {
 	return TensorFlow
 }
 
-// Execute generates and executes code for TrainStmt
-func (cl *TrainStmt) Execute(s Executor) error { return s.ExecuteTrain(cl) }
-
 // SetOriginalSQL sets the original sql string
-func (cl *TrainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (stmt *TrainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (cl *TrainStmt) IsExtended() bool { return true }
+func (stmt *TrainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (cl *TrainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+func (stmt *TrainStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // PredictStmt is the intermediate representation for code generation of a prediction job
 //
@@ -145,17 +122,14 @@ type PredictStmt struct {
 	TmpPredictTable string
 }
 
-// Execute generates and executes code for PredictStmt
-func (cl *PredictStmt) Execute(s Executor) error { return s.ExecutePredict(cl) }
-
 // SetOriginalSQL sets the original sql string
-func (cl *PredictStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (stmt *PredictStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (cl *PredictStmt) IsExtended() bool { return true }
+func (stmt *PredictStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (cl *PredictStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+func (stmt *PredictStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // ExplainStmt is the intermediate representation for code generation of a analysis job
 type ExplainStmt struct {
@@ -181,17 +155,14 @@ type ExplainStmt struct {
 	TrainStmt *TrainStmt
 }
 
-// Execute generates and executes code for ExplainStmt
-func (cl *ExplainStmt) Execute(s Executor) error { return s.ExecuteExplain(cl) }
-
 // SetOriginalSQL sets the original sql string
-func (cl *ExplainStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (stmt *ExplainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (cl *ExplainStmt) IsExtended() bool { return true }
+func (stmt *ExplainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (cl *ExplainStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+func (stmt *ExplainStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // EvaluateStmt is the intermediate representation for code generation of an evaluation job
 type EvaluateStmt struct {
@@ -205,32 +176,26 @@ type EvaluateStmt struct {
 	TrainStmt        *TrainStmt
 }
 
-// Execute generates and executes code for EvaluateStmt
-func (cl *EvaluateStmt) Execute(s Executor) error { return s.ExecuteEvaluate(cl) }
-
 // SetOriginalSQL sets the original sql string
-func (cl *EvaluateStmt) SetOriginalSQL(sql string) { cl.OriginalSQL = sql }
+func (stmt *EvaluateStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (cl *EvaluateStmt) IsExtended() bool { return true }
+func (stmt *EvaluateStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (cl *EvaluateStmt) GetOriginalSQL() string { return cl.OriginalSQL }
+func (stmt *EvaluateStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // NormalStmt is a SQL statement without using SQLFlow syntax extension.
 type NormalStmt string
 
-// Execute generates and executes code for NormalStmt
-func (sql *NormalStmt) Execute(s Executor) error { return s.ExecuteQuery(sql) }
-
 // SetOriginalSQL sets the original sql string
-func (sql *NormalStmt) SetOriginalSQL(s string) {}
+func (stmt *NormalStmt) SetOriginalSQL(sql string) {}
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (sql *NormalStmt) IsExtended() bool { return false }
+func (stmt *NormalStmt) IsExtended() bool { return false }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (sql *NormalStmt) GetOriginalSQL() string { return string(*sql) }
+func (stmt *NormalStmt) GetOriginalSQL() string { return string(*stmt) }
 
 // ShowTrainStmt get and output the original train sql for ModelName
 type ShowTrainStmt struct {
@@ -240,17 +205,14 @@ type ShowTrainStmt struct {
 	ModelName string
 }
 
-// Execute generates and executes code for ShowTrainStmt
-func (sql *ShowTrainStmt) Execute(s Executor) error { return s.ExecuteShowTrain(sql) }
-
 // SetOriginalSQL sets the original sql string
-func (sql *ShowTrainStmt) SetOriginalSQL(s string) { sql.OriginalSQL = s }
+func (stmt *ShowTrainStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (sql *ShowTrainStmt) IsExtended() bool { return true }
+func (stmt *ShowTrainStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (sql *ShowTrainStmt) GetOriginalSQL() string { return sql.OriginalSQL }
+func (stmt *ShowTrainStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // OptimizeExpr is the intermediate code for generating target solver expressions.
 type OptimizeExpr struct {
@@ -288,17 +250,14 @@ type OptimizeStmt struct {
 	ResultTable string
 }
 
-// Execute generates and executes code for OptimizeStmt
-func (sql *OptimizeStmt) Execute(s Executor) error { return s.ExecuteOptimize(sql) }
-
 // SetOriginalSQL sets the original sql string
-func (sql *OptimizeStmt) SetOriginalSQL(s string) { sql.OriginalSQL = s }
+func (stmt *OptimizeStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (sql *OptimizeStmt) IsExtended() bool { return true }
+func (stmt *OptimizeStmt) IsExtended() bool { return true }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (sql *OptimizeStmt) GetOriginalSQL() string { return sql.OriginalSQL }
+func (stmt *OptimizeStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // RunStmt is the intermediate representation of `SELECT TO RUN` statement
 type RunStmt struct {
@@ -315,13 +274,10 @@ type RunStmt struct {
 }
 
 // SetOriginalSQL sets the original sql string
-func (cl *RunStmt) SetOriginalSQL(s string) { cl.OriginalSQL = s }
+func (stmt *RunStmt) SetOriginalSQL(sql string) { stmt.OriginalSQL = sql }
 
 // GetOriginalSQL returns the original SQL statement used to get current IR result
-func (cl *RunStmt) GetOriginalSQL() string { return cl.OriginalSQL }
-
-// Execute generates and executes code for TrainStmt
-func (cl *RunStmt) Execute(s Executor) error { return s.ExecuteRun(cl) }
+func (stmt *RunStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 
 // IsExtended returns whether a SQLFlowStmt is an extended SQL statement
-func (cl *RunStmt) IsExtended() bool { return true }
+func (stmt *RunStmt) IsExtended() bool { return true }

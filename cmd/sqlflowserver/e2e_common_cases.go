@@ -64,6 +64,7 @@ func caseShowDatabases(t *testing.T) {
 		"imdb":                    "",
 		"sqlflow_model_zoo":       "",
 		"sqlflow_public_models":   "",
+		"energy":                  "", // energy tutoral table
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])

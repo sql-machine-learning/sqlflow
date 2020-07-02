@@ -33,9 +33,11 @@ import (
 	"sqlflow.org/sqlflow/pkg/sqlfs"
 )
 
-const modelZooDB = "sqlflow"
-const modelZooTable = "sqlflow.trained_models"
-const modelMetaFileName = "model_meta.json"
+const (
+	modelZooDB        = "sqlflow"
+	modelZooTable     = "sqlflow.trained_models"
+	modelMetaFileName = "model_meta.json"
+)
 
 // Model represent a trained model, which could be saved to a filesystem or sqlfs.
 type Model struct {
@@ -316,4 +318,17 @@ func decodeMeta(model *Model, meta []byte) (err error) {
 	// for now, stay compatible with old interface
 	model.TrainSelect = model.GetMetaAsString("original_sql")
 	return nil
+}
+
+// MockInDB mocks a model meta structure which saved in database for testing
+func MockInDB(cwd, trainSelect, table string) error {
+	m := New(cwd, trainSelect)
+	metaStr := fmt.Sprintf(`{"original_sql": "%s"}`, strings.ReplaceAll(strings.ReplaceAll(trainSelect, "\n", " "), `"`, `\"`))
+	if e := decodeMeta(m, []byte(metaStr)); e != nil {
+		return e
+	}
+	if e := ioutil.WriteFile(path.Join(cwd, modelMetaFileName), []byte(metaStr), 0644); e != nil {
+		return e
+	}
+	return m.saveDB(database.GetTestingDBSingleton().URL(), table, database.GetSessionFromTestingDB())
 }

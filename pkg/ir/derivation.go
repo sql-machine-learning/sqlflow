@@ -161,6 +161,19 @@ func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName stri
 		// implicit set shape if shape is not provided in SQL COLUMN clause
 		fieldDescMap[fieldName].Shape = []int{len(values)}
 	}
+
+	// FIXME(sneaxiy): currently, we only support sparse tensor in CSV format
+	// whose values are 0 or 1. The numeric values in the cell data are the
+	// indices where the values of the sparse tensor are 1. For example, the
+	// cell value "3,5,7" indicates a sparse tensor x, and
+	// x[3] = x[5] = x[7] = 1, and the other values of x are all zeros. Since
+	// the index is always of integer type, we force to set the data type of
+	// sparse tensor in CSV format is "Int". We should remove this constraint
+	// if we will support other data formats in the future.
+	if fieldDescMap[fieldName].IsSparse {
+		fieldDescMap[fieldName].DType = Int
+	}
+
 	fieldDescMap[fieldName].Delimiter = ","
 	// get dtype for csv values, use int64 and float32 only
 	for _, v := range values {

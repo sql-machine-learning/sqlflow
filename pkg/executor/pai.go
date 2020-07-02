@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -31,7 +30,9 @@ import (
 	"sqlflow.org/sqlflow/pkg/codegen/pai"
 	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
+	"sqlflow.org/sqlflow/pkg/model"
 	pb "sqlflow.org/sqlflow/pkg/proto"
+	"sqlflow.org/sqlflow/pkg/randstring"
 )
 
 const (
@@ -47,25 +48,13 @@ var reODPSLogURL = regexp.MustCompile(`http://logview.*`)
 
 type paiExecutor struct{ *pythonExecutor }
 
-func randStringRunes(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	const lettersAndDigits = letters + "0123456789"
-	b := make([]byte, n)
-	// do not start from digit
-	b[0] = letters[rand.Intn(len(letters))]
-	for i := 1; i < len(b); i++ {
-		b[i] = lettersAndDigits[rand.Intn(len(lettersAndDigits))]
-	}
-	return string(b)
-}
-
 func createTmpTableFromSelect(selectStmt, dataSource string) (string, string, error) {
 	db, err := database.OpenAndConnectDB(dataSource)
 	if err != nil {
 		return "", "", err
 	}
 	defer db.Close()
-	tableName := randStringRunes(16)
+	tableName := randstring.Generate(16)
 	// FIXME(typhoonzero): only work if specify database name in connect string.
 	databaseName, err := database.GetDatabaseName(dataSource)
 	if err != nil {
@@ -144,7 +133,7 @@ func createPAIHyperParamFile(cwd string, filename string, modelPath string) erro
 	return nil
 }
 
-func preExecuteTrainOnpPA(cl *ir.TrainStmt, session *pb.Session) (e error) {
+func preExecuteTrainOnPAI(cl *ir.TrainStmt, session *pb.Session) (e error) {
 	// create tmp table for training and validating
 	cl.TmpTrainTable, cl.TmpValidateTable, e = createTempTrainAndValTable(cl.Select, cl.ValidationSelect, session.DbConnStr)
 	if e != nil {
@@ -158,7 +147,7 @@ func preExecuteTrainOnpPA(cl *ir.TrainStmt, session *pb.Session) (e error) {
 // 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""
 // 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
 func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	if e = preExecuteTrainOnpPA(cl, s.Session); e != nil {
+	if e = preExecuteTrainOnPAI(cl, s.Session); e != nil {
 		return e
 	}
 
@@ -177,13 +166,13 @@ func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		}
 	}
 
+	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	if e != nil {
+		return e
+	}
 	// NOTE(sneaxiy): should be careful whether there would be file conflict
 	// if we do not remove the original OSS files.
 	if ossModelPathToLoad == "" || ossModelPathToSave != ossModelPathToLoad {
-		currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
-		if e != nil {
-			return e
-		}
 		e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
 		if e != nil {
 			return e
@@ -200,7 +189,72 @@ func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 	if e != nil {
 		return e
 	}
-	return s.submitPAITask(code, paiCmd, requirements, cl.Estimator)
+	if e = s.submitPAITask(code, paiCmd, requirements, cl.Estimator); e != nil {
+		return e
+	}
+	// download model from OSS to local cwd and save to sqlfs
+	// NOTE(typhoonzero): model in sqlfs will be used by sqlflow model zoo currently
+	// should use the model in sqlfs when predicting.
+	if e = downloadOSSModel(ossModelPathToSave+"/", currProject); e != nil {
+		return e
+	}
+	m := model.New(s.Cwd, cl.OriginalSQL)
+	return m.Save(cl.Into, s.Session)
+}
+
+func downloadOSSModel(ossModelPath, project string) error {
+	bucket, err := getOSSModelBucket(project)
+	if err != nil {
+		return err
+	}
+	if !strings.HasSuffix(ossModelPath, "/") {
+		return fmt.Errorf("dir to download must end with /")
+	}
+	localDirParts := strings.Split(ossModelPath, "/")
+	localDir := localDirParts[len(localDirParts)-2] // the last char must be /
+	return downloadDirRecursive(bucket, ossModelPath, localDir+"/")
+}
+
+// downloadDirRecursive recursively download a directory on the OSS
+func downloadDirRecursive(bucket *oss.Bucket, dir, localDir string) error {
+	if err := os.MkdirAll(localDir, 0755); err != nil {
+		return err
+	}
+
+	objectPathList := []string{}
+	lor, err := bucket.ListObjects(oss.Prefix(dir), oss.Delimiter("/"))
+	if err != nil {
+		return err
+	}
+	for _, object := range lor.Objects {
+		objectPathList = append(objectPathList, object.Key)
+	}
+	// download sub dir first
+	if len(lor.CommonPrefixes) > 0 {
+		for _, subPrefix := range lor.CommonPrefixes {
+			subLocalDir := strings.TrimPrefix(subPrefix, dir)
+			err := downloadDirRecursive(bucket, subPrefix, fmt.Sprintf("%s%s", localDir, subLocalDir))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	for _, objPath := range objectPathList {
+		if strings.HasSuffix(objPath, "/") {
+			continue
+		}
+		localFullPath := ""
+		if strings.HasPrefix(objPath, dir) {
+			localObjPath := strings.TrimPrefix(objPath, dir)
+			localFullPath = fmt.Sprintf("%s%s", localDir, localObjPath)
+		} else {
+			return fmt.Errorf("objpath: %s does not match model dir %s", objPath, dir)
+		}
+		if err := bucket.GetObjectToFile(objPath, localFullPath); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func cleanOSSModelPath(ossModelPath, project string) error {
@@ -472,6 +526,9 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
 	// should use a general method to fetch the model and see the model type.
 	bucket, err := getOSSModelBucket(project)
+	if err != nil {
+		return
+	}
 	ret, err := bucket.IsObjectExist(modelName + "/tensorflow_model_desc")
 	if err != nil {
 		return
@@ -501,14 +558,6 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 
 // deleteDirRecursive recursively delete a directory on the OSS
 func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
-	exists, err := bucket.IsObjectExist(dir)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		// if directory not exist, just go on.
-		return nil
-	}
 	if !strings.HasSuffix(dir, "/") {
 		return fmt.Errorf("dir to delete must end with /")
 	}

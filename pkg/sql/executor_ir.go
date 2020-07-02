@@ -103,6 +103,9 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 			} else if sql.Evaluate {
 				logger.Info("resolveSQL:evaluate")
 				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else if sql.Run {
+				logger.Info("resolveSQL:run")
+				r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
 			} else {
 				return nil, fmt.Errorf("unknown extended SQL statement type")
 			}
@@ -118,7 +121,6 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 		// if err = initializeAndCheckAttributes(r); err != nil {
 		// 	return nil, err
 		// }
-
 		r.SetOriginalSQL(sql.Original)
 		logger.Infof("Original SQL is:%s", r.GetOriginalSQL())
 		spIRs = append(spIRs, r)
@@ -189,6 +191,8 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
 		} else if sql.Optimize {
 			r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
+		} else if sql.Run {
+			r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
 		}
 
 	} else {
@@ -204,9 +208,10 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	r.SetOriginalSQL(sql.Original)
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
+
 	exec := executor.New(session.Submitter)
 	exec.Setup(wr, db, modelDir, cwd, session)
-	return r.Execute(exec)
+	return executor.Run(exec, r)
 }
 
 // RewriteStatementsWithHints combines the hints into the standard SQL(s)

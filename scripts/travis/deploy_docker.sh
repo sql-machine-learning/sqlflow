@@ -31,10 +31,7 @@ echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
 # set to the tag’s name.
 echo "TRAVIS_TAG $TRAVIS_TAG"
 
-if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-    echo "Skip deployment on pull request"
-    exit 0
-fi
+
 
 # Figure out the tag to push sqlflow:ci.
 if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
@@ -53,28 +50,36 @@ fi
 # Build sqlflow:dev, sqlflow:ci, and sqlflow:release.
 "$(dirname "$0")"/build.sh
 
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "Skip deployment on pull request"
+    exit 0
+fi
+
+function push_image() {
+    LOCAL_TAG=$1
+    REMOTE_TAG=$2
+    
+    # push SQLFlow image to official Docker Hub
+    echo "docker push sqlflow/sqlflow:$REMOTE_TAG ..."
+    docker tag sqlflow:"$LOCAL_TAG" sqlflow/sqlflow:"$REMOTE_TAG"
+    docker push sqlflow/sqlflow:"$REMOTE_TAG"
+
+    # push SQLFlow image to Aliyun Docker Hub
+    echo "docker push registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:$REMOTE_TAG  ..."
+    docker tag sqlflow:"$LOCAL_TAG" registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG"
+    docker push registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG" 
+}
+
 echo "$DOCKER_PASSWORD" |
     docker login --username "$DOCKER_USERNAME" --password-stdin
 
-echo "docker push sqlflow:dev ..."
-docker tag sqlflow:dev sqlflow/sqlflow:dev
-docker push sqlflow/sqlflow:dev
+echo "$ALIYUN_DOCKER_PASSWORD" |
+    docker login --username "$ALIYUN_DOCKER_USERNAME" --password-stdin registry.cn-hangzhou.aliyuncs.com
 
-echo "docker push sqlflow/sqlflow:$TRAVIS_TAG ..."
-docker tag sqlflow:ci sqlflow/sqlflow:"$DOCKER_TAG"
-docker push sqlflow/sqlflow:"$DOCKER_TAG"
-
-echo "docker push sqlflow/sqlflow:mysql"
-docker push sqlflow/sqlflow:mysql
-
-echo "docker push sqlflow/sqlflow:jupyter"
-docker push sqlflow/sqlflow:jupyter
-
-echo "docker push sqlflow/sqlflow:server"
-docker push sqlflow/sqlflow:server
-
-echo "docker push sqlflow/sqlflow:step"
-docker push sqlflow/sqlflow:step
-
-echo "docker push sqlflow/sqlflow:modelzooserver"
-docker push sqlflow/sqlflow:modelzooserver
+push_image dev dev
+push_image ci "$DOCKER_TAG"
+push_image mysql mysql
+push_image jupyter jupyter
+push_image server server
+push_image step step
+push_image modelzooserver modelzooserver

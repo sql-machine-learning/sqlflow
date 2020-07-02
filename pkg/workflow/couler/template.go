@@ -25,6 +25,7 @@ type sqlStatement struct {
 	Model          string
 	Parameters     string
 	IsKatibTrain   bool
+	Into           string
 }
 
 // Filler is used to fill the template

@@ -45,16 +45,22 @@ require (
 	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
 	go.uber.org/zap v1.9.1
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
-	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
+	golang.org/x/mod v0.3.0 // indirect
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
 	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76
+	golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f // indirect
+	golang.org/x/tools/gopls v0.4.1 // indirect
 	google.golang.org/grpc v1.27.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.2.7 // indirect
+	honnef.co/go/tools v0.0.1-2020.1.4 // indirect
 	k8s.io/api v0.0.0-20191004102349-159aefb8556b
 	k8s.io/apimachinery v0.17.0 // indirect
-	sqlflow.org/goalisa v0.0.0-20200426073517-e08494be06fc
+	mvdan.cc/xurls/v2 v2.2.0 // indirect
+	sqlflow.org/goalisa v0.0.0-20200618020317-68d3aad1344c
 	sqlflow.org/gohive v0.0.0-20191009030413-2b2325ce8b38
 	sqlflow.org/gomaxcompute v0.0.0-20191028113124-e214922c510c
 	vitess.io/vitess v3.0.0-rc.3+incompatible
