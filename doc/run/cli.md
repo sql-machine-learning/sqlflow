@@ -24,14 +24,12 @@ chmod +x sqlflow
 
 ## Quick Start
 
-We can run an example session by typing the following command on macOS.  We assume you have installed [Docker](https://docs.docker.com/get-docker/) on your computer.
+We can run an example session by typing the following command on macOS.  We assume you have installed our [playground](https://github.com/sql-machine-learning/playground/blob/master/dev.md) on your computer.
 
+- follow [this guide](https://github.com/sql-machine-learning/playground/blob/master/dev.md#for-end-users) to start your playground
+- connect to SQLFlow server according to the prompt message output by the playground, just do copy & paste, like:
 ```bash
-docker run -d --rm -P --name sqlflowserver \
-    sqlflow/sqlflow bash -c "/start.sh sqlflow-server-with-dataset"
-
-sqlflow --sqlflow_server="$(docker port sqlflowserver 50051)" \
-     --datasource="mysql://root:root@tcp(localhost:3306)/?maxAllowedPacket=0"
+./sqlflow --data-source="mysql://root:root@tcp(172.17.0.8)/?maxAllowedPacket=0"
 ```
 
 You should be able to see the following:
