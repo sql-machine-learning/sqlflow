@@ -21,9 +21,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/model"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	server "sqlflow.org/sqlflow/pkg/sqlflowserver"
 	"sqlflow.org/sqlflow/pkg/tar"
@@ -110,37 +112,55 @@ func TestModelZooServer(t *testing.T) {
 	})
 
 	t.Run("ReleaseTrainedModel", func(t *testing.T) {
-		stream, err := client.ReleaseModel(context.Background())
+		dbConnStr := database.GetTestingMySQLURL()
+		dir, err := ioutil.TempDir("/tmp", "tmp-sqlflow-repo")
 		a.NoError(err)
-		// a random binary data to represent a trained model
+
+		modelMetaStr := []byte(`{
+			"evaluation": null,
+			"estimator": "DNNClassifier",
+			"class_name": "DNNClassifier"
+		}`)
+		jsonMeta, err := simplejson.NewJson(modelMetaStr)
+		err = ioutil.WriteFile(dir+"/model_meta.json", modelMetaStr, 0755)
+		a.NoError(err)
 		token := make([]byte, 256)
 		rand.Read(token)
+		err = ioutil.WriteFile(dir+"/model_save.bin", token, 0755)
+		a.NoError(err)
+		sampleModel := model.New(dir, "SAMPLE TRAIN SELECT")
+		sampleModel.Meta = jsonMeta
+		modelTableName := "sqlflow_models.model_zoo_sample_model"
+		err = sampleModel.Save(modelTableName, &pb.Session{
+			DbConnStr: dbConnStr,
+		})
+		a.NoError(err)
+
 		req := &pb.ReleaseModelRequest{
-			Name:              "my_regression_model",
+			Name:              modelTableName,
 			Tag:               "v0.1",
 			Description:       "A linear regression model for house price predicting",
 			EvaluationMetrics: "MSE: 0.02, MAPE: 10.32",
 			ModelClassName:    "DNNClassifier",
 			ModelRepoImageUrl: "sqlflow/my_test_model:v0.1",
-			ContentTar:        token,
-			ContentUrl:        "",
+			DbConnStr:         dbConnStr,
 		}
-		err = stream.Send(req)
-		a.NoError(err)
-		reply, err := stream.CloseAndRecv()
-		a.NoError(err)
+		reply, err := client.ReleaseModel(context.Background(), req)
+		if err != nil {
+			a.FailNow("rpc error: %v", err)
+		}
 		a.Equal(true, reply.Success)
 
 		listTrainedModelRes, err := client.ListModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 		a.NoError(err)
 		a.Equal(1, len(listTrainedModelRes.ModelList))
-		a.Equal("my_regression_model", listTrainedModelRes.ModelList[0].Name)
+		a.Equal("sqlflow_models.model_zoo_sample_model", listTrainedModelRes.ModelList[0].Name)
 		a.Equal("sqlflow/my_test_model:v0.1", listTrainedModelRes.ModelList[0].ImageUrl)
 	})
 
 	t.Run("DropModels", func(t *testing.T) {
 		_, err = client.DropModel(context.Background(), &pb.ReleaseModelRequest{
-			Name: "my_regression_model", Tag: "v0.1",
+			Name: "sqlflow_models.model_zoo_sample_model", Tag: "v0.1",
 		})
 
 		listTrainedModelRes, err := client.ListModels(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})

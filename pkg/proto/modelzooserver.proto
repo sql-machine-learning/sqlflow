@@ -30,12 +30,10 @@ message ReleaseModelRequest {
     string model_class_name = 5;
     // Model repo image used to train this model, can be empty.
     string model_repo_image_url = 6;
-    // content_tar is zipped trained model content.
-    bytes content_tar = 7;
-    // content_url is the place that stores the uploaded models, can be formated like:
-    // db.table : model stored in model zoo MySQL using sqlfs
-    // oss://bucket/path/to/model : model stored on OSS
-    string content_url = 8;
+    // db_conn_str of format like mysql://user:pass@host:port?arg=value&arg=value
+    // model zoo server will connect to the database to fetch user's model
+    // and push to the public storage.
+    string db_conn_str = 7;
 }
 
 // SQLFlow download model from model zoo server to do prediction, explain etc.
@@ -115,7 +113,7 @@ service ModelZooServer {
     rpc DropModelRepo (ReleaseModelRepoRequest) returns (ReleaseResponse);
 
     // Release your model.
-    rpc ReleaseModel (stream ReleaseModelRequest) returns (ReleaseResponse);
+    rpc ReleaseModel (ReleaseModelRequest) returns (ReleaseResponse);
     // Drop a trained model, TrainedModelRequest should contain name and tag.
     rpc DropModel (ReleaseModelRequest) returns (ReleaseResponse);
     // Download a model

@@ -174,29 +174,25 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 	err = releaseDemoModelRepo(modelZooClient)
 	a.NoError(err)
 
-	stream, err := modelZooClient.ReleaseModel(context.Background())
-	a.NoError(err)
-	err = stream.Send(&proto.ReleaseModelRequest{
-		Name:              "modelzoo_model_iris",
+	req := &proto.ReleaseModelRequest{
+		Name:              "sqlflow_models.modelzoo_model_iris",
 		Tag:               "v0.1",
 		Description:       "a test release model trained by iris dataset",
 		EvaluationMetrics: "", // TODO(typhoonzero): need to support find metrics in the trained model
 		ModelClassName:    "DNNClassifier",
 		ModelRepoImageUrl: "sqlflow/sqlflow:modelzootest",
-		ContentTar:        modelBuf.Bytes(),
-		ContentUrl:        "", // not used
-	})
-	a.NoError(err)
-	_, err = stream.CloseAndRecv()
+		DbConnStr:         database.GetTestingMySQLURL(),
+	}
+	_, err = modelZooClient.ReleaseModel(context.Background(), req)
 	a.NoError(err)
 
 	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train
 TO PREDICT iris.modelzoo_predict.class
-USING localhost:50056/modelzoo_model_iris;`)
+USING localhost:50056/sqlflow_models.modelzoo_model_iris;`)
 	a.NoError(err)
 
 	_, err = modelZooClient.DropModel(context.Background(), &proto.ReleaseModelRequest{
-		Name: "modelzoo_model_iris",
+		Name: "sqlflow_models.modelzoo_model_iris",
 		Tag:  "v0.1",
 	})
 	a.NoError(err)

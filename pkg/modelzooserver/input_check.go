@@ -23,7 +23,7 @@ func checkName(name string) error {
 	if len(name) < 6 {
 		return fmt.Errorf("model name should have at least 6 characters")
 	}
-	match, err := regexp.MatchString(`^[a-zA-Z0-9_\-]{6,256}$`, name)
+	match, err := regexp.MatchString(`^[a-zA-Z0-9_\-\.]{6,256}$`, name)
 	if err != nil {
 		return err
 	}
