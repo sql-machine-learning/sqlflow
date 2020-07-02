@@ -183,6 +183,10 @@ def read_feature(raw_val, feature_spec, feature_name):
         return int_raw_val,
     elif feature_spec["dtype"] == "string":
         return str(raw_val),
+    else:
+        # This case is used for unittests.
+        # For example, explain_test.py uses int32 data.
+        return raw_val,
 
 
 def selected_cols(driver, conn, select):
