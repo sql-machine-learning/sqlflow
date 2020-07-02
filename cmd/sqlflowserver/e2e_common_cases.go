@@ -634,3 +634,58 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 		})
 	}
 }
+
+// TODO(sneaxiy):
+//  1. add tests on PAI
+//  2. add tests of prediction, evaluation and explanation
+func caseXGBoostLibSVMColumn(t *testing.T) {
+	a := assert.New(t)
+
+	dbName := "test_xgb_libsvm"
+
+	executeSQLFunc := func(sql string) {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err, fmt.Sprintf("SQL execution failure\n%s", sql))
+	}
+
+	hasModelTableFunc := func(table string) {
+		_, rows, _, err := connectAndRunSQL(fmt.Sprintf("SELECT * FROM %s LIMIT 1;", table))
+		a.NoError(err)
+		a.Equal(len(rows), 1)
+	}
+
+	dropDBSQL := fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+
+	defer executeSQLFunc(dropDBSQL)
+
+	prepareDataSQL := []string{
+		dropDBSQL,
+		fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s;`, dbName),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.train (c1 VARCHAR(255), label_col DECIMAL);`, dbName),
+		fmt.Sprintf(`INSERT INTO %s.train VALUES("1:0.5 3:-1.5 5:6.7", 0.5), ("3:-1.3 10:0.6 2:-3.4", -0.5);`, dbName),
+	}
+
+	for _, sql := range prepareDataSQL {
+		executeSQLFunc(sql)
+	}
+
+	trainedModel := fmt.Sprintf("%s.trained_model", dbName)
+
+	const trainSQLTemplate = `SELECT c1, label_col FROM %s.train
+TO TRAIN xgboost.gbtree
+WITH 
+	objective = "reg:squarederror",
+	train.num_boost_round = 20
+COLUMN SPARSE(c1%s)
+LABEL label_col
+INTO %s;
+`
+
+	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, "", trainedModel)
+	executeSQLFunc(trainSQL)
+	hasModelTableFunc(trainedModel)
+
+	trainSQL = fmt.Sprintf(trainSQLTemplate, dbName, ",11", trainedModel)
+	executeSQLFunc(trainSQL)
+	hasModelTableFunc(trainedModel)
+}

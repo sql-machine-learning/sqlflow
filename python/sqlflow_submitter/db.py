@@ -12,13 +12,11 @@
 # limitations under the License.
 
 import contextlib
-import copy
-import os
 import re
 
 import numpy as np
+import six
 import sqlflow_submitter.db_writer as db_writer
-import tensorflow as tf
 
 
 def parseMySQLDSN(dsn):
@@ -152,35 +150,39 @@ def read_feature(raw_val, feature_spec, feature_name):
         if feature_spec["format"] == "libsvm":
             items = raw_val.split()
             items = [item.split(':', 2) for item in items]
-            indices = np.array([int(item[0]) for item in items], dtype=int)
+            indices = np.array([int(item[0]) for item in items],
+                               dtype=np.int64)
             values = np.array([float(item[1]) for item in items],
-                              dtype=feature_spec["dtype"])
+                              dtype=np.float32)
         else:
             indices = np.fromstring(raw_val,
                                     dtype=int,
                                     sep=feature_spec["delimiter"])
             indices = indices.reshape(indices.size, 1)
-            values = np.ones([indices.size], dtype=np.int32)
+            values = np.ones([indices.size], dtype=np.int64)
 
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
-        return (indices, values, dense_shape)
+        return indices, values, dense_shape
     elif feature_spec["delimiter"] != "":
         # Dense string vector
         if feature_spec["dtype"] == "float32":
             return np.fromstring(raw_val,
-                                 dtype=float,
+                                 dtype=np.float32,
                                  sep=feature_spec["delimiter"])
         elif feature_spec["dtype"] == "int64":
             return np.fromstring(raw_val,
-                                 dtype=int,
+                                 dtype=np.int64,
                                  sep=feature_spec["delimiter"])
         else:
             raise ValueError('unrecognize dtype {}'.format(
                 feature_spec[feature_name]["dtype"]))
+    elif feature_spec["dtype"] == "float32":
+        return float(raw_val),
+    elif feature_spec["dtype"] == "int64":
+        int_raw_val = long(raw_val) if six.PY2 else int(raw_val)
+        return int_raw_val,
     elif feature_spec["dtype"] == "string":
-        return (str(raw_val), )
-    else:
-        return (raw_val, )
+        return str(raw_val),
 
 
 def selected_cols(driver, conn, select):

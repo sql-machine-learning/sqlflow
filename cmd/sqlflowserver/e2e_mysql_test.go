@@ -76,6 +76,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTrainARIMAWithSTLDecompositionModel", caseTrainARIMAWithSTLDecompositionModel)
 
 	t.Run("CaseEnd2EndCrossFeatureColumn", caseEnd2EndCrossFeatureColumn)
+
+	t.Run("CaseEnd2EndXGBoostLibSM", caseXGBoostLibSVMColumn)
 }
 
 func CaseShouldError(t *testing.T) {

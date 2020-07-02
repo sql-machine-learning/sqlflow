@@ -300,8 +300,12 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 					return err
 				}
 			case libsvm:
-				fieldDescMap[fld].IsSparse = true // force to be sparse
-				fieldDescMap[fld].DType = Float   // force to be float type
+				if !fieldDescMap[fld].IsSparse {
+					return fmt.Errorf(`should use "COLUMN SPARSE(%s)" for the LibSVM format data`, fld)
+				}
+
+				// TODO(sneaxiy): should we support int?
+				fieldDescMap[fld].DType = Float
 				// Only infer the dense shape when the original size is 1
 				if size, ok := originalSizes[fld]; !ok || size == 1 {
 					if rowCount == 0 {
