@@ -365,12 +365,13 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 	}
 	defer sqlf.Close()
 
-	buf := make([]byte, 1024*10)
+	buf := make([]byte, 4096)
 	for {
-		if _, e := sendFile.Read(buf); e == io.EOF {
+		n, e := sendFile.Read(buf)
+		if e == io.EOF {
 			break
 		}
-		_, err = sqlf.Write(buf)
+		_, err = sqlf.Write(buf[:n])
 		if err != nil {
 			return nil, fmt.Errorf("get user model source code error %v", err)
 		}
