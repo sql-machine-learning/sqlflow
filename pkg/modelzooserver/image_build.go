@@ -16,11 +16,14 @@ package modelzooserver
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+
+	"sqlflow.org/sqlflow/pkg/randstring"
 )
 
 func imageExistsOnRegistry(imageName, tag string) bool {
@@ -102,5 +105,120 @@ func buildAndPushImage(dir, name, tag string, dryrun bool) error {
 	if err != nil {
 		return fmt.Errorf("run docker push err: %v, stderr: %s", err, cmdStderr.String())
 	}
+	return nil
+}
+
+func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
+	k8sHost := os.Getenv("KUBERNETES_SERVICE_HOST")
+	k8sPort := os.Getenv("KUBERNETES_SERVICE_PORT")
+	if k8sHost == "" || k8sPort == "" {
+		return fmt.Errorf("buildAndPushImageKaniko must be called when model zoo server is deployed in Kubernetes cluster")
+	}
+	reg := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY")
+	// default push to dockerhub
+	if reg == "" {
+		reg = "https://index.docker.io/v1/"
+	}
+	regUsername := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER")
+	regPasswd := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS")
+	regEmail := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_EMAIL")
+	if regUsername == "" || regPasswd == "" {
+		return fmt.Errorf("need to set SQLFLOW_MODEL_ZOO_REGISTRY_USER and SQLFLOW_MODEL_ZOO_REGISTRY_PASS for model zoo server")
+	}
+	regSecret := fmt.Sprintf("kaniko-regcred-%s", strings.ToLower(randstring.Generate(8)))
+
+	// TODO(typhoonzero): support any registry servers
+	// TODO(typhoonzero): use a random
+	// create docker registry credentials
+	cmd := fmt.Sprintf(`kubectl create secret docker-registry %s --docker-server=%s --docker-username=%s --docker-password=%s --docker-email=%s`, regSecret, reg, regUsername, regPasswd, regEmail)
+	cmdList := strings.Split(cmd, " ")
+	c := exec.Command(cmdList[0], cmdList[1:]...)
+	if err := c.Run(); err != nil {
+		return err
+	}
+	defer func() error {
+		cmdDeleteSecret := exec.Command("kubectl", "delete", "secret", regSecret)
+		if err := cmdDeleteSecret.Run(); err != nil {
+			return err
+		}
+		return nil
+	}()
+
+	// cd into dir to tar the context
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	defer os.Chdir(cwd)
+	if err := os.Chdir(dir); err != nil {
+		return err
+	}
+
+	kanikoImage := os.Getenv("SQLFLOW_MODEL_ZOO_KANIKO_IMAGE")
+	if kanikoImage == "" {
+		kanikoImage = "registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/kaniko-executor"
+	}
+	destination := fmt.Sprintf("%s:%s", name, tag)
+	podTemplate := fmt.Sprintf(`'{
+  "apiVersion": "v1",
+  "spec": {
+    "containers": [
+    {
+      "name": "kaniko",
+      "image": "%s",
+      "imagePullPolicy": "Never",
+      "stdin": true,
+      "stdinOnce": true,
+      "args": [
+        "--dockerfile=Dockerfile",
+        "--context=tar://stdin",
+        "--destination=%s"],
+      "volumeMounts": [
+        {
+          "name": "kaniko-secret",
+          "mountPath": "/kaniko/.docker/"
+      }]
+    }],
+    "volumes": [
+    {
+      "name": "kaniko-secret",
+      "secret": {
+        "secretName": "%s",
+        "items": [{"key": ".dockerconfigjson", "path": "config.json"}]
+      }}
+    ]
+  }
+}'`, kanikoImage, destination, regSecret)
+
+	tarContextCmd := exec.Command("tar", "czf", "-", ".")
+	// exec.Command can not handle quotes correctly, use bach -c here.
+	kanikoBuildCmdStr := fmt.Sprintf(`kubectl run kaniko --rm --stdin=true --restart=Never --image=%s --overrides=%s`, kanikoImage, podTemplate)
+	kanikoBuildCmdStdin := exec.Command("bash", "-c", kanikoBuildCmdStr)
+
+	r, w := io.Pipe()
+	tarContextCmd.Dir = dir
+	tarContextCmd.Stdout = w
+	kanikoBuildCmdStdin.Stdin = r
+	var outputErr bytes.Buffer
+	kanikoBuildCmdStdin.Stderr = &outputErr
+	if err := tarContextCmd.Start(); err != nil {
+		return err
+	}
+	if err := kanikoBuildCmdStdin.Start(); err != nil {
+		return err
+	}
+	if err := tarContextCmd.Wait(); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+
+	if err := kanikoBuildCmdStdin.Wait(); err != nil {
+		// TODO(typhoonzero): use log to output error messages.
+		io.Copy(os.Stdout, &outputErr)
+		return err
+	}
+
 	return nil
 }
