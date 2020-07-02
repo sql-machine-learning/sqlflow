@@ -1,6 +1,6 @@
 # Mathematical Programming Solver with SQLFlow
 
-Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.org/wiki/Mathematical_optimization)) is the selection of a best element (with regard to some criterion) from some set of available alternatives. Solving optimization problems is widely used in fields like economics and finance, computer science, engineering, and researching. In this design, we try to make SQLFlow be able to solve below branches of programming problems using SQL statements by leveraging systems like [pyomo](http://www.pyomo.org/) or our internal programming project at Ant Financial, they both support these types of programming categories:
+Mathematical programming (aka. [mathematical optimization](https://en.wikipedia.org/wiki/Mathematical_optimization)) is the selection of a best element (with regard to some criterion) from some set of available alternatives. Solving optimization problems is widely used in fields like economics and finance, computer science, engineering, and researching. In this design, we try to make SQLFlow be able to solve below branches of programming problems using SQL statements by leveraging systems like [pyomo](http://www.pyomo.org/) or our internal programming project at Ant Group, they both support these types of programming categories:
 
 - [Linear programming](https://en.wikipedia.org/wiki/Linear_programming)
 - [Quadratic programming](https://en.wikipedia.org/wiki/Quadratic_programming)
