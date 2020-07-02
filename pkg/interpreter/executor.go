@@ -46,8 +46,8 @@ type Figures struct {
 	Text  string
 }
 
-// Interpreter accepts a SQLFlow IR, generate submitter program and execute it.
-type Interpreter interface {
+// Executor call code geneartor to generate submitter program and execute it.
+type Executor interface {
 	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
 	ExecuteQuery(*ir.NormalStmt) error
 	ExecuteTrain(*ir.TrainStmt) error
@@ -61,7 +61,7 @@ type Interpreter interface {
 }
 
 // New returns a proper Submitter from configurations in environment variables.
-func New(executor string) Interpreter {
+func New(executor string) Executor {
 	if executor == "" {
 		executor = os.Getenv("SQLFLOW_submitter")
 	}
@@ -89,7 +89,7 @@ type logChanWriter struct {
 // TODO(yancey1989): this is a temporary way to decouple executor from the ir package,
 // as the discussion of https://github.com/sql-machine-learning/sqlflow/issues/2574,
 // SQLFlow would generate target code instead of interpret an IR.
-func Run(it Interpreter, stmt ir.SQLFlowStmt) error {
+func Run(it Executor, stmt ir.SQLFlowStmt) error {
 	switch v := stmt.(type) {
 	case *ir.TrainStmt:
 		return it.ExecuteTrain(stmt.(*ir.TrainStmt))
