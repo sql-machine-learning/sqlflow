@@ -393,11 +393,13 @@ def load_db_data_to_data_frame(datasource, select):
     values = [[] for _ in six.moves.range(len(selected_cols))]
     for row_value, _ in generator():
         for i, item in enumerate(row_value):
-            if dtypes[i] is None:
-                if isinstance(item, six.string_types):
-                    dtypes[i] = np.str
-                elif isinstance(item, (six.integer_types, float)):
-                    if int(item) != item:
+            if isinstance(item, six.string_types):
+                dtypes[i] = np.str
+
+            if dtypes[i] != np.str:
+                if isinstance(item, (six.integer_types, float)):
+                    int_val = long(item) if six.PY2 else int(item)
+                    if int_val != item:
                         dtypes[i] = np.float64
                 else:
                     raise ValueError("unsupported data type {}".format(
