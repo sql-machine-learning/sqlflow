@@ -2,19 +2,16 @@
 
 # Background
 
-In the `TO TRAIN` syntax, users can write a `COLUMN` clause to specify the transformation of a table column into a model input.  Among the supported column transformers, `DENSE` and `SPARSE` are used to transform the numeric-typed values:
+In the `TO TRAIN` syntax, users can write a `COLUMN` clause to specify a table column's transformation into a model input.  Among the supported column transformers, `DENSE` and `SPARSE` are used to transform the numeric-typed values:
 
-- The `DENSE` assumes that each table cell contains a number or a dense vector.
-- The `SPARSE` assumes that each table cell contains a sparse vector.
+- The `DENSE` transformer assumes that each table cell contains a number or a dense vector.
+- The `SPARSE` transformer believes that each table cell contains a sparse vector.
 
-In the current implementation, both `DENSE` and `SPARSE` have supported the string-encoded dense vector in the form of `"5,6,7"`.
-
-- If `"5,6,7"` represents a dense vector `x`, `x = [5, 6, 7]`. In this case, the `COLUMN` clause is `DENSE(column_name, 3)`, where 3 is the element number of the dense vector.
-- If `"5,6,7"` represents a sparse vector `x`, the vector `x` only contains 0 or 1, and `x[5] = x[6] = x[7] = 1`. The other values of `x` are all zeros. In this case, the `COLUMN` clause is `SPARSE(column_name, length)`, where the `length` is the element number of the corresponding dense vector.
+In the current implementation, both `DENSE` and `SPARSE` can parse a string of integers.  `DENSE` assumes that each value in the string is an element in a dense vector.  `SPARSE` thinks that each value is an element index, and all element values are 1.  For example, `DENSE` parses the string "5,6,7" into a three-dimensional dense vector [5,6,7], and `SPARSE` parses it into a sparse vector {5:1.0, 6:1.0, 7:1.0}.
 
 Recently, users reported [a feature request](https://github.com/sql-machine-learning/sqlflow/issues/2323) out of the capability of the `SPARSE` implementation. The string-encoded sparse vector is in the key-value form of `"0:1.2 1:3.4 2:5.6"`. It represents a sparse vector `x` and `x[0] = 1.2`, `x[1] = 3.4`, `x[2] = 5.6`. In this key-value form, the whitespace is optional, and the key-value separator does not have to be a colon.
 
-We can indeed add a new column transformer for the new case. But it would make the SQLFlow APIs more complex, and disobey the principle of Occam's Razor. Therefore, we propose to extend the `SPARSE` transformer to support the new case. In the feature derivation stage, SQLFlow should infer the data format automatically, including the element separator like the comma, the key-value separator like the colon, and whether the data format is in the form of `"5,6,7"` or `"0:1.2 1:3.4 2:5.6"`.
+We can indeed add a new column transformer for this case. But it would make the SQLFlow APIs more complex, and disobey the principle of Occam's Razor. Therefore, we propose to extend the `SPARSE` transformer to support the new case. In the feature derivation stage, SQLFlow should infer the data format automatically, including the element separator like the comma, the key-value separator like the colon, and whether the data format is in the form of `"5,6,7"` or `"0:1.2 1:3.4 2:5.6"`.
 
 ## Proposed Design
 
@@ -57,7 +54,7 @@ func InferFeatureColumns() {
 In the Python code generation, we would use the data format information inferred in the feature derivation stage.
 
 - For TensorFlow models: we would convert the data in the key-value form into `tensorflow.SparseTensor` for training, prediction, evaluating, and explaining.
-- For XGBoost models: we would dump the data in the key-value form into [LibSVM format](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html) files, which would be loaded as `xgboost.DMatrix` for training, prediction, evaluating, and explaining.
+- For XGBoost models: we would dump the data in the key-value form into [LibSVM format](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html) files, and then SQLFlow would load the file as `xgboost.DMatrix` for training, prediction, evaluating, and explaining.
 
 ## SQL Statement Example
 
@@ -74,6 +71,6 @@ LABEL label
 INTO result_table;
 ```
 
-where users should write `SPARSE(column_name, length)` to indicate that the column `column_name` stores the sparse data. We would detect the data format of the `column_name` in the feature derivation stage automatically.
+Users should write `SPARSE(column_name, length)` to indicate that the column `column_name` stores the sparse data. We would detect the data format of the `column_name` in the feature derivation stage automatically.
 
-The `length` parameter in `SPARSE` is not required. If the `length` is not provided, we would derive the dense length of the data in the feature derivation stage.
+The `length` parameter in `SPARSE` is not required. If users do not provide the `length` parameter, we will derive the dense length of the data in the feature derivation stage.
