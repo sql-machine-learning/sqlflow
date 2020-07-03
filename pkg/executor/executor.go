@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/pkg/verifier"
 	"strings"
 	"sync"
 
@@ -333,11 +334,11 @@ func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	return nil
 }
 
-func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *pythonExecutor, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
+func generateOptFlowOptimizeCodeAndExecute(stmt *ir.OptimizeStmt, submitter *pythonExecutor, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
 	// Generate optimization code
 	runnerFileName := "custom_optimize_runner"
-	runnerCode, submitCode, err := optimize.GenerateOptFlowOptimizeCode(cl, session, dbName, tableName,
-		runnerFileName)
+	runnerCode, submitCode, err := optimize.GenerateOptimizeCode(stmt, session, tableName,
+		runnerFileName, true)
 
 	if err != nil {
 		return err
@@ -364,9 +365,76 @@ func generateOptFlowOptimizeCodeAndExecute(cl *ir.OptimizeStmt, submitter *pytho
 	return nil
 }
 
-func (s *pythonExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
-	// TODO(sneaxiy): to be implemented
-	return fmt.Errorf("ExecuteOptimize is not supported in default submitter")
+func (s *pythonExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
+	db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	driver, _, err := database.ParseURL(s.Session.DbConnStr)
+	if err != nil {
+		return err
+	}
+
+	fieldTypes, err := verifier.Verify(stmt.Select, db)
+	if err != nil {
+		return err
+	}
+
+	tableColumnsStrList := make([]string, 0)
+	for name, typ := range fieldTypes {
+		isVariable := false
+		for _, v := range stmt.Variables {
+			if strings.EqualFold(name, v) {
+				isVariable = true
+				break
+			}
+		}
+
+		if !isVariable {
+			continue
+		}
+
+		typ, err = fieldType(driver, typ)
+		if err != nil {
+			return err
+		}
+		tableColumnsStrList = append(tableColumnsStrList, fmt.Sprintf("%s %s", name, typ))
+	}
+
+	resultColumnName := stmt.ResultValueName
+	if len(stmt.Variables) == 1 && strings.EqualFold(stmt.Variables[0], resultColumnName) {
+		resultColumnName += "_value"
+	}
+
+	resultColumnType := "FLOAT"
+	if strings.HasSuffix(stmt.VariableType, "Integers") {
+		resultColumnType = "BIGINT"
+	}
+
+	resultColumnType, err = fieldType(driver, resultColumnType)
+	if err != nil {
+		return err
+	}
+
+	tableColumnsStrList = append(tableColumnsStrList, fmt.Sprintf("%s %s", resultColumnName, resultColumnType))
+
+	dropTmpTables([]string{stmt.ResultTable}, s.Session.DbConnStr)
+	createTableSQL := fmt.Sprintf("CREATE TABLE %s (%s);", stmt.ResultTable, strings.Join(tableColumnsStrList, ","))
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		return err
+	}
+
+	program, _, err := optimize.GenerateOptimizeCode(stmt, s.Session, "", "", false)
+	if err != nil {
+		return err
+	}
+	if err := s.runProgram(program, false); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {

@@ -239,9 +239,9 @@ def read_features_from_row(row, select_cols, feature_column_names,
 def db_generator(driver,
                  conn,
                  statement,
-                 feature_column_names,
-                 label_spec,
-                 feature_specs,
+                 feature_column_names=None,
+                 label_spec=None,
+                 feature_specs=None,
                  fetch_size=128):
     def reader():
         if driver == "hive":

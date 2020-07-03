@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sqlflow.org/sqlflow/pkg/attribute"
+	"sqlflow.org/sqlflow/pkg/database"
 	"sqlflow.org/sqlflow/pkg/ir"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"strings"
@@ -39,14 +40,19 @@ func InitializeAttributes(stmt *ir.OptimizeStmt) error {
 	return err
 }
 
-// GenerateOptFlowOptimizeCode generates optimize codes for execution
+// GenerateOptimizeCode generates optimize codes for execution
 // The returned value is (runnerProgramCode, submitProgramCode, error)
-func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, dbName, tableName, runnerModuleName string) (string, string, error) {
+func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, tableName, runnerModuleName string, useOptFlow bool) (string, string, error) {
 	const (
 		dataAttrPrefix   = "data."
 		solverAttrPrefix = "solver."
 		workerAttrPrefix = "worker."
 	)
+
+	dbName, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", "", err
+	}
 
 	resultTable := optimStmt.ResultTable
 	if !strings.Contains(resultTable, ".") {
@@ -81,6 +87,8 @@ func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session
 
 	filler := optimizeFiller{
 		UserID:          session.UserId,
+		DataSource:      session.DbConnStr,
+		Select:          optimStmt.Select,
 		Variables:       optimStmt.Variables,
 		ResultValueName: optimStmt.ResultValueName,
 		VariableType:    optimStmt.VariableType,
@@ -94,16 +102,26 @@ func GenerateOptFlowOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session
 		RunnerModule:    runnerModuleName,
 	}
 
-	var runnerProgram bytes.Buffer
-	runnerTpl := template.Must(template.New(runnerModuleName).Parse(optFlowRunnerText))
-	if err := runnerTpl.Execute(&runnerProgram, filler); err != nil {
-		return "", "", err
+	if useOptFlow {
+		var runnerProgram bytes.Buffer
+		runnerTpl := template.Must(template.New(runnerModuleName).Parse(optFlowRunnerText))
+		if err := runnerTpl.Execute(&runnerProgram, filler); err != nil {
+			return "", "", err
+		}
+
+		tpl := template.Must(template.New("optimize").Parse(optFlowSubmitText))
+		var submitProgram bytes.Buffer
+		if err := tpl.Execute(&submitProgram, filler); err != nil {
+			return "", "", err
+		}
+		return runnerProgram.String(), submitProgram.String(), nil
 	}
 
-	tpl := template.Must(template.New("optimize").Parse(optFlowSubmitText))
-	var submitProgram bytes.Buffer
-	if err := tpl.Execute(&submitProgram, filler); err != nil {
+	// not use OptFlow
+	var program bytes.Buffer
+	tpl := template.Must(template.New("optimize").Parse(localOptimizeText))
+	if err := tpl.Execute(&program, filler); err != nil {
 		return "", "", err
 	}
-	return runnerProgram.String(), submitProgram.String(), nil
+	return program.String(), "", nil
 }

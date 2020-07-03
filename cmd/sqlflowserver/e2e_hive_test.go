@@ -55,4 +55,8 @@ func TestEnd2EndHive(t *testing.T) {
 	caseTensorFlowIncrementalTrain(t, false)
 
 	caseXGBoostFeatureColumn(t, false)
+
+	t.Run("CaseTestOptimizeClauseWithoutGroupBy", caseTestOptimizeClauseWithoutGroupBy)
+
+	t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
 }

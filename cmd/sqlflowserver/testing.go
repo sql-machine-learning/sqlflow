@@ -215,13 +215,15 @@ func prepareTestData(dbStr string) error {
 			testdata.HousingSQL,
 			testdata.FeatureDerivationCaseSQL,
 			testdata.TextCNSQL,
-			testdata.FundSQL}
+			testdata.FundSQL,
+			testdata.OptimizeCaseSQL}
 	case "hive":
 		datasets = []string{
 			testdata.IrisHiveSQL,
 			testdata.ChurnHiveSQL,
 			testdata.FeatureDerivationCaseSQLHive,
-			testdata.HousingSQL}
+			testdata.HousingSQL,
+			testdata.OptimizeCaseSQL}
 	case "maxcompute", "alisa":
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
 			datasets = []string{
