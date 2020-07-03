@@ -138,7 +138,7 @@ func TestRunStmt(t *testing.T) {
 
 	output, err = step.GetStdout(func() error { return runStmt(clientOpts, "show tables", true) })
 	a.NoError(err)
-	a.Contains(output, "| TABLES IN IRIS |")
+	a.Contains(output, "TABLES IN IRIS")
 
 	output, err = step.GetStdout(func() error {
 		return runStmt(clientOpts, "select * from train to train DNNClassifier WITH model.hidden_units=[10,10], model.n_classes=3, validation.select=\"select * from test\" label class INTO sqlflow_models.repl_dnn_model;", true)
@@ -182,16 +182,11 @@ show tables`
 	output, err := step.GetStdout(func() error { repl(clientOpts, scanner); return nil })
 	a.Nil(err)
 	a.Contains(output, "Database changed to iris")
-	a.Contains(output, `
-+----------------+
-| TABLES IN IRIS |
-+----------------+
-| iris_empty     |
-| test           |
-| test_dense     |
-| train          |
-| train_dense    |
-+----------------+`)
+	a.Contains(output, "iris_empty")
+	a.Contains(output, "test_dense")
+	a.Contains(output, "train")
+	a.Contains(output, "train_dense")
+
 	a.Contains(output, `
 select * from train to train DNNClassifier
 WITH model.hidden_units=[10,10], model.n_classes=3, validation.select="select * from test"
@@ -199,8 +194,8 @@ label class
 INTO sqlflow_models.repl_dnn_model;`)
 	a.Contains(output, "'global_step': 110")
 	a.Contains(output, "Database changed to sqlflow_models")
-	a.Contains(output, "| TABLES IN SQLFLOW MODELS |")
-	a.Contains(output, "| repl_dnn_model           |")
+	a.Contains(output, "TABLES IN SQLFLOW MODELS")
+	a.Contains(output, "repl_dnn_model")
 }
 
 func TestReplWithoutSemicolon(t *testing.T) {
@@ -235,16 +230,11 @@ func TestMain(t *testing.T) {
 	a.Nil(prepareTestDataOrSkip(t))
 	os.Args = []string{"sqlflow", "-d", dbConnStr, "-e", "use iris; show tables", "-s", serverAddr}
 	output, _ := step.GetStdout(func() error { main(); return nil })
-	a.Contains(output, `
-+----------------+
-| TABLES IN IRIS |
-+----------------+
-| iris_empty     |
-| test           |
-| test_dense     |
-| train          |
-| train_dense    |
-+----------------+`)
+	a.Contains(output, "iris_empty")
+	a.Contains(output, "test")
+	a.Contains(output, "test_dense")
+	a.Contains(output, "train")
+	a.Contains(output, "train_dense")
 }
 
 func testGetDataSource(t *testing.T, dataSource, databaseName string) {
@@ -978,16 +968,11 @@ func TestGetServerAddrFromEnv(t *testing.T) {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	os.Args = []string{"sqlflow", "-e", "use iris; show tables"}
 	output, _ := step.GetStdout(func() error { main(); return nil })
-	a.Contains(output, `
-+----------------+
-| TABLES IN IRIS |
-+----------------+
-| iris_empty     |
-| test           |
-| test_dense     |
-| train          |
-| train_dense    |
-+----------------+`)
+	a.Contains(output, "iris_empty")
+	a.Contains(output, "test")
+	a.Contains(output, "test_dense")
+	a.Contains(output, "train")
+	a.Contains(output, "train_dense")
 }
 
 func TestIsExitStmt(t *testing.T) {
