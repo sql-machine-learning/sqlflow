@@ -125,6 +125,15 @@ func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
 			} else {
 				retStmts = append(retStmts, &Statement{String: nodes[0].Text()})
 				pos += len(sql)
+
+				switch nodes[0].(type) {
+				case *ast.SelectStmt, *ast.UnionStmt:
+					fmt.Printf("stmt(%s) is select stmt\n", sql)
+				case *ast.CreateTableStmt:
+					fmt.Printf("stmt(%s) is create table stmt\n", sql)
+				default:
+					fmt.Printf("stmt(%s) type of other \n", sql)
+				}
 			}
 			continue
 		}

@@ -173,3 +173,12 @@ func TestGetLeadingCommentLen(t *testing.T) {
 	a.Equal(25, p.getLeadingCommentLen("/* comment;*/--comment \n SELECT"))
 	a.Equal(25, p.getLeadingCommentLen("/* comment;*/\n--comment\n SELECT"))
 }
+
+func TestTiDBParseDeps(t *testing.T) {
+	a := assert.New(t)
+
+	p := newTiDBParser()
+	stmts, _, e := p.Parse("SELECT * FROM origial_table;\nCREATE TABLE prepared AS SELECT * FROM original_table;")
+	a.NoError(e)
+	a.Equal(2, len(stmts))
+}
