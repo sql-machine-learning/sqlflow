@@ -42,12 +42,13 @@ go install ./...
 #
 # Refer to https://github.com/codecov/example-go for merging coverage from
 # multiple runs of tests.
-gotest -covermode=count -coverprofile=profile.out -v ./cmd/... -run TestEnd2EndMaxCompute
+gotest -p 1 -covermode=count -coverprofile=profile.out -v \
+       -run TestEnd2EndMaxCompute ./cmd/...
 if [ -f profile.out ]; then
     cat profile.out > coverage.txt
     rm profile.out
 fi
-gotest -covermode=count -coverprofile=profile.out -v ./pkg/sqlfs/...
+gotest -p 1 -covermode=count -coverprofile=profile.out -v ./pkg/sqlfs/...
 if [ -f profile.out ]; then
     cat profile.out >> coverage.txt
     rm profile.out
@@ -56,7 +57,7 @@ fi
 # TODO(shendiaomo): fix CI after the PAI service initiated in the MaxCompute
 # project.
 # export SQLFLOW_submitter=pai
-# gotest -covermode=count -coverprofile=profile.out -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
+# gotest -p 1 -covermode=count -coverprofile=profile.out -p 1 -v ./cmd/... -run TestEnd2EndMaxCompute
 
 # Uncomment the below line to enable end-to-end test for ElasticDL.
 # export SQLFLOW_submitter=elasticdl
