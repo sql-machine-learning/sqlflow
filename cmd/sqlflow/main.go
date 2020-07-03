@@ -59,7 +59,7 @@ const usage = `SQLFlow Command-line Tool.
 Usage:
     sqlflow [options] [run] [-e <program> -f <file>]
     sqlflow [options] release repo [--force] <repo_dir> <repo_name> <version>
-    sqlflow [options] release model [--force] [--desc=<desc>] <model_name> <version>
+    sqlflow [options] release model [--force] [--local] [--desc=<desc>] <model_name> <version>
     sqlflow [options] delete repo <repo_name> <version>
     sqlflow [options] delete model <model_name> <version>
 
@@ -78,6 +78,7 @@ Run Options:
 
 Release Options:
         --force                  force overwrite existing model
+        --local                  release a model stores in a database that can be connected from local
         --desc=<desc>            description for this model`
 
 type options struct {
@@ -91,6 +92,7 @@ type options struct {
 	Delete, Release   bool
 	Repo, Model       bool
 	Force             bool
+	Local             bool
 	RepoDir           string `docopt:"<repo_dir>"`
 	RepoName          string `docopt:"<repo_name>"`
 	ModelName         string `docopt:"<model_name>"`
@@ -436,7 +438,11 @@ func processOptions(opts *options) {
 	case opts.Run:
 		err = runSQLFlowClient(opts)
 	case opts.Release && opts.Model:
-		err = releaseModel(opts)
+		if opts.Local {
+			err = releaseModelFromLocal(opts)
+		} else {
+			err = releaseModel(opts)
+		}
 	case opts.Release && opts.Repo:
 		err = releaseRepo(opts)
 	case opts.Delete && opts.Model:

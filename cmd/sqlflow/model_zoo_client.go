@@ -17,11 +17,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/model"
 	pb "sqlflow.org/sqlflow/pkg/proto"
 	"sqlflow.org/sqlflow/pkg/tar"
 )
@@ -70,19 +74,80 @@ func releaseModel(opts *options) error {
 	}
 	defer conn.Close()
 	client := pb.NewModelZooServerClient(conn)
-
-	// nameParts := strings.Split(opts.ModelName, ".")
 	request := &pb.ReleaseModelRequest{
-		Name:              opts.ModelName,
-		Tag:               opts.Version,
-		Description:       opts.Description,
-		EvaluationMetrics: "",
-		ModelClassName:    "",
-		ModelRepoImageUrl: "",
-		DbConnStr:         opts.DataSource,
+		Name:        opts.ModelName,
+		Tag:         opts.Version,
+		Description: opts.Description,
+		DbConnStr:   opts.DataSource,
 	}
 
 	resp, err := client.ReleaseModel(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return fmt.Errorf(resp.Message)
+	}
+	return nil
+}
+
+func releaseModelFromLocal(opts *options) error {
+	if opts.DataSource == "" {
+		return fmt.Errorf("You should specify a datasource with -d")
+	}
+	db, err := database.OpenDB(opts.DataSource)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	dir, err := ioutil.TempDir("/tmp", "upload_model_zoo")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	tarFile, err := model.DumpDBModel(db, opts.ModelName, dir)
+	if err != nil {
+		return err
+	}
+	model, err := model.ExtractMetaFromTarball(tarFile, dir)
+	if err != nil {
+		return err
+	}
+	sendFile, err := os.Open(tarFile)
+	if err != nil {
+		return err
+	}
+	defer sendFile.Close()
+
+	conn, err := getModelZooServerConn(opts)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := pb.NewModelZooServerClient(conn)
+	stream, err := client.ReleaseModelFromLocal(context.Background())
+	if err != nil {
+		return err
+	}
+	nameParts := strings.Split(opts.ModelName, ".")
+	request := &pb.ReleaseModelLocalRequest{
+		Name:              nameParts[len(nameParts)-1],
+		Tag:               opts.Version,
+		Description:       opts.Description,
+		EvaluationMetrics: model.GetMetaAsString("evaluation"),
+		ModelClassName:    model.GetMetaAsString("class_name"),
+		ModelRepoImageUrl: model.GetMetaAsString("model_repo_image"),
+		ContentTar:        nil,
+	}
+	buf := make([]byte, 1024*10)
+	for {
+		if _, e := sendFile.Read(buf); e == io.EOF {
+			break
+		}
+		request.ContentTar = buf
+		stream.Send(request)
+	}
+	resp, err := stream.CloseAndRecv()
 	if err != nil {
 		return err
 	}

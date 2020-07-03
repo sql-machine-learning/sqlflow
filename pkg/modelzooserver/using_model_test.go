@@ -175,13 +175,10 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 	a.NoError(err)
 
 	req := &proto.ReleaseModelRequest{
-		Name:              "sqlflow_models.modelzoo_model_iris",
-		Tag:               "v0.1",
-		Description:       "a test release model trained by iris dataset",
-		EvaluationMetrics: "", // TODO(typhoonzero): need to support find metrics in the trained model
-		ModelClassName:    "DNNClassifier",
-		ModelRepoImageUrl: "sqlflow/sqlflow:modelzootest",
-		DbConnStr:         database.GetTestingMySQLURL(),
+		Name:        "sqlflow_models.modelzoo_model_iris",
+		Tag:         "v0.1",
+		Description: "a test release model trained by iris dataset",
+		DbConnStr:   database.GetTestingMySQLURL(),
 	}
 	_, err = modelZooClient.ReleaseModel(context.Background(), req)
 	a.NoError(err)

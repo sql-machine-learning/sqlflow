@@ -17,7 +17,7 @@ message ReleaseModelRepoRequest {
     bytes content_tar = 3;
 }
 
-message ReleaseModelRequest {
+message ReleaseModelLocalRequest {
     // A unique name of the trained model.
     string name = 1;
     // A version tag string, like: "v0.1"
@@ -30,6 +30,17 @@ message ReleaseModelRequest {
     string model_class_name = 5;
     // Model repo image used to train this model, can be empty.
     string model_repo_image_url = 6;
+    // content_tar is zipped trained model content.
+    bytes content_tar = 7;
+}
+
+message ReleaseModelRequest {
+    // A unique name of the trained model.
+    string name = 1;
+    // A version tag string, like: "v0.1"
+    string tag = 2;
+    // Description of the trained model, like what dataset was used to train this model etc.
+    string description = 3;
     // db_conn_str of format like mysql://user:pass@host:port?arg=value&arg=value
     // model zoo server will connect to the database to fetch user's model
     // and push to the public storage.
@@ -112,8 +123,12 @@ service ModelZooServer {
     // ModelDefRequest should contain name and tag.
     rpc DropModelRepo (ReleaseModelRepoRequest) returns (ReleaseResponse);
 
-    // Release your model.
+    // ReleaseModelFromLocal uploads a model from the client side.
+    rpc ReleaseModelFromLocal (stream ReleaseModelLocalRequest) returns (ReleaseResponse);
+    // ReleaseModel will let the model zoo server fetch the model files from
+    // database and save it in a public storage.
     rpc ReleaseModel (ReleaseModelRequest) returns (ReleaseResponse);
+
     // Drop a trained model, TrainedModelRequest should contain name and tag.
     rpc DropModel (ReleaseModelRequest) returns (ReleaseResponse);
     // Download a model
