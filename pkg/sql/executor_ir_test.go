@@ -48,13 +48,13 @@ WITH
   model.hidden_units = [10, 20]
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
-INTO sqlflow_models.my_dnn_model;
+INTO sqlflow_models.dnn_model_for_executor_test;
 `
 	testPredictSelectIris = `
 SELECT *
 FROM iris.test
 TO PREDICT iris.predict.class
-USING sqlflow_models.my_dnn_model;
+USING sqlflow_models.dnn_model_for_executor_test;
 `
 	testClusteringTrain = `SELECT (sepal_length - 4.4) / 3.5 as sepal_length, (sepal_width - 2.0) / 2.2 as sepal_width, (petal_length - 1) / 5.9 as petal_length, (petal_width - 0.1) / 2.4 as petal_width
 FROM iris.train

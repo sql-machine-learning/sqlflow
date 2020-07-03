@@ -14,11 +14,13 @@
 package sql
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/pkg/database"
+	"sqlflow.org/sqlflow/pkg/randstring"
 	"sqlflow.org/sqlflow/pkg/test"
 )
 
@@ -39,8 +41,9 @@ func TestConvergenceAndAccuracy(t *testing.T) {
 	defer os.Unsetenv(seedEnvKey)
 
 	modelDir := ""
+	modelName := fmt.Sprintf("sqlflow_models.my_dnn_model_%s", randstring.Generate(4))
 	a.NotPanics(func() {
-		stream := RunSQLProgram(`
+		stream := RunSQLProgram(fmt.Sprintf(`
 SELECT * FROM sanity_check.train
 TO TRAIN DNNClassifier
 WITH
@@ -50,16 +53,16 @@ WITH
 	train.epoch = 100,
 	validation.select="SELECT * FROM sanity_check.train"
 LABEL class
-INTO sqlflow_models.my_dnn_model;
-`, modelDir, database.GetSessionFromTestingDB())
+INTO %s;
+`, modelName), modelDir, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
-		stream := RunSQLProgram(`
+		stream := RunSQLProgram(fmt.Sprintf(`
 SELECT * FROM sanity_check.train
 TO PREDICT sanity_check.predict.class
-USING sqlflow_models.my_dnn_model;
-`, modelDir, database.GetSessionFromTestingDB())
+USING %s;
+`, modelName), modelDir, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {

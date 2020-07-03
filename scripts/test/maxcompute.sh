@@ -42,13 +42,13 @@ go install ./...
 #
 # Refer to https://github.com/codecov/example-go for merging coverage from
 # multiple runs of tests.
-gotest -p 1 -covermode=count -coverprofile=profile.out -v \
+gotest -covermode=count -coverprofile=profile.out -v \
        -run TestEnd2EndMaxCompute ./cmd/...
 if [ -f profile.out ]; then
     cat profile.out > coverage.txt
     rm profile.out
 fi
-gotest -p 1 -covermode=count -coverprofile=profile.out -v ./pkg/sqlfs/...
+gotest -covermode=count -coverprofile=profile.out -v ./pkg/sqlfs/...
 if [ -f profile.out ]; then
     cat profile.out >> coverage.txt
     rm profile.out
