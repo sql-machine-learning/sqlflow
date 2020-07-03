@@ -358,6 +358,22 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 	// model name is the original INTO clause, it can be like db.table
 	// reformat it to db_table as the table name in model zoo database.
 	modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
+	modelRepoImage := modelMeta.GetMetaAsString("model_repo_image")
+	imageAndTag := strings.Split(modelRepoImage, ":")
+	if len(imageAndTag) == 2 {
+		if err := checkImageURL(imageAndTag[0]); err != nil {
+			return nil, err
+		}
+		if err := checkTag(imageAndTag[1]); err != nil {
+			return nil, err
+		}
+	} else if len(imageAndTag) == 1 {
+		if err := checkImageURL(modelRepoImage); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("model repo image should be format of [domain.com/group/]image[:tag]")
+	}
 	// FIXME(typhoonzero): only hive need to pass session
 	sqlf, err := sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
 	if err != nil {
@@ -378,23 +394,6 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 	}
 
 	// Get model_def_id from model_definition table
-	modelRepoImage := modelMeta.GetMetaAsString("model_repo_image")
-	imageAndTag := strings.Split(modelRepoImage, ":")
-	if len(imageAndTag) == 2 {
-		if err := checkImageURL(imageAndTag[0]); err != nil {
-			return nil, err
-		}
-		if err := checkTag(imageAndTag[1]); err != nil {
-			return nil, err
-		}
-	} else if len(imageAndTag) == 1 {
-		if err := checkImageURL(modelRepoImage); err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("model repo image should be format of [domain.com/group/]image[:tag]")
-	}
-
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
 	rowsImageID, err := s.DB.Query(sql)
 	if err != nil {
@@ -461,8 +460,7 @@ func (s *modelZooServer) ReleaseModelFromLocal(stream pb.ModelZooServer_ReleaseM
 		}
 		req = streamReq
 		if sqlf == nil {
-
-			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, req.Name)
+			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
 			// FIXME(typhoonzero): only hive need to pass session
 			sqlf, err = sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
 			if err != nil {

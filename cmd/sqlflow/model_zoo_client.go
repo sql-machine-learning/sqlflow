@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -129,9 +128,8 @@ func releaseModelFromLocal(opts *options) error {
 	if err != nil {
 		return err
 	}
-	nameParts := strings.Split(opts.ModelName, ".")
 	request := &pb.ReleaseModelLocalRequest{
-		Name:              nameParts[len(nameParts)-1],
+		Name:              opts.ModelName,
 		Tag:               opts.Version,
 		Description:       opts.Description,
 		EvaluationMetrics: model.GetMetaAsString("evaluation"),
