@@ -307,11 +307,11 @@ class TestConnectWithDataSource(TestCase):
                 "access_id:access_key@maxcompute-service.com/api?curr_project=test_ci&scheme=http"
             ))
 
-    def test_libsvm_feature_column(self):
+    def test_kv_feature_column(self):
         feature_spec = {
-            "name": "libsvm_feature_name",
+            "name": "kv_feature_name",
             "is_sparse": True,
-            "format": "libsvm",
+            "format": "kv",
             "dtype": "float",
             "shape": [10],
         }
