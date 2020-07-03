@@ -54,7 +54,7 @@ func InferFeatureColumns() {
 In the Python code generation, we would use the data format information inferred in the feature derivation stage.
 
 - For TensorFlow models: we would convert the data in the key-value form into `tensorflow.SparseTensor` for training, prediction, evaluating, and explaining.
-- For XGBoost models: we would dump the data in the key-value form into [LibSVM format](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html) files, and then SQLFlow would load the file as `xgboost.DMatrix` for training, prediction, evaluating, and explaining.
+- For XGBoost models: we would dump the data in the key-value form into [LibSVM format](https://xgboost.readthedocs.io/en/latest/tutorials/input_format.html) files, and then SQLFlow would load the files as `xgboost.DMatrix` for training, prediction, evaluating, and explaining.
 
 ## SQL Statement Example
 
