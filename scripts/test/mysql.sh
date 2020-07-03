@@ -34,13 +34,5 @@ python -c "import sqlflow_submitter.db"
 
 go generate ./...
 go install ./...
-
-# See https://github.com/codecov/example-go for merging multiple coverage output
-# files into one.
-gotest -covermode=count -coverprofile=profile.out -timeout 900s  -v ./...
-if [ -f profile.out ]; then
-    cat profile.out >> coverage.txt
-    rm profile.out
-fi
-
+gotest -covermode=count -coverprofile=coverage.txt -timeout 900s  -v ./...
 python -m unittest discover -v python "*_test.py"

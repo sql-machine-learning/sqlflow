@@ -16,7 +16,7 @@ set -e
 
 changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
-    echo "Only Markdown files changed, skip test."
+    echo "Only Markdown files changed.  No need to run unit tests."
     exit 0
 fi
 
@@ -77,9 +77,23 @@ for _ in {1..30}; do
         MYSQL_POD_IP=$(kubectl get pod mysql -o jsonpath='{.status.podIP}')
         echo "MySQL pod IP: $MYSQL_POD_IP"
         export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
+
         go generate ./...
-        gotest ./cmd/... -run TestEnd2EndWorkflow -v
-        gotest ./pkg/workflow/argo/... -v
+        # Refer to https://github.com/codecov/example-go for merging coverage
+        # from multiple runs of tests.
+        gotest -covermode=count -coverprofile=profile.out -v \
+               -run TestEnd2EndWorkflow ./cmd/...
+        if [ -f profile.out ]; then
+            cat profile.out > coverage.txt
+            rm profile.out
+        fi
+        gotest -covermode=count -coverprofile=profile.out -v \
+               ./pkg/workflow/argo/...
+        if [ -f profile.out ]; then
+            cat profile.out >> coverage.txt
+            rm profile.out
+        fi
+
         TIMEOUT=false
         break
     else
@@ -96,8 +110,6 @@ fi
 echo "Test submitting PAI job using Argo workflow mode ..."
 # shellcheck disable=SC2154
 if [[ "$SQLFLOW_submitter" == "pai" ]]; then
-    # TDOO(wangkuiyi): rename MAXCOMPUTE_AK to SQLFLOW_TEST_DB_MAXCOMPUTE_ASK
-    # later after rename the Travis CI env settings.
     export SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}"
     gotest ./cmd/... -run TestEnd2EndWorkflow -v
 fi

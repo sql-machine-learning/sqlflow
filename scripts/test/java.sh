@@ -12,25 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-set -ex
+set -e
 
 cd java
 
-# Make downloading quiet.
-# Downloading logs is about 6k lines, which makes viewing TravisCI log difficult
+# Silence Maven package downloading; or we will have about 6,000 lines of logs.
 export MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
 
 # Install parse interface package to local Maven repo
 (cd parse-interface && mvn clean install -B)
 
-for PARSER_NAME in parser-hive parser-calcite
-do
-	(cd ${PARSER_NAME} && mvn test -B && \
-	mvn -B -q clean compile assembly:single && mv target/*.jar ${SQLFLOW_PARSER_SERVER_LOADING_PATH})
+for PARSER_NAME in parser-hive parser-calcite; do
+    cd ${PARSER_NAME}
+     mvn test -B
+     mvn -B -q clean compile assembly:single
+     mv target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH"
 done
 
-(cd parser && \
-protoc --java_out=src/main/java --grpc-java_out=src/main/java/ --proto_path=src/main/proto/ src/main/proto/parser.proto && \
-mvn test -B)
+cd parser
+protoc --java_out=src/main/java \
+       --grpc-java_out=src/main/java \
+       --proto_path=src/main/proto \
+       src/main/proto/parser.proto
 
+# TODO(wangkuiyi): Follow https://github.com/codecov/example-java to report Java
+# test coverage to codecov.io.
+mvn test -B

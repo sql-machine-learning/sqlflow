@@ -19,7 +19,7 @@
 changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
     echo "Only Markdown files changed.  No need to run unit tests."
-    exit
+    exit 0
 fi
 
 # Wait for Hive server to start on port 8899.
@@ -47,11 +47,5 @@ export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 go generate ./...
 go install ./...
-
-gotest -covermode=count -coverprofile=profile.out -timeout 1200s  -v ./...
-if [ -f profile.out ]; then
-    cat profile.out >> coverage.txt
-    rm profile.out
-fi
-
+gotest -covermode=count -coverprofile=coverage.txt -timeout 1200s  -v ./...
 python -m unittest discover -v python "db_test.py"
