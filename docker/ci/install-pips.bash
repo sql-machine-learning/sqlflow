@@ -37,6 +37,3 @@ pip install --quiet \
     jpmml-evaluator==0.3.1 \
     PyUtilib==5.8.0 \
     pyomo==5.6.9
-
-# NOTE: glpk-utils is a required solver package of Pyomo.
-apt-get -qq install -y glpk-utils
