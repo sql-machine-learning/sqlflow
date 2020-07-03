@@ -7,7 +7,7 @@ In the `TO TRAIN` syntax, users can write a `COLUMN` clause to specify the trans
 - The `DENSE` assumes that each table cell contains a number or a dense tensor.
 - The `SPARSE` assumes that each table cell contains a sparse tensor.
 
-In the current implementation, both `DENSE` and `SPARSE` have supported the string-encoded dense vector in the form of `"5,6,7"`.
+In the current implementation, both `DENSE` and `SPARSE` have supported the string-encoded dense tensor in the form of `"5,6,7"`.
 
 - If `"5,6,7"` represents a dense tensor `x`, `x = [5, 6, 7]`. In this case, the `COLUMN` clause is `DENSE(column_name, 3)`, where 3 is the element number of the dense tensor.
 - If `"5,6,7"` represents a sparse tensor `x`, the tensor `x` only contains 0 or 1, and `x[5] = x[6] = x[7] = 1`. The other values of `x` are all zeros. In this case, the `COLUMN` clause is `SPARSE(column_name, length)`, where the `length` is the element number of the corresponding dense tensor.
