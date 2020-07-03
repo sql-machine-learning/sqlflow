@@ -58,7 +58,7 @@ jobs:
       --net=host
       -e SQLFLOW_TEST_DB=mysql
       -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306"
-      sqlflow:ci scripts/test/units.sh
+      sqlflow:ci scripts/test/mysql.sh
     - scripts/travis/upload_codecov.sh
   - env: SQLFLOW_TEST_DB=hive # run more parallel tests in the same stage:
     script:
@@ -75,7 +75,7 @@ jobs:
     script:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    # Download minikube and start a Kubernetes cluster.  The credential is 
+    # Download minikube and start a Kubernetes cluster.  The credential is
     # written into $HOME/.kube/ on the Travis CI VM.
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     # Bind mount $HOME/.kube into the container, so that test/maxcompute.sh
@@ -102,7 +102,7 @@ jobs:
     - cd $TRAVIS_BUILD_DIR
     - docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
-    # Download minikube and start a Kubernetes cluster.  The credential is 
+    # Download minikube and start a Kubernetes cluster.  The credential is
     # written into $HOME/.kube/ on the Travis CI VM.
     - $TRAVIS_BUILD_DIR/scripts/travis/setup_minikube.sh
     # Configure environment to use minikube’s Docker daemon.
