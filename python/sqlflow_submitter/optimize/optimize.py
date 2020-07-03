@@ -449,9 +449,9 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     print('Saved in {}.'.format(result_table))
 
 
-def run_optimize_locally(datasource, select, variables, variable_type,
-                         result_value_name, objective, direction, constraints,
-                         solver, result_table):
+def run_optimize(datasource, select, variables, variable_type,
+                 result_value_name, objective, direction, constraints, solver,
+                 result_table):
     data_frame = load_db_data_to_data_frame(datasource, select)
     model = generate_model_with_data_frame(data_frame=data_frame,
                                            variables=variables,

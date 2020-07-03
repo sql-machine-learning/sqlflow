@@ -12,7 +12,7 @@
 # limitations under the License.
 
 from sqlflow_submitter.optimize.optimize import (
-    generate_model_with_data_frame, run_optimize_locally)
+    generate_model_with_data_frame, run_optimize)
 
 try:
     from sqlflow_submitter.optimize.runner import BaseOptFlowRunner, submit

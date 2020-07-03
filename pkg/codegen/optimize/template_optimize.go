@@ -32,8 +32,8 @@ type optimizeFiller struct {
 	RunnerModule    string
 }
 
-const localOptimizeText = `
-from sqlflow_submitter.optimize import run_optimize_locally
+const pyomoNativeOptimizeText = `
+from sqlflow_submitter.optimize import run_optimize
 
 variables = [{{range .Variables}}"{{.}}",{{end}}]
 
@@ -46,16 +46,16 @@ constraints = [{{range .Constraints}}
     },
 {{end}}]
 
-run_optimize_locally(datasource="{{.DataSource}}", 
-                     select='''{{.Select}}''',
-                     variables=variables, 
-                     variable_type="{{.VariableType}}",
-                     result_value_name="{{.ResultValueName}}",
-                     objective=objective,
-                     direction="{{.Direction}}",
-                     constraints=constraints,
-                     solver="{{.Solver}}",
-                     result_table="{{.ResultTable}}")
+run_optimize(datasource="{{.DataSource}}", 
+             select='''{{.Select}}''',
+             variables=variables, 
+             variable_type="{{.VariableType}}",
+             result_value_name="{{.ResultValueName}}",
+             objective=objective,
+             direction="{{.Direction}}",
+             constraints=constraints,
+             solver="{{.Solver}}",
+             result_table="{{.ResultTable}}")
 `
 
 const optFlowRunnerText = `

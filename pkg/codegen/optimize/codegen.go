@@ -119,7 +119,7 @@ func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, table
 
 	// not use OptFlow
 	var program bytes.Buffer
-	tpl := template.Must(template.New("optimize").Parse(localOptimizeText))
+	tpl := template.Must(template.New("optimize").Parse(pyomoNativeOptimizeText))
 	if err := tpl.Execute(&program, filler); err != nil {
 		return "", "", err
 	}

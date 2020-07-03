@@ -739,18 +739,19 @@ INTO ` + resultTable + `;`
 		_, _, _, err := connectAndRunSQL(woodcarvingSQL)
 		a.NoError(err)
 
-		queryResultSQL := fmt.Sprintf("SELECT * FROM %s;", resultTable)
+		actualResultValue := product
+		if actualResultValue == "product" {
+			actualResultValue += "_value"
+		}
+
+		queryResultSQL := fmt.Sprintf("SELECT product, %s FROM %s;", actualResultValue, resultTable)
 		header, rows, _, err := connectAndRunSQL(queryResultSQL)
 		header = removeColumnNamePrefix(header)
 		a.NoError(err)
 		a.Equal(2, len(header))
 
 		a.Equal("product", header[0])
-		if product == header[0] {
-			a.Equal("product_value", header[1])
-		} else {
-			a.Equal("amount", header[1])
-		}
+		a.Equal(actualResultValue, header[1])
 
 		a.Equal(2, len(rows))
 		decodedRows, err := decodeAnyTypedRowData(rows)
@@ -800,7 +801,7 @@ func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
 	_, _, _, err := connectAndRunSQL(shipmentOptimizeSQL)
 	a.NoError(err)
 
-	queryResultSQL := fmt.Sprintf("SELECT * FROM %s ORDER BY plants, markets;", resultTable)
+	queryResultSQL := fmt.Sprintf("SELECT plants, markets, shipment FROM %s ORDER BY plants, markets;", resultTable)
 	header, rows, _, err := connectAndRunSQL(queryResultSQL)
 	header = removeColumnNamePrefix(header)
 	a.NoError(err)
