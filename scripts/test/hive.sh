@@ -21,8 +21,7 @@ if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]];
 fi
 
 while true; do
-  curl -s http://localhost:8899 > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
+  if curl -s http://localhost:8899 > /dev/null 2>&1; then
     break
   else
     echo "still waiting, hive server is not ready..."
@@ -48,6 +47,6 @@ go install ./...
 
 # -p 1 is necessary since tests in different packages are sharing the same database
 # ref: https://stackoverflow.com/a/23840896
-gotest -timeout 1200s -p 1 -v ./...
+gotest -timeout 1800s -p 1 -v ./...
 
 python -m unittest discover -v python "db_test.py"
