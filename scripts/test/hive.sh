@@ -16,18 +16,20 @@
 # is a status port indicates the hive server container
 # is ready, see .travis.yml for the details
 
-if [[ $(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq) == md ]]; then
-  exit
+changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
+if [[ "$changed_fileext" == "md" ]]; then
+    echo "Only Markdown files changed.  No need to run unit tests."
+    exit
 fi
 
+# Wait for Hive server to start on port 8899.
 while true; do
-  curl -s http://localhost:8899 > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
-    break
-  else
-    echo "still waiting, hive server is not ready..."
-    sleep 5
-  fi
+    if curl -s http://localhost:8899 > /dev/null 2>&1; then
+        break
+    else
+        echo "still waiting, hive server is not ready..."
+        sleep 5
+    fi
 done
 
 set -e
@@ -38,16 +40,18 @@ export SQLFLOW_HIVE_LOCATION_ROOT_PATH=/sqlflow
 export SQLFLOW_TEST_NAMENODE_ADDR="127.0.0.1:8020"
 
 export SQLFLOW_TEST_DB=hive
-# NOTE: we have already installed sqlflow_submitter under python installation path
-# using latest develop branch, but when testing on CI, we need to use the code in
-# the current pull request.
+# NOTE: we have already installed sqlflow_submitter under Python installation
+# path using latest develop branch, but when testing on CI, we need to use the
+# code in the current pull request.
 export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 go generate ./...
 go install ./...
 
-# -p 1 is necessary since tests in different packages are sharing the same database
-# ref: https://stackoverflow.com/a/23840896
-gotest -timeout 1200s -p 1 -v ./...
+gotest -covermode=count -coverprofile=profile.out -timeout 1200s  -v ./...
+if [ -f profile.out ]; then
+    cat profile.out >> coverage.txt
+    rm profile.out
+fi
 
 python -m unittest discover -v python "db_test.py"
