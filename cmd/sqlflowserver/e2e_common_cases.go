@@ -641,7 +641,7 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a := assert.New(t)
 
-	dialect := os.Getenv("SQLFLOW_TEST_DB")
+	testDBType := os.Getenv("SQLFLOW_TEST_DB")
 
 	dbName := "test_xgb_kv_column"
 
@@ -665,7 +665,7 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	}
 
 	dropDBSQL := ""
-	if dialect == "hive" {
+	if testDBType == "hive" {
 		// Hive can only drop non-empty database in the CASCADE mode.
 		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE;", dbName)
 	} else {
