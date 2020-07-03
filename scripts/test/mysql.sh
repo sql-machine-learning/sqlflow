@@ -16,7 +16,7 @@ set -e
 
 changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
-    echo "Only changed Markdown files.  No need to run unit tests."
+    echo "Only Markdown files changed.  No need to run unit tests."
     exit 0
 fi
 
@@ -24,7 +24,7 @@ fi
 # of sqlflow:mysql should create this file on a bind mount of the host
 # filesystem.  So, the container running this script should also bind
 # mount the same host directory to /work.
-while read i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
+while read -r i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
     < <(inotifywait  -e create,open --format '%f' --quiet /work --monitor)
 
 export SQLFLOW_TEST_DB=mysql
@@ -34,10 +34,5 @@ python -c "import sqlflow_submitter.db"
 
 go generate ./...
 go install ./...
-
-# -p 1 is necessary since tests in different packages are sharing the same database
-# ref: https://stackoverflow.com/a/23840896
-# set test timeout to 900s since travis CI may be slow to run the case TestParse
-gotest -v -p 1 -timeout 900s ./...  -covermode=count -coverprofile=coverage.txt
-
+gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 900s  -v ./...
 python -m unittest discover -v python "*_test.py"
