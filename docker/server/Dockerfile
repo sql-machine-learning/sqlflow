@@ -4,11 +4,11 @@ FROM alpine:3.12
 
 # Choose faster mirrors for apt-get and pip
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN /bin/sh -c 'source find_fastest_resources.sh \
-        && echo "Choose the fastest Alpine source ..." \
-        && choose_fastest_alpine_source \
-        && echo "Choose the fastest PIP source ..." \
-        && choose_fastest_pip_source'
+RUN /bin/sh -c 'source find_fastest_resources.sh && \
+    echo "Choose the fastest Alpine source ..." && \
+    choose_fastest_alpine_source && \
+    echo "Choose the fastest PIP source ..." && \
+    choose_fastest_pip_source'
 
 # Install Python and JRE.  SQLFlow server requires Couler/Fluid to generate YAML
 # files, and Couler/Fluid depends on Python.  The external parsers are in Java.
@@ -17,9 +17,9 @@ RUN apk update \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub http://cdn.sqlflow.tech/alpine/sgerrand.rsa.pub.txt && \
     wget -q http://cdn.sqlflow.tech/alpine/glibc-2.31-r0.apk && \
     apk add glibc-2.31-r0.apk && \
-    rm glibc-2.31-r0.apk
-RUN ln -s /usr/bin/python3 /usr/local/bin/python
-RUN ln -s /usr/bin/pip3 /usr/local/bin/pip
+    rm glibc-2.31-r0.apk && \
+    ln -s /usr/bin/python3 /usr/local/bin/python && \
+    ln -s /usr/bin/pip3 /usr/local/bin/pip
 
 # Install the SQLFlow Python source code, which includes template code.
 COPY python /usr/local/sqlflow/python
