@@ -118,7 +118,8 @@ jobs:
       -v $TRAVIS_BUILD_DIR:/work -w /work
       sqlflow:ci scripts/test/workflow.sh
   - stage: Deploy
-  - env: DESC="Deploy server Docker image"
+    if: type != pull_request
+    env: DESC="Deploy server Docker image"
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_docker.sh
   - env: DESC="Deploy macOS client"
@@ -134,4 +135,3 @@ jobs:
     os: windows
     script:
     - $TRAVIS_BUILD_DIR/scripts/travis/deploy_client.sh
-
