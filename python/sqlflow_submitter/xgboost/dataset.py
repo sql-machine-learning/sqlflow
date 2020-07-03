@@ -131,8 +131,7 @@ def dump_dmatrix(filename,
                                                  feature_specs)
 
             if raw_data_fid is not None:
-                row_data = ["{}:{}".format(i, r) for i, r in enumerate(row)]
-                raw_data_fid.write("\t".join(row_data) + "\n")
+                raw_data_fid.write("/".join([str(r) for r in row]) + "\n")
 
             if transform_fn:
                 features = transform_fn(features)

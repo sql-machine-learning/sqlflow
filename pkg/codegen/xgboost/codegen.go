@@ -418,7 +418,11 @@ func Evaluate(evalStmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	// NOTE(typhoonzero): support all metrices defined in https://scikit-learn.org/stable/modules/classes.html#sklearn-metrics-metrics
 	metricNames := "accuracy_score"
 	if metricNamesAttr, ok := evalStmt.Attributes["validation.metrics"]; ok {
-		metricNames = metricNamesAttr.(string)
+		if names, ok := metricNamesAttr.(string); ok {
+			metricNames = names
+		} else {
+			return "", fmt.Errorf("validation.metrics must be a string")
+		}
 	}
 
 	r := evalFiller{
