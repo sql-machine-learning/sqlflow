@@ -641,6 +641,8 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a := assert.New(t)
 
+	dialect := os.Getenv("SQLFLOW_TEST_DB")
+
 	dbName := "test_xgb_kv_column"
 
 	executeSQLFunc := func(sql string) {
@@ -654,7 +656,21 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		a.Equal(len(rows), 1)
 	}
 
-	dropDBSQL := fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+	removeColumnNamePrefix := func(columns []string) []string {
+		for idx := range columns {
+			split := strings.Split(columns[idx], ".")
+			columns[idx] = split[len(split)-1]
+		}
+		return columns
+	}
+
+	dropDBSQL := ""
+	if dialect == "hive" {
+		// Hive can only drop non-empty database in the CASCADE mode.
+		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE;", dbName)
+	} else {
+		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+	}
 
 	defer executeSQLFunc(dropDBSQL)
 
@@ -698,6 +714,7 @@ INTO %s;
 	a.NoError(err)
 	a.Equal(2, len(rows))
 	a.Equal(3, len(columns))
+	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
 	a.Equal("label_col", columns[1])
 	a.Equal("new_label_col", columns[2])
@@ -708,6 +725,7 @@ INTO %s;
 	a.NoError(err)
 	a.Equal(2, len(rows))
 	a.Equal(2, len(columns))
+	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
 	a.Equal("label_col", columns[1])
 

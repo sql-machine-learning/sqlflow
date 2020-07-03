@@ -56,5 +56,5 @@ func TestEnd2EndHive(t *testing.T) {
 
 	caseXGBoostFeatureColumn(t, false)
 
-	t.Run("CaseEnd2EndXGBoostLibSM", caseXGBoostLibSVMColumn)
+	t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
 }
