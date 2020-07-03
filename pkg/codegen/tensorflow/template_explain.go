@@ -62,6 +62,7 @@ feature_metas["{{$value.Name}}"] = {
     "feature_name": "{{$value.Name}}",
     "dtype": "{{$value.DType | DTypeToString}}",
     "delimiter": "{{$value.Delimiter}}",
+    "format": "{{$value.Format}}",
     "shape": {{$value.Shape | intArrayToJSONString}},
     "is_sparse": "{{$value.IsSparse}}" == "true"
 }

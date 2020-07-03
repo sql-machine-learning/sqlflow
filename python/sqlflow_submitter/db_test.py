@@ -14,12 +14,14 @@
 import os
 from unittest import TestCase
 
+import numpy as np
 import tensorflow as tf
 from odps import ODPS, tunnel
 from sqlflow_submitter.db import (buffered_db_writer, connect,
                                   connect_with_data_source, db_generator,
                                   parseHiveDSN, parseMaxComputeDSN,
-                                  parseMySQLDSN, read_features_from_row)
+                                  parseMySQLDSN, read_feature,
+                                  read_features_from_row)
 
 
 def testing_mysql_cfg():
@@ -304,3 +306,20 @@ class TestConnectWithDataSource(TestCase):
             parseMaxComputeDSN(
                 "access_id:access_key@maxcompute-service.com/api?curr_project=test_ci&scheme=http"
             ))
+
+    def test_libsvm_feature_column(self):
+        feature_spec = {
+            "name": "libsvm_feature_name",
+            "is_sparse": True,
+            "format": "libsvm",
+            "dtype": "float",
+            "shape": [10],
+        }
+
+        raw_val = "0:1 3:4 4:6"
+        indices, values, shape = read_feature(raw_val, feature_spec,
+                                              feature_spec["name"])
+        self.assertTrue(np.array_equal(indices, np.array([0, 3, 4],
+                                                         dtype=int)))
+        self.assertTrue(np.array_equal(values, np.array([1, 4, 6], dtype=int)))
+        self.assertTrue(np.array_equal(shape, np.array([10], dtype='float')))

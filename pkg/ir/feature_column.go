@@ -32,6 +32,7 @@ type FieldDesc struct {
 	Name      string `json:"name"`      // the name for a field, e.g. "petal_length"
 	DType     int    `json:"dtype"`     // e.g. "float", "int32"
 	Delimiter string `json:"delimiter"` // Needs to be "," if the field saves strings like "1,23,42".
+	Format    string `json:"format"`    // The data format, "csv" or "libsvm"
 	Shape     []int  `json:"shape"`     // [3] if the field saves strings of three numbers like "1,23,42".
 	IsSparse  bool   `json:"is_sparse"` // If the field saves a sparse tensor.
 	// Vocabulary stores all possible enumerate values if the column type is string,
