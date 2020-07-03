@@ -47,42 +47,42 @@ func TestCSVRegex(t *testing.T) {
 	}
 }
 
-func TestLibSVMRegex(t *testing.T) {
-	libSVMStrings := []string{
+func TestKeyValueRegex(t *testing.T) {
+	keyValueStrings := []string{
 		"1:3 2:4\t 3:5  4:9",
 		"0:1.3 10:-3.2 20:132 7:32",
 		"3:33",
 	}
-	for _, s := range libSVMStrings {
-		if inferStringDataFormat(s) != libsvm {
+	for _, s := range keyValueStrings {
+		if inferStringDataFormat(s) != kv {
 			t.Errorf("%s is not matched", s)
 		}
 	}
-	nonLibSVMStrings := []string{
+	nonKeyValueStrings := []string{
 		"100",
 		"-10:100",
 		"10.2:23,",
 		"0:abc",
 	}
-	for _, s := range nonLibSVMStrings {
-		if inferStringDataFormat(s) == libsvm {
+	for _, s := range nonKeyValueStrings {
+		if inferStringDataFormat(s) == kv {
 			t.Errorf("%s should not be matched", s)
 		}
 	}
 }
 
-func TestGetMaxIndexOfLibSVMString(t *testing.T) {
+func TestGetMaxIndexOfKeyValueString(t *testing.T) {
 	a := assert.New(t)
 
-	index, err := getMaxIndexOfLibSVMData("1:2 3:4 2:1")
+	index, err := getMaxIndexOfKeyValueData("1:2 3:4 2:1")
 	a.NoError(err)
 	a.Equal(3, index)
 
-	index, err = getMaxIndexOfLibSVMData("7:2\t 3:-4 10:20")
+	index, err = getMaxIndexOfKeyValueData("7:2\t 3:-4 10:20")
 	a.NoError(err)
 	a.Equal(10, index)
 
-	index, err = getMaxIndexOfLibSVMData("1:2")
+	index, err = getMaxIndexOfKeyValueData("1:2")
 	a.NoError(err)
 	a.Equal(1, index)
 }

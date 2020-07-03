@@ -638,10 +638,10 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 // TODO(sneaxiy):
 //  1. add tests on PAI
 //  2. add tests of prediction, evaluation and explanation
-func caseXGBoostLibSVMColumn(t *testing.T) {
+func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a := assert.New(t)
 
-	dbName := "test_xgb_libsvm"
+	dbName := "test_xgb_kv_column"
 
 	executeSQLFunc := func(sql string) {
 		_, _, _, err := connectAndRunSQL(sql)
