@@ -37,3 +37,4 @@ pip install --quiet \
     jpmml-evaluator==0.3.1 \
     PyUtilib==5.8.0 \
     pyomo==5.6.9
+
