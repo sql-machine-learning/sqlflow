@@ -43,7 +43,7 @@ func prepareModelRepo() (string, error) {
 		return "", err
 	}
 	ioutil.WriteFile(fmt.Sprintf("%s/Dockerfile", path),
-		[]byte(`FROM ubuntu:18.04
+		[]byte(`FROM sqlflow/sqlflow:latest
 		COPY model /work/model`), 0644)
 	os.Mkdir(fmt.Sprintf("%s/model", path), 0755)
 	ioutil.WriteFile(fmt.Sprintf("%s/model/__init__.py", path),

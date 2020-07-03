@@ -19,7 +19,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -72,9 +71,9 @@ func releaseModel(opts *options) error {
 	defer conn.Close()
 	client := pb.NewModelZooServerClient(conn)
 
-	nameParts := strings.Split(opts.ModelName, ".")
+	// nameParts := strings.Split(opts.ModelName, ".")
 	request := &pb.ReleaseModelRequest{
-		Name:              nameParts[len(nameParts)-1],
+		Name:              opts.ModelName,
 		Tag:               opts.Version,
 		Description:       opts.Description,
 		EvaluationMetrics: "",
@@ -100,10 +99,8 @@ func deleteModel(opts *options) error {
 	}
 	defer conn.Close()
 	client := pb.NewModelZooServerClient(conn)
-	// if user give a db.table format, we just use the table name
-	nameParts := strings.Split(opts.ModelName, ".")
 	req := &pb.ReleaseModelRequest{
-		Name: nameParts[len(nameParts)-1],
+		Name: opts.ModelName,
 		Tag:  opts.Version,
 	}
 	resp, err := client.DropModel(context.Background(), req)
