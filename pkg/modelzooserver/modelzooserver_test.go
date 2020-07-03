@@ -61,6 +61,9 @@ func mockTmpModelRepo() (string, error) {
 }
 
 func TestModelZooServer(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skip("Skipping mysql tests")
+	}
 	a := assert.New(t)
 	go StartModelZooServer(50055, database.GetTestingMySQLURL())
 	server.WaitPortReady("localhost:50055", 0)
