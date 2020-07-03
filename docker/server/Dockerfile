@@ -13,7 +13,7 @@ RUN /bin/sh -c 'source find_fastest_resources.sh \
 # Install Python and JRE.  SQLFlow server requires Couler/Fluid to generate YAML
 # files, and Couler/Fluid depends on Python.  The external parsers are in Java.
 RUN apk update \
-    && apk add --no-cache python3 py3-pip openjdk8-jre-base axel bash && \
+    && apk add --no-cache python3 py3-pip openjdk8-jre-base axel sudo bash && \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub http://cdn.sqlflow.tech/alpine/sgerrand.rsa.pub.txt && \
     wget -q http://cdn.sqlflow.tech/alpine/glibc-2.31-r0.apk && \
     apk add glibc-2.31-r0.apk && \
