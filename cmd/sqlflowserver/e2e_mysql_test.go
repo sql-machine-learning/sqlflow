@@ -77,7 +77,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 
 	t.Run("CaseEnd2EndCrossFeatureColumn", caseEnd2EndCrossFeatureColumn)
 
-	t.Run("CaseEnd2EndXGBoostLibSM", caseXGBoostLibSVMColumn)
+	t.Run("CaseEnd2EndXGBoostLibSM", caseXGBoostSparseKeyValueColumn)
 }
 
 func CaseShouldError(t *testing.T) {

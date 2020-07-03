@@ -227,39 +227,41 @@ func fillFieldDescByDataType(cellData string, fieldDescMap FieldDescMap, fieldNa
 }
 
 const (
-	csv    = "csv"
-	libsvm = "libsvm"
+	csv = "csv"
+	kv  = "kv"
 )
 
 func inferStringDataFormat(strData string) string {
 	const realNumberRegex = "((\\+|-)?([0-9]+)(\\.[0-9]+)?)|((\\+|-)?\\.?[0-9]+)"
 
+	// string in the form of "3,5,7"
 	csvRegex := regexp.MustCompile(fmt.Sprintf("^((%s)\\,)+(%s)$", realNumberRegex, realNumberRegex))
 	if csvRegex.MatchString(strData) {
 		return csv
 	}
 
-	libsvmRegex := regexp.MustCompile(fmt.Sprintf("^([0-9]+:(%s)\\s*)+$", realNumberRegex))
-	if libsvmRegex.MatchString(strData) {
-		return libsvm
+	// string in the form of "0:3.2 5:-0.5 7:9"
+	keyValueRegex := regexp.MustCompile(fmt.Sprintf("^([0-9]+:(%s)\\s*)+$", realNumberRegex))
+	if keyValueRegex.MatchString(strData) {
+		return kv
 	}
 	return ""
 }
 
-func getMaxIndexOfLibSVMData(str string) (int, error) {
+func getMaxIndexOfKeyValueData(str string) (int, error) {
 	maxIndex := 0
-	// LibSVM string is like:
+	// key-value string is like:
 	// index:value index:value ...
 	re := regexp.MustCompile("\\s+")
 	for _, s := range re.Split(str, -1) {
 		split := strings.SplitN(s, ":", 2)
 		if len(split) != 2 {
-			return 0, fmt.Errorf("invalid LibSVM format string %s", s)
+			return 0, fmt.Errorf("invalid key-value format string %s", s)
 		}
 
 		index, err := strconv.Atoi(split[0])
 		if err != nil {
-			return 0, fmt.Errorf("invalid LibSVM format string %s", s)
+			return 0, fmt.Errorf("invalid key-value format string %s", s)
 		}
 
 		if index > maxIndex {
@@ -299,9 +301,9 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 				if err != nil {
 					return err
 				}
-			case libsvm:
+			case kv:
 				if !fieldDescMap[fld].IsSparse {
-					return fmt.Errorf(`should use "COLUMN SPARSE(%s)" for the LibSVM format data`, fld)
+					return fmt.Errorf(`should use "COLUMN SPARSE(%s)" for the key-value format data`, fld)
 				}
 
 				// TODO(sneaxiy): should we support int?
@@ -312,7 +314,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 						fieldDescMap[fld].Shape = []int{1}
 					}
 
-					curMaxIndex, err := getMaxIndexOfLibSVMData(*cellData)
+					curMaxIndex, err := getMaxIndexOfKeyValueData(*cellData)
 					if err != nil {
 						return err
 					}
@@ -320,7 +322,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 						fieldDescMap[fld].Shape[0] = curMaxIndex + 1
 					}
 				}
-			case "":
+			default:
 				fillFieldDescByDataType(*cellData, fieldDescMap, fld)
 			}
 		default:

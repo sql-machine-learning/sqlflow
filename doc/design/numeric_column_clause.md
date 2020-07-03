@@ -8,8 +8,8 @@ A **numeric column** is a kind of DBMS table columns, whose cell value is:
 
 - a single number. It includes an integer, a floating-point number, or a string that can be directly converted to an integer or floating-point number. For example, `1`, `3.5` or `"-102"`.
 - a string that is encoded from a numeric vector. For example:
-    - the string `"1.2,3.4,5.6"` in CSV format is encoded from the numeric vector `[1.2, 3.4, 5.6]`.
-    - the string `"1:1.2 3:3.4 5:5.6"` in [LibSVM format](https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/) is encoded from the numeric vector `[0, 1.2, 0, 3.4, 0, 5.6]` (if the length is 6). 
+    - the string `"1.2,3.4,5.6"` is encoded from the numeric dense vector `[1.2, 3.4, 5.6]`.
+    - the string `"1:1.2 3:3.4 5:5.6"` is encoded from the numeric sparse vector `[0, 1.2, 0, 3.4, 0, 5.6]` (if the length is 6). 
 
 ### Numeric Column Clause
 

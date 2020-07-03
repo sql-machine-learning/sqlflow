@@ -147,7 +147,7 @@ def connect(driver,
 def read_feature(raw_val, feature_spec, feature_name):
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["is_sparse"]:
-        if feature_spec["format"] == "libsvm":
+        if feature_spec["format"] == "kv":
             items = raw_val.split()
             items = [item.split(':', 2) for item in items]
             indices = np.array([int(item[0]) for item in items],
