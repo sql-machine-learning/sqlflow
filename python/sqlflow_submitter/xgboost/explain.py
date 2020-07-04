@@ -64,7 +64,7 @@ def xgb_shap_dataset(datasource,
         selected_cols = db.selected_cols(conn.driver, conn, select)
 
     if transform_fn:
-        feature_names = transform_fn.get_column_names()
+        feature_names = transform_fn.get_feature_column_names()
     else:
         feature_names = feature_column_names
 
