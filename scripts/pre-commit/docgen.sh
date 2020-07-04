@@ -19,9 +19,9 @@ set -e
 # executable file.  Otherwise, we'd get the following error as
 # described in https://github.com/golang/go/issues/27215
 #
-# build sqlflow.org/sqlflow/cmd/docgen: cannot load
+# build sqlflow.org/sqlflow/go/cmd/docgen: cannot load
 # sqlflow.org/sqlflow/pkg/sql/ir: no matching versions for query
 # "latest"
 #
-go install ./cmd/docgen
-$GOPATH/bin/docgen > doc/model_parameter.md
+go install ./go/cmd/docgen
+"$GOPATH"/bin/docgen > doc/model_parameter.md

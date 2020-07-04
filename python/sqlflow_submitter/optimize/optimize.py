@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
+import sys
+
 import numpy as np
 import pyomo.environ as pyomo_env
 import six
@@ -343,3 +346,36 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
 
     DATA_FRAME = None
     return model
+
+
+def solve_model(model, solver):
+    opt = pyomo_env.SolverFactory(solver)
+    solved_results = opt.solve(model)
+
+    result_values = []
+    has_error = False
+    pyomo_dtype = None
+
+    for idx in model.x:
+        value = model.x[idx](exception=False)
+        # If any variable is not initialized,
+        # the solving process fails.
+        if value is None:
+            has_error = True
+            break
+        else:
+            result_values.append(value)
+
+        if pyomo_dtype is None:
+            pyomo_dtype = type(model.x[idx])
+
+        assert pyomo_dtype == type(
+            model.x[idx]), "all variables must be of the same data type"
+
+    if has_error:
+        msg = 'Solve model error. Termination condition: {}.'\
+            .format(solved_results.solver.termination_condition)
+        raise ValueError(msg)
+
+    np_dtype = np.int64 if model.x[0].is_integer() else np.float64
+    return np.array(result_values, dtype=np_dtype)

@@ -82,13 +82,13 @@ for _ in {1..30}; do
         # Refer to https://github.com/codecov/example-go for merging coverage
         # from multiple runs of tests.
         gotest -covermode=count -coverprofile=profile.out -v \
-               -run TestEnd2EndWorkflow ./cmd/...
+               -run TestEnd2EndWorkflow ./go/cmd/...
         if [ -f profile.out ]; then
             cat profile.out > coverage.txt
             rm profile.out
         fi
         gotest -covermode=count -coverprofile=profile.out -v \
-               ./pkg/workflow/argo/...
+               ./go/workflow/argo/...
         if [ -f profile.out ]; then
             cat profile.out >> coverage.txt
             rm profile.out
@@ -111,12 +111,12 @@ echo "Test submitting PAI job using Argo workflow mode ..."
 # shellcheck disable=SC2154
 if [[ "$SQLFLOW_submitter" == "pai" ]]; then
     export SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}"
-    gotest -run TestEnd2EndWorkflow -v ./cmd/...
+    gotest -run TestEnd2EndWorkflow -v ./go/cmd/...
 fi
 
 
-echo "Run unit tests of pkg/workflow/argo ..."
-gotest -v ./pkg/workflow/argo/
+echo "Run unit tests of go/workflow/argo ..."
+gotest -v ./go/workflow/argo/
 
 
 # TODO(yancey1989): run fluid test if tekton on SQLFlow it's ready.
