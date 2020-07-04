@@ -29,27 +29,27 @@ CREATE TABLE optimize_test_db.woodcarving (
 INSERT INTO optimize_test_db.woodcarving VALUES('soldier', 27, 10, 14, 2, 1, 40),
 ('train', 21, 9, 10, 1, 1, 10000);
 
-DROP TABLE IF EXISTS optimize_test_db.plants;
-CREATE TABLE optimize_test_db.plants (
+DROP TABLE IF EXISTS optimize_test_db.plants_table;
+CREATE TABLE optimize_test_db.plants_table (
     plants VARCHAR(255),
     capacity BIGINT
 );
-INSERT INTO optimize_test_db.plants VALUES('plantA', 100), ('plantB', 90);
+INSERT INTO optimize_test_db.plants_table VALUES('plantA', 100), ('plantB', 90);
 
-DROP TABLE IF EXISTS optimize_test_db.markets;
-CREATE TABLE optimize_test_db.markets (
+DROP TABLE IF EXISTS optimize_test_db.markets_table;
+CREATE TABLE optimize_test_db.markets_table (
     markets VARCHAR(255),
     demand BIGINT
 );
-INSERT INTO optimize_test_db.markets VALUES('marketA', 130), ('marketB', 60);
+INSERT INTO optimize_test_db.markets_table VALUES('marketA', 130), ('marketB', 60);
 
-DROP TABLE IF EXISTS optimize_test_db.transportation;
-CREATE TABLE optimize_test_db.transportation (
+DROP TABLE IF EXISTS optimize_test_db.transportation_table;
+CREATE TABLE optimize_test_db.transportation_table (
     plants VARCHAR(255),
     markets VARCHAR(255),
     distance BIGINT
 );
-INSERT INTO optimize_test_db.transportation VALUES('plantA', 'marketA', 140), 
+INSERT INTO optimize_test_db.transportation_table VALUES('plantA', 'marketA', 140), 
 ('plantA', 'marketB', 210), ('plantB', 'marketA', 300),
 ('plantB', 'marketB', 90);
 `

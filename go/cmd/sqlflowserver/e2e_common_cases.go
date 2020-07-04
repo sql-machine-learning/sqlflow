@@ -789,13 +789,13 @@ func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
 	resultTable := fmt.Sprintf("%s.%s", dbName, "shipment_result")
 
 	shipmentOptimizeSQL := fmt.Sprintf(`SELECT 
-		trans.plants AS plants, 
-		trans.markets AS markets, 
-		trans.distance AS distance, 
-		plants.capacity AS capacity, 
-		markets.demand AS demand FROM optimize_test_db.transportation AS trans
-    LEFT JOIN optimize_test_db.plants ON trans.plants = plants.plants
-    LEFT JOIN optimize_test_db.markets ON trans.markets = markets.markets
+		t.plants AS plants, 
+		t.markets AS markets, 
+		t.distance AS distance, 
+		p.capacity AS capacity, 
+		m.demand AS demand FROM optimize_test_db.transportation_table AS t
+    LEFT JOIN optimize_test_db.plants_table AS p ON t.plants = p.plants
+    LEFT JOIN optimize_test_db.markets_table AS m ON t.markets = m.markets
 	TO MINIMIZE SUM(shipment * distance * 90 / 1000)
 	CONSTRAINT SUM(shipment) <= capacity GROUP BY plants,
 			   SUM(shipment) >= demand GROUP BY markets
