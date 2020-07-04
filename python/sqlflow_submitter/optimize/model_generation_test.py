@@ -13,11 +13,12 @@
 
 import unittest
 
+import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
 from sqlflow_submitter.optimize.optimize import (
     generate_model_with_data_frame, generate_objective_or_constraint_func,
-    generate_range_constraint_func)
+    generate_range_constraint_func, solve_model)
 
 
 def get_source(func):
@@ -152,6 +153,9 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
                                                 direction="maximize",
                                                 constraints=constraints)
         self.assertTrue(isinstance(model1, pyomo_env.ConcreteModel))
+        result = solve_model(model1, 'glpk')
+        self.assertTrue(
+            np.array_equal(result, np.array([20, 60], dtype='int64')))
 
         model2 = generate_model_with_data_frame(
             data_frame=self.data_frame,
@@ -162,6 +166,9 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
             direction="minimize",
             constraints=constraints)
         self.assertTrue(isinstance(model2, pyomo_env.ConcreteModel))
+
+        with self.assertRaises(ValueError):
+            solve_model(model2, 'glpk')
 
 
 class TestModelGenerationWithGroupBy(TestModelGenerationBase):
@@ -194,7 +201,7 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
                 "group_by": "markets",
             },
             {
-                "expression": ['shipment', '*', '2', '<=', 'demand'],
+                "expression": ['shipment', '*', '100', '>=', 'demand'],
                 "group_by": "markets",
             },
         ]
@@ -223,7 +230,7 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
                                                 index=[2, 3],
                                                 is_aggregation=False)
         self.assertEqual(get_source(const_2),
-                         "model.x[i]*2<=DATA_FRAME.demand[i]")
+                         "model.x[i]*100>=DATA_FRAME.demand[i]")
 
         model = generate_model_with_data_frame(
             data_frame=self.data_frame,
@@ -234,6 +241,10 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
             direction="minimize",
             constraints=constraints)
         self.assertTrue(isinstance(model, pyomo_env.ConcreteModel))
+
+        result = solve_model(model, 'glpk')
+        self.assertTrue(
+            np.array_equal(result, np.array([99, 1, 31, 59], dtype='int64')))
 
 
 if __name__ == '__main__':

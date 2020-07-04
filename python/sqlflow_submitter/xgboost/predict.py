@@ -138,8 +138,7 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             if not line:
                 break
             row = [
-                item.split(":")[1]
-                for i, item in enumerate(line.strip().split("\t"))
+                item for i, item in enumerate(line.strip().split("/"))
                 if i != label_index
             ]
             row.append(str(preds[line_no]))
