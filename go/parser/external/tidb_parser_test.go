@@ -181,4 +181,7 @@ func TestTiDBParseDeps(t *testing.T) {
 	stmts, _, e := p.Parse("SELECT * FROM origial_table;\nCREATE TABLE prepared AS SELECT * FROM original_table;")
 	a.NoError(e)
 	a.Equal(2, len(stmts))
+	a.Equal("origial_table", stmts[0].Inputs[0])
+	a.Equal("prepared", stmts[1].Outputs[0])
+	a.Equal("original_table", stmts[1].Inputs[0])
 }

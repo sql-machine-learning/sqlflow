@@ -23,6 +23,7 @@ import (
 
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
+	"github.com/pingcap/parser/format"
 	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -126,13 +127,30 @@ func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
 				retStmts = append(retStmts, &Statement{String: nodes[0].Text()})
 				pos += len(sql)
 
+				restoreFlags := format.RestoreStringSingleQuotes | format.RestoreKeyWordUppercase
 				switch nodes[0].(type) {
-				case *ast.SelectStmt, *ast.UnionStmt:
-					fmt.Printf("stmt(%s) is select stmt\n", sql)
+				case *ast.SelectStmt:
+					n := nodes[0].(*ast.SelectStmt)
+					if n.From != nil {
+						var sb strings.Builder
+						// TODO(typhoonzero): Deal with JOIN clause
+						// TODO(typhoonzero): Deal with nested SELECT
+						n.From.Restore(format.NewRestoreCtx(restoreFlags, &sb))
+						retStmts[len(retStmts)-1].Inputs = append(retStmts[len(retStmts)-1].Inputs, sb.String())
+					}
+					// case *ast.UnionStmt: is also query statement, should find way to deal with it
+					// deal with insert, update, drop etc.
 				case *ast.CreateTableStmt:
-					fmt.Printf("stmt(%s) is create table stmt\n", sql)
-				default:
-					fmt.Printf("stmt(%s) type of other \n", sql)
+					n := nodes[0].(*ast.CreateTableStmt)
+					retStmts[len(retStmts)-1].Outputs = append(retStmts[len(retStmts)-1].Outputs, n.Table.Name.String())
+					// TODO(typhoonzero): deal with AS SELECT * FROM table, which table is a input
+					slctNode, ok := n.Select.(*ast.SelectStmt)
+					if ok {
+						from := slctNode.From
+						var sb strings.Builder
+						from.Restore(format.NewRestoreCtx(restoreFlags, &sb))
+						retStmts[len(retStmts)-1].Inputs = append(retStmts[len(retStmts)-1].Inputs, sb.String())
+					}
 				}
 			}
 			continue
