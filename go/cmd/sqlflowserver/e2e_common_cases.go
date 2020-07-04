@@ -646,6 +646,8 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a := assert.New(t)
 
+	testDBType := os.Getenv("SQLFLOW_TEST_DB")
+
 	dbName := "test_xgb_kv_column"
 
 	executeSQLFunc := func(sql string) {
@@ -659,14 +661,28 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		a.Equal(len(rows), 1)
 	}
 
-	dropDBSQL := fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+	removeColumnNamePrefix := func(columns []string) []string {
+		for idx := range columns {
+			split := strings.Split(columns[idx], ".")
+			columns[idx] = split[len(split)-1]
+		}
+		return columns
+	}
+
+	dropDBSQL := ""
+	if testDBType == "hive" {
+		// Hive can only drop non-empty database in the CASCADE mode.
+		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE;", dbName)
+	} else {
+		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+	}
 
 	defer executeSQLFunc(dropDBSQL)
 
 	prepareDataSQL := []string{
 		dropDBSQL,
 		fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s;`, dbName),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.train (c1 VARCHAR(255), label_col DECIMAL);`, dbName),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.train (c1 VARCHAR(255), label_col FLOAT);`, dbName),
 		fmt.Sprintf(`INSERT INTO %s.train VALUES("1:0.5 3:-1.5 5:6.7", 0.5), ("3:-1.3 10:0.6 2:-3.4", -0.5);`, dbName),
 	}
 
@@ -693,6 +709,38 @@ INTO %s;
 	trainSQL = fmt.Sprintf(trainSQLTemplate, dbName, ",11", trainedModel)
 	executeSQLFunc(trainSQL)
 	hasModelTableFunc(trainedModel)
+
+	const predictTable = "predict_table"
+	const predictSQLTemplate = `SELECT c1, label_col FROM %[1]s.train TO PREDICT %[1]s.%[2]s.%[3]s USING %[4]s;`
+
+	predictSQLWithOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, predictTable, "new_label_col", trainedModel)
+	executeSQLFunc(predictSQLWithOriginalLabel)
+	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
+	a.NoError(err)
+	a.Equal(2, len(rows))
+	a.Equal(3, len(columns))
+	columns = removeColumnNamePrefix(columns)
+	a.Equal("c1", columns[0])
+	a.Equal("label_col", columns[1])
+	a.Equal("new_label_col", columns[2])
+
+	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, predictTable, "label_col", trainedModel)
+	executeSQLFunc(predictSQLWithoutOriginalLabel)
+	columns, rows, _, err = connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
+	a.NoError(err)
+	a.Equal(2, len(rows))
+	a.Equal(2, len(columns))
+	columns = removeColumnNamePrefix(columns)
+	a.Equal("c1", columns[0])
+	a.Equal("label_col", columns[1])
+
+	const evaluateTable = "evaluate_table"
+	evaluateSQL := fmt.Sprintf(`SELECT c1, label_col FROM %[1]s.train 
+TO EVALUATE %[2]s WITH validation.metrics="mean_squared_error" LABEL label_col INTO %[1]s.%[3]s;`, dbName, trainedModel, evaluateTable)
+	executeSQLFunc(evaluateSQL)
+
+	explainSQL := fmt.Sprintf("SELECT c1, label_col FROM %[1]s.train TO EXPLAIN %s WITH summary.plot_type=bar;", dbName, trainedModel)
+	executeSQLFunc(explainSQL)
 }
 
 func decodeAnyTypedRowData(anyData [][]*any.Any) ([][]interface{}, error) {
