@@ -7,10 +7,12 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.5+incompatible
 	github.com/apache/thrift v0.13.0 // indirect
 	github.com/argoproj/argo v2.4.3+incompatible
-	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
+	github.com/argoproj/pkg v0.0.0-20200624215116-23e74cb168fe
+	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
 	github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f // indirect
 	github.com/beltran/gohive v1.0.0 // indirect
 	github.com/bitly/go-simplejson v0.5.0
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/c-bata/go-prompt v0.0.0-20190826134812-0f95e1d1de2e
 	github.com/cosiner/argv v0.0.1 // indirect
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
@@ -31,9 +33,7 @@ require (
 	github.com/peterh/liner v1.1.0 // indirect
 	github.com/pingcap/parser v0.0.0-20190613045206-37cc370a20a4
 	github.com/pingcap/tidb v0.0.0-20190625145607-60965b006877
-	github.com/pkg/errors v0.8.1
-	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942
-	github.com/prometheus/common v0.0.0-20181020173914-7e9e6cabbd39
+	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 // indirect
 	github.com/rakyll/gotest v0.0.0-20191108192113-45d501058f2a // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sbinet/go-python v0.0.0-20190615090516-46d882be3991 // indirect
@@ -43,13 +43,12 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
-	go.uber.org/zap v1.9.1
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
-	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76
+	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76 // indirect
 	golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f // indirect
 	golang.org/x/tools/gopls v0.4.1 // indirect
 	google.golang.org/grpc v1.27.0

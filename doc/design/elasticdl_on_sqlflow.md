@@ -20,7 +20,7 @@ WITH
   num_classes = 10
 COLUMN
   c1,
-  NUMERIC(c2, 10),
+  DENSE(c2, 10),
   BUCKET(c3, [0, 10, 100]),
   c4
 LABEL class
@@ -77,7 +77,7 @@ Steps:
 
    - In model definition function e.g. `custom_model()`, we need to configure model input and output shapes correctly in `inputs = tf.keras.layers.Input(shape=<input_shape>)` (only when the model is defined using `tf.keras` functional APIs) and `outputs = tf.keras.layers.Dense(<num_classes>)`(based on `COLUMN ... LABEL ...`). For this MVP, users can provide `<input_shape>` and `<num_classes>` using `WITH` clause which will then get passed to the model constructor `custom_model(input_shape, num_classes)` via `--params` argument in ElasticDL high-level API. In the future, this will be inferred from the ODPS table.
    - Pass additional parameters from `WITH` clause to `custom_model()`'s instantiation, such as `optimizer` and `loss`.
-   - Skip support for feature transformation functions such as `NUMERIC` or `BUCKET` in `COLUMN` clause for now as this requires additional design details and discussions on the use of feature column APIs.
+   - Skip support for feature transformation functions such as `DENSE` or `BUCKET` in `COLUMN` clause for now as this requires additional design details and discussions on the use of feature column APIs.
    - Pass column names, shapes, and types for features and labels to `dataset_fn`'s feature description that will be used in `tf.io.parse_single_example()`. For this MVP, column names can be obtained from `SELECT ... LABEL ...`. Each feature columns will be of shape `[1]` and of type `tf.float32` while label column is of shape `[1]` and of type `tf.int64` for classification problems and `tf.float32` for regression problems. In the future, this will be inferred from the ODPS table. An example `dataset_fn()` looks like the following:
 
    ```python
