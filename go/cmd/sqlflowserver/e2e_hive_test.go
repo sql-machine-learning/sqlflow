@@ -57,4 +57,8 @@ func TestEnd2EndHive(t *testing.T) {
 	caseXGBoostFeatureColumn(t, false)
 
 	t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
+
+	t.Run("CaseTestOptimizeClauseWithoutGroupBy", caseTestOptimizeClauseWithoutGroupBy)
+
+	t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
 }

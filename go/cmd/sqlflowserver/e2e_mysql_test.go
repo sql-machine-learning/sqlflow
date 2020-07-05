@@ -78,6 +78,10 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseEnd2EndCrossFeatureColumn", caseEnd2EndCrossFeatureColumn)
 
 	t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
+
+	t.Run("CaseTestOptimizeClauseWithoutGroupBy", caseTestOptimizeClauseWithoutGroupBy)
+
+	t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
 }
 
 func CaseShouldError(t *testing.T) {

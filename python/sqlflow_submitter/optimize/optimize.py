@@ -11,12 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import io
 import sys
 
 import numpy as np
+import pandas as pd
 import pyomo.environ as pyomo_env
 import six
+import sqlflow_submitter.db as db
 from pyomo.environ import (Integers, NegativeIntegers, NegativeReals,
                            NonNegativeIntegers, NonNegativeReals,
                            NonPositiveIntegers, NonPositiveReals,
@@ -379,3 +382,90 @@ def solve_model(model, solver):
 
     np_dtype = np.int64 if model.x[0].is_integer() else np.float64
     return np.array(result_values, dtype=np_dtype)
+
+
+def load_db_data_to_data_frame(datasource, select):
+    conn = db.connect_with_data_source(datasource)
+    selected_cols = db.selected_cols(conn.driver, conn, select)
+    generator = db.db_generator(conn.driver, conn, select)
+
+    dtypes = [None] * len(selected_cols)
+    values = [[] for _ in six.moves.range(len(selected_cols))]
+    for row_value, _ in generator():
+        for i, item in enumerate(row_value):
+            if isinstance(item, six.string_types):
+                dtypes[i] = np.str
+
+            if dtypes[i] != np.str:
+                if isinstance(item, (six.integer_types, float)):
+                    int_val = long(item) if six.PY2 else int(item)
+                    if int_val != item:
+                        dtypes[i] = np.float64
+                else:
+                    raise ValueError("unsupported data type {}".format(
+                        type(item)))
+
+            values[i].append(item)
+
+    numpy_dict = collections.OrderedDict()
+    for col_name, dtype, value in six.moves.zip(selected_cols, dtypes, values):
+        if dtype is None:
+            dtype = np.int64
+
+        numpy_dict[col_name] = np.array(value, dtype=dtype)
+
+    return pd.DataFrame(numpy_dict)
+
+
+def save_solved_result_in_db(solved_result, data_frame, variables,
+                             result_value_name, datasource, result_table):
+    column_names = []
+    for col in data_frame.columns:
+        found = False
+        for var in variables:
+            if var.lower() == col.lower():
+                found = True
+                break
+
+        if found:
+            column_names.append(col)
+
+    data_frame = data_frame[[*column_names]]
+
+    if len(variables) == 1 and variables[0].lower() == result_value_name.lower(
+    ):
+        result_value_name += "_value"
+
+    column_names.append(result_value_name)
+    data_frame[result_value_name] = solved_result
+
+    conn = db.connect_with_data_source(datasource)
+    with db.buffered_db_writer(conn.driver, conn, result_table,
+                               column_names) as w:
+        for i in six.moves.range(len(data_frame)):
+            rows = list(data_frame.loc[i])
+            w.write(rows)
+
+    print('Solved result is:')
+    print(data_frame)
+    print('Saved in {}.'.format(result_table))
+
+
+def run_optimize(datasource, select, variables, variable_type,
+                 result_value_name, objective, direction, constraints, solver,
+                 result_table):
+    data_frame = load_db_data_to_data_frame(datasource, select)
+    model = generate_model_with_data_frame(data_frame=data_frame,
+                                           variables=variables,
+                                           variable_type=variable_type,
+                                           result_value_name=result_value_name,
+                                           objective=objective,
+                                           direction=direction,
+                                           constraints=constraints)
+    solved_result = solve_model(model, solver)
+    save_solved_result_in_db(solved_result=solved_result,
+                             data_frame=data_frame,
+                             variables=variables,
+                             result_value_name=result_value_name,
+                             datasource=datasource,
+                             result_table=result_table)

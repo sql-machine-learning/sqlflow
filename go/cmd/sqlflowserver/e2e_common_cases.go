@@ -15,8 +15,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/golang/protobuf/ptypes/any"
 	"os"
+	"reflect"
 	"regexp"
+	"sort"
+	"sqlflow.org/sqlflow/go/proto"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,6 +53,7 @@ func caseShowDatabases(t *testing.T) {
 		"housing":                 "",
 		"iris":                    "",
 		"mysql":                   "",
+		"optimize_test_db":        "",
 		"performance_schema":      "",
 		"sqlflow_models":          "",
 		"sf_home":                 "", // default auto train&val database
@@ -736,4 +741,149 @@ TO EVALUATE %[2]s WITH validation.metrics="mean_squared_error" LABEL label_col I
 
 	explainSQL := fmt.Sprintf("SELECT c1, label_col FROM %[1]s.train TO EXPLAIN %s WITH summary.plot_type=bar;", dbName, trainedModel)
 	executeSQLFunc(explainSQL)
+}
+
+func decodeAnyTypedRowData(anyData [][]*any.Any) ([][]interface{}, error) {
+	slice := make([][]interface{}, 0)
+	for _, row := range anyData {
+		rowSlice := make([]interface{}, 0)
+		for _, cellValue := range row {
+			decodedCellValue, err := proto.DecodePODType(cellValue)
+			if err != nil {
+				return nil, err
+			}
+			rowSlice = append(rowSlice, decodedCellValue)
+		}
+		slice = append(slice, rowSlice)
+	}
+	return slice, nil
+}
+
+func caseTestOptimizeClauseWithoutGroupBy(t *testing.T) {
+	a := assert.New(t)
+
+	removeColumnNamePrefix := func(columns []string) []string {
+		for i, c := range columns {
+			split := strings.Split(c, ".")
+			columns[i] = split[len(split)-1]
+		}
+		return columns
+	}
+
+	dbName := "optimize_test_db"
+
+	resultTable := fmt.Sprintf("%s.%s", dbName, "woodcarving_result")
+
+	woodcarvingOptimizeSQLTemplate := `SELECT * FROM optimize_test_db.woodcarving
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * %[1]s)
+CONSTRAINT SUM(finishing * %[1]s) <= 100, SUM(carpentry * %[1]s) <= 80, %[1]s <= max_num
+WITH 
+	variables="%[1]s(product)",
+	var_type="NonNegativeIntegers"
+USING glpk
+INTO ` + resultTable + `;`
+
+	for _, product := range []string{"product", "amount"} {
+		woodcarvingSQL := fmt.Sprintf(woodcarvingOptimizeSQLTemplate, product)
+		_, _, _, err := connectAndRunSQL(woodcarvingSQL)
+		a.NoError(err)
+
+		actualResultValue := product
+		if actualResultValue == "product" {
+			actualResultValue += "_value"
+		}
+
+		queryResultSQL := fmt.Sprintf("SELECT product, %s FROM %s;", actualResultValue, resultTable)
+		header, rows, _, err := connectAndRunSQL(queryResultSQL)
+		header = removeColumnNamePrefix(header)
+		a.NoError(err)
+		a.Equal(2, len(header))
+
+		a.Equal("product", header[0])
+		a.Equal(actualResultValue, header[1])
+
+		a.Equal(2, len(rows))
+		decodedRows, err := decodeAnyTypedRowData(rows)
+		a.NoError(err)
+		a.Equal(len(rows), len(decodedRows))
+		for i := 0; i < len(decodedRows); i++ {
+			a.Equal(2, len(decodedRows[i]))
+			a.IsType("", decodedRows[i][0])
+			a.IsType(int64(0), decodedRows[i][1])
+		}
+
+		sort.Slice(decodedRows, func(i int, j int) bool {
+			return decodedRows[i][0].(string) < decodedRows[j][0].(string)
+		})
+
+		a.True(reflect.DeepEqual(decodedRows[0], []interface{}{"soldier", int64(20)}))
+		a.True(reflect.DeepEqual(decodedRows[1], []interface{}{"train", int64(60)}))
+	}
+}
+
+func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
+	a := assert.New(t)
+
+	removeColumnNamePrefix := func(columns []string) []string {
+		for i, c := range columns {
+			split := strings.Split(c, ".")
+			columns[i] = split[len(split)-1]
+		}
+		return columns
+	}
+
+	dbName := "optimize_test_db"
+
+	resultTable := fmt.Sprintf("%s.%s", dbName, "shipment_result")
+
+	shipmentOptimizeSQL := fmt.Sprintf(`SELECT 
+		t.plants AS plants, 
+		t.markets AS markets, 
+		t.distance AS distance, 
+		p.capacity AS capacity, 
+		m.demand AS demand FROM optimize_test_db.transportation_table AS t
+    LEFT JOIN optimize_test_db.plants_table AS p ON t.plants = p.plants
+    LEFT JOIN optimize_test_db.markets_table AS m ON t.markets = m.markets
+	TO MINIMIZE SUM(shipment * distance * 90 / 1000)
+	CONSTRAINT SUM(shipment) <= capacity GROUP BY plants,
+			   SUM(shipment) >= demand GROUP BY markets
+	WITH variables="shipment(plants,markets)",
+		 var_type="NonNegativeIntegers"
+	INTO %s;`, resultTable)
+
+	_, _, _, err := connectAndRunSQL(shipmentOptimizeSQL)
+	a.NoError(err)
+
+	queryResultSQL := fmt.Sprintf("SELECT plants, markets, shipment FROM %s;", resultTable)
+	header, rows, _, err := connectAndRunSQL(queryResultSQL)
+	header = removeColumnNamePrefix(header)
+	a.NoError(err)
+	a.Equal(3, len(header))
+
+	a.Equal("plants", header[0])
+	a.Equal("markets", header[1])
+	a.Equal("shipment", header[2])
+
+	a.Equal(4, len(rows))
+	decodedRows, err := decodeAnyTypedRowData(rows)
+	a.NoError(err)
+	a.Equal(len(rows), len(decodedRows))
+	for i := 0; i < len(decodedRows); i++ {
+		a.Equal(3, len(decodedRows[i]))
+		a.IsType("", decodedRows[i][0])
+		a.IsType("", decodedRows[i][1])
+		a.IsType(int64(0), decodedRows[i][2])
+	}
+
+	sort.Slice(decodedRows, func(i int, j int) bool {
+		if decodedRows[i][0].(string) != decodedRows[j][0].(string) {
+			return decodedRows[i][0].(string) < decodedRows[j][0].(string)
+		}
+		return decodedRows[i][1].(string) < decodedRows[j][1].(string)
+	})
+
+	a.True(reflect.DeepEqual(decodedRows[0], []interface{}{"plantA", "marketA", int64(100)}))
+	a.True(reflect.DeepEqual(decodedRows[1], []interface{}{"plantA", "marketB", int64(0)}))
+	a.True(reflect.DeepEqual(decodedRows[2], []interface{}{"plantB", "marketA", int64(30)}))
+	a.True(reflect.DeepEqual(decodedRows[3], []interface{}{"plantB", "marketB", int64(60)}))
 }

@@ -17,6 +17,8 @@ import "sqlflow.org/sqlflow/go/ir"
 
 type optimizeFiller struct {
 	UserID          string
+	DataSource      string
+	Select          string
 	Variables       []string
 	ResultValueName string
 	VariableType    string
@@ -29,6 +31,32 @@ type optimizeFiller struct {
 	ResultTable     string
 	RunnerModule    string
 }
+
+const pyomoNativeOptimizeText = `
+from sqlflow_submitter.optimize import run_optimize
+
+variables = [{{range .Variables}}"{{.}}",{{end}}]
+
+objective = [{{range .Objective.ExpressionTokens}}"{{.}}",{{end}}]
+
+constraints = [{{range .Constraints}}
+    {
+        "expression": [{{range .ExpressionTokens}}"{{.}}",{{end}}],
+        "group_by": "{{.GroupBy}}",
+    },
+{{end}}]
+
+run_optimize(datasource="{{.DataSource}}", 
+             select='''{{.Select}}''',
+             variables=variables, 
+             variable_type="{{.VariableType}}",
+             result_value_name="{{.ResultValueName}}",
+             objective=objective,
+             direction="{{.Direction}}",
+             constraints=constraints,
+             solver="{{.Solver}}",
+             result_table="{{.ResultTable}}")
+`
 
 const optFlowRunnerText = `
 from sqlflow_submitter.optimize import BaseOptFlowRunner
