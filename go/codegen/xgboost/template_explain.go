@@ -35,7 +35,7 @@ import sqlflow_submitter.xgboost as xgboost_extended
 from sqlflow_submitter.xgboost.explain import explain
 
 feature_field_meta = json.loads('''{{.FeatureFieldMetaJSON}}''')
-label_spec = json.loads('''{{.LabelJSON}}''')
+label_meta = json.loads('''{{.LabelJSON}}''')
 summary_params = json.loads('''{{.ShapSummaryParams}}''')
 
 feature_column_names = [{{range .FeatureColumnNames}}
@@ -49,7 +49,7 @@ explain(
     select='''{{.DatasetSQL}}''',
 	feature_field_meta=feature_field_meta,
 	feature_column_names=feature_column_names,
-    label_spec=label_spec,
+    label_meta=label_meta,
     summary_params=summary_params,
     is_pai="{{.IsPAI}}" == "true",
     pai_explain_table="{{.PAIExplainTable}}",

@@ -40,13 +40,13 @@ def infer_dtype(feature):
 def xgb_shap_dataset(datasource,
                      select,
                      feature_column_names,
-                     label_spec,
-                     feature_specs,
+                     label_meta,
+                     feature_metas,
                      is_pai,
                      pai_explain_table,
                      transform_fn=None,
                      feature_column_code=""):
-    label_column_name = label_spec["feature_name"]
+    label_column_name = label_meta["feature_name"]
     if is_pai:
         pai_table_parts = pai_explain_table.split(".")
         formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
@@ -54,13 +54,13 @@ def xgb_shap_dataset(datasource,
         stream = db.pai_maxcompute_db_generator(formatted_pai_table,
                                                 feature_column_names,
                                                 label_column_name,
-                                                feature_specs)
+                                                feature_metas)
         selected_cols = db.pai_selected_cols(formatted_pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
         stream = db.db_generator(conn.driver, conn, select,
-                                 feature_column_names, label_spec,
-                                 feature_specs)
+                                 feature_column_names, label_meta,
+                                 feature_metas)
         selected_cols = db.selected_cols(conn.driver, conn, select)
 
     if transform_fn:
@@ -77,7 +77,7 @@ def xgb_shap_dataset(datasource,
     for row, label in stream():
         features = db.read_features_from_row(row, selected_cols,
                                              feature_column_names,
-                                             feature_specs)
+                                             feature_metas)
         if transform_fn:
             features = transform_fn(features)
 
@@ -158,7 +158,7 @@ def explain(datasource,
             select,
             feature_field_meta,
             feature_column_names,
-            label_spec,
+            label_meta,
             summary_params,
             result_table="",
             is_pai=False,
@@ -177,7 +177,7 @@ def explain(datasource,
     x = xgb_shap_dataset(datasource,
                          select,
                          feature_column_names,
-                         label_spec,
+                         label_meta,
                          feature_field_meta,
                          is_pai,
                          pai_explain_table,
