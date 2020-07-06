@@ -107,6 +107,37 @@ func (p *tidbParser) Parse(program string) ([]*Statement, int, error) {
 	return ss, pos, err
 }
 
+// parseInputsOutputs parse the SELECT ast node and write inputs/outputs table names in retStmt.
+func parseInputsOutputs(node ast.StmtNode, retStmt *Statement) {
+	restoreFlags := format.RestoreStringSingleQuotes | format.RestoreKeyWordUppercase
+	switch node.(type) {
+	case *ast.SelectStmt:
+		n := node.(*ast.SelectStmt)
+		if n.From != nil {
+			var sb strings.Builder
+			// TODO(typhoonzero): Deal with JOIN clause
+			// TODO(typhoonzero): Deal with nested SELECT
+			n.From.Restore(format.NewRestoreCtx(restoreFlags, &sb))
+			retStmt.Inputs = append(retStmt.Inputs, sb.String())
+		}
+		// case *ast.UnionStmt: is also query statement, should find way to deal with it
+		// deal with insert, update, drop etc.
+	case *ast.CreateTableStmt:
+		n := node.(*ast.CreateTableStmt)
+		retStmt.Outputs = append(retStmt.Outputs, n.Table.Name.String())
+		// TODO(typhoonzero): deal with AS SELECT * FROM table, which table is a input
+		slctNode, ok := n.Select.(*ast.SelectStmt)
+		if ok {
+			from := slctNode.From
+			if from != nil {
+				var sb strings.Builder
+				from.Restore(format.NewRestoreCtx(restoreFlags, &sb))
+				retStmt.Inputs = append(retStmt.Inputs, sb.String())
+			}
+		}
+	}
+}
+
 func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
 	// split program into single statements
 	stmts, err := p.splitStatementToPieces(program)
@@ -126,32 +157,7 @@ func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
 			} else {
 				retStmts = append(retStmts, &Statement{String: nodes[0].Text()})
 				pos += len(sql)
-
-				restoreFlags := format.RestoreStringSingleQuotes | format.RestoreKeyWordUppercase
-				switch nodes[0].(type) {
-				case *ast.SelectStmt:
-					n := nodes[0].(*ast.SelectStmt)
-					if n.From != nil {
-						var sb strings.Builder
-						// TODO(typhoonzero): Deal with JOIN clause
-						// TODO(typhoonzero): Deal with nested SELECT
-						n.From.Restore(format.NewRestoreCtx(restoreFlags, &sb))
-						retStmts[len(retStmts)-1].Inputs = append(retStmts[len(retStmts)-1].Inputs, sb.String())
-					}
-					// case *ast.UnionStmt: is also query statement, should find way to deal with it
-					// deal with insert, update, drop etc.
-				case *ast.CreateTableStmt:
-					n := nodes[0].(*ast.CreateTableStmt)
-					retStmts[len(retStmts)-1].Outputs = append(retStmts[len(retStmts)-1].Outputs, n.Table.Name.String())
-					// TODO(typhoonzero): deal with AS SELECT * FROM table, which table is a input
-					slctNode, ok := n.Select.(*ast.SelectStmt)
-					if ok {
-						from := slctNode.From
-						var sb strings.Builder
-						from.Restore(format.NewRestoreCtx(restoreFlags, &sb))
-						retStmts[len(retStmts)-1].Inputs = append(retStmts[len(retStmts)-1].Inputs, sb.String())
-					}
-				}
+				parseInputsOutputs(nodes[0], retStmts[len(retStmts)-1])
 			}
 			continue
 		}
