@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
@@ -29,6 +29,8 @@ if [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_AK" = "" ] || [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_S
     echo "Skip MaxCompute tests because SQLFLOW_TEST_DB_MAXCOMPUTE_AK or SQLFLOW_TEST_DB_MAXCOMPUTE_SK is empty"
     exit 0
 fi
+
+exit 1
 
 # NOTE: we have already installed sqlflow_submitter under python installation
 # path using latest develop branch, but when testing on CI, we need to use the
