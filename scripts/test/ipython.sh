@@ -18,7 +18,7 @@ set -e
 # of sqlflow:mysql should create this file on a bind mount of the host
 # filesystem.  So, the container running this script should also bind
 # mount the same host directory to /work.
-while read i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
+while read -r i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
     < <(inotifywait  -e create,open --format '%f' --quiet /work --monitor)
 
 DS="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
@@ -26,7 +26,7 @@ DS="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 go generate ./...
 go install ./...
 
-# NOTE: we have already installed sqlflow_submitter under python
+# NOTE: we have already installed runtime under python
 # installation path using latest develop branch, but when testing on
 # CI, we need to use the code in the current pull request.
 export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python

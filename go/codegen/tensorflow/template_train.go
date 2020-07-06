@@ -40,9 +40,9 @@ const tfTrainTemplateText = `
 import copy
 import traceback
 import tensorflow as tf
-import sqlflow_submitter
-from sqlflow_submitter.tensorflow.train import train
-from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
+import runtime
+from runtime.tensorflow.train import train
+from runtime.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import (DNNClassifier,
                                   DNNRegressor,
                                   LinearClassifier,

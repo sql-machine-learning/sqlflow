@@ -31,8 +31,8 @@ type explainFiller struct {
 
 const explainTemplateText = `
 import json
-import sqlflow_submitter.xgboost as xgboost_extended
-from sqlflow_submitter.xgboost.explain import explain
+import runtime.xgboost as xgboost_extended
+from runtime.xgboost.explain import explain
 
 feature_field_meta = json.loads('''{{.FeatureFieldMetaJSON}}''')
 label_meta = json.loads('''{{.LabelJSON}}''')

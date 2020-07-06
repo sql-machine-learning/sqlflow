@@ -56,7 +56,7 @@ COPY --from=builder /install /usr/
 
 ADD build/step /usr/bin/
 ADD build/*.jar /opt/sqlflow/parser/
-ADD python/sqlflow_submitter /opt/sqlflow/python/sqlflow_submitter/
+ADD python/runtime /opt/sqlflow/python/runtime/
 ADD python/symbol_extractor.py /opt/sqlflow/python/
 ADD python/plotille_text_backend.py /opt/sqlflow/python/
 
