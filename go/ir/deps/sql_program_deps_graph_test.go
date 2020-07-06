@@ -21,7 +21,7 @@ import (
 	"sqlflow.org/sqlflow/go/parser"
 )
 
-func TestExtendedSyntaxParseToTrain(t *testing.T) {
+func TestParseDeps(t *testing.T) {
 	a := assert.New(t)
 	sqlProgram := `CREATE TABLE table1 AS SELECT * FROM origin;
 	CREATE TABLE table2 AS SELECT * FROM table1;
@@ -33,14 +33,18 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	if driverType == "" {
 		driverType = "mysql"
 	}
+	if driverType != "mysql" {
+		t.Skipf("skip SQL program deps test for db driver %s", driverType)
+	}
 	res, err := parser.Parse(driverType, sqlProgram)
 	a.NoError(err)
 	Stmts, err := Analyze(res)
 	a.NoError(err)
 	a.Equal(6, len(Stmts))
 	if Stmts[0] != nil {
-		// FIXME(typhoonzero): add this test when mysql/hive/calcite parser implemented getting input/output tables.
-		// This test is now used for MaxCompute parser.
-		a.Equal(0, len(Stmts[0].Outputs))
+		a.Equal(1, len(Stmts[0].Outputs))
+		a.Equal(1, len(Stmts[0].Inputs))
+		a.Equal(1, len(Stmts[1].Outputs))
+		a.Equal(1, len(Stmts[1].Inputs))
 	}
 }
