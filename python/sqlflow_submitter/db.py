@@ -227,11 +227,11 @@ def get_pai_table_row_num(table):
 
 
 def read_features_from_row(row, select_cols, feature_column_names,
-                           feature_specs):
+                           feature_metas):
     features = []
     for name in feature_column_names:
         feature = read_feature(row[select_cols.index(name)],
-                               feature_specs[name], name)
+                               feature_metas[name], name)
         features.append(feature)
     return tuple(features)
 
@@ -240,8 +240,8 @@ def db_generator(driver,
                  conn,
                  statement,
                  feature_column_names=None,
-                 label_spec=None,
-                 feature_specs=None,
+                 label_meta=None,
+                 feature_metas=None,
                  fetch_size=128):
     def reader():
         if driver == "hive":
@@ -256,9 +256,9 @@ def db_generator(driver,
             field_names = None if cursor.description is None \
                 else [i[0] for i in cursor.description]
 
-        if label_spec:
+        if label_meta:
             try:
-                label_idx = field_names.index(label_spec["feature_name"])
+                label_idx = field_names.index(label_meta["feature_name"])
             except ValueError:
                 # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
                 label_idx = None
@@ -276,15 +276,15 @@ def db_generator(driver,
                 # NOTE: If there is no label clause in the extended SQL, the default label value would
                 # be -1, the Model implementation can determine use it or not.
                 label = row[label_idx] if label_idx is not None else -1
-                if label_spec and label_spec["delimiter"] != "":
-                    if label_spec["dtype"] == "float32":
+                if label_meta and label_meta["delimiter"] != "":
+                    if label_meta["dtype"] == "float32":
                         label = np.fromstring(label,
                                               dtype=float,
-                                              sep=label_spec["delimiter"])
-                    elif label_spec["dtype"] == "int64":
+                                              sep=label_meta["delimiter"])
+                    elif label_meta["dtype"] == "int64":
                         label = np.fromstring(label,
                                               dtype=int,
-                                              sep=label_spec["delimiter"])
+                                              sep=label_meta["delimiter"])
                 if label_idx is None:
                     yield list(row), None
                 else:
@@ -296,7 +296,7 @@ def db_generator(driver,
     if driver == "maxcompute":
         from sqlflow_submitter.maxcompute import MaxCompute
         return MaxCompute.db_generator(conn, statement, feature_column_names,
-                                       label_spec, feature_specs, fetch_size)
+                                       label_meta, feature_metas, fetch_size)
     if driver == "hive":
         # trip the suffix ';' to avoid the ParseException in hive
         statement = statement.rstrip(';')
@@ -306,7 +306,7 @@ def db_generator(driver,
 def pai_maxcompute_db_generator(table,
                                 feature_column_names,
                                 label_column_name,
-                                feature_specs,
+                                feature_metas,
                                 fetch_size=128,
                                 slice_id=0,
                                 slice_count=1):

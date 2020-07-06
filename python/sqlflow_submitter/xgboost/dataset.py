@@ -28,9 +28,9 @@ from sqlflow_submitter import db
 def xgb_dataset(datasource,
                 fn,
                 dataset_sql,
-                feature_specs,
+                feature_metas,
                 feature_column_names,
-                label_spec,
+                label_meta,
                 is_pai=False,
                 pai_table="",
                 pai_single_file=False,
@@ -57,9 +57,9 @@ def xgb_dataset(datasource,
     if is_pai:
         for dmatrix in pai_dataset(
                 fn,
-                feature_specs,
+                feature_metas,
                 feature_column_names,
-                label_spec,
+                label_meta,
                 "odps://{}/tables/{}".format(*pai_table.split(".")),
                 pai_single_file,
                 cache,
@@ -73,7 +73,7 @@ def xgb_dataset(datasource,
 
     conn = db.connect_with_data_source(datasource)
     gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
-                          label_spec, feature_specs)()
+                          label_meta, feature_metas)()
 
     selected_cols = db.selected_cols(conn.driver, conn, dataset_sql)
     for _ in six.moves.range(epoch):
@@ -83,8 +83,8 @@ def xgb_dataset(datasource,
         written_rows = dump_dmatrix(step_file_name,
                                     gen,
                                     feature_column_names,
-                                    feature_specs,
-                                    label_spec,
+                                    feature_metas,
+                                    label_meta,
                                     selected_cols,
                                     transform_fn=transform_fn,
                                     raw_data_dir=raw_data_dir)
@@ -99,8 +99,8 @@ def xgb_dataset(datasource,
             written_rows = dump_dmatrix(step_file_name,
                                         gen,
                                         feature_column_names,
-                                        feature_specs,
-                                        label_spec,
+                                        feature_metas,
+                                        label_meta,
                                         selected_cols,
                                         transform_fn=transform_fn,
                                         raw_data_dir=raw_data_dir)
@@ -109,7 +109,7 @@ def xgb_dataset(datasource,
 def dump_dmatrix(filename,
                  generator,
                  feature_column_names,
-                 feature_specs,
+                 feature_metas,
                  has_label,
                  selected_cols,
                  batch_size=None,
@@ -128,7 +128,7 @@ def dump_dmatrix(filename,
         for row, label in generator:
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
-                                                 feature_specs)
+                                                 feature_metas)
 
             if raw_data_fid is not None:
                 raw_data_fid.write("/".join([str(r) for r in row]) + "\n")
@@ -238,9 +238,9 @@ def get_pai_table_slice_count(table, nworkers, batch_size):
 
 
 def pai_dataset(filename,
-                feature_specs,
+                feature_metas,
                 feature_column_names,
-                label_spec,
+                label_meta,
                 pai_table,
                 single_file,
                 cache,
@@ -275,7 +275,7 @@ def pai_dataset(filename,
                   stdin=PIPE)
         p.communicate(
             json.dumps([
-                dname, feature_specs, feature_column_names, label_spec,
+                dname, feature_metas, feature_column_names, label_meta,
                 pai_table, slice_id, slice_count, feature_column_code,
                 raw_data_dir
             ]))
@@ -326,8 +326,8 @@ def pai_dataset(filename,
     pool.join()
 
 
-def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
-                                   label_spec, pai_table, slice_id,
+def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
+                                   label_meta, pai_table, slice_id,
                                    slice_count, feature_column_code,
                                    raw_data_dir):
     import sqlflow_submitter.xgboost as xgboost_extended
@@ -335,11 +335,11 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *feature_column_transformers)
 
-    label_column_name = label_spec['feature_name'] if label_spec else None
+    label_column_name = label_meta['feature_name'] if label_meta else None
     gen = db.pai_maxcompute_db_generator(pai_table,
                                          feature_column_names,
                                          label_column_name,
-                                         feature_specs,
+                                         feature_metas,
                                          slice_id=slice_id,
                                          slice_count=slice_count)()
     selected_cols = db.pai_selected_cols(pai_table)
@@ -347,8 +347,8 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
     dump_dmatrix(filename,
                  gen,
                  feature_column_names,
-                 feature_specs,
-                 label_spec,
+                 feature_metas,
+                 label_meta,
                  selected_cols,
                  transform_fn=transform_fn,
                  raw_data_dir=raw_data_dir)
