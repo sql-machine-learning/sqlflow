@@ -121,7 +121,7 @@ explain(
     select='''{{.DatasetSQL}}''',
 	feature_field_meta=feature_field_meta,
 	feature_column_names=feature_column_names,
-	label_spec=label_field_meta,
+	label_meta=label_field_meta,
 	summary_params={},
 	result_table='''{{.ResultTable}}''',
 	is_pai="{{.IsPAI}}" == "true",
