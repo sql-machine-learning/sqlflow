@@ -16,11 +16,8 @@ import random
 import string
 from os import path
 
-import oss2
 from .. import db
-
 from . import model
-from ..db_writer import pai_maxcompute
 
 LIFECYCLE_ON_TMP_TABLE = 7
 RESOURCE_NAME = "job.tar.gz"
@@ -37,9 +34,7 @@ def create_tmp_table_from_select(select, datasource):
     if len(select.strip()) == 0:
         return ""
     conn = db.connect_with_data_source(datasource)
-    ds_fields = db.parse_datasource(datasource)
-    if ds_fields["database"] == "":
-        return ""
+    project = get_project(datasource)
     tmp_tb_name = gen_rand_string()
     create_sql = "CREATE TABLE %s LIFECYCLE %s AS %s" % (
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
@@ -48,7 +43,7 @@ def create_tmp_table_from_select(select, datasource):
     conn.commit()
     cursor.close()
     conn.close()
-    return "%s.%s" % (ds_fields["database"], tmp_tb_name)
+    return "%s.%s" % (project, tmp_tb_name)
 
 
 def drop_tmp_tables(tables, datasource):
@@ -140,63 +135,26 @@ def get_project(datasource):
     return project
 
 
-def deleteDirRecursive(bucket, dir):
+def delete_oss_dir_recursive(bucket, directory):
     """deleteDirRecursive recursively delete a directory on the OSS"""
-    if not dir.endswith("/"):
+    if not directory.endswith("/"):
         raise "dir to delete must end with /"
 
-    lor = bucket.list_objects(prefix=dir, delimiter="/")
-    objectPathList = []
-    for o in lor.object_list:
-        objectPathList.append(o.Key)
+    loc = bucket.list_objects(prefix=directory, delimiter="/")
+    object_path_list = []
+    for obj in loc.object_list:
+        object_path_list.append(obj.key)
 
     # delete sub dir first
-    if len(lor.CommonPrefixes) > 0:
-        for subPrefix in lor.CommonPrefixes:
-            deleteDirRecursive(bucket, subPrefix)
-    bucket.DeleteObjects(objectPathList)
+    if len(loc.prefix_list) > 0:
+        for sub_prefix in loc.prefix_list:
+            delete_oss_dir_recursive(bucket, sub_prefix)
+    bucket.batch_delete_objects(object_path_list)
 
 
-def cleanOSSModelPath(ossModelPath, project):
+def clean_oss_model_path(oss_path):
     bucket = model.get_models_bucket()
-    deleteDirRecursive(bucket, ossModelPath)
+    delete_oss_dir_recursive(bucket, oss_path)
 
 
-def ExecuteTrain(cwd,
-                 datasource,
-                 select,
-                 validation_select,
-                 estimator,
-                 save="",
-                 pre_trained_model="",
-                 code="",
-                 paiCmd="",
-                 requirements=""):
-    data_dsn = datasource.split("//")[1]
-    sel_tbl, val_tbl = create_train_and_eval_tmp_table(
-        select, validation_select, datasource)
-
-    ossModelPathToSave = get_model_save_path(data_dsn, save)
-
-    if pre_trained_model != "":
-        ossModelPathToLoad = get_model_save_path(data_dsn, pre_trained_model)
-
-    currProject = get_project(data_dsn)
-
-    # NOTE(sneaxiy): should be careful whether there would be file conflict
-    # if we do not remove the original OSS files.
-    if ossModelPathToLoad == "" or ossModelPathToSave != ossModelPathToLoad:
-        cleanOSSModelPath(ossModelPathToSave+"/", currProject)
-
-    scriptPath = "file://%s/%s" % (cwd, tarball)
-    paramsPath = "file://%s/%s" % (cwd, paramsFile)
-    create_pai_hyper_param_file(cwd, paramsFile, ossModelPathToSave)
-
-    submitPAITask(code, paiCmd, requirements, estimator)
-    # download model from OSS to local cwd and save to sqlfs
-    # NOTE(typhoonzero): model in sqlfs will be used by sqlflow model zoo currently
-    # should use the model in sqlfs when predicting.
-    model.load_dir(ossModelPathToSave+"/"+currProject)
-    # save model to db
-
-    # defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
+# (TODO: lhw) add train entry point

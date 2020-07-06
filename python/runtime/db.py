@@ -72,38 +72,6 @@ def parseMaxComputeDSN(dsn):
     return user, passwd, address, config["curr_project"]
 
 
-def parse_datasource(driver_dsn):
-    driver, dsn = driver_dsn.split("://")
-    if driver == "mysql":
-        # NOTE: use MySQLdb to avoid bugs like infinite reading:
-        # https://bugs.mysql.com/bug.php?id=91971
-        from MySQLdb import connect
-        user, passwd, host, port, database, config = parseMySQLDSN(dsn)
-    elif driver == "hive":
-        from impala.dbapi import connect
-        user, passwd, host, port, database, auth, session_cfg = parseHiveDSN(
-            dsn)
-    elif driver == "maxcompute":
-        from sqlflow_submitter.maxcompute import MaxCompute
-        user, passwd, address, database = parseMaxComputeDSN(dsn)
-    else:
-        raise ValueError(
-            "connect_with_data_source doesn't support driver type {}".format(
-                driver))
-
-    return {
-        "user": user,
-        "passwd": passwd,
-        "host": host,
-        "port": port,
-        "database": database,
-        "address": address,
-        "config": config,
-        "auth": auth,
-        "session_cfg": session_cfg
-    }
-
-
 def connect_with_data_source(driver_dsn):
     driver, dsn = driver_dsn.split("://")
     if driver == "mysql":
