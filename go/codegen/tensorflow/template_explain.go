@@ -36,8 +36,8 @@ type explainFiller struct {
 
 const boostedTreesExplainTemplateText = `
 import tensorflow as tf
-import sqlflow_submitter
-from sqlflow_submitter.tensorflow import explain
+import sqlflow_runtime
+from sqlflow_runtime.tensorflow import explain
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
     import sqlflow_models

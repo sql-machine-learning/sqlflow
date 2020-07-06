@@ -16,11 +16,11 @@ import os
 import shutil
 
 import sqlflow_models
-from sqlflow_submitter.tensorflow.estimator_example import (
+from sqlflow_runtime.tensorflow.estimator_example import (
     datasource, feature_column_names, feature_column_names_map,
     feature_columns, feature_metas, label_meta, select, validate_select)
-from sqlflow_submitter.tensorflow.predict import pred
-from sqlflow_submitter.tensorflow.train import train
+from sqlflow_runtime.tensorflow.predict import pred
+from sqlflow_runtime.tensorflow.train import train
 
 if __name__ == "__main__":
     train(datasource=datasource,

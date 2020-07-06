@@ -15,7 +15,7 @@ import inspect
 import os
 import re
 
-from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
+from sqlflow_runtime.tensorflow.get_tf_model_type import is_tf_estimator
 
 
 class SQLFlowDiagnostic(Exception):

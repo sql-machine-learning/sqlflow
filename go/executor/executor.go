@@ -41,7 +41,7 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-var rePyDiagnosis = regexp.MustCompile("sqlflow_submitter.tensorflow.diag.SQLFlowDiagnostic: (.*)")
+var rePyDiagnosis = regexp.MustCompile("sqlflow_runtime.tensorflow.diag.SQLFlowDiagnostic: (.*)")
 
 // Figures contains analyzed figures as strings
 type Figures struct {
@@ -352,7 +352,7 @@ func generateOptFlowOptimizeCodeAndExecute(stmt *ir.OptimizeStmt, submitter *pyt
 	}
 
 	if isPai {
-		err = copyPythonPackage("sqlflow_submitter", cwd)
+		err = copyPythonPackage("sqlflow_runtime", cwd)
 		if err != nil {
 			return err
 		}

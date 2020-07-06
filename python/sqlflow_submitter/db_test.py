@@ -17,11 +17,11 @@ from unittest import TestCase
 import numpy as np
 import tensorflow as tf
 from odps import ODPS, tunnel
-from sqlflow_submitter.db import (buffered_db_writer, connect,
-                                  connect_with_data_source, db_generator,
-                                  parseHiveDSN, parseMaxComputeDSN,
-                                  parseMySQLDSN, read_feature,
-                                  read_features_from_row)
+from sqlflow_runtime.db import (buffered_db_writer, connect,
+                                connect_with_data_source, db_generator,
+                                parseHiveDSN, parseMaxComputeDSN,
+                                parseMySQLDSN, read_feature,
+                                read_features_from_row)
 
 
 def testing_mysql_cfg():

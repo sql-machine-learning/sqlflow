@@ -20,11 +20,11 @@ import sys
 import types
 
 import numpy as np
-import sqlflow_submitter
+import sqlflow_runtime
 import tensorflow as tf
-from sqlflow_submitter.db import (connect_with_data_source, db_generator,
-                                  parseMaxComputeDSN)
-from sqlflow_submitter.tensorflow.get_tf_model_type import is_tf_estimator
+from sqlflow_runtime.db import (connect_with_data_source, db_generator,
+                                parseMaxComputeDSN)
+from sqlflow_runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -81,7 +81,7 @@ def train(datasource,
                                         feature_metas, label_meta, None,
                                         model_repo_image)
     # import custom model package
-    sqlflow_submitter.import_model_def(estimator_string, globals())
+    sqlflow_runtime.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
 
     is_estimator = is_tf_estimator(estimator)

@@ -108,11 +108,11 @@ In each Katib tuning job, users need to define tuning parameters (i.e., the hype
 
 For example, users may define the following command for tuning job Pod:
 
-`python -m sqlflow_submitter.couler.katib.xgboost_train`
+`python -m sqlflow_runtime.couler.katib.xgboost_train`
 
 The actual command during runtime will be:
 
-`python -m sqlflow_submitter.couler.katib.xgboost_train --max_depth 5 ...`, hyperparameter `max_depth` is added by Katib.
+`python -m sqlflow_runtime.couler.katib.xgboost_train --max_depth 5 ...`, hyperparameter `max_depth` is added by Katib.
 
 The pipeline is as following:
 

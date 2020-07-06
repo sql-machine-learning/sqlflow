@@ -27,6 +27,6 @@ func TestAlisaSubmitter(t *testing.T) {
 
 func TestFindPyModulePath(t *testing.T) {
 	a := assert.New(t)
-	_, err := findPyModulePath("sqlflow_submitter")
+	_, err := findPyModulePath("sqlflow_runtime")
 	a.NoError(err)
 }

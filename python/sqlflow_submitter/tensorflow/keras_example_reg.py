@@ -17,9 +17,9 @@ import shutil
 
 import sqlflow_models
 import tensorflow as tf
-from sqlflow_submitter.tensorflow.estimator_example import datasource
-from sqlflow_submitter.tensorflow.predict import pred
-from sqlflow_submitter.tensorflow.train import train
+from sqlflow_runtime.tensorflow.estimator_example import datasource
+from sqlflow_runtime.tensorflow.predict import pred
+from sqlflow_runtime.tensorflow.train import train
 
 select = "select * from housing.train"
 validation_select = "select * from housing.test"

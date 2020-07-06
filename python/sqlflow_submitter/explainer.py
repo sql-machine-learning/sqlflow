@@ -16,7 +16,7 @@ import sys
 import matplotlib
 # The default backend
 import matplotlib.pyplot as plt
-import sqlflow_submitter.pai.utils as utils
+import sqlflow_runtime.pai.utils as utils
 
 # TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later

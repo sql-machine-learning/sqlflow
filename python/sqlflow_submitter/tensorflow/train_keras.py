@@ -18,8 +18,8 @@ from os import path
 
 import six
 import tensorflow as tf
-from sqlflow_submitter.pai import model
-from sqlflow_submitter.seeding import get_tf_random_seed
+from sqlflow_runtime.pai import model
+from sqlflow_runtime.seeding import get_tf_random_seed
 
 from ..model_metadata import save_model_metadata
 from . import metrics

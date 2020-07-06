@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_submitter.xgboost import feature_column
+from sqlflow_runtime.xgboost import feature_column
 
 
 class DataTypeCollection(object):

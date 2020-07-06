@@ -37,9 +37,9 @@ type evaluateFiller struct {
 
 const tfEvaluateTemplateText = `
 import tensorflow as tf
-import sqlflow_submitter
-from sqlflow_submitter.tensorflow.evaluate import evaluate
-from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
+import sqlflow_runtime
+from sqlflow_runtime.tensorflow.evaluate import evaluate
+from sqlflow_runtime.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
     import sqlflow_models

@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
-from sqlflow_submitter.optimize.optimize import (
+from sqlflow_runtime.optimize.optimize import (
     generate_model_with_data_frame, generate_objective_or_constraint_func,
     generate_range_constraint_func, solve_model)
 

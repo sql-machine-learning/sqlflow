@@ -20,7 +20,7 @@ from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
 from alps.framework.engine import LocalEngine
 from alps.framework.experiment import EstimatorBuilder
 from alps.io.base import OdpsConf
-from sqlflow_submitter.alps.train import train
+from sqlflow_runtime.alps.train import train
 
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):

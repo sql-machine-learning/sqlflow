@@ -26,7 +26,7 @@ class TestEstimatorModels(TestCase):
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
             ret = subprocess.run([
                 sys.executable,
-                "python/sqlflow_submitter/tensorflow/estimator_example.py"
+                "python/sqlflow_runtime/tensorflow/estimator_example.py"
             ],
                                  env=os.environ.copy(),
                                  check=True)
@@ -39,7 +39,7 @@ class TestEstimatorModels(TestCase):
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
             ret = subprocess.run([
                 sys.executable,
-                "python/sqlflow_submitter/tensorflow/explain_example.py"
+                "python/sqlflow_runtime/tensorflow/explain_example.py"
             ],
                                  env=os.environ.copy(),
                                  check=True)
@@ -52,7 +52,7 @@ class TestEstimatorModels(TestCase):
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
             ret = subprocess.run([
                 sys.executable,
-                "python/sqlflow_submitter/tensorflow/keras_example.py"
+                "python/sqlflow_runtime/tensorflow/keras_example.py"
             ],
                                  env=os.environ.copy(),
                                  check=True)
@@ -60,7 +60,7 @@ class TestEstimatorModels(TestCase):
 
             ret = subprocess.run([
                 sys.executable,
-                "python/sqlflow_submitter/tensorflow/keras_example_reg.py"
+                "python/sqlflow_runtime/tensorflow/keras_example_reg.py"
             ],
                                  env=os.environ.copy(),
                                  check=True)

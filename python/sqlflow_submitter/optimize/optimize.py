@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
 import six
-import sqlflow_submitter.db as db
+import sqlflow_runtime.db as db
 from pyomo.environ import (Integers, NegativeIntegers, NegativeReals,
                            NonNegativeIntegers, NonNegativeReals,
                            NonPositiveIntegers, NonPositiveReals,

@@ -16,7 +16,7 @@ import functools
 
 import numpy as np
 import tensorflow as tf
-from sqlflow_submitter import db
+from sqlflow_runtime import db
 
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):

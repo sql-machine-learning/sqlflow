@@ -19,7 +19,7 @@ import pandas as pd
 import xgboost
 from jpmml_evaluator import make_evaluator
 from jpmml_evaluator.pyjnius import PyJNIusBackend, jnius_configure_classpath
-from sqlflow_submitter.xgboost.train import save_model_to_local_file
+from sqlflow_runtime.xgboost.train import save_model_to_local_file
 
 # Configure JVM
 jnius_configure_classpath()

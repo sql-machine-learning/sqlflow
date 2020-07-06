@@ -16,12 +16,12 @@ import os
 import sys
 
 import six
-import sqlflow_submitter.tensorflow.pai_distributed as pai_dist
+import sqlflow_runtime.tensorflow.pai_distributed as pai_dist
 import xgboost as xgb
-from sqlflow_submitter.pai import model
-from sqlflow_submitter.xgboost.dataset import xgb_dataset
-from sqlflow_submitter.xgboost.pai_rabit import (PaiXGBoostTracker,
-                                                 PaiXGBoostWorker)
+from sqlflow_runtime.pai import model
+from sqlflow_runtime.xgboost.dataset import xgb_dataset
+from sqlflow_runtime.xgboost.pai_rabit import (PaiXGBoostTracker,
+                                               PaiXGBoostWorker)
 
 from ..model_metadata import collect_model_metadata, save_model_metadata
 

@@ -30,7 +30,7 @@ if [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_AK" = "" ] || [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_S
     exit 0
 fi
 
-# NOTE: we have already installed sqlflow_submitter under python installation
+# NOTE: we have already installed sqlflow_runtime under python installation
 # path using latest develop branch, but when testing on CI, we need to use the
 # code in the current pull request.
 export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python

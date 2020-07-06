@@ -36,9 +36,9 @@ type predFiller struct {
 
 const tfPredTemplateText = `
 import tensorflow as tf
-import sqlflow_submitter
-from sqlflow_submitter.tensorflow.predict import pred
-from sqlflow_submitter.tensorflow.get_tf_version import tf_is_version2
+import sqlflow_runtime
+from sqlflow_runtime.tensorflow.predict import pred
+from sqlflow_runtime.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
     import sqlflow_models

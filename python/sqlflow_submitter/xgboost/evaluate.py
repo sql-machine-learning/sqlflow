@@ -23,8 +23,8 @@ from sklearn.metrics import (accuracy_score, average_precision_score,
                              mean_squared_log_error, median_absolute_error,
                              precision_score, r2_score, recall_score,
                              roc_auc_score, zero_one_loss)
-from sqlflow_submitter import db
-from sqlflow_submitter.xgboost.dataset import xgb_dataset
+from sqlflow_runtime import db
+from sqlflow_runtime.xgboost.dataset import xgb_dataset
 
 # yapf: enable
 
