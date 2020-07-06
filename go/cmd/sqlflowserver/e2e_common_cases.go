@@ -648,7 +648,23 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 
 	testDBType := os.Getenv("SQLFLOW_TEST_DB")
 
+	dropDBSQL := ""
 	dbName := "test_xgb_kv_column"
+	isMaxCompute := false
+	const trainTable = "xgb_kv_column_train_table"
+
+	switch testDBType {
+	case "hive":
+		// Hive can only drop non-empty database in the CASCADE mode.
+		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE;", dbName)
+	case "mysql":
+		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+	case "maxcompute":
+		dbName = caseDB
+		isMaxCompute = true
+	default:
+		t.Skip(fmt.Sprintf("Skip %s tests", testDBType))
+	}
 
 	executeSQLFunc := func(sql string) {
 		_, _, _, err := connectAndRunSQL(sql)
@@ -669,78 +685,94 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		return columns
 	}
 
-	dropDBSQL := ""
-	if testDBType == "hive" {
-		// Hive can only drop non-empty database in the CASCADE mode.
-		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE;", dbName)
+	if !isMaxCompute {
+		defer executeSQLFunc(dropDBSQL)
+	}
+
+	var prepareDataSQL []string
+	if !isMaxCompute {
+		prepareDataSQL = []string{
+			dropDBSQL,
+			fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s;`, dbName),
+			fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.%s (c1 VARCHAR(255), label_col FLOAT);`, dbName, trainTable),
+		}
 	} else {
-		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+		prepareDataSQL = []string{
+			fmt.Sprintf(`DROP TABLE IF EXISTS %s.%s;`, dbName, trainTable),
+			fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.%s (c1 STRING, label_col DOUBLE);`, dbName, trainTable),
+		}
 	}
 
-	defer executeSQLFunc(dropDBSQL)
-
-	prepareDataSQL := []string{
-		dropDBSQL,
-		fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s;`, dbName),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.train (c1 VARCHAR(255), label_col FLOAT);`, dbName),
-		fmt.Sprintf(`INSERT INTO %s.train VALUES("1:0.5 3:-1.5 5:6.7", 0.5), ("3:-1.3 10:0.6 2:-3.4", -0.5);`, dbName),
-	}
+	insertDataSQL := fmt.Sprintf(`INSERT INTO %s.%s VALUES("1:0.5 3:-1.5 5:6.7", 0), 
+("3:-1.3 10:0.6 2:-3.4", 1), ("5:10.2 3:7.4", 2);`, dbName, trainTable)
+	prepareDataSQL = append(prepareDataSQL, insertDataSQL)
 
 	for _, sql := range prepareDataSQL {
 		executeSQLFunc(sql)
 	}
 
-	trainedModel := fmt.Sprintf("%s.trained_model", dbName)
+	trainedModel := "xgb_kv_column_trained_model"
+	if !isMaxCompute {
+		trainedModel = fmt.Sprintf("%s.%s", dbName, trainedModel)
+	}
 
-	const trainSQLTemplate = `SELECT c1, label_col FROM %s.train
-TO TRAIN xgboost.gbtree
-WITH 
-	objective = "reg:squarederror",
-	train.num_boost_round = 20
-COLUMN SPARSE(c1%s)
-LABEL label_col
-INTO %s;
-`
+	const trainSQLTemplate = `SELECT c1, label_col FROM %s.%s
+	TO TRAIN xgboost.gbtree
+	WITH
+		num_class = 3,
+		objective = "multi:softprob",
+		train.num_boost_round = 20
+	COLUMN SPARSE(c1%s)
+	LABEL label_col
+	INTO %s;
+	`
 
-	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, "", trainedModel)
+	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, trainTable, "", trainedModel)
 	executeSQLFunc(trainSQL)
-	hasModelTableFunc(trainedModel)
+	if !isMaxCompute {
+		hasModelTableFunc(trainedModel)
+	}
 
-	trainSQL = fmt.Sprintf(trainSQLTemplate, dbName, ",11", trainedModel)
+	trainSQL = fmt.Sprintf(trainSQLTemplate, dbName, trainTable, ",11", trainedModel)
 	executeSQLFunc(trainSQL)
-	hasModelTableFunc(trainedModel)
+	if !isMaxCompute {
+		hasModelTableFunc(trainedModel)
+	}
 
-	const predictTable = "predict_table"
-	const predictSQLTemplate = `SELECT c1, label_col FROM %[1]s.train TO PREDICT %[1]s.%[2]s.%[3]s USING %[4]s;`
+	const predictTable = "xgb_kv_column_predict_table"
+	const predictSQLTemplate = `SELECT c1, label_col FROM %[1]s.%[2]s TO PREDICT %[1]s.%[3]s.%[4]s USING %[5]s;`
 
-	predictSQLWithOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, predictTable, "new_label_col", trainedModel)
+	predictSQLWithOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "new_label_col", trainedModel)
 	executeSQLFunc(predictSQLWithOriginalLabel)
 	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
-	a.Equal(2, len(rows))
+	a.Equal(3, len(rows))
 	a.Equal(3, len(columns))
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
 	a.Equal("label_col", columns[1])
 	a.Equal("new_label_col", columns[2])
 
-	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, predictTable, "label_col", trainedModel)
+	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "label_col", trainedModel)
 	executeSQLFunc(predictSQLWithoutOriginalLabel)
 	columns, rows, _, err = connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
-	a.Equal(2, len(rows))
+	a.Equal(3, len(rows))
 	a.Equal(2, len(columns))
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
 	a.Equal("label_col", columns[1])
 
-	const evaluateTable = "evaluate_table"
-	evaluateSQL := fmt.Sprintf(`SELECT c1, label_col FROM %[1]s.train 
-TO EVALUATE %[2]s WITH validation.metrics="mean_squared_error" LABEL label_col INTO %[1]s.%[3]s;`, dbName, trainedModel, evaluateTable)
-	executeSQLFunc(evaluateSQL)
-
-	explainSQL := fmt.Sprintf("SELECT c1, label_col FROM %[1]s.train TO EXPLAIN %s WITH summary.plot_type=bar;", dbName, trainedModel)
-	executeSQLFunc(explainSQL)
+	// MaxCompute does not support TO EVALUATE yet
+	// TODO(sneaxiy): TO EXPLAIN should be supported
+	if !isMaxCompute {
+		const evaluateTable = "xgb_kv_column_evaluate_table"
+		evaluateSQL := fmt.Sprintf(`SELECT c1, label_col FROM %[1]s.%[2]s 
+TO EVALUATE %[3]s WITH validation.metrics="mean_squared_error" LABEL label_col INTO %[1]s.%[4]s;`, dbName, trainTable, trainedModel, evaluateTable)
+		executeSQLFunc(evaluateSQL)
+		explainSQL := fmt.Sprintf("SELECT c1, label_col FROM %s.%s TO EXPLAIN %s WITH summary.plot_type=bar;", dbName, trainTable, trainedModel)
+		executeSQLFunc(explainSQL)
+	}
 }
 
 func decodeAnyTypedRowData(anyData [][]*any.Any) ([][]interface{}, error) {
