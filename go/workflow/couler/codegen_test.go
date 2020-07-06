@@ -94,7 +94,7 @@ func TestCoulerCodegen(t *testing.T) {
 	code, err := cg.GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
-	r, e := regexp.Compile(`steps.sqlflow\(sql='''(.*);''', `)
+	r, e := regexp.Compile(`steps.sqlflow\(sql=r'''(.*);''', `)
 	a.NoError(e)
 	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
@@ -123,6 +123,27 @@ func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a.NoError(e)
 	r, _ := regexp.Compile(`step -e "(.*);"`)
 	a.Equal("\\`\\$\\\"\\\\", r.FindStringSubmatch(yaml)[1])
+}
+
+func TestStringInStringSQL(t *testing.T) {
+	a := assert.New(t)
+	specialCharsStmt := ir.TrainStmt{
+		OriginalSQL: `
+		SELECT * FROM iris.train TO TRAIN	DNNClassifier
+		WITH n_classes=3
+		validation.select="select * from iris.train where name like \"Versicolor\";"
+		LABEL=class
+		INTO my_iris_model`,
+	}
+	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
+	cg := &Codegen{}
+	code, err := cg.GenCode(sqlIR, &pb.Session{})
+	a.NoError(err)
+	yaml, e := cg.GenYAML(code)
+	a.NoError(e)
+	println(yaml)
+	expect := `validation.select=\"select * from iris.train where name like \\\"Versicolor\\\";\"`
+	a.True(strings.Contains(yaml, expect))
 }
 
 func mockSQLProgramIR() []ir.SQLFlowStmt {
