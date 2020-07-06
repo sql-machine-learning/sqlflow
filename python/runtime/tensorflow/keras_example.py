@@ -16,6 +16,8 @@ import os
 import shutil
 
 import sqlflow_models
+# TODO(yancey1989): this import line would conflict with isort pre-commit stage
+# yapf: disable
 from runtime.tensorflow.estimator_example import (datasource,
                                                   feature_column_names,
                                                   feature_column_names_map,
