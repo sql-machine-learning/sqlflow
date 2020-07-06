@@ -20,9 +20,9 @@ from pathlib import Path
 import numpy as np
 import six
 import xgboost as xgb
+from runtime import db
 from scipy.sparse import vstack
 from sklearn.datasets import load_svmlight_file, load_svmlight_files
-from sqlflow_runtime import db
 
 
 def xgb_dataset(datasource,
@@ -330,7 +330,7 @@ def pai_download_table_data_worker(dname, feature_specs, feature_column_names,
                                    label_spec, pai_table, slice_id,
                                    slice_count, feature_column_code,
                                    raw_data_dir):
-    import sqlflow_runtime.xgboost as xgboost_extended
+    import runtime.xgboost as xgboost_extended
     feature_column_transformers = eval('[{}]'.format(feature_column_code))
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *feature_column_transformers)

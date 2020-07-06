@@ -13,8 +13,8 @@
 
 import numpy as np
 import xgboost as xgb
-from sqlflow_runtime import db
-from sqlflow_runtime.xgboost.dataset import xgb_dataset
+from runtime import db
+from runtime.xgboost.dataset import xgb_dataset
 
 DEFAULT_PREDICT_BATCH_SIZE = 10000
 

@@ -71,7 +71,7 @@ USING sqlflow_models.xgboost_model_table;
 As `codegen.go` generating TensorFlow code from sqlflow AST,
 we will add `codegen_xgboost.go` which translate sqlflow AST into a python launcher program of xgboost. 
 
-Since xgblauncher provide `DataSource` and `ModelSource`, abstraction of custom I/O pipeline, by which we can reuse data/model pipeline of `sqlflow_runtime`.
+Since xgblauncher provide `DataSource` and `ModelSource`, abstraction of custom I/O pipeline, by which we can reuse data/model pipeline of `runtime`.
 
 The full documentation of xgblauncher will be available soon. Below, we show a demonstration of DataSource/ModelSource API.
  
@@ -127,10 +127,10 @@ With the help of xgblauncher, we can launch xgboost from sqlflow AST via a light
 The `code template` roughly includes components as follows: 
 
 * `TFDataSource` that is responsible for fetching and pre-processing data via tf.feature_columns API.
-   Data will be fetched in mini-batch style by executing TF compute graph with mini-batch data feed by `sqlflow_runtime.db.db_generator`.
+   Data will be fetched in mini-batch style by executing TF compute graph with mini-batch data feed by `runtime.db.db_generator`.
 
 * `DBDataSource` that is responsible for writing prediction results into specific data base.
-   The writing action can be implemented via `sqlflow_runtime.db.insert_values`.
+   The writing action can be implemented via `runtime.db.insert_values`.
 
 * `LocalModelSource` that is responsible for reading/writing xgboost models on local file system.
 

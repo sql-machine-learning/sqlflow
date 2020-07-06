@@ -33,7 +33,7 @@ type optimizeFiller struct {
 }
 
 const pyomoNativeOptimizeText = `
-from sqlflow_runtime.optimize import run_optimize
+from runtime.optimize import run_optimize
 
 variables = [{{range .Variables}}"{{.}}",{{end}}]
 
@@ -59,7 +59,7 @@ run_optimize(datasource="{{.DataSource}}",
 `
 
 const optFlowRunnerText = `
-from sqlflow_runtime.optimize import BaseOptFlowRunner
+from runtime.optimize import BaseOptFlowRunner
 
 __all__ = ['CustomOptFlowRunner']
 
@@ -85,7 +85,7 @@ class CustomOptFlowRunner(BaseOptFlowRunner):
 
 const optFlowSubmitText = `
 import json
-from sqlflow_runtime.optimize import submit
+from runtime.optimize import submit
 
 runner = "{{.RunnerModule}}.CustomOptFlowRunner"
 solver = "{{.Solver}}"

@@ -19,11 +19,11 @@ import os
 import sys
 
 import numpy as np
-import sqlflow_runtime
+import runtime
 import tensorflow as tf
-from sqlflow_runtime import db
-from sqlflow_runtime.pai import model
-from sqlflow_runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime import db
+from runtime.pai import model
+from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -297,7 +297,7 @@ def pred(datasource,
          is_pai=False,
          pai_table=""):
     # import custom model package
-    sqlflow_runtime.import_model_def(estimator_string, globals())
+    runtime.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
 
     model_params.update(feature_columns)

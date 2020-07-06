@@ -15,8 +15,8 @@ import contextlib
 import re
 
 import numpy as np
+import runtime.db_writer as db_writer
 import six
-import sqlflow_runtime.db_writer as db_writer
 
 
 def parseMySQLDSN(dsn):
@@ -97,7 +97,7 @@ def connect_with_data_source(driver_dsn):
         conn.session_cfg = session_cfg
         conn.default_db = database
     elif driver == "maxcompute":
-        from sqlflow_runtime.maxcompute import MaxCompute
+        from runtime.maxcompute import MaxCompute
         user, passwd, address, database = parseMaxComputeDSN(dsn)
         conn = MaxCompute.connect(database, user, passwd, address)
     else:
@@ -138,7 +138,7 @@ def connect(driver,
         conn.session_cfg = session_cfg
         return conn
     elif driver == "maxcompute":
-        from sqlflow_runtime.maxcompute import MaxCompute
+        from runtime.maxcompute import MaxCompute
         return MaxCompute.connect(database, user, password, host)
 
     raise ValueError("unrecognized database driver: %s" % driver)
@@ -294,7 +294,7 @@ def db_generator(driver,
         cursor.close()
 
     if driver == "maxcompute":
-        from sqlflow_runtime.maxcompute import MaxCompute
+        from runtime.maxcompute import MaxCompute
         return MaxCompute.db_generator(conn, statement, feature_column_names,
                                        label_spec, feature_specs, fetch_size)
     if driver == "hive":

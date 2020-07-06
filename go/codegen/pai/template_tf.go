@@ -65,11 +65,11 @@ type requirementsFiller struct {
 
 const tfImportsText = `
 import tensorflow as tf
-from sqlflow_runtime.tensorflow import is_tf_estimator
+from runtime.tensorflow import is_tf_estimator
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
-	from sqlflow_runtime.pai import model
-	from sqlflow_runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+	from runtime.pai import model
+	from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 except:
 	pass # PAI is not always needed
 
@@ -145,7 +145,7 @@ const tfPredictTmplText = tfImportsText + `
 import os
 import types
 import traceback
-from sqlflow_runtime.tensorflow import predict
+from runtime.tensorflow import predict
 
 try:
     import sqlflow_models
@@ -210,7 +210,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from sqlflow_runtime.tensorflow import explain
+from runtime.tensorflow import explain
 
 try:
     tf.enable_eager_execution()
@@ -274,7 +274,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from sqlflow_runtime.tensorflow import evaluate
+from runtime.tensorflow import evaluate
 
 try:
     tf.enable_eager_execution()

@@ -80,7 +80,7 @@ auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=dat
 	{{else}}
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
-#	feed to "sqlflow_runtime.{submitter}.train" to submit the job
+#	feed to "runtime.{submitter}.train" to submit the job
 steps.sqlflow(sql=r'''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, resources=resources)
 	{{end}}
 {{end}}

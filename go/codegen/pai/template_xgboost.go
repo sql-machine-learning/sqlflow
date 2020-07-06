@@ -27,10 +27,10 @@ type xgbPredictFiller struct {
 
 const xgbPredTemplateText = `
 import json
-import sqlflow_runtime.xgboost as xgboost_extended
-from sqlflow_runtime.xgboost.predict import pred
-from sqlflow_runtime.pai import model
-from sqlflow_runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+import runtime.xgboost as xgboost_extended
+from runtime.xgboost.predict import pred
+from runtime.pai import model
+from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
@@ -88,16 +88,16 @@ const xgbExplainTemplateText = `
 # Running on PAI
 import os
 import matplotlib
-import sqlflow_runtime.xgboost as xgboost_extended
+import runtime.xgboost as xgboost_extended
 
 if os.environ.get('DISPLAY', '') == '':
     print('no display found. Using non-interactive Agg backend')
     matplotlib.use('Agg')
 
 import json
-from sqlflow_runtime.xgboost.explain import explain
-from sqlflow_runtime.pai import model
-from sqlflow_runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.xgboost.explain import explain
+from runtime.pai import model
+from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
@@ -154,10 +154,10 @@ type xgbEvaluateFiller struct {
 
 const xgbEvalTemplateText = `
 import json
-import sqlflow_runtime.xgboost as xgboost_extended
-from sqlflow_runtime.xgboost.evaluate import evaluate
-from sqlflow_runtime.pai import model
-from sqlflow_runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+import runtime.xgboost as xgboost_extended
+from runtime.xgboost.evaluate import evaluate
+from runtime.pai import model
+from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)

@@ -18,7 +18,7 @@ import time
 from contextlib import closing
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from sqlflow_runtime.xgboost.tracker import RabitTracker
+from runtime.xgboost.tracker import RabitTracker
 
 
 class PaiXGBoostWorker():

@@ -16,10 +16,10 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
-from sqlflow_runtime.db_test import testing_mysql_db_url
-from sqlflow_runtime.xgboost.explain import explain as xgb_explain
-from sqlflow_runtime.xgboost.explain import xgb_shap_dataset, xgb_shap_values
-from sqlflow_runtime.xgboost.train import train as xgb_train
+from runtime.db_test import testing_mysql_db_url
+from runtime.xgboost.explain import explain as xgb_explain
+from runtime.xgboost.explain import xgb_shap_dataset, xgb_shap_values
+from runtime.xgboost.train import train as xgb_train
 
 datasource = testing_mysql_db_url()
 

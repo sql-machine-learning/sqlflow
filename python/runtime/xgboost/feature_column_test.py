@@ -14,8 +14,8 @@
 import unittest
 
 import numpy as np
-import sqlflow_runtime.xgboost.feature_column as fc
-from sqlflow_runtime.xgboost.feature_column import hashing
+import runtime.xgboost.feature_column as fc
+from runtime.xgboost.feature_column import hashing
 
 
 def get_hash(x, bucket_size):

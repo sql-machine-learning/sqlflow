@@ -35,8 +35,8 @@ type predFiller struct {
 
 const predTemplateText = `
 import json
-import sqlflow_runtime.xgboost as xgboost_extended
-from sqlflow_runtime.xgboost.predict import pred
+import runtime.xgboost as xgboost_extended
+from runtime.xgboost.predict import pred
 
 feature_metas = json.loads('''{{.FeatureMetaJSON}}''')
 label_meta = json.loads('''{{.LabelMetaJSON}}''')

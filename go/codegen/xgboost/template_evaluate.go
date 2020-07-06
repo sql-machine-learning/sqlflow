@@ -35,8 +35,8 @@ type evalFiller struct {
 }
 
 const evalTemplateText = `
-import sqlflow_runtime.xgboost as xgboost_extended
-from sqlflow_runtime.xgboost.evaluate import evaluate
+import runtime.xgboost as xgboost_extended
+from runtime.xgboost.evaluate import evaluate
 import json
 
 feature_metas = json.loads('''{{.FeatureMetaJSON}}''')

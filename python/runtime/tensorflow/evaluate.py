@@ -15,10 +15,10 @@ import os
 import sys
 import types
 
-import sqlflow_runtime
+import runtime
 import tensorflow as tf
-from sqlflow_runtime.db import buffered_db_writer, connect_with_data_source
-from sqlflow_runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.db import buffered_db_writer, connect_with_data_source
+from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -58,7 +58,7 @@ def evaluate(datasource,
              is_pai=False,
              pai_table=""):
     # import custom model package
-    sqlflow_runtime.import_model_def(estimator_string, globals())
+    runtime.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
 
     is_estimator = is_tf_estimator(estimator_cls)

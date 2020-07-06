@@ -14,6 +14,8 @@
 import numpy as np
 import sklearn
 import xgboost as xgb
+from runtime import db
+from runtime.xgboost.dataset import xgb_dataset
 # yapf: disable
 from sklearn.metrics import (accuracy_score, average_precision_score,
                              balanced_accuracy_score, brier_score_loss,
@@ -23,8 +25,6 @@ from sklearn.metrics import (accuracy_score, average_precision_score,
                              mean_squared_log_error, median_absolute_error,
                              precision_score, r2_score, recall_score,
                              roc_auc_score, zero_one_loss)
-from sqlflow_runtime import db
-from sqlflow_runtime.xgboost.dataset import xgb_dataset
 
 # yapf: enable
 

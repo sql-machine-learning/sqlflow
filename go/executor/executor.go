@@ -25,9 +25,10 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sqlflow.org/sqlflow/go/verifier"
 	"strings"
 	"sync"
+
+	"sqlflow.org/sqlflow/go/verifier"
 
 	"sqlflow.org/sqlflow/go/codegen/optimize"
 
@@ -41,7 +42,7 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-var rePyDiagnosis = regexp.MustCompile("sqlflow_runtime.tensorflow.diag.SQLFlowDiagnostic: (.*)")
+var rePyDiagnosis = regexp.MustCompile("runtime.tensorflow.diag.SQLFlowDiagnostic: (.*)")
 
 // Figures contains analyzed figures as strings
 type Figures struct {
@@ -352,7 +353,7 @@ func generateOptFlowOptimizeCodeAndExecute(stmt *ir.OptimizeStmt, submitter *pyt
 	}
 
 	if isPai {
-		err = copyPythonPackage("sqlflow_runtime", cwd)
+		err = copyPythonPackage("runtime", cwd)
 		if err != nil {
 			return err
 		}

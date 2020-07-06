@@ -26,7 +26,7 @@ DS="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
 go generate ./...
 go install ./...
 
-# NOTE: we have already installed sqlflow_runtime under python
+# NOTE: we have already installed runtime under python
 # installation path using latest develop branch, but when testing on
 # CI, we need to use the code in the current pull request.
 export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python

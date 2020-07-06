@@ -39,10 +39,10 @@ type trainFiller struct {
 }
 
 const trainTemplateText = `
-import sqlflow_runtime.xgboost as xgboost_extended
-from sqlflow_runtime.xgboost.train import train
-import sqlflow_runtime.xgboost.feature_column as xgboost_feature_column
-from sqlflow_runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+import runtime.xgboost as xgboost_extended
+from runtime.xgboost.train import train
+import runtime.xgboost.feature_column as xgboost_feature_column
+from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 import json
 
 if "{{.IsPAI}}" == "true":
@@ -50,7 +50,7 @@ if "{{.IsPAI}}" == "true":
     set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
-    from sqlflow_runtime.pai import model
+    from runtime.pai import model
     model.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
@@ -89,16 +89,16 @@ train(datasource='''{{.DataSource}}''',
 `
 
 const distTrainTemplateText = `
-import sqlflow_runtime.xgboost as xgboost_extended
-from sqlflow_runtime.xgboost.train import dist_train
-from sqlflow_runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+import runtime.xgboost as xgboost_extended
+from runtime.xgboost.train import dist_train
+from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
 import json
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
-	from sqlflow_runtime.pai import model
+	from runtime.pai import model
 	model.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')

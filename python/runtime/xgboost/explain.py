@@ -17,7 +17,7 @@ import scipy
 import shap
 import six
 import xgboost as xgb
-from sqlflow_runtime import db, explainer
+from runtime import db, explainer
 
 
 def infer_dtype(feature):

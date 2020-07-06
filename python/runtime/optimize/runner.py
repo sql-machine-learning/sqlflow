@@ -24,7 +24,7 @@ from optflow.core.api.config import (InputConf, OdpsConf, OdpsItemConf,
                                      SolverExperiment)
 from optflow.core.submit import submit_experiment
 from optflow.workflow.runner.custom_solver_runner import CustomSolverRunner
-from sqlflow_runtime.optimize.optimize import generate_model_with_data_frame
+from runtime.optimize.optimize import generate_model_with_data_frame
 
 __all__ = [
     'BaseOptFlowRunner',

@@ -18,7 +18,7 @@ import tarfile
 
 import oss2
 import tensorflow as tf
-from sqlflow_runtime import db
+from runtime import db
 
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to save models trained.
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"

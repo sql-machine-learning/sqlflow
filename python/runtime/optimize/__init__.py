@@ -11,10 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_runtime.optimize.optimize import (generate_model_with_data_frame,
-                                               run_optimize)
+from runtime.optimize.optimize import (generate_model_with_data_frame,
+                                       run_optimize)
 
 try:
-    from sqlflow_runtime.optimize.runner import BaseOptFlowRunner, submit
+    from runtime.optimize.runner import BaseOptFlowRunner, submit
 except:
     pass

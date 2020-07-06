@@ -156,7 +156,7 @@ transform_fn = ComposedFeatureColumnTransformer(
                 )
 ```
 
-Then we pass `transform_fn` to `sqlflow_runtime.xgboost.train` method. Inside `sqlflow_runtime.xgboost.train`, we transform the 
+Then we pass `transform_fn` to `runtime.xgboost.train` method. Inside `runtime.xgboost.train`, we transform the 
 raw data from `db.db_generator(...)` by calling `transform_fn.__call__` method. Method `set_column_names` would be called once
 when the table schema is obtained in runtime, so that the index of `key` can be inferred in Python runtime. The transformed data 
 would be writen into SVM file, then it can be loaded in the following train step.

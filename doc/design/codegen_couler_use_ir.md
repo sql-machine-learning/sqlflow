@@ -8,7 +8,7 @@ In this design, we'll only have `codegen_couler.go` to generate programs to run 
 
 ## Generate Couler Program Using IR
 
-For example, to run the training steps, we intend to use couler API call: `couler.{xgboost,tensorflow,elasticdl}.train(model_def, data)` to generate a training step. The `train` function must take lots of parameters to run the training job as the SQLFlow statement describes, see [here](https://github.com/sql-machine-learning/sqlflow/blob/develop/python/sqlflow_runtime/tensorflow/train.py#L52) as an example.
+For example, to run the training steps, we intend to use couler API call: `couler.{xgboost,tensorflow,elasticdl}.train(model_def, data)` to generate a training step. The `train` function must take lots of parameters to run the training job as the SQLFlow statement describes, see [here](https://github.com/sql-machine-learning/sqlflow/blob/develop/python/runtime/tensorflow/train.py#L52) as an example.
 
 To implement the single `codegen_couler.go` to support generate code that can run either Tensorflow/XGBoost/ElasticDL/ALPS programs, we have below two choices:
 

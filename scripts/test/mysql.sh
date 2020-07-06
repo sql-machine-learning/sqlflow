@@ -28,9 +28,10 @@ while read -r i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
     < <(inotifywait  -e create,open --format '%f' --quiet /work --monitor)
 
 export SQLFLOW_TEST_DB=mysql
+export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
 
 python -c "import sqlflow_models"
-python -c "import sqlflow_runtime.db"
+python -c "import runtime.db"
 
 go generate ./...
 go install ./...

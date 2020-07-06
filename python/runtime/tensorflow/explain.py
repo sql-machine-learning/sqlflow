@@ -17,12 +17,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import runtime
 import seaborn as sns
 import shap
-import sqlflow_runtime
 import tensorflow as tf
-from sqlflow_runtime import explainer
-from sqlflow_runtime.db import buffered_db_writer, connect_with_data_source
+from runtime import explainer
+from runtime.db import buffered_db_writer, connect_with_data_source
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -74,7 +74,7 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
     # import custom model package
-    sqlflow_runtime.import_model_def(estimator_string, globals())
+    runtime.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
 
     if is_pai:

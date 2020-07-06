@@ -14,11 +14,11 @@
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 import shutil
 
-import sqlflow_runtime
+import runtime
 import tensorflow as tf
-from sqlflow_runtime.db_test import testing_mysql_db_url
-from sqlflow_runtime.tensorflow.predict import pred
-from sqlflow_runtime.tensorflow.train import train
+from runtime.db_test import testing_mysql_db_url
+from runtime.tensorflow.predict import pred
+from runtime.tensorflow.train import train
 
 datasource = testing_mysql_db_url()
 select = "SELECT * FROM iris.train;"
@@ -81,7 +81,7 @@ label_meta = {
 }
 
 if __name__ == "__main__":
-    # tf.python.training.basic_session_run_hooks.LoggingTensorHook = sqlflow_runtime.tensorflow.train.PrintTensorsHook
+    # tf.python.training.basic_session_run_hooks.LoggingTensorHook = runtime.tensorflow.train.PrintTensorsHook
     train(datasource=datasource,
           estimator_string="tf.estimator.DNNClassifier",
           select=select,

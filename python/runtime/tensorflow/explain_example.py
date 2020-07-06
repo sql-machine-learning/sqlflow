@@ -13,14 +13,14 @@
 
 import shutil
 
-import sqlflow_runtime
+import runtime
 import tensorflow as tf
 from estimator_example import (datasource, feature_column_names,
                                feature_columns, feature_metas, label_meta,
                                select_binary, validate_select_binary)
-from sqlflow_runtime.tensorflow.explain import explain
-from sqlflow_runtime.tensorflow.predict import pred
-from sqlflow_runtime.tensorflow.train import train
+from runtime.tensorflow.explain import explain
+from runtime.tensorflow.predict import pred
+from runtime.tensorflow.train import train
 
 if __name__ == "__main__":
     # Train and explain BoostedTreesClassifier
