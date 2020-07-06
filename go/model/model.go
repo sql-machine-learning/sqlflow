@@ -288,9 +288,9 @@ func ExtractMetaFromTarball(tarballName, cwd string) (*Model, error) {
 		return nil, fmt.Errorf("given file should be a .tar.gz file")
 	}
 	cmd := exec.Command("tar", "xpf", tarballName, "-C", cwd, "./"+modelMetaFileName)
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("can't unzip model tarball: %s", tarballName)
+		return nil, fmt.Errorf("can't unzip model tarball %s: %s, %v", tarballName, out, err)
 	}
 	metaPath := path.Join(cwd, modelMetaFileName)
 	defer os.Remove(metaPath)

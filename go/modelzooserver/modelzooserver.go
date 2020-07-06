@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc"
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/log"
+	"sqlflow.org/sqlflow/go/model"
 	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/sqlfs"
 	"sqlflow.org/sqlflow/go/tar"
@@ -321,8 +322,124 @@ func (s *modelZooServer) DropModelRepo(ctx context.Context, req *pb.ReleaseModel
 	return &pb.ReleaseResponse{Success: true, Message: ""}, nil
 }
 
-func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServer) error {
-	var req *pb.ReleaseModelRequest
+func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.ReleaseResponse, error) {
+	if err := checkNameAndTag(req.GetName(), req.GetTag()); err != nil {
+		return nil, err
+	}
+	// Create database sqlflow_public_models to store public trained models.
+	if _, err := s.DB.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;", publicModelDB)); err != nil {
+		return nil, err
+	}
+	// download model from user's model database storage
+	db, err := database.OpenDB(req.DbConnStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	dir, err := ioutil.TempDir("/tmp", "upload_model_zoo")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	tarFile, err := model.DumpDBModel(db, req.Name, dir)
+	if err != nil {
+		return nil, err
+	}
+	modelMeta, err := model.ExtractMetaFromTarball(tarFile, dir)
+	if err != nil {
+		return nil, err
+	}
+	sendFile, err := os.Open(tarFile)
+	if err != nil {
+		return nil, err
+	}
+	defer sendFile.Close()
+
+	// model name is the original INTO clause, it can be like db.table
+	// reformat it to db_table as the table name in model zoo database.
+	modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
+	modelRepoImage := modelMeta.GetMetaAsString("model_repo_image")
+	imageAndTag := strings.Split(modelRepoImage, ":")
+	if len(imageAndTag) == 2 {
+		if err := checkImageURL(imageAndTag[0]); err != nil {
+			return nil, err
+		}
+		if err := checkTag(imageAndTag[1]); err != nil {
+			return nil, err
+		}
+	} else if len(imageAndTag) == 1 {
+		if err := checkImageURL(modelRepoImage); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("model repo image should be format of [domain.com/group/]image[:tag]")
+	}
+	// FIXME(typhoonzero): only hive need to pass session
+	sqlf, err := sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create sqlfs file %s: %v", modelTableName, err)
+	}
+	defer sqlf.Close()
+
+	buf := make([]byte, 4096)
+	for {
+		n, e := sendFile.Read(buf)
+		if e == io.EOF {
+			break
+		}
+		_, err = sqlf.Write(buf[:n])
+		if err != nil {
+			return nil, fmt.Errorf("get user model source code error %v", err)
+		}
+	}
+
+	// Get model_def_id from model_definition table
+	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
+	rowsImageID, err := s.DB.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsImageID.Close()
+	end := rowsImageID.Next()
+	if !end {
+		return nil, fmt.Errorf("when release model, no model repo %s found", modelRepoImage)
+	}
+	var modelCollID int
+	if err = rowsImageID.Scan(&modelCollID); err != nil {
+		return nil, err
+	}
+
+	modelClassName := modelMeta.GetMetaAsString("class_name")
+	sql = fmt.Sprintf("SELECT id FROM %s WHERE class_name='%s' AND model_coll_id='%d'", modelDefTable, modelClassName, modelCollID)
+	rowsModelDefID, err := s.DB.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsModelDefID.Close()
+	end = rowsModelDefID.Next()
+	if !end {
+		return nil, fmt.Errorf("when release model, no model definition %s found", modelClassName)
+	}
+	var modelDefID int
+	if err := rowsModelDefID.Scan(&modelDefID); err != nil {
+		return nil, err
+	}
+	evalMetrics := modelMeta.GetMetaAsString("evaluation")
+
+	// TODO(typhoonzero): let trained model name + version be unique across the table.
+	// FIXME(typhoonzero): remove field url
+	sql = fmt.Sprintf("INSERT INTO %s (model_def_id, name, version, url, description, metrics) VALUES (%d, '%s', '%s', '%s', '%s', '%s')",
+		trainedModelTable, modelDefID, req.Name, req.Tag, "", req.Description, evalMetrics)
+	_, err = s.DB.Exec(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ReleaseResponse{Success: true, Message: ""}, nil
+}
+
+func (s *modelZooServer) ReleaseModelFromLocal(stream pb.ModelZooServer_ReleaseModelFromLocalServer) error {
+	var req *pb.ReleaseModelLocalRequest
 	var err error
 	var sqlf io.WriteCloser
 
@@ -343,8 +460,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 		}
 		req = streamReq
 		if sqlf == nil {
-
-			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, req.Name)
+			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
 			// FIXME(typhoonzero): only hive need to pass session
 			sqlf, err = sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
 			if err != nil {
@@ -403,8 +519,9 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 		return err
 	}
 	// TODO(typhoonzero): let trained model name + version be unique across the table.
+	// FIXME(typhoonzero): field url is not used.
 	sql = fmt.Sprintf("INSERT INTO %s (model_def_id, name, version, url, description, metrics) VALUES (%d, '%s', '%s', '%s', '%s', '%s')",
-		trainedModelTable, modelDefID, req.Name, req.Tag, req.ContentUrl, req.Description, req.EvaluationMetrics)
+		trainedModelTable, modelDefID, req.Name, req.Tag, "", req.Description, req.EvaluationMetrics)
 	_, err = s.DB.Exec(sql)
 	if err != nil {
 		return err
@@ -415,6 +532,7 @@ func (s *modelZooServer) ReleaseModel(stream pb.ModelZooServer_ReleaseModelServe
 
 func (s *modelZooServer) DropModel(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.ReleaseResponse, error) {
 	// TODO(typhoonzero): do not delete rows, set an deletion flag.
+	// TODO(typhoonzero): do we need to also delete the model table?
 	if err := checkNameAndTag(req.GetName(), req.GetTag()); err != nil {
 		return nil, err
 	}
@@ -427,15 +545,14 @@ func (s *modelZooServer) DropModel(ctx context.Context, req *pb.ReleaseModelRequ
 
 func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream pb.ModelZooServer_DownloadModelServer) error {
 	modelName := req.Name
+	modelTableName := strings.ReplaceAll(modelName, ".", "_")
 	modelTag := req.Tag
-	modelClassName := req.ModelClassName
-	modelRepoImageURL := req.ModelRepoImageUrl
 
 	if err := checkNameAndTag(modelName, modelTag); err != nil {
 		return err
 	}
 
-	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s", publicModelDB, modelName))
+	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s", publicModelDB, modelTableName))
 	if err != nil {
 		return err
 	}
@@ -455,8 +572,8 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 			err = respStream.Send(&pb.DownloadModelResponse{
 				Name:              modelName,
 				Tag:               modelTag,
-				ModelClassName:    modelClassName,
-				ModelRepoImageUrl: modelRepoImageURL,
+				ModelClassName:    "", // FIXME(typhoonzero): not used.
+				ModelRepoImageUrl: "",
 				ContentTar:        buf,
 			})
 			if err != nil {

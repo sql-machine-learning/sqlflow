@@ -43,7 +43,7 @@ func prepareModelRepo() (string, error) {
 		return "", err
 	}
 	ioutil.WriteFile(fmt.Sprintf("%s/Dockerfile", path),
-		[]byte(`FROM ubuntu:18.04
+		[]byte(`FROM sqlflow/sqlflow:latest
 		COPY model /work/model`), 0644)
 	os.Mkdir(fmt.Sprintf("%s/model", path), 0755)
 	ioutil.WriteFile(fmt.Sprintf("%s/model/__init__.py", path),
@@ -103,12 +103,29 @@ func caseReleaseModel(t *testing.T) {
 	a.NoError(releaseModel(opts))
 }
 
+func caseReleaseModelLocal(t *testing.T) {
+	a := assert.New(t)
+	cmd := fmt.Sprintf(
+		`--model-zoo-server=localhost:%d --data-source=%s release model --local %s v1.1`,
+		modelZooServerPort, database.GetTestingMySQLURL(), "iris.my_model")
+	opts, err := getOptions(cmd)
+	a.NoError(err)
+	a.NoError(releaseModel(opts))
+}
+
 func CaseDeleteModel(t *testing.T) {
 	a := assert.New(t)
 	cmd := fmt.Sprintf(
 		"--model-zoo-server=localhost:%d delete model iris.my_model v1.0",
 		modelZooServerPort)
 	opts, err := getOptions(cmd)
+	a.NoError(err)
+	a.NoError(deleteModel(opts))
+
+	cmd = fmt.Sprintf(
+		"--model-zoo-server=localhost:%d delete model iris.my_model v1.1",
+		modelZooServerPort)
+	opts, err = getOptions(cmd)
 	a.NoError(err)
 	a.NoError(deleteModel(opts))
 }
@@ -124,6 +141,7 @@ func TestModelZooOperation(t *testing.T) {
 	t.Run("caseReleaseRepo", caseReleaseRepo)
 	t.Run("caseTrainModel", caseTrainModel)
 	t.Run("caseReleaseModel", caseReleaseModel)
+	t.Run("caseReleaseModelLocal", caseReleaseModelLocal)
 	t.Run("caseDeleteModel", CaseDeleteModel)
 	t.Run("caseDeleteRepo", caseDeleteRepo)
 }

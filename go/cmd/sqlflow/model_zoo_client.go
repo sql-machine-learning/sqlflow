@@ -20,7 +20,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -68,6 +67,30 @@ func tarRepo(repoDir, tarName string) (string, error) {
 }
 
 func releaseModel(opts *options) error {
+	conn, err := getModelZooServerConn(opts)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := pb.NewModelZooServerClient(conn)
+	request := &pb.ReleaseModelRequest{
+		Name:        opts.ModelName,
+		Tag:         opts.Version,
+		Description: opts.Description,
+		DbConnStr:   opts.DataSource,
+	}
+
+	resp, err := client.ReleaseModel(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	if !resp.Success {
+		return fmt.Errorf(resp.Message)
+	}
+	return nil
+}
+
+func releaseModelFromLocal(opts *options) error {
 	if opts.DataSource == "" {
 		return fmt.Errorf("You should specify a datasource with -d")
 	}
@@ -101,20 +124,18 @@ func releaseModel(opts *options) error {
 	}
 	defer conn.Close()
 	client := pb.NewModelZooServerClient(conn)
-	stream, err := client.ReleaseModel(context.Background())
+	stream, err := client.ReleaseModelFromLocal(context.Background())
 	if err != nil {
 		return err
 	}
-	nameParts := strings.Split(opts.ModelName, ".")
-	request := &pb.ReleaseModelRequest{
-		Name:              nameParts[len(nameParts)-1],
+	request := &pb.ReleaseModelLocalRequest{
+		Name:              opts.ModelName,
 		Tag:               opts.Version,
 		Description:       opts.Description,
 		EvaluationMetrics: model.GetMetaAsString("evaluation"),
 		ModelClassName:    model.GetMetaAsString("class_name"),
 		ModelRepoImageUrl: model.GetMetaAsString("model_repo_image"),
 		ContentTar:        nil,
-		ContentUrl:        "",
 	}
 	buf := make([]byte, 1024*10)
 	for {
@@ -141,10 +162,8 @@ func deleteModel(opts *options) error {
 	}
 	defer conn.Close()
 	client := pb.NewModelZooServerClient(conn)
-	// if user give a db.table format, we just use the table name
-	nameParts := strings.Split(opts.ModelName, ".")
 	req := &pb.ReleaseModelRequest{
-		Name: nameParts[len(nameParts)-1],
+		Name: opts.ModelName,
 		Tag:  opts.Version,
 	}
 	resp, err := client.DropModel(context.Background(), req)
