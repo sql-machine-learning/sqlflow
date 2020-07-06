@@ -1,0 +1,136 @@
+syntax = "proto3";
+package proto;
+
+message ReleaseModelRepoRequest {
+    // Name of the model definition or trained model.
+    // 1. For model definition, it could be a full Docker image URL like:
+    //    hub.docker.com/my_group/model_image_name, or path of the image to use the default registry:
+    //    my_group/model_image_name
+    // 2. For trained model, it's a unique string describes the model, like: my_resnet50_model_imagenet_acc_0.82
+    string name = 1;
+    // tag of the model definition or trained model, usually a vertion tag like: v0.1
+    string tag = 2;
+    // content_tar is the model definition's directory which contains a Dockerfile and
+    // other files that define some models.
+    // or, can be the content of a trained model.
+    // The client should use a stream request to upload the contents.
+    bytes content_tar = 3;
+}
+
+message ReleaseModelLocalRequest {
+    // A unique name of the trained model.
+    string name = 1;
+    // A version tag string, like: "v0.1"
+    string tag = 2;
+    // Description of the trained model, like what dataset was used to train this model etc.
+    string description = 3;
+    // Evaluation metric results in JSON format, e.g. {"Accuracy": 0.87, "AUC": 0.73}
+    string evaluation_metrics = 4;
+    // Model class used to train this model.
+    string model_class_name = 5;
+    // Model repo image used to train this model, can be empty.
+    string model_repo_image_url = 6;
+    // content_tar is zipped trained model content.
+    bytes content_tar = 7;
+}
+
+message ReleaseModelRequest {
+    // A unique name of the trained model.
+    string name = 1;
+    // A version tag string, like: "v0.1"
+    string tag = 2;
+    // Description of the trained model, like what dataset was used to train this model etc.
+    string description = 3;
+    // db_conn_str of format like mysql://user:pass@host:port?arg=value&arg=value
+    // model zoo server will connect to the database to fetch user's model
+    // and push to the public storage.
+    string db_conn_str = 7;
+}
+
+// SQLFlow download model from model zoo server to do prediction, explain etc.
+// The fields in DownloadModelResponse have the same meaning to ReleaseModelRequest.
+message DownloadModelResponse {
+    string name = 1;
+    string tag = 2;
+    string model_class_name = 3;
+    string model_repo_image_url = 4;
+    bytes content_tar = 5;
+}
+
+message ReleaseResponse {
+    // success indicates whether the request is processed successfully.
+    bool success = 1;
+    // message describe the error details when error occurs.
+    string message = 2;
+}
+
+message ListModelRequest {
+    // start position to fetch model definitions or trained models. Default to 0.
+    int64 start = 1;
+    // How many record to fetch in this request, used for pagination. If size = -1,
+    // return all the records.
+    int64 size = 2;
+}
+
+message ModelRepoResponse {
+    // Model definition Python class name or function name.
+    string class_name = 1;
+    // The model repo Docker image containing the class.
+    string image_url = 2;
+    // Docker image tag.
+    string tag = 3;
+    // Argument spec for each class.
+    string arg_descs = 4;
+}
+
+message ListModelRepoResponse {
+    // Model definition Python class names or function names.
+    repeated ModelRepoResponse model_def_list = 1;
+    // Size of elements in the response lists.
+    int64 size = 2;
+}
+
+message ModelResponse {
+    // The model's unique name
+    string name = 1;
+    // The model's version tag.
+    string tag = 2;
+    // Actual place that stores the model, e.g. oss://bucket/path/to/your/model
+    string model_store_url = 3;
+    // Docker image used when train this model, should be like "hub.docker.com/image:v0.3".
+    string image_url = 4;
+    // Description of the model.
+    string description = 5;
+    // Evaluation metrics of the model.
+    string metric = 6;
+}
+
+message ListModelResponse {
+    repeated ModelResponse model_list = 1;
+    // Size of elements in names.
+    int64 size = 2;
+}
+
+service ModelZooServer {
+    // Returns the list of public available model definitions.
+    rpc ListModelRepos (ListModelRequest) returns (ListModelRepoResponse);
+    // Returns the list of public available trained models.
+    rpc ListModels (ListModelRequest) returns (ListModelResponse);
+
+    // Release your model repo.
+    rpc ReleaseModelRepo (stream ReleaseModelRepoRequest) returns (ReleaseResponse);
+    // Drop your model repo.
+    // ModelDefRequest should contain name and tag.
+    rpc DropModelRepo (ReleaseModelRepoRequest) returns (ReleaseResponse);
+
+    // ReleaseModelFromLocal uploads a model from the client side.
+    rpc ReleaseModelFromLocal (stream ReleaseModelLocalRequest) returns (ReleaseResponse);
+    // ReleaseModel will let the model zoo server fetch the model files from
+    // database and save it in a public storage.
+    rpc ReleaseModel (ReleaseModelRequest) returns (ReleaseResponse);
+
+    // Drop a trained model, TrainedModelRequest should contain name and tag.
+    rpc DropModel (ReleaseModelRequest) returns (ReleaseResponse);
+    // Download a model
+    rpc DownloadModel (ReleaseModelRequest) returns (stream DownloadModelResponse);
+}

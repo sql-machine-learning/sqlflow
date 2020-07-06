@@ -30,6 +30,7 @@ PYTHON_DEV="python3-dev python3-pip" # Many pip packages require Python.h
 JAVA_DEV="openjdk-8-jdk maven"
 SHELL_LINTER="shellcheck"
 YAML_LINTER="yamllint"
+OPTIMIZE_SOLVER="glpk-utils" # required solver packages of Pyomo
 # shellcheck disable=SC2086
 apt-get -qq install -y --no-install-recommends \
         $DOWNLOAD_TOOLS \
@@ -38,6 +39,7 @@ apt-get -qq install -y --no-install-recommends \
         $JAVA_DEV \
         $SHELL_LINTER \
         $YAML_LINTER \
+        $OPTIMIZE_SOLVER \
         > /dev/null
 rm -rf /var/lib/apt/lists/*
 apt-get -qq clean -y

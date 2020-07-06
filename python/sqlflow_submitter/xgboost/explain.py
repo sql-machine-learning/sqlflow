@@ -13,10 +13,28 @@
 
 import numpy as np
 import pandas as pd
+import scipy
 import shap
 import six
 import xgboost as xgb
 from sqlflow_submitter import db, explainer
+
+
+def infer_dtype(feature):
+    if isinstance(feature, np.ndarray):
+        if feature.dtype == np.float32 or feature.dtype == np.float64:
+            return 'float32'
+        elif feature.dtype == np.int32 or feature.dtype == np.int64:
+            return 'int64'
+        else:
+            raise ValueError('Not supported data type {}'.format(
+                feature.dtype))
+    elif isinstance(feature, (np.float32, np.float64, float)):
+        return 'float32'
+    elif isinstance(feature, (np.int32, np.int64, six.integer_types)):
+        return 'int64'
+    else:
+        raise ValueError('Not supported data type {}'.format(type(feature)))
 
 
 def xgb_shap_dataset(datasource,
@@ -46,17 +64,14 @@ def xgb_shap_dataset(datasource,
         selected_cols = db.selected_cols(conn.driver, conn, select)
 
     if transform_fn:
-        column_names = transform_fn.get_column_names()
+        feature_names = transform_fn.get_feature_column_names()
     else:
-        column_names = feature_column_names
+        feature_names = feature_column_names
 
-    # NOTE(sneaxiy): pandas.DataFrame does not support Tensor whose rank is larger than 2.
-    # But `INDICATOR` would generate one hot vector for each element, and pandas.DataFrame
-    # would not accept `INDICATOR` results as its input. In a word, we do not support
-    # `TO EXPLAIN` when using `INDICATOR`.
-    xs = pd.DataFrame(columns=column_names)
-
+    xs = None
     dtypes = []
+    sizes = []
+    offsets = []
 
     i = 0
     for row, label in stream():
@@ -66,27 +81,53 @@ def xgb_shap_dataset(datasource,
         if transform_fn:
             features = transform_fn(features)
 
-        # TODO(sneaxiy): support sparse features in `TO EXPLAIN`
-        features = [item[0] for item in features]
-        xs.loc[i] = features
+        flatten_features = []
+        for j, feature in enumerate(features):
+            if len(feature) == 3:  # convert sparse to dense
+                col_indices, values, dense_shape = feature
+                size = int(np.prod(dense_shape))
+                row_indices = np.zeros(shape=[col_indices.size])
+                sparse_matrix = scipy.sparse.csr_matrix(
+                    (values, (row_indices, col_indices)), shape=[1, size])
+                values = sparse_matrix.toarray()
+            else:
+                values = feature[0]
 
+            if isinstance(values, np.ndarray):
+                flatten_features.extend(values.flatten().tolist())
+                if i == 0:
+                    sizes.append(values.size)
+                    dtypes.append(infer_dtype(values))
+            else:
+                flatten_features.append(values)
+                if i == 0:
+                    sizes.append(1)
+                    dtypes.append(infer_dtype(values))
+
+        # Create the column name according to the feature number
+        # of each column.
+        #
+        # If the column "c" contains only 1 feature, the result
+        # column name would be "c" too.
+        #
+        # If the column "c" contains 3 features,
+        # the result column name would be "c-0", "c-1" and "c-2"
         if i == 0:
-            for f in features:
-                if isinstance(f, np.ndarray):
-                    if f.dtype == np.float32 or f.dtype == np.float64:
-                        dtypes.append('float32')
-                    elif f.dtype == np.int32 or f.dtype == np.int64:
-                        dtypes.append('int64')
-                    else:
-                        raise ValueError('Not supported data type {}'.format(
-                            f.dtype))
-                elif isinstance(f, (np.float32, np.float64, float)):
-                    dtypes.append('float32')
-                elif isinstance(f, (np.int32, np.int64, six.integer_types)):
-                    dtypes.append('int64')
+            offsets = np.cumsum([0] + sizes)
+            column_names = []
+            for j in six.moves.range(len(offsets) - 1):
+                start = offsets[j]
+                end = offsets[j + 1]
+                if end - start == 1:
+                    column_names.append(feature_names[j])
                 else:
-                    raise ValueError('Not supported data type {}'.format(
-                        type(f)))
+                    for k in six.moves.range(start, end):
+                        column_names.append('{}-{}'.format(
+                            feature_names[j], k))
+
+            xs = pd.DataFrame(columns=column_names)
+
+        xs.loc[i] = flatten_features
 
         i += 1
     # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype
@@ -97,8 +138,11 @@ def xgb_shap_dataset(datasource,
     # for i in range(10):
     #     xs.loc[i] = [int(j) for j in range(2)]
     # print(xs.dtypes)
-    for dtype, name in zip(dtypes, column_names):
-        xs[name] = xs[name].astype(dtype)
+    columns = xs.columns
+    for i, dtype in enumerate(dtypes):
+        for j in six.moves.range(offsets[i], offsets[i + 1]):
+            xs[columns[j]] = xs[columns[j]].astype(dtype)
+
     return xs
 
 

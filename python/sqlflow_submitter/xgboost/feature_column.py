@@ -52,10 +52,10 @@ def apply_transform_on_value(feature, transform_fn):
 
 
 class BaseColumnTransformer(object):
-    def _set_field_names(self, field_names):
-        self.field_names = field_names
+    def _set_feature_column_names(self, names):
+        self.names = names
 
-    def get_column_names(self):
+    def get_feature_column_names(self):
         raise NotImplementedError()
 
     def __call__(self, inputs):
@@ -72,14 +72,14 @@ class NumericColumnTransformer(BaseColumnTransformer):
         self.key = key
         self.shape = shape
 
-    def _set_field_names(self, field_names):
-        BaseColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = self.field_names.index(self.key)
+    def _set_feature_column_names(self, names):
+        BaseColumnTransformer._set_feature_column_names(self, names)
+        self.column_idx = self.names.index(self.key)
 
     def __call__(self, inputs):
         return inputs[self.column_idx]
 
-    def get_column_names(self):
+    def get_feature_column_names(self):
         return [self.key]
 
 
@@ -94,12 +94,12 @@ class BucketizedColumnTransformer(CategoricalColumnTransformer):
         self.source_column = source_column
         self.boundaries = boundaries
 
-    def _set_field_names(self, field_names):
-        CategoricalColumnTransformer._set_field_names(self, field_names)
-        self.source_column._set_field_names(field_names)
+    def _set_feature_column_names(self, names):
+        CategoricalColumnTransformer._set_feature_column_names(self, names)
+        self.source_column._set_feature_column_names(names)
 
-    def get_column_names(self):
-        return self.source_column.get_column_names()
+    def get_feature_column_names(self):
+        return self.source_column.get_feature_column_names()
 
     def num_classes(self):
         return len(self.boundaries) + 1
@@ -120,11 +120,11 @@ class CategoricalColumnWithIdentityTransformer(CategoricalColumnTransformer):
         self.num_buckets = num_buckets
         self.default_value = default_value
 
-    def _set_field_names(self, field_names):
-        CategoricalColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = self.field_names.index(self.key)
+    def _set_feature_column_names(self, names):
+        CategoricalColumnTransformer._set_feature_column_names(self, names)
+        self.column_idx = self.names.index(self.key)
 
-    def get_column_names(self):
+    def get_feature_column_names(self):
         return [self.key]
 
     def num_classes(self):
@@ -163,11 +163,11 @@ class CategoricalColumnWithVocabularyList(CategoricalColumnTransformer):
         self.key = key
         self.vocabulary_list = vocabulary_list
 
-    def _set_field_names(self, field_names):
-        CategoricalColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = self.field_names.index(self.key)
+    def _set_feature_column_names(self, names):
+        CategoricalColumnTransformer._set_feature_column_names(self, names)
+        self.column_idx = self.names.index(self.key)
 
-    def get_column_names(self):
+    def get_feature_column_names(self):
         return [self.key]
 
     def num_classes(self):
@@ -197,11 +197,11 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
         self.hash_bucket_size = hash_bucket_size
         self.dtype = dtype
 
-    def _set_field_names(self, field_names):
-        CategoricalColumnTransformer._set_field_names(self, field_names)
-        self.column_idx = self.field_names.index(self.key)
+    def _set_feature_column_names(self, names):
+        CategoricalColumnTransformer._set_feature_column_names(self, names)
+        self.column_idx = self.names.index(self.key)
 
-    def get_column_names(self):
+    def get_feature_column_names(self):
         return [self.key]
 
     def num_classes(self):
@@ -233,12 +233,12 @@ class IndicatorColumnTransformer(BaseColumnTransformer):
             "categorical_column must be type of CategoricalColumnTransformer but got {}".format(type(categorical_column))
         self.categorical_column = categorical_column
 
-    def _set_field_names(self, field_names):
-        BaseColumnTransformer._set_field_names(self, field_names)
-        self.categorical_column._set_field_names(field_names)
+    def _set_feature_column_names(self, names):
+        BaseColumnTransformer._set_feature_column_names(self, names)
+        self.categorical_column._set_feature_column_names(names)
 
-    def get_column_names(self):
-        return self.categorical_column.get_column_names()
+    def get_feature_column_names(self):
+        return self.categorical_column.get_feature_column_names()
 
     def __call__(self, inputs):
         slot = self.categorical_column(inputs)
@@ -275,15 +275,18 @@ class ComposedColumnTransformer(BaseColumnTransformer):
         assert len(columns) != 0, "No feature column found"
 
         self.columns = columns
-        self._set_field_names(feature_column_names)
+        self._set_feature_column_names(feature_column_names)
 
-    def get_column_names(self):
-        return ['/'.join(column.get_column_names()) for column in self.columns]
+    def get_feature_column_names(self):
+        return [
+            '/'.join(column.get_feature_column_names())
+            for column in self.columns
+        ]
 
-    def _set_field_names(self, field_names):
-        BaseColumnTransformer._set_field_names(self, field_names)
+    def _set_feature_column_names(self, names):
+        BaseColumnTransformer._set_feature_column_names(self, names)
         for column in self.columns:
-            column._set_field_names(field_names)
+            column._set_feature_column_names(names)
 
     def __call__(self, inputs):
         return tuple([column(inputs) for column in self.columns])
