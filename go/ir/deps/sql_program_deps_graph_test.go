@@ -39,8 +39,9 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	a.NoError(err)
 	a.Equal(6, len(Stmts))
 	if Stmts[0] != nil {
-		// FIXME(typhoonzero): add this test when mysql/hive/calcite parser implemented getting input/output tables.
-		// This test is now used for MaxCompute parser.
-		a.Equal(0, len(Stmts[0].Outputs))
+		a.Equal(1, len(Stmts[0].Outputs))
+		a.Equal(1, len(Stmts[0].Inputs))
+		a.Equal(1, len(Stmts[1].Outputs))
+		a.Equal(1, len(Stmts[1].Inputs))
 	}
 }
