@@ -21,7 +21,7 @@ import (
 	"sqlflow.org/sqlflow/go/parser"
 )
 
-func TestExtendedSyntaxParseToTrain(t *testing.T) {
+func TestParseDeps(t *testing.T) {
 	a := assert.New(t)
 	sqlProgram := `CREATE TABLE table1 AS SELECT * FROM origin;
 	CREATE TABLE table2 AS SELECT * FROM table1;
@@ -32,6 +32,9 @@ func TestExtendedSyntaxParseToTrain(t *testing.T) {
 	driverType := os.Getenv("SQLFLOW_TEST_DB")
 	if driverType == "" {
 		driverType = "mysql"
+	}
+	if driverType != "mysql" {
+		t.Skipf("skip SQL program deps test for db driver %s", driverType)
 	}
 	res, err := parser.Parse(driverType, sqlProgram)
 	a.NoError(err)
