@@ -227,16 +227,16 @@ type roleArn struct {
 }
 
 func getCheckpointDir(ossModelPath, project string) (string, error) {
-	ossCheckpointConfig := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	if ossCheckpointConfig == "" {
-		return "", fmt.Errorf("need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
+	ckpJSONStr := os.Getenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
+	if ckpJSONStr == "" {
+		return "", fmt.Errorf("need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when submitting to PAI")
 	}
 	ra := roleArn{}
-	if err := json.Unmarshal([]byte(ossCheckpointConfig), &ra); err != nil {
+	if err := json.Unmarshal([]byte(ckpJSONStr), &ra); err != nil {
 		return "", err
 	}
-	roleName := fmt.Sprintf("pai2oss_%s", project)
 	ossURL := OSSModelURL(ossModelPath)
+	roleName := fmt.Sprintf("pai2oss_%s", project)
 	// format the oss checkpoint path with ARN authorization.
 	return fmt.Sprintf("%s/?role_arn=%s/%s&host=%s", ossURL, ra.Arn, roleName, ra.Host), nil
 }

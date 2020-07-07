@@ -118,8 +118,8 @@ func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := ir.MockTrainStmt(false)
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
-	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_CONFIG", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
+	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
 
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
@@ -143,8 +143,8 @@ func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
 	ir := ir.MockPredStmt(ir.MockTrainStmt(false))
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
-	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_CONFIG", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
+	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
 	scriptPath := "file:///tmp/task.tar.gz"

@@ -23,8 +23,8 @@ import (
 
 func TestGetCheckpointDir(t *testing.T) {
 	a := assert.New(t)
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
-	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_CONFIG", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
+	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
 	ossModelPath, project := "p/t/m", "pr0j"
 
 	ckpoint, err := getCheckpointDir(ossModelPath, project)
