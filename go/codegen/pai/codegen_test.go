@@ -118,7 +118,7 @@ func TestTrainCodegen(t *testing.T) {
 	a := assert.New(t)
 	trainStmt := ir.MockTrainStmt(false)
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"}")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 
 	sess := mockSession()
@@ -135,7 +135,7 @@ func TestTrainCodegen(t *testing.T) {
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(paiTFCode, knownTrainParams))
 
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DhyperParameters=\"%s\" -DcheckpointDir='oss://sqlflow-models/iris/sqlflow/my_dnn_model/?role_arn=xxx&host=xxx' -DgpuRequired='0'", scriptPath, paramsPath)
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/train,odps://iris/tables/test  -DhyperParameters=\"%s\" -DcheckpointDir='oss://sqlflow-models/iris/sqlflow/my_dnn_model/?role_arn=acs:ram::9527:role/pai2oss_project&host=h.com' -DgpuRequired='0'", scriptPath, paramsPath)
 	a.Equal(expectedPAICmd, paiCmd)
 }
 
@@ -143,7 +143,7 @@ func TestPredictCodegen(t *testing.T) {
 	a := assert.New(t)
 	ir := ir.MockPredStmt(ir.MockTrainStmt(false))
 
-	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"project\": \"oss://bucket/?role_arn=xxx&host=xxx\"}")
+	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
 	sess := mockSession()
 	ossModelPath := "iris/sqlflow/my_dnn_model"
@@ -157,6 +157,6 @@ func TestPredictCodegen(t *testing.T) {
 
 	a.True(hasExportedLocal(tfCode))
 	a.False(hasUnknownParameters(tfCode, knownPredictParams))
-	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DhyperParameters=\"%s\" -DcheckpointDir='oss://sqlflow-models/iris/sqlflow/my_dnn_model/?role_arn=xxx&host=xxx' -DgpuRequired='0'", scriptPath, paramsPath)
+	expectedPAICmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=odps://iris/tables/predict -Doutputs=odps://iris/tables/predict -DhyperParameters=\"%s\" -DcheckpointDir='oss://sqlflow-models/iris/sqlflow/my_dnn_model/?role_arn=acs:ram::9527:role/pai2oss_project&host=h.com' -DgpuRequired='0'", scriptPath, paramsPath)
 	a.Equal(expectedPAICmd, paiCmd)
 }

@@ -25,10 +25,10 @@ func TestGetCheckpointDir(t *testing.T) {
 	a := assert.New(t)
 	os.Setenv("SQLFLOW_OSS_CHECKPOINT_DIR", "{\"host\": \"h.com\", \"arn\": \"acs:ram::9527:role\"}")
 	defer os.Unsetenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	ossModelPath, project := "", "pr0j"
+	ossModelPath, project := "p/t/m", "pr0j"
 
 	ckpoint, err := getCheckpointDir(ossModelPath, project)
 	a.NoError(err)
-	expectedCkp := fmt.Sprintf("oss://%s/?role_arn=acs:ram::9527:role/pai2oss_pr0j&host=h.com", BucketName)
+	expectedCkp := fmt.Sprintf("oss://%s/p/t/m/?role_arn=acs:ram::9527:role/pai2oss_pr0j&host=h.com", BucketName)
 	a.Equal(expectedCkp, ckpoint)
 }
