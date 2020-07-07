@@ -31,7 +31,7 @@ fi
 # NOTE: we have already installed runtime under python installation
 # path using latest develop branch, but when testing on CI, we need to use the
 # code in the current pull request.
-export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
+export PYTHONPATH=/work/python:$GOPATH/src/sqlflow.org/sqlflow/python:$PYTHONPATH
 
 go generate ./...
 go install ./...
