@@ -514,11 +514,12 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 
 // caseXGBoostFeatureColumn is cases to run xgboost e2e tests using feature columns
 func caseXGBoostFeatureColumn(t *testing.T, isPai bool) {
-	irisTrainTable := "iris.train"
-	churnTrainTable := "churn.train"
+	irisTrainTable := caseDB + ".train"
+	churnTrainTable := caseDB + ".train"
+
 	if isPai {
-		irisTrainTable = "alifin_jtest_dev.sqlflow_test_iris_train"
-		churnTrainTable = "alifin_jtest_dev.sqlflow_test_churn_train"
+		irisTrainTable = caseDB + ".sqlflow_test_iris_train"
+		churnTrainTable = caseDB + ".sqlflow_test_churn_train"
 	}
 
 	numWorkers := 1
@@ -564,11 +565,7 @@ func caseTensorFlowIncrementalTrainImpl(t *testing.T, model string, isPai bool) 
 		a.Equal(len(rows), 1)
 	}
 
-	trainTable := "iris.train"
-	if isPai {
-		trainTable = "alifin_jtest_dev.sqlflow_test_iris_train"
-	}
-
+	trainTable := caseTrainTable
 	db := strings.SplitN(trainTable, ".", 2)[0]
 
 	modelSave := "tf_estimator_inc_train"
