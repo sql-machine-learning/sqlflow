@@ -56,7 +56,7 @@ on how to execute the target code.
 ``` golang
 type ExecutionCtx struct {
   ExecCommand []string      // How to execute the target code, .e.g ["python" "-c"]
-  Env map[string]{}         // The environment variables for execution
+  Env map[string]string     // The environment variables for execution
 }
 
 type CodeGenerator interface {
