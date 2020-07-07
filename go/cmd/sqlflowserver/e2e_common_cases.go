@@ -44,32 +44,33 @@ func caseShowDatabases(t *testing.T) {
 	}
 
 	expectedDBs := map[string]string{
-		"information_schema":      "",
-		"boston":                  "",
-		"churn":                   "",
-		"creditcard":              "",
-		"feature_derivation_case": "",
-		"fund":                    "",
-		"housing":                 "",
-		"iris":                    "",
-		"mysql":                   "",
-		"optimize_test_db":        "",
-		"performance_schema":      "",
-		"sqlflow_models":          "",
-		"sf_home":                 "", // default auto train&val database
-		"sqlfs_test":              "",
-		"sys":                     "",
-		"text_cn":                 "",
-		"standard_join_test":      "",
-		"sanity_check":            "",
-		"iris_e2e":                "", // created by Python e2e test
-		"hive":                    "", // if current mysql is also used for hive
-		"default":                 "", // if fetching default hive databases
-		"sqlflow":                 "", // to save model zoo trained models
-		"imdb":                    "",
-		"sqlflow_model_zoo":       "",
-		"sqlflow_public_models":   "",
-		"energy":                  "", // energy tutoral table
+		"information_schema":          "",
+		"boston":                      "",
+		"churn":                       "",
+		"creditcard":                  "",
+		"energy":                      "", // energy tutoral table
+		"feature_derivation_case":     "",
+		"fund":                        "",
+		"housing":                     "",
+		"iris":                        "",
+		"mysql":                       "",
+		"optimize_test_db":            "",
+		"performance_schema":          "",
+		"sqlflow_models":              "",
+		"sf_home":                     "", // default auto train&val database
+		"sqlfs_test":                  "",
+		"sys":                         "",
+		"text_cn":                     "",
+		"standard_join_test":          "",
+		"sanity_check":                "",
+		"iris_e2e":                    "", // created by Python e2e test
+		"hive":                        "", // if current mysql is also used for hive
+		"default":                     "", // if fetching default hive databases
+		"sqlflow":                     "", // to save model zoo trained models
+		"imdb":                        "",
+		"sqlflow_model_zoo":           "",
+		"sqlflow_public_models":       "",
+		"xgboost_sparse_data_test_db": "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
@@ -644,8 +645,13 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a := assert.New(t)
 
 	testDBType := os.Getenv("SQLFLOW_TEST_DB")
+	dbName := "xgboost_sparse_data_test_db"
+	isPai := os.Getenv("SQLFLOW_submitter") == "pai"
+	const trainTable = "xgboost_sparse_data_train"
 
-	dbName := "test_xgb_kv_column"
+	if testDBType == "maxcompute" {
+		dbName = caseDB
+	}
 
 	executeSQLFunc := func(sql string) {
 		_, _, _, err := connectAndRunSQL(sql)
@@ -666,78 +672,68 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		return columns
 	}
 
-	dropDBSQL := ""
-	if testDBType == "hive" {
-		// Hive can only drop non-empty database in the CASCADE mode.
-		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE;", dbName)
-	} else {
-		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
+	trainedModel := "xgb_kv_column_trained_model"
+	if !isPai {
+		trainedModel = fmt.Sprintf("%s.%s", dbName, trainedModel)
 	}
 
-	defer executeSQLFunc(dropDBSQL)
+	const trainSQLTemplate = `SELECT c1, label_col FROM %s.%s
+	TO TRAIN xgboost.gbtree
+	WITH
+		num_class = 3,
+		objective = "multi:softprob",
+		train.num_boost_round = 20
+	COLUMN SPARSE(c1%s)
+	LABEL label_col
+	INTO %s;
+	`
 
-	prepareDataSQL := []string{
-		dropDBSQL,
-		fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s;`, dbName),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.train (c1 VARCHAR(255), label_col FLOAT);`, dbName),
-		fmt.Sprintf(`INSERT INTO %s.train VALUES("1:0.5 3:-1.5 5:6.7", 0.5), ("3:-1.3 10:0.6 2:-3.4", -0.5);`, dbName),
-	}
-
-	for _, sql := range prepareDataSQL {
-		executeSQLFunc(sql)
-	}
-
-	trainedModel := fmt.Sprintf("%s.trained_model", dbName)
-
-	const trainSQLTemplate = `SELECT c1, label_col FROM %s.train
-TO TRAIN xgboost.gbtree
-WITH 
-	objective = "reg:squarederror",
-	train.num_boost_round = 20
-COLUMN SPARSE(c1%s)
-LABEL label_col
-INTO %s;
-`
-
-	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, "", trainedModel)
+	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, trainTable, "", trainedModel)
 	executeSQLFunc(trainSQL)
-	hasModelTableFunc(trainedModel)
+	if !isPai {
+		hasModelTableFunc(trainedModel)
+	}
 
-	trainSQL = fmt.Sprintf(trainSQLTemplate, dbName, ",11", trainedModel)
+	trainSQL = fmt.Sprintf(trainSQLTemplate, dbName, trainTable, ",11", trainedModel)
 	executeSQLFunc(trainSQL)
-	hasModelTableFunc(trainedModel)
+	if !isPai {
+		hasModelTableFunc(trainedModel)
+	}
 
-	const predictTable = "predict_table"
-	const predictSQLTemplate = `SELECT c1, label_col FROM %[1]s.train TO PREDICT %[1]s.%[2]s.%[3]s USING %[4]s;`
+	const predictTable = "xgb_kv_column_predict_table"
+	const predictSQLTemplate = `SELECT c1, label_col FROM %[1]s.%[2]s TO PREDICT %[1]s.%[3]s.%[4]s USING %[5]s;`
 
-	predictSQLWithOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, predictTable, "new_label_col", trainedModel)
+	predictSQLWithOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "new_label_col", trainedModel)
 	executeSQLFunc(predictSQLWithOriginalLabel)
 	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
-	a.Equal(2, len(rows))
+	a.Equal(3, len(rows))
 	a.Equal(3, len(columns))
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
 	a.Equal("label_col", columns[1])
 	a.Equal("new_label_col", columns[2])
 
-	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, predictTable, "label_col", trainedModel)
+	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "label_col", trainedModel)
 	executeSQLFunc(predictSQLWithoutOriginalLabel)
 	columns, rows, _, err = connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
-	a.Equal(2, len(rows))
+	a.Equal(3, len(rows))
 	a.Equal(2, len(columns))
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
 	a.Equal("label_col", columns[1])
 
-	const evaluateTable = "evaluate_table"
-	evaluateSQL := fmt.Sprintf(`SELECT c1, label_col FROM %[1]s.train 
-TO EVALUATE %[2]s WITH validation.metrics="mean_squared_error" LABEL label_col INTO %[1]s.%[3]s;`, dbName, trainedModel, evaluateTable)
-	executeSQLFunc(evaluateSQL)
-
-	explainSQL := fmt.Sprintf("SELECT c1, label_col FROM %[1]s.train TO EXPLAIN %s WITH summary.plot_type=bar;", dbName, trainedModel)
-	executeSQLFunc(explainSQL)
+	// PAI does not support TO EVALUATE yet
+	// TODO(sneaxiy): TO EXPLAIN should be supported
+	if !isPai {
+		const evaluateTable = "xgb_kv_column_evaluate_table"
+		evaluateSQL := fmt.Sprintf(`SELECT c1, label_col FROM %[1]s.%[2]s 
+TO EVALUATE %[3]s WITH validation.metrics="mean_squared_error" LABEL label_col INTO %[1]s.%[4]s;`, dbName, trainTable, trainedModel, evaluateTable)
+		executeSQLFunc(evaluateSQL)
+		explainSQL := fmt.Sprintf("SELECT c1, label_col FROM %s.%s TO EXPLAIN %s WITH summary.plot_type=bar;", dbName, trainTable, trainedModel)
+		executeSQLFunc(explainSQL)
+	}
 }
 
 func decodeAnyTypedRowData(anyData [][]*any.Any) ([][]interface{}, error) {

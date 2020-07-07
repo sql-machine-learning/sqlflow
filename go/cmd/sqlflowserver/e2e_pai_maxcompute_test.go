@@ -499,6 +499,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+		t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
 	})
 
 }
