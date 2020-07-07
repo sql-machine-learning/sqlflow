@@ -24,6 +24,7 @@ set -e
 
 
 echo "Install apt packages ..."
+apt-get -qq update
 DOWNLOAD_TOOLS="curl axel unzip" # We need curl to check the running of Hive.
 BUILD_ESSENTIAL="build-essential git"
 PYTHON_DEV="python3-dev python3-pip" # Many pip packages require Python.h
