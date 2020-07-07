@@ -514,9 +514,9 @@ func caseXGBoostFeatureColumnImpl(t *testing.T, table string, label string, sele
 
 // caseXGBoostFeatureColumn is cases to run xgboost e2e tests using feature columns
 func caseXGBoostFeatureColumn(t *testing.T, isPai bool) {
-
 	irisTrainTable := caseDB + ".train"
 	churnTrainTable := caseDB + ".train"
+
 	if isPai {
 		irisTrainTable = caseDB + ".sqlflow_test_iris_train"
 		churnTrainTable = caseDB + ".sqlflow_test_churn_train"
