@@ -44,32 +44,33 @@ func caseShowDatabases(t *testing.T) {
 	}
 
 	expectedDBs := map[string]string{
-		"information_schema":      "",
-		"boston":                  "",
-		"churn":                   "",
-		"creditcard":              "",
-		"feature_derivation_case": "",
-		"fund":                    "",
-		"housing":                 "",
-		"iris":                    "",
-		"mysql":                   "",
-		"optimize_test_db":        "",
-		"performance_schema":      "",
-		"sqlflow_models":          "",
-		"sf_home":                 "", // default auto train&val database
-		"sqlfs_test":              "",
-		"sys":                     "",
-		"text_cn":                 "",
-		"standard_join_test":      "",
-		"sanity_check":            "",
-		"iris_e2e":                "", // created by Python e2e test
-		"hive":                    "", // if current mysql is also used for hive
-		"default":                 "", // if fetching default hive databases
-		"sqlflow":                 "", // to save model zoo trained models
-		"imdb":                    "",
-		"sqlflow_model_zoo":       "",
-		"sqlflow_public_models":   "",
-		"energy":                  "", // energy tutoral table
+		"information_schema":          "",
+		"boston":                      "",
+		"churn":                       "",
+		"creditcard":                  "",
+		"energy":                      "", // energy tutoral table
+		"feature_derivation_case":     "",
+		"fund":                        "",
+		"housing":                     "",
+		"iris":                        "",
+		"mysql":                       "",
+		"optimize_test_db":            "",
+		"performance_schema":          "",
+		"sqlflow_models":              "",
+		"sf_home":                     "", // default auto train&val database
+		"sqlfs_test":                  "",
+		"sys":                         "",
+		"text_cn":                     "",
+		"standard_join_test":          "",
+		"sanity_check":                "",
+		"iris_e2e":                    "", // created by Python e2e test
+		"hive":                        "", // if current mysql is also used for hive
+		"default":                     "", // if fetching default hive databases
+		"sqlflow":                     "", // to save model zoo trained models
+		"imdb":                        "",
+		"sqlflow_model_zoo":           "",
+		"sqlflow_public_models":       "",
+		"xgboost_sparse_data_test_db": "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
@@ -647,23 +648,12 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a := assert.New(t)
 
 	testDBType := os.Getenv("SQLFLOW_TEST_DB")
+	dbName := "xgboost_sparse_data_test_db"
+	isPai := os.Getenv("SQLFLOW_submitter") == "pai"
+	const trainTable = "xgboost_sparse_data_train"
 
-	dropDBSQL := ""
-	dbName := "test_xgb_kv_column"
-	isMaxCompute := false
-	const trainTable = "xgb_kv_column_train_table"
-
-	switch testDBType {
-	case "hive":
-		// Hive can only drop non-empty database in the CASCADE mode.
-		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s CASCADE;", dbName)
-	case "mysql":
-		dropDBSQL = fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName)
-	case "maxcompute":
+	if testDBType == "maxcompute" {
 		dbName = caseDB
-		isMaxCompute = true
-	default:
-		t.Skip(fmt.Sprintf("Skip %s tests", testDBType))
 	}
 
 	executeSQLFunc := func(sql string) {
@@ -685,34 +675,8 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		return columns
 	}
 
-	if !isMaxCompute {
-		defer executeSQLFunc(dropDBSQL)
-	}
-
-	var prepareDataSQL []string
-	if !isMaxCompute {
-		prepareDataSQL = []string{
-			dropDBSQL,
-			fmt.Sprintf(`CREATE DATABASE IF NOT EXISTS %s;`, dbName),
-			fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.%s (c1 VARCHAR(255), label_col FLOAT);`, dbName, trainTable),
-		}
-	} else {
-		prepareDataSQL = []string{
-			fmt.Sprintf(`DROP TABLE IF EXISTS %s.%s;`, dbName, trainTable),
-			fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s.%s (c1 STRING, label_col DOUBLE);`, dbName, trainTable),
-		}
-	}
-
-	insertDataSQL := fmt.Sprintf(`INSERT INTO %s.%s VALUES("1:0.5 3:-1.5 5:6.7", 0), 
-("3:-1.3 10:0.6 2:-3.4", 1), ("5:10.2 3:7.4", 2);`, dbName, trainTable)
-	prepareDataSQL = append(prepareDataSQL, insertDataSQL)
-
-	for _, sql := range prepareDataSQL {
-		executeSQLFunc(sql)
-	}
-
 	trainedModel := "xgb_kv_column_trained_model"
-	if !isMaxCompute {
+	if !isPai {
 		trainedModel = fmt.Sprintf("%s.%s", dbName, trainedModel)
 	}
 
@@ -729,13 +693,13 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 
 	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, trainTable, "", trainedModel)
 	executeSQLFunc(trainSQL)
-	if !isMaxCompute {
+	if !isPai {
 		hasModelTableFunc(trainedModel)
 	}
 
 	trainSQL = fmt.Sprintf(trainSQLTemplate, dbName, trainTable, ",11", trainedModel)
 	executeSQLFunc(trainSQL)
-	if !isMaxCompute {
+	if !isPai {
 		hasModelTableFunc(trainedModel)
 	}
 
@@ -763,9 +727,9 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a.Equal("c1", columns[0])
 	a.Equal("label_col", columns[1])
 
-	// MaxCompute does not support TO EVALUATE yet
+	// PAI does not support TO EVALUATE yet
 	// TODO(sneaxiy): TO EXPLAIN should be supported
-	if !isMaxCompute {
+	if !isPai {
 		const evaluateTable = "xgb_kv_column_evaluate_table"
 		evaluateSQL := fmt.Sprintf(`SELECT c1, label_col FROM %[1]s.%[2]s 
 TO EVALUATE %[3]s WITH validation.metrics="mean_squared_error" LABEL label_col INTO %[1]s.%[4]s;`, dbName, trainTable, trainedModel, evaluateTable)
