@@ -69,17 +69,18 @@ def pred(datasource,
     for pred_dmatrix in dpred:
         predict_and_store_result(bst, pred_dmatrix, feature_file_id,
                                  model_params, selected_cols, label_name,
-                                 is_pai, conn, result_table,
-                                 hdfs_namenode_addr, hive_location, hdfs_user,
-                                 hdfs_pass)
+                                 feature_column_names, feature_metas, is_pai,
+                                 conn, result_table, hdfs_namenode_addr,
+                                 hive_location, hdfs_user, hdfs_pass)
         feature_file_id += 1
     print("Done predicting. Predict table : %s" % result_table)
 
 
 def predict_and_store_result(bst, dpred, feature_file_id, model_params,
-                             selected_cols, label_name, is_pai, conn,
-                             result_table, hdfs_namenode_addr, hive_location,
-                             hdfs_user, hdfs_pass):
+                             selected_cols, label_name, feature_column_names,
+                             feature_metas, is_pai, conn, result_table,
+                             hdfs_namenode_addr, hive_location, hdfs_user,
+                             hdfs_pass):
     preds = bst.predict(dpred)
 
     #TODO(yancey1989): should save train_params and model_params not only on PAI submitter
@@ -124,7 +125,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
         driver = "pai_maxcompute"
     else:
         driver = conn.driver
-    import sys
     with db.buffered_db_writer(driver,
                                conn,
                                result_table,
@@ -134,15 +134,18 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                                hive_location=hive_location,
                                hdfs_user=hdfs_user,
                                hdfs_pass=hdfs_pass) as w:
+        feature_indexs = []
+        for fcn in feature_column_names:
+            feature_indexs.append(selected_cols.index(fcn))
         while True:
             line = feature_file_read.readline()
             if not line:
                 break
+            # FIXME(typhoonzero): how to output columns that are not used as features, like ids?
             row = [
                 item for i, item in enumerate(line.strip().split("/"))
-                if i != label_index
+                if i in feature_indexs
             ]
             row.append(str(preds[line_no]))
-            sys.stderr.write("writing row: %s\n" % row)
             w.write(row)
             line_no += 1

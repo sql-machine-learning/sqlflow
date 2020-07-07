@@ -125,10 +125,7 @@ def dump_dmatrix(filename,
         raw_data_fid = None
 
     with open(filename, 'a') as f:
-        for raw_row in generator:
-            row = raw_row[0]
-            if has_label and len(raw_row) == 2:
-                label = raw_row[1]
+        for row, label in generator:
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_metas)

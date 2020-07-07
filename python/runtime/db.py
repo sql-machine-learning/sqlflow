@@ -13,7 +13,6 @@
 
 import contextlib
 import re
-import sys
 
 import numpy as np
 import runtime.db_writer as db_writer

@@ -149,8 +149,6 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
 
 def write_cols_from_selected(result_col_name, selected_cols):
     write_cols = selected_cols[:]
-    sys.stderr.write("result col: %s, selected cols: %s\n" %
-                     (result_col_name, selected_cols))
     if result_col_name in selected_cols:
         target_col_index = selected_cols.index(result_col_name)
         del write_cols[target_col_index]
@@ -265,10 +263,7 @@ def estimator_predict(estimator, model_params, save, result_table,
     with db.buffered_db_writer(driver, conn, result_table, write_cols, 100,
                                hdfs_namenode_addr, hive_location, hdfs_user,
                                hdfs_pass) as w:
-        for row_raw in predict_generator:
-            row = list(row_raw[0])
-            sys.stderr.write("row: %s, target_col_index %d\n" %
-                             (row, target_col_index))
+        for row, _ in predict_generator:
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_metas)

@@ -43,8 +43,7 @@ class MaxCompute:
                                         sep=feature_spec["delimiter"])
                 indices = indices.reshape(indices.size, 1)
                 values = np.ones([indices.size], dtype=np.int32)
-                dense_shape = np.array(feature_metas[name]["shape"],
-                                       dtype=np.int64)
+                dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
                 return (indices, values, dense_shape)
             else:
                 # Dense string vector
@@ -89,15 +88,11 @@ class MaxCompute:
                             label = np.fromstring(label,
                                                   dtype=int,
                                                   sep=label_meta["delimiter"])
-                    features = []
-                    for name in feature_column_names:
-                        feature = read_feature(row[field_names.index(name)],
-                                               feature_metas[name])
-                        features.append(feature)
+
                     if label_idx is None:
-                        yield (tuple(features), )
+                        yield list(row), None
                     else:
-                        yield tuple(features), label
+                        yield list(row), label
                 i += expected
 
         return reader
