@@ -60,7 +60,7 @@ echo "Install pip packages ..."
 PRE_COMMIT="pre-commit==1.18.3"
 PY_TEST="pytest==5.3.0"
 JS_LINTER=jsbeautifier
-PYTHON_LINTER="yapf isort pylint flake8"
+PYTHON_LINTER="yapf isort<5,>=4.2.5 pylint>=2.5.3 flake8"
 WHEEL="wheel"
 # shellcheck disable=SC2086
 python -m pip install --quiet \
