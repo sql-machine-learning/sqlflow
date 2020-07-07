@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import numpy as np
 from odps import ODPS, tunnel
 
@@ -21,6 +23,15 @@ class MaxCompute:
     @staticmethod
     def connect(database, user, password, host, auth=""):
         return ODPS(user, password, project=database, endpoint=host)
+
+    @staticmethod
+    def selected_cols(conn, select):
+        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+        with conn.execute_sql(select).open_reader(
+                tunnel=True, compress_option=compress) as r:
+            field_names = None if r._schema.columns is None \
+                else [col.name for col in r._schema.columns]
+        return field_names
 
     @staticmethod
     def db_generator(conn, statement, feature_column_names, label_meta,
@@ -42,7 +53,7 @@ class MaxCompute:
                                          dtype=int,
                                          sep=feature_spec["delimiter"])
                 else:
-                    return (raw_val, )
+                    return raw_val
 
         def reader():
             compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB

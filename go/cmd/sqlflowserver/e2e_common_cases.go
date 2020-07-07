@@ -15,16 +15,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/ptypes/any"
 	"os"
 	"reflect"
 	"regexp"
 	"sort"
-	"sqlflow.org/sqlflow/go/proto"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/golang/protobuf/ptypes/any"
+	"sqlflow.org/sqlflow/go/proto"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/go/database"
@@ -354,8 +355,7 @@ func caseTrainSQL(t *testing.T) {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
-	predSQL := fmt.Sprintf(`SELECT *
-FROM %s
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.class
 USING %s;`, caseTestTable, casePredictTable, caseInto)
 	_, _, _, err = connectAndRunSQL(predSQL)

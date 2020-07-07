@@ -124,6 +124,7 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
         driver = "pai_maxcompute"
     else:
         driver = conn.driver
+    import sys
     with db.buffered_db_writer(driver,
                                conn,
                                result_table,
@@ -142,5 +143,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                 if i != label_index
             ]
             row.append(str(preds[line_no]))
+            sys.stderr.write("writing row: %s\n" % row)
             w.write(row)
             line_no += 1
