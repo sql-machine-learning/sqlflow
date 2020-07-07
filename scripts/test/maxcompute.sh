@@ -23,8 +23,6 @@ fi
 export SQLFLOW_TEST_DB=maxcompute
 export SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
 export SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"
-export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
-export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
 if [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_AK" = "" ] || [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_SK" == "" ]; then
     echo "Skip MaxCompute tests because SQLFLOW_TEST_DB_MAXCOMPUTE_AK or SQLFLOW_TEST_DB_MAXCOMPUTE_SK is empty"
     exit 0
