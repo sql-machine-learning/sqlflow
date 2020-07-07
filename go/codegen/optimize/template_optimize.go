@@ -29,78 +29,47 @@ type optimizeFiller struct {
 	AttributeJSON   string
 	TrainTable      string
 	ResultTable     string
-	RunnerModule    string
 }
 
-const pyomoNativeOptimizeText = `
-from sqlflow_submitter.optimize import run_optimize
-
+const pyomoVarObjectiveAndConstraintText = `
 variables = [{{range .Variables}}"{{.}}",{{end}}]
 
 objective = [{{range .Objective.ExpressionTokens}}"{{.}}",{{end}}]
 
 constraints = [{{range .Constraints}}
     {
-        "expression": [{{range .ExpressionTokens}}"{{.}}",{{end}}],
+        "tokens": [{{range .ExpressionTokens}}"{{.}}",{{end}}],
         "group_by": "{{.GroupBy}}",
     },
 {{end}}]
-
-run_optimize(datasource="{{.DataSource}}", 
-             select='''{{.Select}}''',
-             variables=variables, 
-             variable_type="{{.VariableType}}",
-             result_value_name="{{.ResultValueName}}",
-             objective=objective,
-             direction="{{.Direction}}",
-             constraints=constraints,
-             solver="{{.Solver}}",
-             result_table="{{.ResultTable}}")
 `
 
-const optFlowRunnerText = `
-from sqlflow_submitter.optimize import BaseOptFlowRunner
+const pyomoNativeOptimizeText = pyomoVarObjectiveAndConstraintText + `
+from sqlflow_submitter.optimize import run_optimize_locally
 
-__all__ = ['CustomOptFlowRunner']
-
-class CustomOptFlowRunner(BaseOptFlowRunner):
-    def init_parameters(self):
-        self.variables = [{{range .Variables}}"{{.}}",{{end}}]
-
-        self.result_value_name = "{{.ResultValueName}}"
-
-        self.variable_type = "{{.VariableType}}"
-
-        self.direction = "{{.Direction}}"
-
-        self.objective = [{{range .Objective.ExpressionTokens}}"{{.}}",{{end}}]
-
-        self.constraints = [{{range .Constraints}}
-            {
-                "expression": [{{range .ExpressionTokens}}"{{.}}",{{end}}],
-                "group_by": "{{.GroupBy}}",
-            },
-        {{end}}]
+run_optimize_locally(datasource="{{.DataSource}}", 
+                     select='''{{.Select}}''',
+                     variables=variables, 
+                     variable_type="{{.VariableType}}",
+                     result_value_name="{{.ResultValueName}}",
+                     objective=objective,
+                     direction="{{.Direction}}",
+                     constraints=constraints,
+                     solver="{{.Solver}}",
+                     result_table="{{.ResultTable}}")
 `
 
-const optFlowSubmitText = `
-import json
-from sqlflow_submitter.optimize import submit
+const optFlowOptimizeText = pyomoVarObjectiveAndConstraintText + `
+from sqlflow_submitter.optimize import run_optimize_on_optflow
 
-runner = "{{.RunnerModule}}.CustomOptFlowRunner"
-solver = "{{.Solver}}"
-attributes = json.loads('''{{.AttributeJSON}}''')
-train_table = "{{.TrainTable}}"
-result_table = "{{.ResultTable}}"
-
-user_id = "{{.UserID}}"
-if not user_id:
-    user_id = "jinle.zjl"
-
-submit(runner=runner, 
-       solver=solver, 
-       attributes=attributes, 
-       train_table=train_table,
-       result_table=result_table,
-       user_id=user_id)
+run_optimize_on_optflow(train_table="{{.TrainTable}}",
+                        variables=variables,
+                        variable_type="{{.VariableType}}",
+                        result_value_name="{{.ResultValueName}}",
+                        objective=objective,
+                        direction="{{.Direction}}",
+                        constraints=constraints,
+                        solver="{{.Solver}}",
+                        result_table="{{.ResultTable}}",
+                        user_number="{{.UserID}}")
 `

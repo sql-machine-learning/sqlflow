@@ -17,6 +17,7 @@ import pickle
 import tarfile
 
 import oss2
+import sqlflow_submitter.pai.utils as utils
 import tensorflow as tf
 from sqlflow_submitter import db
 
@@ -25,20 +26,7 @@ SQLFLOW_MODELS_BUCKET = "sqlflow-models"
 
 
 def get_models_bucket():
-    ak = os.getenv("SQLFLOW_OSS_AK")
-    sk = os.getenv("SQLFLOW_OSS_SK")
-    if ak == "" or sk == "":
-        raise ValueError(
-            "must configure SQLFLOW_OSS_AK and SQLFLOW_OSS_SK when submitting to PAI"
-        )
-    auth = oss2.Auth(ak, sk)
-    endpoint = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
-    if endpoint == "":
-        raise ValueError(
-            "must configure SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
-
-    bucket = oss2.Bucket(auth, endpoint, SQLFLOW_MODELS_BUCKET)
-    return bucket
+    return utils.get_bucket(SQLFLOW_MODELS_BUCKET)
 
 
 def remove_bucket_prefix(oss_uri):

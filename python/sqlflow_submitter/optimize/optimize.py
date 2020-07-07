@@ -12,12 +12,15 @@
 # limitations under the License.
 
 import collections
-import io
+import json
+import os
 import sys
+import time
 
 import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
+import requests
 import six
 import sqlflow_submitter.db as db
 from pyomo.environ import (Integers, NegativeIntegers, NegativeReals,
@@ -90,16 +93,20 @@ def find_matched_aggregation_brackets(expression, i):
     return aggregation_brackets, min(i + 1, len(expression))
 
 
-def contains_aggregation_function(expression):
-    for expr in expression:
-        if expr.lower() in AGGREGATION_FUNCTIONS:
+def contains_aggregation_function(tokens):
+    for token in tokens:
+        if token.lower() in AGGREGATION_FUNCTIONS:
             return True
 
     return False
 
 
-def generate_range_constraint_func(expression, data_frame, variables,
-                                   result_value_name):
+def generate_non_aggregated_constraint_expression(tokens,
+                                                  data_frame,
+                                                  variables,
+                                                  result_value_name,
+                                                  variable_str="model.x",
+                                                  data_frame_str="DATA_FRAME"):
     variables = [v.lower() for v in variables]
     result_value_name = result_value_name.lower()
 
@@ -109,35 +116,37 @@ def generate_range_constraint_func(expression, data_frame, variables,
             continue
         param_columns[c.lower()] = c
 
-    result_exprs = []
+    result_tokens = []
 
-    for i, expr in enumerate(expression):
-        if expr.lower() == result_value_name:
-            result_exprs.append("model.x[i]")
-        elif expr.lower() in variables:
+    for i, token in enumerate(tokens):
+        if token.lower() == result_value_name:
+            result_tokens.append("{}[i]".format(variable_str))
+        elif token.lower() in variables:
             if len(variables) > 1:
                 raise ValueError(
                     "Invalid expression, variable {} should not be inside non aggregation constraint expression"
-                    .format(expr))
+                    .format(token))
             else:
-                result_exprs.append("model.x[i]")
-        elif expr.lower() in param_columns:
-            result_exprs.append("DATA_FRAME.{}[i]".format(expr.lower()))
+                result_tokens.append("{}[i]".format(variable_str))
+        elif token.lower() in param_columns:
+            column_name = param_columns.get(token.lower())
+            result_tokens.append('{}["{}"][i]'.format(data_frame_str,
+                                                      column_name))
         else:
-            result_exprs.append(expr)
+            result_tokens.append(token)
 
-    result_func_str = "".join(result_exprs)
-    result_func_str = "lambda model, i: {}".format(result_func_str)
-    result_func = eval(result_func_str)
-    setattr(result_func, "code", result_func_str)  # for debug and unittest
-    return result_func
+    result_expression = "".join(result_tokens)
+    return result_expression
 
 
-def generate_objective_or_constraint_func(expression,
-                                          data_frame,
-                                          variables,
-                                          result_value_name,
-                                          index=None):
+def generate_objective_or_aggregated_constraint_expression(
+    tokens,
+    data_frame,
+    variables,
+    result_value_name,
+    indices=None,
+    variable_str="model.x",
+    data_frame_str="DATA_FRAME"):
     variables = [v.lower() for v in variables]
     result_value_name = result_value_name.lower()
 
@@ -153,39 +162,39 @@ def generate_objective_or_constraint_func(expression,
 
         param_columns[c.lower()] = c
 
-    def append_non_aggregation_expr(expr, result_exprs):
-        if expr.lower() in AGGREGATION_FUNCTIONS:
-            result_exprs.append(expr.lower())
-        elif expr.lower() in variables:
-            result_exprs.append("model.x[{}]".format(
-                variables.index(expr.lower())))
-        elif expr.lower() == result_value_name:
+    def append_non_aggregation_token(token, result_tokens):
+        if token.lower() in AGGREGATION_FUNCTIONS:
+            result_tokens.append(token.lower())
+        elif token.lower() in variables:
+            result_tokens.append("{}[{}]".format(
+                variable_str, variables.index(token.lower())))
+        elif token.lower() == result_value_name:
             raise ValueError(
                 "Invalid expression, result value {} should not be inside non-aggregation expression"
-                .format(expr))
-        elif expr.lower() in param_columns:
-            if index is None:
+                .format(token))
+        elif token.lower() in param_columns:
+            if indices is None:
                 raise ValueError(
                     "Invalid expression, param column {} should only occur constraint clause using GROUP BY"
-                    .format(expr))
+                    .format(token))
             else:  # TODO(sneaxiy): need check whether the value is unique
                 value_column = data_frame[param_columns.get(
-                    expr.lower())].to_numpy()
-                value = value_column[index[0]]
-                result_exprs.append(str(value))
+                    token.lower())].to_numpy()
+                value = value_column[indices[0]]
+                result_tokens.append(str(value))
         else:
-            result_exprs.append(expr)
+            result_tokens.append(token)
 
-    result_exprs = []
+    result_tokens = []
     i = 0
-    while i < len(expression):
+    while i < len(tokens):
         bracket_indices, next_idx = find_matched_aggregation_brackets(
-            expression, i)
+            tokens, i)
         assert bracket_indices is not None, "brackets not match"
 
         if not bracket_indices:  # no bracket
             for idx in six.moves.range(i, next_idx):
-                append_non_aggregation_expr(expression[idx], result_exprs)
+                append_non_aggregation_token(tokens[idx], result_tokens)
             i = next_idx
             continue
 
@@ -194,7 +203,7 @@ def generate_objective_or_constraint_func(expression,
         left_idx, right_idx = left_indices[0], right_indices[0]
 
         for idx in six.moves.range(i, left_idx):
-            append_non_aggregation_expr(expression[idx], result_exprs)
+            append_non_aggregation_token(tokens[idx], result_tokens)
 
         def get_depth(idx):
             max_depth_idx = -1
@@ -216,52 +225,108 @@ def generate_objective_or_constraint_func(expression,
         for idx in six.moves.range(left_idx, right_idx + 1):
             depth = get_depth(idx)
             index_str = 'i_{}'.format(depth)
-            if expression[idx] == "(":
-                result_exprs.append(expression[idx])
+            if tokens[idx] == "(":
+                result_tokens.append(tokens[idx])
                 if idx in left_indices:
-                    result_exprs.append("[")
+                    result_tokens.append("[")
                 continue
-            elif expression[idx] == ")":
+            elif tokens[idx] == ")":
                 if idx in right_indices:
-                    result_exprs.append(' ')
-                    if index is not None:
-                        result_exprs.append('for {} in {}'.format(
-                            index_str, index))
+                    result_tokens.append(' ')
+                    if indices is not None:
+                        result_tokens.append('for {} in {}'.format(
+                            index_str, indices))
                     else:
-                        result_exprs.append(
-                            'for {} in model.x'.format(index_str))
-                    result_exprs.append(']')
-                result_exprs.append(expression[idx])
+                        result_tokens.append('for {} in {}'.format(
+                            index_str, variable_str))
+                    result_tokens.append(']')
+                result_tokens.append(tokens[idx])
                 continue
 
-            if expression[idx].lower() in AGGREGATION_FUNCTIONS:
-                result_exprs.append(expression[idx].lower())
-            elif expression[idx].lower() in param_columns:
-                column_name = param_columns.get(expression[idx].lower())
-                expr = 'DATA_FRAME.{}[{}]'.format(column_name, index_str)
-                result_exprs.append(expr)
-            elif expression[idx].lower() == result_value_name or (
+            if tokens[idx].lower() in AGGREGATION_FUNCTIONS:
+                result_tokens.append(tokens[idx].lower())
+            elif tokens[idx].lower() in param_columns:
+                column_name = param_columns.get(tokens[idx].lower())
+                expr = '{}["{}"][{}]'.format(data_frame_str, column_name,
+                                             index_str)
+                result_tokens.append(expr)
+            elif tokens[idx].lower() == result_value_name or (
                     len(variables) == 1
-                    and expression[idx].lower() == variables[0]):
-                expr = 'model.x[{}]'.format(index_str)
-                result_exprs.append(expr)
-            elif expression[idx].lower() in variables:
+                    and tokens[idx].lower() == variables[0]):
+                expr = '{}[{}]'.format(variable_str, index_str)
+                result_tokens.append(expr)
+            elif tokens[idx].lower() in variables:
                 raise ValueError(
                     "Invalid expression, variable {} should not be inside aggregation expression"
-                    .format(expression[idx]))
+                    .format(tokens[idx]))
             else:
-                result_exprs.append(expression[idx])
+                result_tokens.append(tokens[idx])
 
         for idx in six.moves.range(right_idx + 1, next_idx):
-            append_non_aggregation_expr(expression[idx], result_exprs)
+            append_non_aggregation_token(tokens[idx], result_tokens)
 
         i = next_idx
 
-    result_expresion = "".join(result_exprs)
-    result_func_str = "lambda model: {}".format(result_expresion)
-    result_func = eval(result_func_str)
-    setattr(result_func, "code", result_func_str)  # for debug and unittest
-    return result_func
+    result_expresion = "".join(result_tokens)
+    return result_expresion
+
+
+def generate_objective_or_constraint_expressions(tokens,
+                                                 data_frame,
+                                                 variables,
+                                                 result_value_name,
+                                                 group_by="",
+                                                 variable_str="model.x",
+                                                 data_frame_str="DATA_FRAME"):
+    has_aggregation_func = contains_aggregation_function(tokens)
+    result_expressions = []
+
+    if group_by:
+        assert has_aggregation_func, "GROUP BY must be used with aggregation functions"
+        group_by_column = None
+
+        for column in data_frame.columns:
+            if group_by.lower() == column.lower():
+                group_by_column = column
+                break
+
+        if group_by_column is None:
+            raise ValueError("Cannot find GROUP BY column {}".format(group_by))
+
+        values = np.unique(data_frame[group_by_column].to_numpy()).tolist()
+        for v in values:
+            indices = np.where(data_frame[group_by_column] == v)[0].tolist()
+            expression = generate_objective_or_aggregated_constraint_expression(
+                tokens=tokens,
+                data_frame=data_frame,
+                variables=variables,
+                result_value_name=result_value_name,
+                indices=indices,
+                variable_str=variable_str,
+                data_frame_str=data_frame_str)
+            result_expressions.append((expression, ))
+    else:
+        if has_aggregation_func:
+            expression = generate_objective_or_aggregated_constraint_expression(
+                tokens=tokens,
+                data_frame=data_frame,
+                variables=variables,
+                result_value_name=result_value_name,
+                variable_str=variable_str,
+                data_frame_str=data_frame_str)
+            result_expressions.append((expression, ))
+        else:
+            expression = generate_non_aggregated_constraint_expression(
+                tokens=tokens,
+                data_frame=data_frame,
+                variables=variables,
+                result_value_name=result_value_name,
+                variable_str=variable_str,
+                data_frame_str=data_frame_str)
+            result_expressions.append(
+                (expression, None))  # None means all variables
+
+    return result_expressions
 
 
 def generate_model_with_data_frame(data_frame, variables, variable_type,
@@ -274,78 +339,45 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
     var_num = len(data_frame)
     model.x = pyomo_env.Var(list(range(var_num)), within=eval(variable_type))
 
-    objective_func = generate_objective_or_constraint_func(
-        expression=objective,
+    objective_expression = generate_objective_or_constraint_expressions(
+        tokens=objective,
         data_frame=data_frame,
         variables=variables,
         result_value_name=result_value_name)
-
+    assert len(objective_expression) == 1 and len(objective_expression[0]) == 1, \
+        "there must be only one objective expression"
+    objective_func = eval("lambda model: {}".format(
+        objective_expression[0][0]))
     model.objective = pyomo_env.Objective(rule=objective_func,
                                           sense=eval(direction))
 
     attr_index = 0
-    for i, c in enumerate(constraints):
-        expression = c.get("expression")
+    for c in constraints:
+        tokens = c.get("tokens")
         group_by = c.get("group_by")
-        has_aggregation_func = contains_aggregation_function(expression)
 
-        if group_by:
-            group_by_column = None
+        expressions = generate_objective_or_constraint_expressions(
+            tokens=tokens,
+            data_frame=data_frame,
+            variables=variables,
+            result_value_name=result_value_name,
+            group_by=group_by)
 
-            for column in data_frame.columns:
-                if group_by.lower() == column.lower():
-                    group_by_column = column
-                    break
-
-            if group_by_column is None:
-                raise ValueError(
-                    "Cannot find GROUP BY column {}".format(group_by))
-
-            values = np.unique(data_frame[group_by_column].to_numpy()).tolist()
-            for v in values:
-                index = np.where(data_frame[group_by_column] == v)[0].tolist()
-                if has_aggregation_func:
-                    constraint_func = generate_objective_or_constraint_func(
-                        expression=expression,
-                        data_frame=data_frame,
-                        variables=variables,
-                        result_value_name=result_value_name,
-                        index=index)
-                    constraint = pyomo_env.Constraint(rule=constraint_func)
-                else:
-                    constraint_func = generate_range_constraint_func(
-                        expression=expression,
-                        data_frame=data_frame,
-                        variables=variables,
-                        result_value_name=result_value_name)
-                    index_set = pyomo_env.Set(initialize=index)
-                    constraint = pyomo_env.Constraint(index_set,
-                                                      rule=constraint_func)
-
-                attr_name = "c_{}".format(attr_index)
-                setattr(model, attr_name, constraint)
-                attr_index += 1
-        else:
-            if has_aggregation_func:
-                constraint_func = generate_objective_or_constraint_func(
-                    expression=expression,
-                    data_frame=data_frame,
-                    variables=variables,
-                    result_value_name=result_value_name)
-                constraint = pyomo_env.Constraint(rule=constraint_func)
-            else:
-                constraint_func = generate_range_constraint_func(
-                    expression=expression,
-                    data_frame=data_frame,
-                    variables=variables,
-                    result_value_name=result_value_name)
-                range_set = pyomo_env.RangeSet(0, var_num - 1)
-                constraint = pyomo_env.Constraint(range_set,
-                                                  rule=constraint_func)
-
-            attr_name = "c_{}".format(attr_index)
-            setattr(model, attr_name, constraint)
+        for expr in expressions:
+            attr_name = 'c_{}'.format(attr_index)
             attr_index += 1
+
+            if len(expr) == 1:  # (expression, )
+                func = eval('lambda model: {}'.format(expr[0]))
+                setattr(model, attr_name, pyomo_env.Constraint(rule=func))
+            else:  # (expression, range), where range may be None and None means all variables
+                indices = expr[1]
+                if indices is None:
+                    indices = list(six.moves.range(var_num))
+                func = eval('lambda model, i: {}'.format(expr[0]))
+                index_set = pyomo_env.Set(initialize=indices)
+                setattr(model, attr_name,
+                        pyomo_env.Constraint(index_set, rule=func))
 
     DATA_FRAME = None
     return model
@@ -382,6 +414,34 @@ def solve_model(model, solver):
 
     np_dtype = np.int64 if model.x[0].is_integer() else np.float64
     return np.array(result_values, dtype=np_dtype)
+
+
+def load_odps_table_to_data_frame(odps_table, load_schema_only=False):
+    from odps import ODPS
+    from odps.df import DataFrame
+    project, table = odps_table.split('.')
+    ak = os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+    sk = os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+    endpoint = os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
+    if not endpoint.startswith('http://') and not endpoint.startswith(
+            'https://'):
+        endpoint = "https://" + endpoint
+
+    endpoint = endpoint.split('?')[0]
+    odps_conf = ODPS(access_id=ak,
+                     secret_access_key=sk,
+                     project=project,
+                     endpoint=endpoint)
+    table = odps_conf.get_table(table)
+    if load_schema_only:
+        columns = [column.name for column in table.schema]
+        pandas_df = pd.DataFrame(columns=columns)
+    else:
+        odps_df = DataFrame(table)
+        # NOTE(sneaxiy): to_pandas is extremely slow. Need a better way to speedup the code
+        pandas_df = odps_df.to_pandas()
+
+    return pandas_df
 
 
 def load_db_data_to_data_frame(datasource, select):
@@ -451,10 +511,11 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     print('Saved in {}.'.format(result_table))
 
 
-def run_optimize(datasource, select, variables, variable_type,
-                 result_value_name, objective, direction, constraints, solver,
-                 result_table):
-    data_frame = load_db_data_to_data_frame(datasource, select)
+def run_optimize_locally(datasource, select, variables, variable_type,
+                         result_value_name, objective, direction, constraints,
+                         solver, result_table):
+    data_frame = load_db_data_to_data_frame(datasource=datasource,
+                                            select=select)
     model = generate_model_with_data_frame(data_frame=data_frame,
                                            variables=variables,
                                            variable_type=variable_type,
@@ -469,3 +530,250 @@ def run_optimize(datasource, select, variables, variable_type,
                              result_value_name=result_value_name,
                              datasource=datasource,
                              result_table=result_table)
+
+
+OPTFLOW_HTTP_HEADERS = {
+    'content-type': 'application/json',
+    'accept': 'application/json',
+}
+
+
+def query_optflow_job_status(url, record_id, user_number, token):
+    url = "{}?userNumber={}&recordId={}&token={}".format(
+        url, user_number, record_id, token)
+    response = requests.get(url.format(user_number, record_id, token),
+                            headers=OPTFLOW_HTTP_HEADERS)
+    response.raise_for_status()
+    response_json = response.json()
+    if not response_json['success']:
+        raise ValueError('cannot get status of job {}'.format(record_id))
+
+    return response_json['data']['status'].lower()
+
+
+def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
+    url = "{}?userNumber={}&recordId={}&token={}".format(
+        url, user_number, record_id, token)
+    response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS, stream=True)
+    # Content-Type: application/json;charset=utf-8
+    content_type = response.headers["Content-Type"]
+    split = content_type.split("=")
+    if len(split) == 2:
+        encoding = split[1].strip().lower()
+    else:
+        encoding = 'utf-8'
+
+    chunks = None
+    for chunk in response.iter_content(chunk_size=128):
+        if chunks is None:
+            chunks = chunk
+        else:
+            chunks += chunk
+    result = json.loads(chunks)
+    if not result['success']:
+        raise ValueError('cannot get log of job {}'.format(record_id))
+
+    logs = result['data']['logs']
+    end_line_num = len(logs)
+    logs = [log.encode(encoding) for log in logs[start_line_num:]]
+    return logs, end_line_num
+
+
+def print_job_log_till_finish(status_url, log_url, record_id, user_number,
+                              token):
+    def call_func_with_retry(func, times):
+        for _ in six.moves.range(times - 1):
+            try:
+                return func()
+            except:
+                pass
+
+        return func()
+
+    status = None
+    line_num = 0
+    while True:
+        query_status = lambda: query_optflow_job_status(
+            status_url, record_id, user_number, token)
+        query_log = lambda: query_optflow_job_log(log_url, record_id,
+                                                  user_number, token, line_num)
+        status = call_func_with_retry(query_status, 3)
+        logs, line_num = call_func_with_retry(query_log, 3)
+
+        for log in logs:
+            print(log)
+
+        # status may be 'success', 'failed', 'running', 'prepare'
+        if status in ['success', 'failed']:
+            break
+
+        time.sleep(2)  # sleep for some times
+
+    return status == 'success'
+
+
+def send_optflow_http_request(train_table, result_table, fsl_file_content,
+                              solver, user_number):
+    project_name = train_table.split(".")[0]
+
+    snapshot_id = os.getenv("SQLFLOW_OPTFLOW_SNAPSHOT_ID")
+    if not snapshot_id:
+        raise ValueError("SQLFLOW_OPTFLOW_SNAPSHOT_ID must be set")
+
+    token = os.getenv("SQLFLOW_OPTFLOW_TOKEN")
+    if not token:
+        raise ValueError("SQLFLOW_OPTFLOW_TOKEN must be set")
+
+    submit_job_url = os.getenv("SQLFLOW_OPTFLOW_SUBMIT_JOB_URL")
+    if not submit_job_url:
+        raise ValueError("SQLFLOW_OPTFLOW_SUBMIT_JOB_URL must be set")
+
+    query_job_status_url = os.getenv("SQLFLOW_OPTFLOW_QUERY_JOB_STATUS_URL")
+    if not query_job_status_url:
+        raise ValueError("SQLFLOW_OPTFLOW_QUERY_JOB_STATUS_URL must be set")
+
+    query_job_log_url = os.getenv("SQLFLOW_OPTFLOW_QUERY_JOB_LOG_URL")
+    if not query_job_log_url:
+        raise ValueError("SQLFLOW_OPTFLOW_QUERY_JOB_LOG_URL must be set")
+
+    import sqlflow_submitter.pai.utils as utils
+    import uuid
+    import oss2
+
+    bucket_name = "sqlflow-optflow-models"
+    bucket = utils.get_bucket(bucket_name)
+    try:
+        bucket_info = bucket.get_bucket_info()
+    except oss2.exceptions.NoSuchBucket:
+        # Create bucket if not exists
+        bucket.create_bucket()
+        bucket_info = bucket.get_bucket_info()
+
+    fsl_file_id = '{}.fsl'.format(uuid.uuid4())
+    bucket.put_object(fsl_file_id, fsl_file_content)
+    should_delete_object = True
+    try:
+        bucket.put_object_acl(fsl_file_id, oss2.BUCKET_ACL_PUBLIC_READ)
+        fsl_url = "http://{}.{}/{}".format(bucket_name,
+                                           bucket_info.extranet_endpoint,
+                                           fsl_file_id)
+
+        input_params = {
+            "input_table": train_table,
+            "output_table": result_table,
+            "fsl_path": fsl_url,
+            "solver_name": solver,
+        }
+
+        json_data = {
+            "userNumber": user_number,
+            "projectName": project_name,
+            "snapshotId": snapshot_id,
+            "token": token,
+            "inputParams": input_params,
+        }
+
+        response = requests.post(submit_job_url,
+                                 json=json_data,
+                                 headers=OPTFLOW_HTTP_HEADERS)
+        response.raise_for_status()
+        response_json = response.json()
+        if not response_json['success']:
+            raise ValueError("Job submission fails")
+
+        print('Job submission succeeds')
+        record_id = response_json['data']['recordId']
+        try:
+            success = print_job_log_till_finish(query_job_status_url,
+                                                query_job_log_url, record_id,
+                                                user_number, token)
+            if success:
+                print("Job succeeds, saved in {}.".format(result_table))
+            else:
+                print("Job fails.")
+        except:
+            # FIXME(sneaxiy): we should not delete object if there is any
+            # network error when querying job status and logs. But when
+            # should we clean the object?
+            should_delete_object = False
+            six.reraise(*sys.exc_info())
+    finally:
+        if should_delete_object:
+            bucket.delete_object(fsl_file_id)
+
+
+def run_optimize_on_optflow(train_table, variables, variable_type,
+                            result_value_name, objective, direction,
+                            constraints, solver, result_table, user_number):
+    variable_str = "@X"
+    data_frame_str = "@input"
+
+    if direction.lower() == "maximize":
+        direction = "max"
+    elif direction.lower() == "minimize":
+        direction = "min"
+    else:
+        raise ValueError("direction must be maximize or minimize")
+
+    # Need to load the table data only when there is any GROUP BY clause.
+    load_schema_only = True
+    for c in constraints:
+        if c["group_by"]:
+            load_schema_only = False
+            break
+
+    data_frame = load_odps_table_to_data_frame(
+        odps_table=train_table, load_schema_only=load_schema_only)
+    objective_expression = generate_objective_or_constraint_expressions(
+        tokens=objective,
+        data_frame=data_frame,
+        variables=variables,
+        result_value_name=result_value_name,
+        variable_str=variable_str,
+        data_frame_str=data_frame_str)
+    assert len(objective_expression) == 1 and len(objective_expression[0]) == 1, \
+        "there must be only one objective expression"
+    objective_expression = objective_expression[0][0]
+
+    constraint_expressions = []
+    for c in constraints:
+        tokens = c.get("tokens")
+        group_by = c.get("group_by")
+
+        expressions = generate_objective_or_constraint_expressions(
+            tokens=tokens,
+            data_frame=data_frame,
+            variables=variables,
+            result_value_name=result_value_name,
+            group_by=group_by,
+            variable_str=variable_str,
+            data_frame_str=data_frame_str)
+
+        for expr in expressions:
+            if len(expr) == 1:  # (expression, )
+                expr = expr[0]
+            else:  # (expression, range), where range may be None and None means all variables
+                range_expr = expr[1]
+                if range_expr is None:
+                    range_expr = variable_str
+                expr = "for i in {}: {}".format(range_expr, expr[0])
+
+            constraint_expressions.append(expr)
+
+    fsl_file_content = '''
+variables: {}
+
+var_type: {}
+
+objective: {}
+{}
+
+constraints:
+{}
+'''.format(",".join(variables), variable_type, direction, objective_expression,
+           "\n".join(constraint_expressions))
+    send_optflow_http_request(train_table=train_table,
+                              result_table=result_table,
+                              fsl_file_content=fsl_file_content,
+                              solver=solver,
+                              user_number=user_number)

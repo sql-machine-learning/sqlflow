@@ -304,10 +304,7 @@ def db_generator(driver,
 
 
 def pai_maxcompute_db_generator(table,
-                                feature_column_names,
-                                label_column_name,
-                                feature_specs,
-                                fetch_size=128,
+                                label_column_name=None,
                                 slice_id=0,
                                 slice_count=1):
     def reader():
