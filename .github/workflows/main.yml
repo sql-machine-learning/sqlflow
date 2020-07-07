@@ -24,5 +24,7 @@ jobs:
     - name: Run a multi-line script
       run: |
         set -e
+        echo cwd ${{ github.workspace }}
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
         bash scripts/travis/build.sh
         docker run --rm -it -v $PWD:/work -w /work sqlflow:dev pre-commit run -a --show-diff-on-failure
