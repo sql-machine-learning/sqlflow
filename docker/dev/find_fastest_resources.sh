@@ -237,6 +237,7 @@ function choose_fastest_apt_source() {
     install_requirements_if_not
     echo "Find fastest APT mirror ..."
     find_fastest_apt_source > /etc/apt/sources.list
+    cat /etc/apt/sources.list
     apt-get -qq update
 }
 
@@ -255,7 +256,7 @@ http://mirrors.tuna.tsinghua.edu.cn
 \t
 EOM
 
-    best=$(find_fastest_url $urls)
+    best=$(find_fastest_url "$urls")
     if [[ "$best" != "$default" ]]; then
         sed -i "s=http://dl-cdn.alpinelinux.org=$best=g" /etc/apk/repositories
     fi
