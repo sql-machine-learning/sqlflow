@@ -676,8 +676,8 @@ func achieveResource(cwd, entryCode, requirements, tarball, estimator string) er
 	if err := writeFile(filepath.Join(cwd, "requirements.txt"), requirements); err != nil {
 		return err
 	}
-	// sqlflow_submitter and sqlflow_models are built-in packages.
-	if err := copyPythonPackage("sqlflow_submitter", cwd); err != nil {
+	// runtime and sqlflow_models are built-in packages.
+	if err := copyPythonPackage("runtime", cwd); err != nil {
 		return err
 	}
 	if err := copyPythonPackage("sqlflow_models", cwd); err != nil {
@@ -689,7 +689,7 @@ func achieveResource(cwd, entryCode, requirements, tarball, estimator string) er
 		return err
 	}
 
-	cmd := exec.Command("tar", "czf", tarball, "./sqlflow_submitter", "./sqlflow_models", entryFile, "requirements.txt")
+	cmd := exec.Command("tar", "czf", tarball, "./runtime", "./sqlflow_models", entryFile, "requirements.txt")
 	cmd.Dir = cwd
 	if _, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)

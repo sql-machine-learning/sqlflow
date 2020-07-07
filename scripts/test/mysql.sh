@@ -30,7 +30,7 @@ while read -r i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
 export SQLFLOW_TEST_DB=mysql
 
 python -c "import sqlflow_models"
-python -c "import sqlflow_submitter.db"
+python -c "import runtime.db"
 
 go generate ./...
 go install ./...

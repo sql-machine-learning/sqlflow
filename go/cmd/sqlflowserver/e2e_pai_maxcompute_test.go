@@ -223,10 +223,10 @@ func CaseTrainPAIKMeans(t *testing.T) {
 
 func dropPAIModel(dataSource, modelName string) error {
 	code := fmt.Sprintf(`import subprocess
-import sqlflow_submitter.db
+import runtime.db
 driver, dsn = "%s".split("://")
 assert driver == "maxcompute"
-user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
+user, passwd, address, database = runtime.db.parseMaxComputeDSN(dsn)
 cmd = "drop offlinemodel if exists %s"
 subprocess.run(["odpscmd", "-u", user,
                            "-p", passwd,

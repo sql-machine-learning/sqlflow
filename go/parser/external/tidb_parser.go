@@ -23,6 +23,7 @@ import (
 
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
+	"github.com/pingcap/parser/format"
 	_ "github.com/pingcap/tidb/types/parser_driver" // As required by https://github.com/pingcap/parser/blob/master/parser_example_test.go#L19
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -106,6 +107,37 @@ func (p *tidbParser) Parse(program string) ([]*Statement, int, error) {
 	return ss, pos, err
 }
 
+// parseInputsOutputs parse the SELECT ast node and write inputs/outputs table names in retStmt.
+func parseInputsOutputs(node ast.StmtNode, retStmt *Statement) {
+	restoreFlags := format.RestoreStringSingleQuotes | format.RestoreKeyWordUppercase
+	switch node.(type) {
+	case *ast.SelectStmt:
+		n := node.(*ast.SelectStmt)
+		if n.From != nil {
+			var sb strings.Builder
+			// TODO(typhoonzero): Deal with JOIN clause
+			// TODO(typhoonzero): Deal with nested SELECT
+			n.From.Restore(format.NewRestoreCtx(restoreFlags, &sb))
+			retStmt.Inputs = append(retStmt.Inputs, sb.String())
+		}
+		// case *ast.UnionStmt: is also query statement, should find way to deal with it
+		// deal with insert, update, drop etc.
+	case *ast.CreateTableStmt:
+		n := node.(*ast.CreateTableStmt)
+		retStmt.Outputs = append(retStmt.Outputs, n.Table.Name.String())
+		// TODO(typhoonzero): deal with AS SELECT * FROM table, which table is a input
+		slctNode, ok := n.Select.(*ast.SelectStmt)
+		if ok {
+			from := slctNode.From
+			if from != nil {
+				var sb strings.Builder
+				from.Restore(format.NewRestoreCtx(restoreFlags, &sb))
+				retStmt.Inputs = append(retStmt.Inputs, sb.String())
+			}
+		}
+	}
+}
+
 func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
 	// split program into single statements
 	stmts, err := p.splitStatementToPieces(program)
@@ -125,6 +157,7 @@ func (p *tidbParser) doParse(program string) ([]*Statement, int, error) {
 			} else {
 				retStmts = append(retStmts, &Statement{String: nodes[0].Text()})
 				pos += len(sql)
+				parseInputsOutputs(nodes[0], retStmts[len(retStmts)-1])
 			}
 			continue
 		}

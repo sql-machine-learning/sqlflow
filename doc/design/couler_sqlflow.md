@@ -31,17 +31,17 @@ couler.run_container(
     cmd='''
 echo "SELECT ... TO TRAIN xgboost.booster" |
 sqlflow -parse |
-python -m sqlflow_submitter.xgboost.train
+python -m runtime.xgboost.train
 ''',
     env={"SQLFLOW_DATASOURCE": "mysql://user:pass@192.168.1.1:3306"}, # set session message as the env vars.
-    image="sqlflow/sqlflow_submitter"
+    image="sqlflow/sqlflow:step"
 )
 ```
 
 From the above Couler function:
 - `sqlflow -parse` is **SQLFLow command-line tool**, which compiles the input extended SQL into an IR serialized file.
-- `sqlflow_submitter.xgboost.train` is **SQLFlow submitter Python module**, which accepts the IR protobuf text file and then submit a machine learning job.
-- `sqlflow/sqlflow_submitter` is a Docker image that packages the SQLFlow submitter Python module and SQLFlow command-line tool.
+- `runtime.xgboost.train` is **SQLFlow submitter Python module**, which accepts the IR protobuf text file and then submit a machine learning job.
+- `sqlflow/sqlflow:step` is a Docker image that packages the SQLFlow `runtime` Python module and SQLFlow command-line tool.
 
 ### SQLFLow Command-line Tool
 
@@ -104,10 +104,10 @@ Note: You can check more details about the IR definition from [ir.go](/pkg/ir/ir
 
 ### SQLFLow Submitter Python Module
 
-An SQLFlow submitter Python module `sqlflow_submitter.{tensorflow,xgboost,elasticdl}.train` accepts an SQLFlow IR with protobuf text format, and then submit a Tensorflow, XGBoost or ElasticDL training job, we can call it like:
+An SQLFlow submitter Python module `runtime.{tensorflow,xgboost,elasticdl}.train` accepts an SQLFlow IR with protobuf text format, and then submit a Tensorflow, XGBoost or ElasticDL training job, we can call it like:
 
 ``` bash
-cat ir.proto_text | python -m sqlflow_submitter.xgboost.train
+cat ir.proto_text | python -m runtime.xgboost.train
 ```
 
 ### Couler Step Function and Model Zoo
@@ -119,16 +119,16 @@ users can specify this Docker image in SQL:  `SELECT ... TO TRAIN regressors:v0.
 couler.sqlflow.run('''
 echo "SELECT ... TO TRAIN regressors:v0.2/MyDNNRegressor ..." |
 sqlflow -parse |
-python -m sqlflow_submitter.xgboost.train
+python -m runtime.xgboost.train
 ''',
     env={"SQLFLOW_DATASOURCE": "mysql://user:pass@192.168.1.1:3306"}, # set session message as the env vars.
     image="regressors:v0.2")
 ```
 
-The above customized model Docker image should base on `sqlflow/sqlflow_submitter`. Users can also launch the custom model Docker container on host, it's easy to debug with SQLFlow:
+The above customized model Docker image should base on `sqlflow/sqlflow:step`. Users can also launch the custom model Docker container on host, it's easy to debug with SQLFlow:
 
 ``` bash
 > docker run --rm -it -v$PWD:/models regressors:v0.2/MyDNNRegressor bash
 > sqlflow -parse < a.sql > ir.json
-> python -m sqlflow_submitter.tensorflow.train < ir.json
+> python -m runtime.tensorflow.train < ir.json
 ```

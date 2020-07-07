@@ -33,7 +33,7 @@ func TestConvergenceAndAccuracy(t *testing.T) {
 	a := assert.New(t)
 
 	// Set environment variable which will be read by
-	// sqlflow_submitter.seeding.get_tf_random_seed to seed TF-related unit tests.
+	// runtime.seeding.get_tf_random_seed to seed TF-related unit tests.
 	seedEnvKey := "SQLFLOW_TF_RANDOM_SEED"
 	os.Setenv(seedEnvKey, "1")
 	defer os.Unsetenv(seedEnvKey)
