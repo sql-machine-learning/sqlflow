@@ -62,7 +62,8 @@ run_optimize_locally(datasource="{{.DataSource}}",
 const optFlowOptimizeText = pyomoVarObjectiveAndConstraintText + `
 from runtime.optimize import run_optimize_on_optflow
 
-run_optimize_on_optflow(train_table="{{.TrainTable}}",
+run_optimize_on_optflow(datasource="{{.DataSource}}",
+                        train_table="{{.TrainTable}}",
                         variables=variables,
                         variable_type="{{.VariableType}}",
                         result_value_name="{{.ResultValueName}}",

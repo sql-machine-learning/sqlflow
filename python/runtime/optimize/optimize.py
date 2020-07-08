@@ -12,15 +12,11 @@
 # limitations under the License.
 
 import collections
-import json
 import os
-import sys
-import time
 
 import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
-import requests
 import runtime.db as db
 import six
 from pyomo.environ import (Integers, NegativeIntegers, NegativeReals,
@@ -416,54 +412,66 @@ def solve_model(model, solver):
     return np.array(result_values, dtype=np_dtype)
 
 
-def load_odps_table_to_data_frame(odps_table, load_schema_only=False):
-    from odps import ODPS
-    from odps.df import DataFrame
-    project, table = odps_table.split('.')
-    ak = os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
-    sk = os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
-    endpoint = os.environ.get("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
-    if not endpoint.startswith('http://') and not endpoint.startswith(
-            'https://'):
-        endpoint = "https://" + endpoint
+def load_db_data_to_data_frame(datasource,
+                               select=None,
+                               odps_table=None,
+                               load_schema_only=False):
+    if odps_table is None:
+        conn = db.connect_with_data_source(datasource)
+        selected_cols = db.selected_cols(conn.driver, conn, select)
+        if load_schema_only:
+            return pd.DataFrame(columns=selected_cols)
 
-    endpoint = endpoint.split('?')[0]
-    odps_conf = ODPS(access_id=ak,
-                     secret_access_key=sk,
-                     project=project,
-                     endpoint=endpoint)
-    table = odps_conf.get_table(table)
-    if load_schema_only:
-        columns = [column.name for column in table.schema]
-        pandas_df = pd.DataFrame(columns=columns)
+        generator = db.db_generator(conn.driver, conn, select)
     else:
-        odps_df = DataFrame(table)
-        # NOTE(sneaxiy): to_pandas is extremely slow. Need a better way to speedup the code
-        pandas_df = odps_df.to_pandas()
+        project, table = odps_table.split('.')
+        conn = db.connect_with_data_source(datasource)
+        schema = conn.get_table(table).schema
+        selected_cols = [column.name for column in schema]
+        if load_schema_only:
+            return pd.DataFrame(columns=selected_cols)
 
-    return pandas_df
+        select_sql = "SELECT * FROM {}".format(table)
+        instance = conn.execute_sql(select_sql)
 
+        if not instance.is_successful():
+            raise ValueError('cannot get data from table {}.{}'.format(
+                project, table))
 
-def load_db_data_to_data_frame(datasource, select):
-    conn = db.connect_with_data_source(datasource)
-    selected_cols = db.selected_cols(conn.driver, conn, select)
-    generator = db.db_generator(conn.driver, conn, select)
+        def generator_func():
+            from odps import tunnel
+            compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+            with instance.open_reader(tunnel=False,
+                                      compress=compress) as reader:
+                for record in reader:
+                    row_value = [
+                        record[i] for i in six.moves.range(len(selected_cols))
+                    ]
+                    yield row_value, None
+
+        generator = generator_func
 
     dtypes = [None] * len(selected_cols)
     values = [[] for _ in six.moves.range(len(selected_cols))]
     for row_value, _ in generator():
         for i, item in enumerate(row_value):
-            if isinstance(item, six.string_types):
-                dtypes[i] = np.str
+            if dtypes[i] == np.str:
+                values[i].append(item)
+                continue
 
-            if dtypes[i] != np.str:
-                if isinstance(item, (six.integer_types, float)):
-                    int_val = long(item) if six.PY2 else int(item)
-                    if int_val != item:
-                        dtypes[i] = np.float64
-                else:
-                    raise ValueError("unsupported data type {}".format(
-                        type(item)))
+            float_value = None
+            try:
+                float_value = float(item)
+            except:
+                pass
+
+            if float_value is None:  # cannot convert to float value
+                dtypes[i] = np.str
+            else:
+                item = float_value
+                int_value = long(item) if six.PY2 else int(item)
+                if int_value != item:
+                    dtypes[i] = np.float64
 
             values[i].append(item)
 
@@ -474,7 +482,8 @@ def load_db_data_to_data_frame(datasource, select):
 
         numpy_dict[col_name] = np.array(value, dtype=dtype)
 
-    return pd.DataFrame(numpy_dict)
+    df = pd.DataFrame(data=numpy_dict)
+    return df
 
 
 def save_solved_result_in_db(solved_result, data_frame, variables,
@@ -532,169 +541,7 @@ def run_optimize_locally(datasource, select, variables, variable_type,
                              result_table=result_table)
 
 
-OPTFLOW_HTTP_HEADERS = {
-    'content-type': 'application/json',
-    'accept': 'application/json',
-}
-
-
-def query_optflow_job_status(url, record_id, user_number, token):
-    url = "{}?userNumber={}&recordId={}&token={}".format(
-        url, user_number, record_id, token)
-    response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS)
-    response.raise_for_status()
-    response_json = response.json()
-    if not response_json['success']:
-        raise ValueError('cannot get status of job {}'.format(record_id))
-
-    return response_json['data']['status'].lower()
-
-
-def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
-    url = "{}?userNumber={}&recordId={}&token={}".format(
-        url, user_number, record_id, token)
-    response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS, stream=True)
-    response.raise_for_status()
-    response_json = response.json()
-    if not response_json['success']:
-        raise ValueError('cannot get log of job {}'.format(record_id))
-
-    logs = response_json['data']['logs']
-    end_line_num = len(logs)
-
-    # NOTE(sneaxiy): ascii(log) is necessary because the character inside
-    # log may be out of the range of ASCII characters.
-    # The slice [1:-1] is used to remove the quotes. e.g.:
-    # original string "abc" -> ascii("abc") outputs "'abc'"
-    # -> the slice [1:-1] outputs "abc"
-    logs = [ascii(log)[1:-1] for log in logs[start_line_num:]]
-    return logs, end_line_num
-
-
-def print_job_log_till_finish(status_url, log_url, record_id, user_number,
-                              token):
-    def call_func_with_retry(func, times):
-        for _ in six.moves.range(times - 1):
-            try:
-                return func()
-            except:
-                pass
-
-        return func()
-
-    status = None
-    line_num = 0
-    while True:
-        query_status = lambda: query_optflow_job_status(
-            status_url, record_id, user_number, token)
-        query_log = lambda: query_optflow_job_log(log_url, record_id,
-                                                  user_number, token, line_num)
-        status = call_func_with_retry(query_status, 3)
-        logs, line_num = call_func_with_retry(query_log, 3)
-
-        for log in logs:
-            print(log)
-
-        # status may be 'success', 'failed', 'running', 'prepare'
-        if status in ['success', 'failed']:
-            break
-
-        time.sleep(2)  # sleep for some times
-
-    return status == 'success'
-
-
-def send_optflow_http_request(train_table, result_table, fsl_file_content,
-                              solver, user_number):
-    project_name = train_table.split(".")[0]
-
-    snapshot_id = os.getenv("SQLFLOW_OPTFLOW_SNAPSHOT_ID")
-    if not snapshot_id:
-        raise ValueError("SQLFLOW_OPTFLOW_SNAPSHOT_ID must be set")
-
-    token = os.getenv("SQLFLOW_OPTFLOW_TOKEN")
-    if not token:
-        raise ValueError("SQLFLOW_OPTFLOW_TOKEN must be set")
-
-    submit_job_url = os.getenv("SQLFLOW_OPTFLOW_SUBMIT_JOB_URL")
-    if not submit_job_url:
-        raise ValueError("SQLFLOW_OPTFLOW_SUBMIT_JOB_URL must be set")
-
-    query_job_status_url = os.getenv("SQLFLOW_OPTFLOW_QUERY_JOB_STATUS_URL")
-    if not query_job_status_url:
-        raise ValueError("SQLFLOW_OPTFLOW_QUERY_JOB_STATUS_URL must be set")
-
-    query_job_log_url = os.getenv("SQLFLOW_OPTFLOW_QUERY_JOB_LOG_URL")
-    if not query_job_log_url:
-        raise ValueError("SQLFLOW_OPTFLOW_QUERY_JOB_LOG_URL must be set")
-
-    import runtime.pai.utils as utils
-    import uuid
-    import oss2
-
-    bucket_name = "sqlflow-optflow-models"
-    bucket = utils.get_bucket(bucket_name)
-    try:
-        bucket_info = bucket.get_bucket_info()
-    except oss2.exceptions.NoSuchBucket:
-        # Create bucket if not exists
-        bucket.create_bucket()
-        bucket_info = bucket.get_bucket_info()
-
-    fsl_file_id = '{}.fsl'.format(uuid.uuid4())
-    bucket.put_object(fsl_file_id, fsl_file_content)
-    should_delete_object = True
-    try:
-        bucket.put_object_acl(fsl_file_id, oss2.BUCKET_ACL_PUBLIC_READ)
-        fsl_url = "http://{}.{}/{}".format(bucket_name,
-                                           bucket_info.extranet_endpoint,
-                                           fsl_file_id)
-
-        input_params = {
-            "input_table": train_table,
-            "output_table": result_table,
-            "fsl_path": fsl_url,
-            "solver_name": solver,
-        }
-
-        json_data = {
-            "userNumber": user_number,
-            "projectName": project_name,
-            "snapshotId": snapshot_id,
-            "token": token,
-            "inputParams": input_params,
-        }
-
-        response = requests.post(submit_job_url,
-                                 json=json_data,
-                                 headers=OPTFLOW_HTTP_HEADERS)
-        response.raise_for_status()
-        response_json = response.json()
-        if not response_json['success']:
-            raise ValueError("Job submission fails")
-
-        print('Job submission succeeds')
-        record_id = response_json['data']['recordId']
-        try:
-            success = print_job_log_till_finish(query_job_status_url,
-                                                query_job_log_url, record_id,
-                                                user_number, token)
-            if success:
-                print("Job succeeds, saved in {}.".format(result_table))
-            else:
-                print("Job fails.")
-        except:
-            # FIXME(sneaxiy): we should not delete object if there is any
-            # network error when querying job status and logs. But when
-            # should we clean the object?
-            should_delete_object = False
-            six.reraise(*sys.exc_info())
-    finally:
-        if should_delete_object:
-            bucket.delete_object(fsl_file_id)
-
-
-def run_optimize_on_optflow(train_table, variables, variable_type,
+def run_optimize_on_optflow(datasource, train_table, variables, variable_type,
                             result_value_name, objective, direction,
                             constraints, solver, result_table, user_number):
     variable_str = "@X"
@@ -715,8 +562,10 @@ def run_optimize_on_optflow(train_table, variables, variable_type,
                 "GROUP BY must be used with aggregation functions"
             load_schema_only = False
 
-    data_frame = load_odps_table_to_data_frame(
-        odps_table=train_table, load_schema_only=load_schema_only)
+    data_frame = load_db_data_to_data_frame(datasource=datasource,
+                                            odps_table=train_table,
+                                            load_schema_only=load_schema_only)
+
     objective_expression = generate_objective_or_constraint_expressions(
         tokens=objective,
         data_frame=data_frame,
@@ -765,8 +614,10 @@ constraints:
 {}
 '''.format(",".join(variables), variable_type, direction, objective_expression,
            "\n".join(constraint_expressions))
-    send_optflow_http_request(train_table=train_table,
-                              result_table=result_table,
-                              fsl_file_content=fsl_file_content,
-                              solver=solver,
-                              user_number=user_number)
+
+    from runtime.optimize.optflow_submit import submit_optflow_job
+    submit_optflow_job(train_table=train_table,
+                       result_table=result_table,
+                       fsl_file_content=fsl_file_content,
+                       solver=solver,
+                       user_number=user_number)

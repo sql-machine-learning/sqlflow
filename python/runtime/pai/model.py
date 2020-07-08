@@ -17,16 +17,16 @@ import pickle
 import tarfile
 
 import oss2
-import runtime.pai.utils as utils
 import tensorflow as tf
 from runtime import db
+from runtime.pai.oss import get_bucket
 
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to save models trained.
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"
 
 
 def get_models_bucket():
-    return utils.get_bucket(SQLFLOW_MODELS_BUCKET)
+    return get_bucket(SQLFLOW_MODELS_BUCKET)
 
 
 def remove_bucket_prefix(oss_uri):

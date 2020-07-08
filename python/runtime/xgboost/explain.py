@@ -52,7 +52,9 @@ def xgb_shap_dataset(datasource,
         formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                        pai_table_parts[1])
         stream = db.pai_maxcompute_db_generator(formatted_pai_table,
-                                                label_column_name)
+                                                feature_column_names,
+                                                label_column_name,
+                                                feature_metas)
         selected_cols = db.pai_selected_cols(formatted_pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
@@ -109,7 +111,7 @@ def xgb_shap_dataset(datasource,
         # column name would be "c" too.
         #
         # If the column "c" contains 3 features,
-        # the result column name would be "c_0", "c_1" and "c_2"
+        # the result column name would be "c-0", "c-1" and "c-2"
         if i == 0:
             offsets = np.cumsum([0] + sizes)
             column_names = []
@@ -120,7 +122,7 @@ def xgb_shap_dataset(datasource,
                     column_names.append(feature_names[j])
                 else:
                     for k in six.moves.range(start, end):
-                        column_names.append('{}_{}'.format(
+                        column_names.append('{}-{}'.format(
                             feature_names[j], k))
 
             xs = pd.DataFrame(columns=column_names)
