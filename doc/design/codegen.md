@@ -34,7 +34,7 @@ the code generation is divided into the following stages:
 1. [CodeGenerator Interface](#code-generator-interface) is a Go interface that all code generators should implement.
 1. [Code Generation](#code-generation) provides an assembler API to generate a step program.
 
-### Target Submitter Registry
+### Target Registry
 
 For a new code generator, develops should register it in SQLFlow compiler as the following pseudo-code:
 
