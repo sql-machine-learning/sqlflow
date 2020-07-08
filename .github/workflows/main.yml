@@ -12,9 +12,7 @@ jobs:
   test:
     runs-on: [self-hosted, linux]
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 2
+    - uses: actions/checkout@v1
     - name: pre-commit
       run: pre-commit run -a --show-diff-on-failure
     - name: mysql unit test
