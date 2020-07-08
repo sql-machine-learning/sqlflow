@@ -241,6 +241,8 @@ func getCheckpointDir(ossModelPath, project string) (string, error) {
 	return fmt.Sprintf("%s/?role_arn=%s/%s&host=%s", ossURL, ra.Arn, roleName, ra.Host), nil
 }
 
+// A valid role name contains letters and numbers only.
+// The prefix 'pai2oss' of the role name denotes PAI access OSS
 func genRoleName(project string) string {
 	var rn bytes.Buffer
 	rn.WriteString("pai2oss")
