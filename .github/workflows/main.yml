@@ -9,17 +9,20 @@ on:
     branches: [ develop ]
 
 jobs:
-  pre-commit:
+  test:
     runs-on: [self-hosted, linux]
     steps:
     - uses: actions/checkout@v2
     - name: pre-commit
+      run: pre-commit run -a --show-diff-on-failure
+    - name: mysql unit test
       run: |
         set -e
         echo cwd ${{ github.workspace }}
-        export TRAVIS_BUILD_DIR=${{ github.workspace }}
-        bash scripts/travis/build.sh
-        docker run --rm -v $PWD:/work -w /work sqlflow:dev pre-commit run -a --show-diff-on-failure
+        docker run --rm -d -p 13306:3306 -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
+        git clone https://github.com/sql-machine-learning/models.git
+        SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python:${{ github.workspace }}/models scripts/test/mysql.sh
+
   # mysql-ci:
   #   runs-on: ubuntu-latest
   #   steps:
