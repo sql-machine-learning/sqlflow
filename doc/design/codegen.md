@@ -1,12 +1,12 @@
 # SQLFlow Code Generator
 
-SQLFlow is a compiler that takes a SQL program and generates Argo workflow, which is a `.YAML` file,
+SQLFlow is a compiler that takes a SQL program and generates Argo workflow, which is a `.YAML` file.
 The Argo controller running on Kubernetes is the executor. This is a design doc on how to implement
-the back-end of the SQLFlow compiler.
+the backend of the SQLFlow compiler.
 
 ## The High-level Design of the Code Generator
 
-As mentioned above, SQLFlow compiler generates a `.YAML`, the piece code is as the following:
+As mentioned above, SQLFlow compiler generates a `.YAML`, the code snippet is as the following:
 
 ``` yaml
 steps:
@@ -24,19 +24,19 @@ From the above workflow `.YAML` file, each workflow step program contains three 
 
 1. The execution command as the `command` spec to execute the program.
 1. The execution program called it the submitter program, which could be written in Python, R, or Bash programming language.
-The submitter program submits an AI task on an AI platform e.g., Elastic, Alibaba PAI, or just running on host via `runtime` library.
+The submitter program submits an AI task on an AI platform e.g., [ElasticDL](https://github.com/sql-machine-learning/elasticdl), [Alibaba PAI](https://www.alibabacloud.com/help/zh/doc-detail/75093.htm), or just running on host via `runtime` library.
 1. The runtime environment variables with the `env` spec.
 
 SQLFlow compiler provides the code generator component to generate the step program,
 the code generation is divided into the following stages:
 
 1. [Target Registry](#target-registry), registry a Code Generator in SQLFlow compiler.
-1. [CodeGenerator Interface](#code-generator-interface) is a Go interface that all code generators should implement it.
-1. [Code Emission](#code-emission) provides an assembler API to generate a step program.
+1. [CodeGenerator Interface](#code-generator-interface) is a Go interface that all code generators should implement.
+1. [Code Generation](#code-generation) provides an assembler API to generate a step program.
 
-### Target Registry
+### Target Submitter Registry
 
-For a newly code generator, develops should registry it in SQLFlow compiler as the following pseudo-code:
+For a new code generator, develops should register it in SQLFlow compiler as the following pseudo-code:
 
 ``` golang
 
@@ -61,7 +61,7 @@ type ExecutionCtx struct {
 
 type CodeGenerator interface {
   ExecCtx() ExecutionCtx
-  Query(*ir.NormalStmt) (string, error)
+  Normal(*ir.NormalStmt) (string, error)
   Train(*ir.TrainStmt) (string, error)
   Predict(*ir.PredictStmt) (string, error)
   Explain(*ir.ExplainStmt) (string, error)
@@ -72,13 +72,13 @@ type CodeGenerator interface {
 }
 ```
 
-### Code Emission
+### Code Generation 
 
 The code emission phase is responsible for generating target code from a SQL statement IR, this is an
 assembler API that routing to a specify code generator instance, the pseudo-code is as the following:
 
 ``` golang
-func Run(session *pb.Session, ir *ir.SQLStatement) (string, error) {
+func Generate(session *pb.Session, stmt *ir.SQLStatement) (string, error) {
   if session.submitter == "PAI" && strings.prefix(ir.Estimator, "XGBOOST") {
     cg := cgMapping["PAIXGBoost"]
   } else if ...
