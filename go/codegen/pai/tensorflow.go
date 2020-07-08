@@ -236,7 +236,20 @@ func getCheckpointDir(ossModelPath, project string) (string, error) {
 		return "", err
 	}
 	ossURL := OSSModelURL(ossModelPath)
-	roleName := fmt.Sprintf("pai2oss_%s", project)
+	roleName := genRoleName(project)
 	// format the oss checkpoint path with ARN authorization.
 	return fmt.Sprintf("%s/?role_arn=%s/%s&host=%s", ossURL, ra.Arn, roleName, ra.Host), nil
+}
+
+func genRoleName(project string) string {
+	var rn bytes.Buffer
+	rn.WriteString("pai2oss")
+	for _, ch := range project {
+		if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') {
+			rn.WriteRune(ch)
+		} else if ch >= 'A' && ch <= 'Z' {
+			rn.WriteRune(ch - 'A' + 'a')
+		}
+	}
+	return rn.String()
 }
