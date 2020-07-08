@@ -11,17 +11,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
+import pickle
 import random
 import string
 from os import path
 
 from .. import db
-from . import model
+from . import cluster_conf, model
+from .entry import tensorflow as tensorflow_entry
+from ..tensorflow.diag import SQLFlowDiagnostic
 
 LIFECYCLE_ON_TMP_TABLE = 7
-RESOURCE_NAME = "job.tar.gz"
-ENTRY_FILE = "entry.py"
+JOB_ARCHIVE_FILE = "job.tar.gz"
+PARAMS_FILE = "params.txt"
+TRAIN_PARAMS_FILE = "train_params.pkl"
+ENTRY_DIR = "sqlflow_submitter/pai/entry/"
+
+TF_REQUIREMENT = """
+adanet==0.8.0
+numpy==1.16.2
+pandas==0.24.2
+plotille==3.7
+seaborn==0.9.0
+shap==0.28.5
+scikit-learn==0.20.4
+tensorflow-datasets==3.0.0
+"""
 
 
 def gen_rand_string(slen=16):
@@ -74,11 +91,11 @@ def create_pai_hyper_param_file(cwd, filename, model_path):
         oss_sk = os.getenv("SQLFLOW_OSS_SK")
         oss_ep = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
         if oss_ak == "" or oss_sk == "" or oss_ep == "":
-            print("must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, "
-                  "SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
-        file.write("sqlflow_oss_ak=\"{}\"\n" % oss_ak)
-        file.write("sqlflow_oss_sk=\"{}\"\n" % oss_sk)
-        file.write("sqlflow_oss_ep=\"{}\"\n" % oss_ep)
+            raise SQLFlowDiagnostic("must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, "
+                                    "SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
+        file.write("sqlflow_oss_ak=\"%s\"\n" % oss_ak)
+        file.write("sqlflow_oss_sk=\"%s\"\n" % oss_sk)
+        file.write("sqlflow_oss_ep=\"%s\"\n" % oss_ep)
         oss_model_url = get_oss_model_url(model_path)
         file.write("sqlflow_oss_modeldir=\"%s\"\n", oss_model_url)
         file.flush()
@@ -104,41 +121,32 @@ def copy_custom_package(estimator, dst):
         copy_python_package(pkg_name, dst)
 
 
-def achieve_resource(cwd, entry_code, requirements, tarball, estimator):
-    """package needed resource to a tarball"""
-    with open(path.join(cwd, ENTRY_FILE), "w") as entry:
-        entry.write(entry_code)
-    with open(path.join(cwd, "requirements.txt"), "w") as require:
-        require.write(requirements)
-    copy_python_package("sqlflow_submitter", cwd)
-    copy_python_package("sqlflow_models", cwd)
-    copy_custom_package(estimator, cwd)
-
-    os.execl("tar", "czf", tarball, "./sqlflow_submitter", "./sqlflow_models",
-             ENTRY_FILE, "requirements.txt")
-
-
-def submit_pai_task(cwd, code, pai_cmd, requirements, estimator, datasource):
-    achieve_resource(cwd, code, requirements, RESOURCE_NAME, estimator)
+def submit_pai_task(pai_cmd, datasource):
     user, passwd, address, project = db.parseMaxComputeDSN(datasource)
     os.execl("odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
              "--project", project, "--endpoint", address, "-e", pai_cmd)
 
 
-def get_model_save_path(datasource, model_name):
-    user, _, _, project = db.parseMaxComputeDSN(datasource)
+def get_oss_model_save_path(datasource, model_name):
+    dsn = get_datasource_dsn(datasource)
+    user, _, _, project = db.parseMaxComputeDSN(dsn)
     return "/".join([project, user, model_name])
 
 
+def get_datasource_dsn(datasource):
+    return datasource.split("://")[1]
+
+
 def get_project(datasource):
-    _, _, _, project = db.parseMaxComputeDSN(datasource)
+    dsn = get_datasource_dsn(datasource)
+    _, _, _, project = db.parseMaxComputeDSN(dsn)
     return project
 
 
 def delete_oss_dir_recursive(bucket, directory):
     """deleteDirRecursive recursively delete a directory on the OSS"""
     if not directory.endswith("/"):
-        raise "dir to delete must end with /"
+        raise SQLFlowDiagnostic("dir to delete must end with /")
 
     loc = bucket.list_objects(prefix=directory, delimiter="/")
     object_path_list = []
@@ -157,4 +165,143 @@ def clean_oss_model_path(oss_path):
     delete_oss_dir_recursive(bucket, oss_path)
 
 
-# (TODO: lhw) add train entry point
+def max_compute_table_url(table):
+    parts = table.split(".")
+    if len(parts) != 2:
+        raise SQLFlowDiagnostic(
+            "odps table: %s should be format db.table" % table)
+    return "odps://%s/tables/%s" % (parts[0], parts[1])
+
+
+def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
+                   model_name, oss_model_path, train_table, val_table,
+                   res_table, project, cwd):
+    job_name = "_".join(["sqlflow", model_name]).replace(".", "_")
+    cf_quote = json.dumps(cluster_config).replace("\"", "\\\"")
+
+    # submit table should format as: odps://<project>/tables/<table >,odps://<project>/tables/<table > ...
+    submit_tables = max_compute_table_url(train_table)
+    if train_table != val_table and val_table != "":
+        val_table = max_compute_table_url(val_table)
+        submit_tables = "%s,%s" % (submit_tables, val_table)
+    output_tables = ""
+    if res_table != "":
+        table = max_compute_table_url(res_table)
+        output_tables = "-Doutputs=%s" % table
+
+    # NOTE(typhoonzero): use - DhyperParameters to define flags passing OSS credentials.
+    # TODO(typhoonzero): need to find a more secure way to pass credentials.
+    cmd = ("pai -name tensorflow1150 -project algo_public_dev "
+           "-DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn "
+           "-Dscript=%s -DentryFile=%s -Dtables=%s %s -DhyperParameters=\"%s\""
+           ) % (job_name, tarball, entry_file, submit_tables, output_tables,
+                params_file)
+
+    # format the oss checkpoint path with ARN authorization.
+    oss_checkpoint_configs = os.getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
+    if oss_checkpoint_configs == "":
+        raise SQLFlowDiagnostic(
+            "need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
+    oss_json_configs = json.loads(oss_checkpoint_configs)
+    curr_project_oss = oss_json_configs[project]
+    if project not in curr_project_oss:
+        raise SQLFlowDiagnostic(
+            "project %s not configured in SQLFLOW_OSS_CHECKPOINT_DIR" % project)
+
+    arn_splited = curr_project_oss.split("?")
+    if len(arn_splited) != 2:
+        raise SQLFlowDiagnostic(
+            "need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
+    arn = arn_splited[1]
+    ossURI = get_oss_model_url(oss_model_path)
+    oss_checkpoint_path = "%s/?%s" % (ossURI, arn)
+    cmd = "%s -DcheckpointDir='%s'" % (cmd, oss_checkpoint_path)
+
+    if cluster_config["worker"]["count"] > 1:
+        cmd = "%s -Dcluster=\"%s\"" % (cmd, cf_quote)
+    else:
+        cmd = "%s -DgpuRequired='%d'" % (cmd, cluster_config["worker"]["gpu"])
+    return cmd
+
+
+def prepare_archive(cwd, conf, project, estimator, model_name, train_tbl,
+                    val_tbl, model_save_path, train_params):
+    """package needed resource into a tarball"""
+    create_pai_hyper_param_file(cwd, PARAMS_FILE, model_save_path)
+
+    with open(path.join(cwd, TRAIN_PARAMS_FILE), "w") as param_file:
+        pickle.dump(train_params, param_file)
+
+    with open(path.join(cwd, "requirements.txt"), "w") as require:
+        require.write(TF_REQUIREMENT)
+    copy_python_package("sqlflow_submitter", cwd)
+    copy_python_package("sqlflow_models", cwd)
+    copy_custom_package(estimator, cwd)
+
+    os.execl("tar", "czf", JOB_ARCHIVE_FILE, "./sqlflow_submitter",
+             "./sqlflow_models", "requirements.txt", TRAIN_PARAMS_FILE)
+
+
+def save_model_to_sqlfs(datasource, model_oss_path, model_name):
+    # (TODO: save model to sqlfs)
+    pass
+
+
+# (TODO: lhw) adapt this interface after we do feature derivation in Python
+def submit_pytf_train(datasource, estimator, select, validation_select,
+                      model_params, model_name, pre_trained_model,
+                      **train_params):
+    """This function submit PY-TF train task to PAI platform
+
+    Args:
+        datasource: string
+            Like: odps://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
+        estimator: string
+            The name of tensorflow estimator
+        select: string
+            The SQL statement for selecting data for train
+        validation_select: string
+            Ths SQL statement for selecting data for validation
+        model_params: dict
+            Params for training, crossponding to WITH clause
+        pre_trained_model: string
+            The pre-trained model name to load
+        train_params: dict
+            Extra train params, they will be passed to sqlflow_submitter.tensorflow.train
+    """
+
+    # prepare params for tensorflow train,
+    # the params will be pickled into train_params.pkl
+    params = locals()
+    del params["train_params"]
+    params.update(train_params)
+    params["entry_type"] = "train"
+
+    cwd = os.getcwd()
+    conf = cluster_conf.get_cluster_config(model_params)
+
+    train_table, val_table = create_train_and_eval_tmp_table(
+        select, validation_select, datasource)
+    params["pai_table"], params["pai_val_table"] = train_table, val_table
+
+    # clean target dir
+    path_to_save = get_oss_model_save_path(datasource, model_name)
+    path_to_load = get_oss_model_save_path(datasource, pre_trained_model)
+    project = get_project(datasource)
+
+    if path_to_load == "" or path_to_load != path_to_save:
+        clean_oss_model_path(path_to_save + "/")
+
+    # zip all required resource to a tarball
+    prepare_archive(cwd, conf, project, estimator, model_name, train_table,
+                    val_table, path_to_save, params)
+
+    # submit pai task to execute the training
+    cmd = get_pai_tf_cmd(conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
+                         ENTRY_DIR + "tensorflow.py", model_name, path_to_save,
+                         train_table, val_table, "", project, cwd)
+    submit_pai_task(cmd, datasource)
+
+    # save trained model to sqlfs
+    save_model_to_sqlfs(datasource, path_to_save, model_name)
+    drop_tmp_tables([train_table, val_table], datasource)
