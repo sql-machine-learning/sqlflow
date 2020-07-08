@@ -14,8 +14,7 @@
 import json
 import os
 
-import tensorflow.compat.v1 as tf
-#import tensorflow as tf
+import tensorflow as tf
 from runtime.seeding import get_tf_random_seed
 
 # This module contain utilities for PAI distributed training.
