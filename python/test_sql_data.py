@@ -14,7 +14,7 @@
 import unittest
 
 import sql_data
-from sqlflow_submitter.db_test import testing_mysql_cfg
+from runtime.db_test import testing_mysql_cfg
 
 
 class TestSQLData(unittest.TestCase):

@@ -223,10 +223,10 @@ func CaseTrainPAIKMeans(t *testing.T) {
 
 func dropPAIModel(dataSource, modelName string) error {
 	code := fmt.Sprintf(`import subprocess
-import sqlflow_submitter.db
+import runtime.db
 driver, dsn = "%s".split("://")
 assert driver == "maxcompute"
-user, passwd, address, database = sqlflow_submitter.db.parseMaxComputeDSN(dsn)
+user, passwd, address, database = runtime.db.parseMaxComputeDSN(dsn)
 cmd = "drop offlinemodel if exists %s"
 subprocess.run(["odpscmd", "-u", user,
                            "-p", passwd,
@@ -444,7 +444,7 @@ USING e2etest_keras_dnn;`, caseTestTable, caseDB)
 // SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT="xxx"
 // SQLFLOW_TEST_DB_MAXCOMPUTE_AK="xxx"
 // SQLFLOW_TEST_DB_MAXCOMPUTE_SK="xxx"
-// SQLFLOW_OSS_CHECKPOINT_DIR="xxx"
+// SQLFLOW_OSS_CHECKPOINT_CONFIG="xxx"
 // SQLFLOW_OSS_ENDPOINT="xxx"
 // SQLFLOW_OSS_AK="xxx"
 // SQLFLOW_OSS_SK="xxx"
@@ -499,6 +499,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
 		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
 		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+		t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
 	})
 
 }

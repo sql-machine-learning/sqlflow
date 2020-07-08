@@ -76,7 +76,7 @@ echo "Build cmd/sqlflow into /tmp ..."
 cd "$TRAVIS_BUILD_DIR"
 go generate ./... > /dev/null
 mkdir "$PWD"/build
-GOBIN="$PWD"/build go install ./cmd/sqlflow > /dev/null
+GOBIN="$PWD"/build go install ./go/cmd/sqlflow > /dev/null
 
 
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."

@@ -26,7 +26,7 @@ import (
 // below environment variables to run them:
 // SQLFLOW_submitter=alisa
 // SQLFLOW_TEST_DATASOURCE="xxx"
-// SQLFLOW_OSS_CHECKPOINT_DIR="xxx"
+// SQLFLOW_OSS_CHECKPOINT_CONFIG="xxx"
 // SQLFLOW_OSS_ALISA_ENDPOINT="xxx"
 // SQLFLOW_OSS_AK="xxx"
 // SQLFLOW_OSS_SK="xxx"

@@ -45,7 +45,7 @@ constraints = [{{range .Constraints}}
 `
 
 const pyomoNativeOptimizeText = pyomoVarObjectiveAndConstraintText + `
-from sqlflow_submitter.optimize import run_optimize_locally
+from runtime.optimize import run_optimize_locally
 
 run_optimize_locally(datasource="{{.DataSource}}", 
                      select='''{{.Select}}''',
@@ -60,7 +60,7 @@ run_optimize_locally(datasource="{{.DataSource}}",
 `
 
 const optFlowOptimizeText = pyomoVarObjectiveAndConstraintText + `
-from sqlflow_submitter.optimize import run_optimize_on_optflow
+from runtime.optimize import run_optimize_on_optflow
 
 run_optimize_on_optflow(train_table="{{.TrainTable}}",
                         variables=variables,
