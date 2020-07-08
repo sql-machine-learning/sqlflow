@@ -33,9 +33,9 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_energy.sql \
      /datasets/
 
-COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN /bin/sh -c "source find_fastest_resources.sh && \
-    choose_fastest_alpine_source"
+# COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
+# RUN /bin/sh -c "source find_fastest_resources.sh && \
+#     choose_fastest_alpine_source"
 
 RUN apk add --no-cache mysql mysql-client >/dev/null
 
