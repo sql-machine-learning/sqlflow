@@ -355,17 +355,16 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	labelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
-	if labelFM.Name == "" {
-		// no label in train SQL means a clustering model, generate a fieldDesc using result table's column
-		labelFM = &ir.FieldDesc{
-			Name:  predStmt.ResultColumn,
-			Shape: []int{1},
-			DType: ir.Int,
-		}
-	} else {
-		// write the prediction result in the predict result column
-		labelFM.Name = predStmt.ResultColumn
+	trainLabelFM := predStmt.TrainStmt.Label.GetFieldDesc()[0]
+	predLabelFM := &ir.FieldDesc{
+		Name:       predStmt.ResultColumn,
+		DType:      trainLabelFM.DType,
+		Delimiter:  trainLabelFM.Delimiter,
+		Format:     trainLabelFM.Format,
+		Shape:      trainLabelFM.Shape,
+		IsSparse:   trainLabelFM.IsSparse,
+		Vocabulary: trainLabelFM.Vocabulary,
+		MaxID:      trainLabelFM.MaxID,
 	}
 
 	paiPredictTable := ""
@@ -380,7 +379,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		Estimator:         predStmt.TrainStmt.Estimator,
 		FieldDescs:        fieldDescs,
 		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
-		Y:                 labelFM,
+		TrainLabelMeta:    trainLabelFM,
+		PredLabelMeta:     predLabelFM,
 		ModelParams:       modelParams,
 		Save:              "model_save",
 		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,

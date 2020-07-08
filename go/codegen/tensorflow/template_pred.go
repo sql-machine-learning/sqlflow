@@ -23,7 +23,8 @@ type predFiller struct {
 	Estimator         string
 	FieldDescs        map[string][]*ir.FieldDesc
 	FeatureColumnCode string
-	Y                 *ir.FieldDesc
+	TrainLabelMeta    *ir.FieldDesc
+	PredLabelMeta     *ir.FieldDesc
 	ModelParams       map[string]interface{}
 	Save              string
 	HDFSNameNodeAddr  string
@@ -72,11 +73,19 @@ feature_metas["{{$value.Name}}"] = {
 {{end}}
 
 label_meta = {
-    "feature_name": "{{.Y.Name}}",
-    "dtype": "{{.Y.DType | DTypeToString}}",
-    "delimiter": "{{.Y.Delimiter}}",
-    "shape": {{.Y.Shape | intArrayToJSONString}},
-    "is_sparse": "{{.Y.IsSparse}}" == "true"
+    "feature_name": "{{.PredLabelMeta.Name}}",
+    "dtype": "{{.PredLabelMeta.DType | DTypeToString}}",
+    "delimiter": "{{.PredLabelMeta.Delimiter}}",
+    "shape": {{.PredLabelMeta.Shape | intArrayToJSONString}},
+    "is_sparse": "{{.PredLabelMeta.IsSparse}}" == "true"
+}
+
+train_label_meta = {
+    "feature_name": "{{.TrainLabelMeta.Name}}",
+    "dtype": "{{.TrainLabelMeta.DType | DTypeToString}}",
+    "delimiter": "{{.TrainLabelMeta.Delimiter}}",
+    "shape": {{.TrainLabelMeta.Shape | intArrayToJSONString}},
+    "is_sparse": "{{.TrainLabelMeta.IsSparse}}" == "true"
 }
 
 model_params=dict()
@@ -93,6 +102,7 @@ pred(datasource="{{.DataSource}}",
      feature_columns=feature_columns,
      feature_column_names=feature_column_names,
      feature_column_names_map=feature_column_names_map,
+     train_label_name=train_label_meta["feature_name"],
      result_col_name=label_meta["feature_name"],
      feature_metas=feature_metas,
      model_params=model_params,

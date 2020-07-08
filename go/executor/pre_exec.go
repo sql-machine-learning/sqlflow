@@ -81,7 +81,6 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 	}
 
 	createStmt := b.String()
-	fmt.Println(createStmt)
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}

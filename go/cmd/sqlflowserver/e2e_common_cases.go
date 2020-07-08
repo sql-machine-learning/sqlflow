@@ -715,11 +715,10 @@ INTO %s;
 	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
 	a.Equal(2, len(rows))
-	a.Equal(3, len(columns))
+	a.Equal(2, len(columns))
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
-	a.Equal("label_col", columns[1])
-	a.Equal("new_label_col", columns[2])
+	a.Equal("new_label_col", columns[1])
 
 	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, predictTable, "label_col", trainedModel)
 	executeSQLFunc(predictSQLWithoutOriginalLabel)
@@ -798,7 +797,6 @@ INTO ` + resultTable + `;`
 
 		a.Equal("product", header[0])
 		a.Equal(actualResultValue, header[1])
-
 		a.Equal(2, len(rows))
 		decodedRows, err := decodeAnyTypedRowData(rows)
 		a.NoError(err)
