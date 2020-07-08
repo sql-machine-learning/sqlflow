@@ -47,7 +47,7 @@ case "$TRAVIS_OS_NAME" in
         sudo apt-get -qq install -y axel unzip > /dev/null
         ;;
     windows) choco install axel ;;
-    osx) brew install axel ;;
+    osx) export HOMEBREW_NO_AUTO_UPDATE=true && brew install axel ;;
 esac
 
 
