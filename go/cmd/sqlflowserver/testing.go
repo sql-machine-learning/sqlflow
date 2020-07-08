@@ -216,25 +216,28 @@ func prepareTestData(dbStr string) error {
 			testdata.FeatureDerivationCaseSQL,
 			testdata.TextCNSQL,
 			testdata.FundSQL,
-			testdata.OptimizeCaseSQL}
+			testdata.OptimizeCaseSQL,
+			testdata.XGBoostSparseDataCaseSQL}
 	case "hive":
 		datasets = []string{
 			testdata.IrisHiveSQL,
 			testdata.ChurnHiveSQL,
 			testdata.FeatureDerivationCaseSQLHive,
 			testdata.HousingSQL,
-			testdata.OptimizeCaseSQL}
+			testdata.OptimizeCaseSQL,
+			testdata.XGBoostSparseDataCaseSQL}
 	case "maxcompute", "alisa":
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
 			datasets = []string{
 				testdata.ODPSFeatureMapSQL,
 				testdata.ODPSSparseColumnSQL,
-				fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
-				fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB)}
-		} else {
-			datasets = []string{fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
-				fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB)}
+			}
 		}
+
+		datasets = append(datasets,
+			fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
+			fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB),
+			fmt.Sprintf(testdata.XGBoostMaxComputeSparseDataCaseSQL, caseDB))
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
 	}

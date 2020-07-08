@@ -207,27 +207,11 @@ func getTFPAICmd(cc *ClusterConfig, tarball, paramsFile, modelName, ossModelPath
 	cmd := fmt.Sprintf("pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn -Dscript=%s -DentryFile=entry.py -Dtables=%s %s -DhyperParameters=\"%s\"",
 		jobName, tarball, submitTables, outputTables, paramsFile)
 
-	// format the oss checkpoint path with ARN authorization.
-	ossCheckpointConfigs := os.Getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-	if ossCheckpointConfigs == "" {
-		return "", fmt.Errorf("need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
-	}
-	ossJSONConfigs := make(map[string]string)
-	if err := json.Unmarshal([]byte(ossCheckpointConfigs), &ossJSONConfigs); err != nil {
+	chkpoint, err := getCheckpointDir(ossModelPath, project)
+	if err != nil {
 		return "", err
 	}
-	currProjectOSS, ok := ossJSONConfigs[project]
-	if !ok {
-		return "", fmt.Errorf("project %s not configured in SQLFLOW_OSS_CHECKPOINT_DIR", project)
-	}
-	arnSplited := strings.Split(currProjectOSS, "?")
-	if len(arnSplited) != 2 {
-		return "", fmt.Errorf("need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
-	}
-	arn := arnSplited[1]
-	ossURI := OSSModelURL(ossModelPath)
-	ossCheckpointPath := fmt.Sprintf("%s/?%s", ossURI, arn)
-	cmd = fmt.Sprintf("%s -DcheckpointDir='%s'", cmd, ossCheckpointPath)
+	cmd = fmt.Sprintf("%s -DcheckpointDir='%s'", cmd, chkpoint)
 
 	if cc.Worker.Count > 1 {
 		cmd = fmt.Sprintf("%s -Dcluster=%s", cmd, cfQuote)
@@ -235,4 +219,24 @@ func getTFPAICmd(cc *ClusterConfig, tarball, paramsFile, modelName, ossModelPath
 		cmd = fmt.Sprintf("%s -DgpuRequired='%d'", cmd, cc.Worker.GPU)
 	}
 	return cmd, nil
+}
+
+type roleArn struct {
+	Host string `json:"host"`
+	Arn  string `json:"arn"`
+}
+
+func getCheckpointDir(ossModelPath, project string) (string, error) {
+	ckpJSONStr := os.Getenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
+	if ckpJSONStr == "" {
+		return "", fmt.Errorf("need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when submitting to PAI")
+	}
+	ra := roleArn{}
+	if err := json.Unmarshal([]byte(ckpJSONStr), &ra); err != nil {
+		return "", err
+	}
+	ossURL := OSSModelURL(ossModelPath)
+	roleName := fmt.Sprintf("pai2oss_%s", project)
+	// format the oss checkpoint path with ARN authorization.
+	return fmt.Sprintf("%s/?role_arn=%s/%s&host=%s", ossURL, ra.Arn, roleName, ra.Host), nil
 }

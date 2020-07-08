@@ -578,9 +578,11 @@ func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
 			}
 		}
 	}
-	_, err = bucket.DeleteObjects(objectPathList)
-	if err != nil {
-		return err
+	if len(objectPathList) > 0 {
+		_, err = bucket.DeleteObjects(objectPathList)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
