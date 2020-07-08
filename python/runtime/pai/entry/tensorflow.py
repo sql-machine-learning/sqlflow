@@ -14,9 +14,9 @@
 import pickle
 import types
 
-from sqlflow_submitter.tensorflow import is_tf_estimator, train
-from sqlflow_submitter.tensorflow.pai_distributed import (define_tf_flags,
-                                                          set_oss_environs)
+from runtime.tensorflow import is_tf_estimator, train
+from runtime.tensorflow.pai_distributed import (define_tf_flags,
+                                                set_oss_environs)
 
 from .. import model
 

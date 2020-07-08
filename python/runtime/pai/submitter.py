@@ -19,9 +19,9 @@ import string
 from os import path
 
 from .. import db
+from ..tensorflow.diag import SQLFlowDiagnostic
 from . import cluster_conf, model
 from .entry import tensorflow as tensorflow_entry
-from ..tensorflow.diag import SQLFlowDiagnostic
 
 LIFECYCLE_ON_TMP_TABLE = 7
 JOB_ARCHIVE_FILE = "job.tar.gz"
@@ -42,12 +42,24 @@ tensorflow-datasets==3.0.0
 
 
 def gen_rand_string(slen=16):
-    """generate random string with given len"""
+    """generate random string with given len
+
+    Args:
+        slen: int, the length of the output string
+    
+    Returns:
+        A random string with slen length
+    """
     return ''.join(random.sample(string.ascii_letters + string.digits, slen))
 
 
 def create_tmp_table_from_select(select, datasource):
-    """create temp table for given select query"""
+    """Create temp table for given select query
+
+    Args:
+        select: string, the selection statement
+        datasource: string, the datasource to connect
+    """
     if len(select.strip()) == 0:
         return ""
     conn = db.connect_with_data_source(datasource)
@@ -64,6 +76,7 @@ def create_tmp_table_from_select(select, datasource):
 
 
 def drop_tmp_tables(tables, datasource):
+    """Drop given tables in datasource"""
     conn = db.connect_with_data_source(datasource)
     cursor = conn.cursor()
     for table in tables:
@@ -82,17 +95,33 @@ def create_train_and_eval_tmp_table(train_select, valid_select, datasource):
 
 
 def get_oss_model_url(model_full_path):
+    """Get OSS model save url
+
+    Args:
+        model_full_path: string, the path in OSS bucket
+    
+    Returns:
+        The OSS url of the model
+    """
     return "oss://%s/%s" % (model.SQLFLOW_MODELS_BUCKET, model_full_path)
 
 
 def create_pai_hyper_param_file(cwd, filename, model_path):
+    """Create param needed by PAI training
+
+    Args:
+        cwd: current working dir
+        filename: the output file name
+        model_path: the model saving path
+    """
     with open(path.join(cwd, filename), "w") as file:
         oss_ak = os.getenv("SQLFLOW_OSS_AK")
         oss_sk = os.getenv("SQLFLOW_OSS_SK")
         oss_ep = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
         if oss_ak == "" or oss_sk == "" or oss_ep == "":
-            raise SQLFlowDiagnostic("must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, "
-                                    "SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
+            raise SQLFlowDiagnostic(
+                "must define SQLFLOW_OSS_AK, SQLFLOW_OSS_SK, "
+                "SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
         file.write("sqlflow_oss_ak=\"%s\"\n" % oss_ak)
         file.write("sqlflow_oss_sk=\"%s\"\n" % oss_sk)
         file.write("sqlflow_oss_ep=\"%s\"\n" % oss_ep)
@@ -102,6 +131,14 @@ def create_pai_hyper_param_file(cwd, filename, model_path):
 
 
 def find_python_module_path(module):
+    """Find the location of a given python package
+
+    Args:
+        module: given Python module
+
+    Returns:
+        The path of the Python module
+    """
     proc = os.popen("python -c import %s;print(%s.__path__[0])" %
                     (module, module))
     output = proc.readline()
@@ -109,11 +146,18 @@ def find_python_module_path(module):
 
 
 def copy_python_package(module, dest):
+    """Copy given Python module to dist
+
+    Args:
+        module: The module to copy
+        dest: the destination directory
+    """
     path = find_python_module_path(module)
     os.execl("cp", "-r", path, dest)
 
 
 def copy_custom_package(estimator, dst):
+    """Copy custom Python package to dest"""
     model_name_parts = estimator.split(".")
     pkg_name = model_name_parts[0]
     if (len(model_name_parts) == 2 and pkg_name != "sqlflow_models"
@@ -122,6 +166,12 @@ def copy_custom_package(estimator, dst):
 
 
 def submit_pai_task(pai_cmd, datasource):
+    """Submit given cmd to PAI which manipulate datasource
+
+    Args:
+        pai_cmd: The command to submit
+        datasource: The datasource this cmd will manipulate
+    """
     user, passwd, address, project = db.parseMaxComputeDSN(datasource)
     os.execl("odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
              "--project", project, "--endpoint", address, "-e", pai_cmd)
@@ -138,13 +188,23 @@ def get_datasource_dsn(datasource):
 
 
 def get_project(datasource):
+    """Get the project info from given datasource
+    
+    Args:
+        datasource: The odps url to extract project
+    """
     dsn = get_datasource_dsn(datasource)
     _, _, _, project = db.parseMaxComputeDSN(dsn)
     return project
 
 
 def delete_oss_dir_recursive(bucket, directory):
-    """deleteDirRecursive recursively delete a directory on the OSS"""
+    """Recursively delete a directory on the OSS
+    
+    Args:
+        bucket: bucket on OSS
+        directory: the directory to delete
+    """
     if not directory.endswith("/"):
         raise SQLFlowDiagnostic("dir to delete must end with /")
 
@@ -168,14 +228,32 @@ def clean_oss_model_path(oss_path):
 def max_compute_table_url(table):
     parts = table.split(".")
     if len(parts) != 2:
-        raise SQLFlowDiagnostic(
-            "odps table: %s should be format db.table" % table)
+        raise SQLFlowDiagnostic("odps table: %s should be format db.table" %
+                                table)
     return "odps://%s/tables/%s" % (parts[0], parts[1])
 
 
 def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
                    model_name, oss_model_path, train_table, val_table,
                    res_table, project, cwd):
+    """Get PAI-TF cmd for training
+
+    Args:
+        cluster_config: PAI cluster config
+        tarball: the zipped resource name
+        params_file: PAI param file name
+        entry_file: entry file in the tarball
+        model_name: trained model name
+        oss_model_path: path to save the model
+        train_table: train data table
+        val_table: evaluate data table
+        res_table: table to save train model, if given
+        project: current odps project
+        cwd: current working dir
+
+    Retruns:
+        The cmd to run on PAI
+    """
     job_name = "_".join(["sqlflow", model_name]).replace(".", "_")
     cf_quote = json.dumps(cluster_config).replace("\"", "\\\"")
 
@@ -201,20 +279,14 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     oss_checkpoint_configs = os.getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
     if oss_checkpoint_configs == "":
         raise SQLFlowDiagnostic(
-            "need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
-    oss_json_configs = json.loads(oss_checkpoint_configs)
-    curr_project_oss = oss_json_configs[project]
-    if project not in curr_project_oss:
-        raise SQLFlowDiagnostic(
-            "project %s not configured in SQLFLOW_OSS_CHECKPOINT_DIR" % project)
-
-    arn_splited = curr_project_oss.split("?")
-    if len(arn_splited) != 2:
-        raise SQLFlowDiagnostic(
-            "need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI")
-    arn = arn_splited[1]
-    ossURI = get_oss_model_url(oss_model_path)
-    oss_checkpoint_path = "%s/?%s" % (ossURI, arn)
+            "need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI"
+        )
+    ckpt_conf = json.loads(oss_checkpoint_configs)
+    model_url = get_oss_model_url(oss_model_path)
+    role_name = "pai2oss_%s" % project
+    # format the oss checkpoint path with ARN authorization.
+    oss_checkpoint_path = "%s/?role_arn=%s/%s&host=%s" % (
+        model_url, ckpt_conf["Arn"], role_name, ckpt_conf["Host"])
     cmd = "%s -DcheckpointDir='%s'" % (cmd, oss_checkpoint_path)
 
     if cluster_config["worker"]["count"] > 1:

@@ -11,9 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sqlflow_submitter.tensorflow.diag import SQLFlowDiagnostic
+from runtime.tensorflow.diag import SQLFlowDiagnostic
+
 
 def get_cluster_config(attrs):
+    """Get PAI cluster config from attrs
+
+    Args:
+        attrs: input config
+    
+    Returns:
+        The merged config by attrs and default
+    """
     default_map = {
         "train.num_ps": 0,
         "train.num_workers": 1,
@@ -53,4 +62,7 @@ def get_cluster_config(attrs):
         }
     else:
         raise SQLFlowDiagnostic("train.num_evaluator should only be 1 or 0")
-    return {"ps": ps, "worker": worker, "evaluator": evaluator}
+    conf = {"ps": ps, "worker": worker}
+    if evaluator != None:
+        conf["evaluator"] = evaluator
+    return conf
