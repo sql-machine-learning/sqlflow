@@ -707,7 +707,7 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	executeSQLFunc(predictSQLWithOriginalLabel)
 	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
-	a.Equal(2, len(rows))
+	a.Equal(3, len(rows))
 	a.Equal(2, len(columns))
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])

@@ -112,7 +112,10 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
     result_column_names = selected_cols[:]
     # remove train_label_name from result column, if train_label_name == "" or
     # the train_label_name is not selected, the index should be -1
-    train_label_index = selected_cols.index(train_label_name)
+    try:
+        train_label_index = selected_cols.index(train_label_name)
+    except ValueError:
+        train_label_index = -1
     if train_label_index != -1:
         del result_column_names[train_label_index]
     result_column_names.append(pred_label_name)

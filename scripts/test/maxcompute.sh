@@ -40,7 +40,7 @@ go install ./...
 #
 # Refer to https://github.com/codecov/example-go for merging coverage from
 # multiple runs of tests.
-gotest -p 1 -covermode=count -coverprofile=profile.out -timeout 900s -v ./go/cmd/sqlflowserver \
+gotest -p 1 -covermode=count -coverprofile=profile.out -timeout 1800s -v ./go/cmd/sqlflowserver \
        -run TestEnd2EndMaxCompute
 if [ -f profile.out ]; then
     cat profile.out > coverage.txt

@@ -192,7 +192,10 @@ def estimator_predict(estimator, model_params, save, result_table,
                                             feature_metas)()
 
     write_cols = selected_cols[:]
-    train_label_index = selected_cols.index(train_label_name)
+    try:
+        train_label_index = selected_cols.index(train_label_name)
+    except ValueError:
+        train_label_index = -1
     if train_label_index != -1:
         del write_cols[train_label_index]
     write_cols.append(result_col_name)
