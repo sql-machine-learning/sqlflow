@@ -6,7 +6,8 @@ the backend of the SQLFlow compiler.
 
 ## The High-level Design of the Code Generator
 
-As mentioned above, SQLFlow compiler generates a `.YAML`, the code snippet is as the following:
+As mentioned above, SQLFlow compiler generates the `.YAML` file as the following, you can check more detail
+about SQLFlow workflow from [here](/doc/design/workflow.md).
 
 ``` yaml
 steps:
@@ -20,7 +21,7 @@ steps:
       value: "xxxxxx"
 ```
 
-From the above workflow `.YAML` file, each workflow step program contains three parts:
+From the above workflow `.YAML` file, each workflow step contains three parts:
 
 1. The execution command as the `command` spec to execute the program.
 1. The execution program called it the submitter program, which could be written in Python, R, or Bash programming language.
@@ -60,7 +61,7 @@ type ExecutionCtx struct {
 }
 
 type CodeGenerator interface {
-  ExecCtx() ExecutionCtx
+  ExecCtx(*ir.SQLStmt) ExecutionCtx
   Normal(*ir.NormalStmt) (string, error)
   Train(*ir.TrainStmt) (string, error)
   Predict(*ir.PredictStmt) (string, error)
@@ -72,9 +73,9 @@ type CodeGenerator interface {
 }
 ```
 
-### Code Generation 
+### Code Generation
 
-The code emission phase is responsible for generating target code from a SQL statement IR, this is an
+The code generation phase is responsible for generating target code from a SQL statement IR, this is an
 assembler API that routing to a specify code generator instance, the pseudo-code is as the following:
 
 ``` golang
