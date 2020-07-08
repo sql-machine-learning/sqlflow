@@ -21,10 +21,76 @@ jobs:
     - uses: actions/checkout@v2
 
     # Runs a set of commands using the runners shell
-    - name: Run a multi-line script
+    - name: pre-commit
       run: |
         set -e
         echo cwd ${{ github.workspace }}
         export TRAVIS_BUILD_DIR=${{ github.workspace }}
         bash scripts/travis/build.sh
         docker run --rm -v $PWD:/work -w /work sqlflow:dev pre-commit run -a --show-diff-on-failure
+    - name: mysql unit test
+      run: |
+        set -e
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
+        docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+        bash scripts/travis/build.sh
+        docker run --rm -d -p 13306:3306 -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
+        docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work -v /var/run/docker.sock:/var/run/docker.sock --net=host -e SQLFLOW_TEST_DB=mysql -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" sqlflow:ci scripts/test/mysql.sh
+        bash scripts/travis/upload_codecov.sh
+    - name: hive unit test
+      run: |
+        set -e
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
+        bash scripts/travis/build.sh
+        docker pull sqlflow/gohive:dev
+        docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
+        docker run --rm -it --net=container:hive -v $TRAVIS_BUILD_DIR:/work -w /work -v $GOPATH:/root/go -v /var/run/docker.sock:/var/run/docker.sock sqlflow:ci scripts/test/hive.sh
+        bash scripts/travis/upload_codecov.sh
+    - name: maxcompute unit test
+      run: |
+        set -e
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
+        bash scripts/travis/build.sh
+        bash scripts/travis/setup_minikube.sh
+        docker run --rm --net=host -e SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci scripts/test/maxcompute.sh
+        bash scripts/travis/upload_codecov.sh
+    - name: java parsers unit test
+      run: |
+        set -e
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
+        bash scripts/travis/build.sh
+        docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci scripts/test/java.sh
+    - name: workflow mode unit test
+      run: |
+        set -e
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
+        bash scripts/travis/build.sh
+        docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+        bash scripts/travis/setup_minikube.sh
+        eval $(sudo minikube docker-env)
+        docker run --rm --net=host -e SQLFLOW_WORKFLOW_STEP_IMAGE=sqlflow:ci -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci scripts/test/workflow.sh
+        bash scripts/travis/upload_codecov.sh
+  push:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: push server images
+      run: |
+        bash scripts/travis/deploy_docker.sh
+    - name: release latest linux client binary
+      run: |
+        bash scripts/travis/deploy_client.sh
+  macos-client:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: relase latest macos client binary
+      run: |
+        bash scripts/travis/deploy_client.sh
+  windows-client:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: relase latest windows client binary
+      run: |
+        bash scripts/travis/deploy_client.sh
