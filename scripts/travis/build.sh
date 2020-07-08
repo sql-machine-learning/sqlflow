@@ -32,7 +32,7 @@ fi
 
 echo "Build SQLFlow into $TRAVIS_BUILD_DIR/build using sqlflow:dev ..."
 mkdir -p "$TRAVIS_BUILD_DIR"/build
-docker run --rm -it \
+docker run --rm \
        -v "$TRAVIS_BUILD_DIR":/work -w /work \
        -v "$GOPATH":/root/go \
        -v "$HOME"/.m2:/root/.m2 \
