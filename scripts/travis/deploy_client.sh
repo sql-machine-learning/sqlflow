@@ -19,8 +19,9 @@ set -e
 # to the file header of deploy_docker.sh
 
 if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-    echo "Skip deployment on pull request"
-    exit 0
+    #echo "Skip deployment on pull request"
+    #exit 0
+    echo "Debug push for osx..."
 fi
 
 
@@ -46,7 +47,7 @@ case "$TRAVIS_OS_NAME" in
         sudo apt-get -qq install -y axel unzip > /dev/null
         ;;
     windows) choco install axel ;;
-    osx) brew install axel > /dev/null ;;
+    osx) brew install axel ;;
 esac
 
 
