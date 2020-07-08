@@ -541,8 +541,7 @@ OPTFLOW_HTTP_HEADERS = {
 def query_optflow_job_status(url, record_id, user_number, token):
     url = "{}?userNumber={}&recordId={}&token={}".format(
         url, user_number, record_id, token)
-    response = requests.get(url.format(user_number, record_id, token),
-                            headers=OPTFLOW_HTTP_HEADERS)
+    response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS)
     response.raise_for_status()
     response_json = response.json()
     if not response_json['success']:
@@ -555,27 +554,20 @@ def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
     url = "{}?userNumber={}&recordId={}&token={}".format(
         url, user_number, record_id, token)
     response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS, stream=True)
-    # Content-Type: application/json;charset=utf-8
-    content_type = response.headers["Content-Type"]
-    split = content_type.split("=")
-    if len(split) == 2:
-        encoding = split[1].strip().lower()
-    else:
-        encoding = 'utf-8'
-
-    chunks = None
-    for chunk in response.iter_content(chunk_size=128):
-        if chunks is None:
-            chunks = chunk
-        else:
-            chunks += chunk
-    result = json.loads(chunks)
-    if not result['success']:
+    response.raise_for_status()
+    response_json = response.json()
+    if not response_json['success']:
         raise ValueError('cannot get log of job {}'.format(record_id))
 
-    logs = result['data']['logs']
+    logs = response_json['data']['logs']
     end_line_num = len(logs)
-    logs = [log.encode(encoding) for log in logs[start_line_num:]]
+
+    # NOTE(sneaxiy): ascii(log) is necessary because the character inside
+    # log may be out of the range of ASCII characters.
+    # The slice [1:-1] is used to remove the quotes. e.g.:
+    # original string "abc" -> ascii("abc") outputs "'abc'"
+    # -> the slice [1:-1] outputs "abc"
+    logs = [ascii(log)[1:-1] for log in logs[start_line_num:]]
     return logs, end_line_num
 
 
@@ -719,8 +711,9 @@ def run_optimize_on_optflow(train_table, variables, variable_type,
     load_schema_only = True
     for c in constraints:
         if c["group_by"]:
+            assert contains_aggregation_function(c["tokens"]), \
+                "GROUP BY must be used with aggregation functions"
             load_schema_only = False
-            break
 
     data_frame = load_odps_table_to_data_frame(
         odps_table=train_table, load_schema_only=load_schema_only)
