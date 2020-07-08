@@ -31,11 +31,11 @@ The submitter program submits an AI task on an AI platform e.g., [ElasticDL](htt
 SQLFlow compiler provides the code generator component to generate the step program,
 the code generation is divided into the following stages:
 
-1. [Target Registry](#target-registry), registry a Code Generator in SQLFlow compiler.
+1. [Target Submitter Registry](#target-submitter-register), register a Code Generator in SQLFlow compiler.
 1. [CodeGenerator Interface](#code-generator-interface) is a Go interface that all code generators should implement.
 1. [Code Generation](#code-generation) provides an assembler API to generate a step program.
 
-### Target Registry
+### Target Submitter Register
 
 For a new code generator, develops should register it in SQLFlow compiler as the following pseudo-code:
 
