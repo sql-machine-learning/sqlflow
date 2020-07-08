@@ -14,7 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: pre-commit
-      run: pre-commit run -a --show-diff-on-failure
+      run: |
+        go generate ./...
+        go install ./...
+        pre-commit run -a --show-diff-on-failure
     - name: mysql unit test
       run: |
         set -e
