@@ -49,7 +49,7 @@ func caseShowDatabases(t *testing.T) {
 		"boston":                      "",
 		"churn":                       "",
 		"creditcard":                  "",
-		"energy":                      "", // energy tutoral table
+		"energy":                      "", // energy tutorial table
 		"feature_derivation_case":     "",
 		"fund":                        "",
 		"housing":                     "",
