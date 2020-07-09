@@ -16,7 +16,7 @@ import sys
 import matplotlib
 # The default backend
 import matplotlib.pyplot as plt
-import runtime.pai.utils as utils
+from runtime.pai.oss import copyfileobj
 
 # TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later
@@ -42,8 +42,8 @@ def plot_and_save(plotfunc,
     plotfunc()
     plt.savefig(filename, bbox_inches='tight')
     if is_pai:
-        utils.copyfileobj(filename + '.png', oss_dest, oss_ak, oss_sk,
-                          oss_endpoint, oss_bucket_name)
+        copyfileobj(filename + '.png', oss_dest, oss_ak, oss_sk, oss_endpoint,
+                    oss_bucket_name)
     else:
         # NOTE(weiguoz), I failed test on the PAI platform here.
         # If we plan to support plotille_text_backend on PAI, please test it.
