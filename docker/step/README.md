@@ -19,7 +19,7 @@ This image is used when submitting Argo workflows to run Tensorflow/PAI Tensorfl
     -v $PWD:/work -w /work \
     sqlflow:dev
     ```
-1. Run below command to build the `sqlflow:step` docker image.  This command will package perviously built binaries into the result image.
+1. Run below command to build the `sqlflow:step` docker image.  This command will package previously built binaries into the result image.
     ```bash
     docker build -t sqlflow:step -f docker/step/Dockerfile .
     ```

@@ -55,9 +55,10 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("TestTrainSQL", caseTrainSQL)
+	t.Run("caseTrainSQL", caseTrainSQL)
 
-	caseTensorFlowIncrementalTrain(t, true)
+	// FIXME(typhoonzero): add this back later
+	// caseTensorFlowIncrementalTrain(t, true)
 
 	caseXGBoostFeatureColumn(t, true)
 }

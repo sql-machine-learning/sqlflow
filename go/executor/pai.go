@@ -23,6 +23,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/go/codegen/optimize"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -490,8 +491,15 @@ func (s *paiExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 		return err
 	}
 
-	err = generateOptFlowOptimizeCodeAndExecute(cl, s.pythonExecutor, s.Session, s.Cwd, dbName, tableName, true)
-	return err
+	code, err := optimize.GenerateOptimizeCode(cl, s.Session, tableName, true)
+	if err != nil {
+		return err
+	}
+
+	if err = s.runProgram(code, false); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *paiExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
@@ -578,9 +586,11 @@ func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
 			}
 		}
 	}
-	_, err = bucket.DeleteObjects(objectPathList)
-	if err != nil {
-		return err
+	if len(objectPathList) > 0 {
+		_, err = bucket.DeleteObjects(objectPathList)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

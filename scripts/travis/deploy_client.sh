@@ -46,7 +46,8 @@ case "$TRAVIS_OS_NAME" in
         sudo apt-get -qq install -y axel unzip > /dev/null
         ;;
     windows) choco install axel ;;
-    osx) brew install axel > /dev/null ;;
+    # Auto update brew takes a long time and fails frequently, so disable it
+    osx) export HOMEBREW_NO_AUTO_UPDATE=true && brew install axel ;;
 esac
 
 
@@ -76,7 +77,7 @@ echo "Build cmd/sqlflow into /tmp ..."
 cd "$TRAVIS_BUILD_DIR"
 go generate ./... > /dev/null
 mkdir "$PWD"/build
-GOBIN="$PWD"/build go install .go/cmd/sqlflow > /dev/null
+GOBIN="$PWD"/build go install ./go/cmd/sqlflow > /dev/null
 
 
 echo "Install Qiniu client for $TRAVIS_OS_NAME ..."
