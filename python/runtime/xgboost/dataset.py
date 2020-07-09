@@ -337,9 +337,7 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
 
     label_column_name = label_meta['feature_name'] if label_meta else None
     gen = db.pai_maxcompute_db_generator(pai_table,
-                                         feature_column_names,
                                          label_column_name,
-                                         feature_metas,
                                          slice_id=slice_id,
                                          slice_count=slice_count)()
     selected_cols = db.pai_selected_cols(pai_table)

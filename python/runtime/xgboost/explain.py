@@ -52,9 +52,7 @@ def xgb_shap_dataset(datasource,
         formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                        pai_table_parts[1])
         stream = db.pai_maxcompute_db_generator(formatted_pai_table,
-                                                feature_column_names,
-                                                label_column_name,
-                                                feature_metas)
+                                                label_column_name)
         selected_cols = db.pai_selected_cols(formatted_pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
