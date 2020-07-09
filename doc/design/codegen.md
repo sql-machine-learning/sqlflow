@@ -76,13 +76,12 @@ type CodeGenerator interface {
 ### Code Generation
 
 The code generation phase is responsible for generating target code from a SQL statement IR, this is an
-assembler API that routing to a specify code generator instance, the pseudo-code is as the following:
+assembler API that routes to a specified code generator, the pseudo-code is as the following:
 
 ``` golang
 func Generate(session *pb.Session, stmt *ir.SQLStatement) (string, error) {
-  if session.submitter == "PAI" && strings.prefix(ir.Estimator, "XGBOOST") {
-    cg := cgMapping["PAIXGBoost"]
-  } else if ...
+  // routing to a specified code generator from session.submitter
+  cf := cgMapping[session.submitter]
   
   switch v := stmt.(type) {
   case *ir.TrainStmt:
