@@ -41,8 +41,7 @@ func InitializeAttributes(stmt *ir.OptimizeStmt) error {
 }
 
 // GenerateOptimizeCode generates optimize codes for execution
-// The returned value is (runnerProgramCode, submitProgramCode, error)
-func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, tableName, runnerModuleName string, useOptFlow bool) (string, string, error) {
+func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, tableName string, useOptFlow bool) (string, error) {
 	const (
 		dataAttrPrefix   = "data."
 		solverAttrPrefix = "solver."
@@ -51,7 +50,7 @@ func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, table
 
 	dbName, err := database.GetDatabaseName(session.DbConnStr)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	resultTable := optimStmt.ResultTable
@@ -69,7 +68,7 @@ func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, table
 		} else if strings.HasPrefix(k, workerAttrPrefix) {
 			prefix = workerAttrPrefix
 		} else {
-			return "", "", fmt.Errorf("unrecognized attribute %s", k)
+			return "", fmt.Errorf("unrecognized attribute %s", k)
 		}
 
 		k = k[len(prefix):]
@@ -82,7 +81,7 @@ func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, table
 
 	attrJSON, err := json.Marshal(attrs)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	filler := optimizeFiller{
@@ -99,29 +98,19 @@ func GenerateOptimizeCode(optimStmt *ir.OptimizeStmt, session *pb.Session, table
 		AttributeJSON:   string(attrJSON),
 		TrainTable:      fmt.Sprintf("%s.%s", dbName, tableName),
 		ResultTable:     resultTable,
-		RunnerModule:    runnerModuleName,
 	}
 
+	var optimizeText string
 	if useOptFlow {
-		var runnerProgram bytes.Buffer
-		runnerTpl := template.Must(template.New(runnerModuleName).Parse(optFlowRunnerText))
-		if err := runnerTpl.Execute(&runnerProgram, filler); err != nil {
-			return "", "", err
-		}
-
-		tpl := template.Must(template.New("optimize").Parse(optFlowSubmitText))
-		var submitProgram bytes.Buffer
-		if err := tpl.Execute(&submitProgram, filler); err != nil {
-			return "", "", err
-		}
-		return runnerProgram.String(), submitProgram.String(), nil
+		optimizeText = optFlowOptimizeText
+	} else {
+		optimizeText = pyomoNativeOptimizeText
 	}
 
-	// not use OptFlow
+	tpl := template.Must(template.New("optimize").Parse(optimizeText))
 	var program bytes.Buffer
-	tpl := template.Must(template.New("optimize").Parse(pyomoNativeOptimizeText))
 	if err := tpl.Execute(&program, filler); err != nil {
-		return "", "", err
+		return "", err
 	}
-	return program.String(), "", nil
+	return program.String(), nil
 }

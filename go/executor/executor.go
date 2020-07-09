@@ -335,37 +335,6 @@ func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	return nil
 }
 
-func generateOptFlowOptimizeCodeAndExecute(stmt *ir.OptimizeStmt, submitter *pythonExecutor, session *pb.Session, cwd string, dbName string, tableName string, isPai bool) error {
-	// Generate optimization code
-	runnerFileName := "custom_optimize_runner"
-	runnerCode, submitCode, err := optimize.GenerateOptimizeCode(stmt, session, tableName,
-		runnerFileName, true)
-
-	if err != nil {
-		return err
-	}
-
-	// Write the runner code to cwd for submission
-	runnerFilePath := fmt.Sprintf("%s/%s.py", cwd, runnerFileName)
-	err = ioutil.WriteFile(runnerFilePath, []byte(runnerCode), 0644)
-	if err != nil {
-		return err
-	}
-
-	if isPai {
-		err = copyPythonPackage("runtime", cwd)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Note: OptFlow submit API logs on stderr but not stdout
-	if err = submitter.runProgram(submitCode, true); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (s *pythonExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
 	db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
 	if err != nil {
@@ -428,7 +397,7 @@ func (s *pythonExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
 		return err
 	}
 
-	program, _, err := optimize.GenerateOptimizeCode(stmt, s.Session, "", "", false)
+	program, err := optimize.GenerateOptimizeCode(stmt, s.Session, "", false)
 	if err != nil {
 		return err
 	}

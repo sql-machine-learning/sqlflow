@@ -23,8 +23,6 @@ fi
 export SQLFLOW_TEST_DB=maxcompute
 export SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT="service.cn.maxcompute.aliyun.com/api?curr_project=gomaxcompute_driver_w7u&scheme=https"
 export SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT="gomaxcompute_driver_w7u"
-export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
-export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
 if [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_AK" = "" ] || [ "$SQLFLOW_TEST_DB_MAXCOMPUTE_SK" == "" ]; then
     echo "Skip MaxCompute tests because SQLFLOW_TEST_DB_MAXCOMPUTE_AK or SQLFLOW_TEST_DB_MAXCOMPUTE_SK is empty"
     exit 0
@@ -33,7 +31,7 @@ fi
 # NOTE: we have already installed runtime under python installation
 # path using latest develop branch, but when testing on CI, we need to use the
 # code in the current pull request.
-export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
+export PYTHONPATH=/work/python:$GOPATH/src/sqlflow.org/sqlflow/python:$PYTHONPATH
 
 go generate ./...
 go install ./...
@@ -42,13 +40,13 @@ go install ./...
 #
 # Refer to https://github.com/codecov/example-go for merging coverage from
 # multiple runs of tests.
-gotest -p 1 -covermode=count -coverprofile=profile.out -v \
-       -run TestEnd2EndMaxCompute ./cmd/...
+gotest -p 1 -covermode=count -coverprofile=profile.out -timeout 1800s -v ./go/cmd/sqlflowserver \
+       -run TestEnd2EndMaxCompute
 if [ -f profile.out ]; then
     cat profile.out > coverage.txt
     rm profile.out
 fi
-gotest -p 1 -covermode=count -coverprofile=profile.out -v ./pkg/sqlfs/...
+gotest -p 1 -covermode=count -coverprofile=profile.out -v ./go/sqlfs/...
 if [ -f profile.out ]; then
     cat profile.out >> coverage.txt
     rm profile.out

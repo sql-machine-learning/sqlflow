@@ -12,9 +12,5 @@
 # limitations under the License.
 
 from runtime.optimize.optimize import (generate_model_with_data_frame,
-                                       run_optimize)
-
-try:
-    from runtime.optimize.runner import BaseOptFlowRunner, submit
-except:
-    pass
+                                       run_optimize_locally,
+                                       run_optimize_on_optflow)

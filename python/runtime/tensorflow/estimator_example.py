@@ -121,6 +121,7 @@ if __name__ == "__main__":
          feature_columns=feature_columns,
          feature_column_names=feature_column_names,
          feature_column_names_map=feature_column_names_map,
+         train_label_name=label_meta["feature_name"],
          result_col_name=label_meta["feature_name"],
          feature_metas=feature_metas,
          model_params={
