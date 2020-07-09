@@ -219,10 +219,8 @@ class TestGenerator(TestCase):
                 "shape": [],
                 "delimiter": ""
             }
-            gen = db_generator(conn,
-                               "SELECT * FROM test_table_float_fea",
-                               label_meta,
-                               driver=driver)
+            gen = db_generator(conn, "SELECT * FROM test_table_float_fea",
+                               label_meta)
             idx = 0
             for row, label in gen():
                 features = read_features_from_row(row, ["features"],
@@ -263,7 +261,6 @@ class TestGenerator(TestCase):
             gen = db_generator(conn,
                                'SELECT * FROM iris.train limit 10',
                                label_meta,
-                               driver=driver,
                                fetch_size=4)
             self.assertEqual(len([g for g in gen()]), 10)
 

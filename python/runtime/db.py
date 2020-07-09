@@ -189,15 +189,13 @@ def read_feature(raw_val, feature_spec, feature_name):
         return raw_val,
 
 
-def selected_cols(conn, select, driver=None):
-    if driver is None:
-        driver = conn.driver
-
+def selected_cols(conn, select):
     select = select.strip().rstrip(";")
     limited = re.findall("LIMIT [0-9]*$", select.upper())
     if not limited:
         select += " LIMIT 1"
 
+    driver = conn.driver
     if driver == "hive":
         cursor = conn.cursor(configuration=conn.session_cfg)
         cursor.execute(select)
@@ -243,13 +241,8 @@ def read_features_from_row(row, select_cols, feature_column_names,
     return tuple(features)
 
 
-def db_generator(conn,
-                 statement,
-                 label_meta=None,
-                 driver=None,
-                 fetch_size=128):
-    if driver is None:
-        driver = conn.driver
+def db_generator(conn, statement, label_meta=None, fetch_size=128):
+    driver = conn.driver
 
     def reader():
         if driver == "hive":

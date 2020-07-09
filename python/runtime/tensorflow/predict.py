@@ -74,8 +74,8 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
         gen = db.pai_maxcompute_db_generator(formatted_pai_table)
         selected_cols = feature_column_names
     else:
-        gen = db.db_generator(conn, select, driver=driver)
-        selected_cols = db.selected_cols(conn, select, driver=driver)
+        gen = db.db_generator(conn, select)
+        selected_cols = db.selected_cols(conn, select)
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
