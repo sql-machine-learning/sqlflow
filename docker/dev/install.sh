@@ -16,15 +16,14 @@
 set -e
 
 # shellcheck disable=SC1091
-# source find_fastest_resources.sh
-# echo "Choose the fastest APT source ..."
-# choose_fastest_apt_source
-# echo "Choose the fastest PIP source ..."
-# choose_fastest_pip_source
+source find_fastest_resources.sh
+echo "Choose the fastest APT source ..."
+choose_fastest_apt_source
+echo "Choose the fastest PIP source ..."
+choose_fastest_pip_source
 
 
 echo "Install apt packages ..."
-apt-get -qq update
 DOWNLOAD_TOOLS="curl axel unzip" # We need curl to check the running of Hive.
 BUILD_ESSENTIAL="build-essential git"
 PYTHON_DEV="python3-dev python3-pip" # Many pip packages require Python.h
@@ -33,7 +32,7 @@ SHELL_LINTER="shellcheck"
 YAML_LINTER="yamllint"
 OPTIMIZE_SOLVER="glpk-utils" # required solver packages of Pyomo
 # shellcheck disable=SC2086
-apt-get -qq install -y --no-install-recommends \
+apt-get -qq update && apt-get -qq install -y --no-install-recommends \
         $DOWNLOAD_TOOLS \
         $BUILD_ESSENTIAL \
         $PYTHON_DEV \
@@ -85,8 +84,7 @@ export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 echo "Install goyacc, protoc-gen-go, linters, etc. ..."
 # Set the env system-wide for later usage, e.g. build source
 go env -w GO111MODULE=on
-# go env -w GOPROXY="$(find_fastest_go_proxy)"
-go env -w GOPROXY="https://goproxy.io"
+go env -w GOPROXY="$(find_fastest_go_proxy)"
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/lint/golint \
@@ -120,11 +118,11 @@ axel --quiet --output /usr/local/bin/protoc-gen-grpc-java \
 chmod +x /usr/local/bin/protoc-gen-grpc-java
 
 
-# echo "Choose fastest Maven mirror ..."
+echo "Choose fastest Maven mirror ..."
 # Travis CI occasionally fails on the default Maven central repo.
 # Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
-# mkdir -p "$HOME/.m2"
-# find_fastest_maven_repo >"$HOME/.m2/settings.xml"
+mkdir -p "$HOME/.m2"
+find_fastest_maven_repo >"$HOME/.m2/settings.xml"
 
 
 echo "Install Java linter ..."

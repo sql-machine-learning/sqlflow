@@ -26,7 +26,7 @@ jobs:
         source build/env/bin/activate
         docker stop mysql || true
         docker rm mysql || true
-        docker run --rm -name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow/sqlflow:mysql
+        docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow/sqlflow:mysql
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
 
   # mysql-ci:
