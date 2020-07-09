@@ -28,55 +28,27 @@ jobs:
         docker rm mysql || true
         docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow/sqlflow:mysql
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
+        # bash scripts/travis/upload_codecov.sh
+    - name: hive unit test
+      run: |
+        set -e
+        docker pull sqlflow/gohive:dev
+        docker stop hive || true
+        docker run --rm -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
+        bash scripts/test/hive.sh
+        # bash scripts/travis/upload_codecov.sh
+    - name: maxcompute unit test
+      run: |
+        set -e
+        export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
+        export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
+        bash scripts/test/maxcompute.sh
+        bash scripts/travis/upload_codecov.sh
+    - name: java unit test
+      run: |
+        set -e
+        bash scripts/test/java.sh
 
-  # mysql-ci:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: mysql ci
-  #     run: |
-  #       set -e
-  #       export TRAVIS_BUILD_DIR=${{ github.workspace }}
-  #       docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-  #       bash scripts/travis/build.sh
-  #       docker run --rm -d -p 13306:3306 -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
-  #       docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work -v /var/run/docker.sock:/var/run/docker.sock --net=host -e SQLFLOW_TEST_DB=mysql -e SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" sqlflow:ci scripts/test/mysql.sh
-  #       bash scripts/travis/upload_codecov.sh
-  # hive-ci:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: hive ci
-  #     run: |
-  #       set -e
-  #       export TRAVIS_BUILD_DIR=${{ github.workspace }}
-  #       bash scripts/travis/build.sh
-  #       docker pull sqlflow/gohive:dev
-  #       docker run -d --name=hive sqlflow/gohive:dev python3 -m http.server 8899
-  #       docker run --rm -it --net=container:hive -v $TRAVIS_BUILD_DIR:/work -w /work -v $GOPATH:/root/go -v /var/run/docker.sock:/var/run/docker.sock sqlflow:ci scripts/test/hive.sh
-  #       bash scripts/travis/upload_codecov.sh
-  # maxcompute-ci:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: maxcompute ci
-  #     run: |
-  #       set -e
-  #       export TRAVIS_BUILD_DIR=${{ github.workspace }}
-  #       bash scripts/travis/build.sh
-  #       bash scripts/travis/setup_minikube.sh
-  #       docker run --rm --net=host -e SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK -e SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/.kube:/root/.kube -v /home/$USER/.minikube/:/home/$USER/.minikube/ -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci scripts/test/maxcompute.sh
-  #       bash scripts/travis/upload_codecov.sh
-  # java-ci:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: java parsers ci
-  #     run: |
-  #       set -e
-  #       export TRAVIS_BUILD_DIR=${{ github.workspace }}
-  #       bash scripts/travis/build.sh
-  #       docker run --rm -v $TRAVIS_BUILD_DIR:/work -w /work sqlflow:ci scripts/test/java.sh
   # workflow-ci:
   #   runs-on: ubuntu-latest
   #   steps:
