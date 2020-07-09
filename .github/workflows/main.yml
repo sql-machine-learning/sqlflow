@@ -22,7 +22,7 @@ jobs:
       run: |
         set -e
         echo cwd ${{ github.workspace }}
-        docker run --rm -d -p 13306:3306 -v $TRAVIS_BUILD_DIR:/work sqlflow:mysql
+        docker run --rm -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow/sqlflow:mysql
         git clone https://github.com/sql-machine-learning/models.git
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python:${{ github.workspace }}/models scripts/test/mysql.sh
 
