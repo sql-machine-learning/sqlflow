@@ -20,6 +20,8 @@ virtualenv build/env
 # shellcheck disable=SC1091
 source build/env/bin/activate
 
+(cd python/couler && python setup.py install)
+
 python -m pip install --quiet \
     numpy==1.16.2 \
     tensorflow==2.0.1 \
