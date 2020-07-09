@@ -20,8 +20,6 @@ from runtime.tensorflow.pai_distributed import (define_tf_flags,
 
 from .. import model
 
-FLAGS = define_tf_flags()
-
 
 def load_oss_model(oss_model_dir, estimator):
     set_oss_environs(FLAGS)
@@ -80,4 +78,6 @@ def entry_point():
 
 
 if __name__ == "__main__":
+    FLAGS = define_tf_flags()
+    set_oss_environs(FLAGS)
     entry_point()
