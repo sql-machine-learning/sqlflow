@@ -99,9 +99,8 @@ def input_fn(select,
         selected_cols = db.pai_selected_cols(pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
-        gen = db.db_generator(conn.driver, conn, select, feature_column_names,
-                              label_meta, feature_metas)
-        selected_cols = db.selected_cols(conn.driver, conn, select)
+        gen = db.db_generator(conn, select, label_meta)
+        selected_cols = db.selected_cols(conn, select)
 
     gen = tf_generator(gen, selected_cols, feature_column_names, feature_metas)
 

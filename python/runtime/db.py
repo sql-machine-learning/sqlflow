@@ -189,7 +189,10 @@ def read_feature(raw_val, feature_spec, feature_name):
         return raw_val,
 
 
-def selected_cols(driver, conn, select):
+def selected_cols(conn, select, driver=None):
+    if driver is None:
+        driver = conn.driver
+
     select = select.strip().rstrip(";")
     limited = re.findall("LIMIT [0-9]*$", select.upper())
     if not limited:
@@ -240,13 +243,14 @@ def read_features_from_row(row, select_cols, feature_column_names,
     return tuple(features)
 
 
-def db_generator(driver,
-                 conn,
+def db_generator(conn,
                  statement,
-                 feature_column_names=None,
                  label_meta=None,
-                 feature_metas=None,
+                 driver=None,
                  fetch_size=128):
+    if driver is None:
+        driver = conn.driver
+
     def reader():
         if driver == "hive":
             cursor = conn.cursor(configuration=conn.session_cfg)
@@ -299,8 +303,7 @@ def db_generator(driver,
 
     if driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        return MaxCompute.db_generator(conn, statement, feature_column_names,
-                                       label_meta, feature_metas, fetch_size)
+        return MaxCompute.db_generator(conn, statement, label_meta, fetch_size)
     if driver == "hive":
         # trip the suffix ';' to avoid the ParseException in hive
         statement = statement.rstrip(';')

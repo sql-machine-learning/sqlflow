@@ -56,10 +56,8 @@ def xgb_shap_dataset(datasource,
         selected_cols = db.pai_selected_cols(formatted_pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
-        stream = db.db_generator(conn.driver, conn, select,
-                                 feature_column_names, label_meta,
-                                 feature_metas)
-        selected_cols = db.selected_cols(conn.driver, conn, select)
+        stream = db.db_generator(conn, select, label_meta)
+        selected_cols = db.selected_cols(conn, select)
 
     if transform_fn:
         feature_names = transform_fn.get_feature_column_names()
