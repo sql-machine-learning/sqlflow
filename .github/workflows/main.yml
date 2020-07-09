@@ -61,9 +61,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: nelonoel/branch-name@v1
+    - uses: olegtarasov/get-tag@v2
+      id: tagName
     - name: push server images
       run: |
+        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_BRANCH=$BRANCH_NAME
+        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_docker.sh
     - name: release latest linux client binary
       run: |

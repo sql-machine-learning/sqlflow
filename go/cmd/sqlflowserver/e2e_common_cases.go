@@ -651,6 +651,8 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 
 	if testDBType == "maxcompute" {
 		dbName = caseDB
+	} else if testDBType == "hive" {
+		t.Skip("skip for hive tests, should add it back")
 	}
 
 	executeSQLFunc := func(sql string) {

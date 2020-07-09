@@ -225,7 +225,7 @@ func prepareTestData(dbStr string) error {
 			testdata.FeatureDerivationCaseSQLHive,
 			testdata.HousingSQL,
 			testdata.OptimizeCaseSQL,
-			testdata.XGBoostSparseDataCaseSQL}
+			testdata.XGBoostHiveSparseDataCaseSQL}
 	case "maxcompute", "alisa":
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
 			datasets = []string{
