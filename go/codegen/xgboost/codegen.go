@@ -345,13 +345,19 @@ func newTrainFiller(trainStmt *ir.TrainStmt, session *pb.Session, ossURIToSave, 
 
 // Pred generates a Python program for predict a xgboost model.
 func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
-	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
+	featureColumnCode, featureFieldDesc, trainLabelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(predStmt.TrainStmt.Features["feature_columns"], predStmt.TrainStmt.Label)
 
-	// NOTE(sneaxiy): The label name when predicting may be different from the label
-	// name when training, and users may select the actual label when predicting to
-	// compare them with the model prediction. So the label field desc of codegen
-	// must be the label name in prediction select statement.
-	labelFieldDesc.Name = predStmt.ResultColumn
+	// predict output column name may be different to the column name used when training.
+	resultFieldDesc := &ir.FieldDesc{
+		Name:       predStmt.ResultColumn,
+		DType:      trainLabelFieldDesc.DType,
+		Delimiter:  trainLabelFieldDesc.Delimiter,
+		Format:     trainLabelFieldDesc.Format,
+		Shape:      trainLabelFieldDesc.Shape,
+		IsSparse:   trainLabelFieldDesc.IsSparse,
+		Vocabulary: trainLabelFieldDesc.Vocabulary,
+		MaxID:      trainLabelFieldDesc.MaxID,
+	}
 
 	if err != nil {
 		return "", err
@@ -360,7 +366,11 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
+	trainLabelJSON, err := json.Marshal(resolveFieldMeta(&trainLabelFieldDesc))
+	if err != nil {
+		return "", err
+	}
+	predLabelJSON, err := json.Marshal(resolveFieldMeta(resultFieldDesc))
 	if err != nil {
 		return "", err
 	}
@@ -376,7 +386,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		FeatureMetaJSON:    string(f),
 		FeatureColumnNames: fs,
 		FeatureColumnCode:  featureColumnCode,
-		LabelMetaJSON:      string(l),
+		TrainLabelMetaJSON: string(trainLabelJSON),
+		PredLabelMetaJSON:  string(predLabelJSON),
 		ResultTable:        predStmt.ResultTable,
 		HDFSNameNodeAddr:   session.HdfsNamenodeAddr,
 		HiveLocation:       session.HiveLocation,

@@ -15,16 +15,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/ptypes/any"
 	"os"
 	"reflect"
 	"regexp"
 	"sort"
-	"sqlflow.org/sqlflow/go/proto"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/golang/protobuf/ptypes/any"
+	"sqlflow.org/sqlflow/go/proto"
 
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/go/database"
@@ -355,8 +356,7 @@ func caseTrainSQL(t *testing.T) {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
-	predSQL := fmt.Sprintf(`SELECT *
-FROM %s
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.class
 USING %s;`, caseTestTable, casePredictTable, caseInto)
 	_, _, _, err = connectAndRunSQL(predSQL)
@@ -708,11 +708,10 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
 	a.Equal(3, len(rows))
-	a.Equal(3, len(columns))
+	a.Equal(2, len(columns))
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
-	a.Equal("label_col", columns[1])
-	a.Equal("new_label_col", columns[2])
+	a.Equal("new_label_col", columns[1])
 
 	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "label_col", trainedModel)
 	executeSQLFunc(predictSQLWithoutOriginalLabel)
@@ -794,7 +793,6 @@ INTO ` + resultTable + `;`
 
 		a.Equal("product", header[0])
 		a.Equal(actualResultValue, header[1])
-
 		a.Equal(2, len(rows))
 		decodedRows, err := decodeAnyTypedRowData(rows)
 		a.NoError(err)

@@ -200,12 +200,16 @@ def selected_cols(driver, conn, select):
         cursor.execute(select)
         field_names = None if cursor.description is None \
             else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+        cursor.close()
+    elif driver == "maxcompute":
+        from runtime.maxcompute import MaxCompute
+        field_names = MaxCompute.selected_cols(conn, select)
     else:
         cursor = conn.cursor()
         cursor.execute(select)
         field_names = None if cursor.description is None \
             else [i[0] for i in cursor.description]
-    cursor.close()
+        cursor.close()
     return field_names
 
 

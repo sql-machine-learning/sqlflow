@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import numpy as np
 from odps import ODPS, tunnel
 
@@ -23,6 +25,15 @@ class MaxCompute:
         return ODPS(user, password, project=database, endpoint=host)
 
     @staticmethod
+    def selected_cols(conn, select):
+        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+        with conn.execute_sql(select).open_reader(
+                tunnel=True, compress_option=compress) as r:
+            field_names = None if r._schema.columns is None \
+                else [col.name for col in r._schema.columns]
+        return field_names
+
+    @staticmethod
     def db_generator(conn, statement, feature_column_names, label_meta,
                      feature_metas, fetch_size):
         def read_feature(raw_val, feature_spec):
@@ -32,8 +43,7 @@ class MaxCompute:
                                         sep=feature_spec["delimiter"])
                 indices = indices.reshape(indices.size, 1)
                 values = np.ones([indices.size], dtype=np.int32)
-                dense_shape = np.array(feature_metas[name]["shape"],
-                                       dtype=np.int64)
+                dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
                 return (indices, values, dense_shape)
             else:
                 # Dense string vector
@@ -42,7 +52,7 @@ class MaxCompute:
                                          dtype=int,
                                          sep=feature_spec["delimiter"])
                 else:
-                    return (raw_val, )
+                    return raw_val
 
         def reader():
             compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
@@ -78,15 +88,11 @@ class MaxCompute:
                             label = np.fromstring(label,
                                                   dtype=int,
                                                   sep=label_meta["delimiter"])
-                    features = []
-                    for name in feature_column_names:
-                        feature = read_feature(row[field_names.index(name)],
-                                               feature_metas[name])
-                        features.append(feature)
+
                     if label_idx is None:
-                        yield (tuple(features), )
+                        yield list(row), None
                     else:
-                        yield tuple(features), label
+                        yield list(row), label
                 i += expected
 
         return reader

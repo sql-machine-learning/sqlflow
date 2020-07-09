@@ -21,7 +21,8 @@ type predFiller struct {
 	DataSource         string
 	PredSelect         string
 	FeatureMetaJSON    string
-	LabelMetaJSON      string
+	TrainLabelMetaJSON string
+	PredLabelMetaJSON  string
 	FeatureColumnNames []string
 	FeatureColumnCode  string
 	ResultTable        string
@@ -39,7 +40,8 @@ import runtime.xgboost as xgboost_extended
 from runtime.xgboost.predict import pred
 
 feature_metas = json.loads('''{{.FeatureMetaJSON}}''')
-label_meta = json.loads('''{{.LabelMetaJSON}}''')
+train_label_meta = json.loads('''{{.TrainLabelMetaJSON}}''')
+pred_label_meta = json.loads('''{{.PredLabelMetaJSON}}''')
 
 feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
@@ -51,7 +53,8 @@ pred(datasource='''{{.DataSource}}''',
      select='''{{.PredSelect}}''',
      feature_metas=feature_metas,
      feature_column_names=feature_column_names,
-     label_meta=label_meta,
+     train_label_meta=train_label_meta,
+     pred_label_meta=pred_label_meta,
      result_table='''{{.ResultTable}}''',
      hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
      hive_location='''{{.HiveLocation}}''',

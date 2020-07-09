@@ -52,14 +52,8 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 		fldName := flds[idx]
 		// When predicting use validation table, we should find the label column type
 		// using the label column name from train table.
-		if fldName == trainLabelColumn {
-			resultColumnType = stype
-			if resultColumnName == trainLabelColumn {
-				continue
-			}
-		}
-		// result column have the same name, do not add as feature column
-		if fldName == resultColumnName {
+		// Skip label columns, and use predStmt.ResultColumn as the result column.
+		if fldName == trainLabelColumn || fldName == resultColumnName {
 			resultColumnType = stype
 			continue
 		}
