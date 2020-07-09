@@ -39,7 +39,8 @@ python -m pip install --quiet \
     jpmml-evaluator==0.3.1 \
     PyUtilib==5.8.0 \
     pyomo==5.6.9 \
-    mysqlclient==1.4.4
+    mysqlclient==1.4.4 \
+    pytest
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && python setup.py install)
