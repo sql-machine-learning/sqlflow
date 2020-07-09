@@ -15,7 +15,7 @@ from os import path
 
 import tensorflow as tf
 from runtime.model_metadata import save_model_metadata
-from runtime.tensorflow.diag import init_model, load_pretrained_model_estimator
+from runtime.diag import init_model, load_pretrained_model_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.metrics import get_tf_metrics

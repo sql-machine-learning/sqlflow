@@ -42,7 +42,7 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-var rePyDiagnosis = regexp.MustCompile("runtime.tensorflow.diag.SQLFlowDiagnostic: (.*)")
+var rePyDiagnosis = regexp.MustCompile("runtime.diag.SQLFlowDiagnostic: (.*)")
 
 // Figures contains analyzed figures as strings
 type Figures struct {
