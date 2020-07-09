@@ -20,6 +20,7 @@ virtualenv build/env
 # shellcheck disable=SC1091
 source build/env/bin/activate
 
+# 2. install python deps
 (cd python/couler && python setup.py install)
 
 python -m pip install --quiet \
@@ -42,3 +43,32 @@ python -m pip install --quiet \
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && python setup.py install)
+
+# 3. install java parser
+echo "Build parser gRPC servers in Java ..."
+
+# clean up previous build
+rm -rf "$SQLFLOW_PARSER_SERVER_LOADING_PATH"
+mkdir -p "$SQLFLOW_PARSER_SERVER_LOADING_PATH"
+
+# Make mvn compile quiet
+export MAVEN_OPTS="-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
+
+(cd java/parse-interface && \
+mvn -B -q clean install)
+
+(cd java/parser-hive && \
+mvn -B -q clean compile assembly:single && \
+mv target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" )
+
+(cd java/parser-calcite && \
+mvn -B -q clean compile assembly:single && \
+mv target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" )
+
+(cd java/parser && \
+protoc --java_out=src/main/java \
+       --grpc-java_out=src/main/java/ \
+       --proto_path=src/main/proto/ \
+       src/main/proto/parser.proto && \
+mvn -B -q clean compile assembly:single && \
+cp target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" )
