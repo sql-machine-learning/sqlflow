@@ -29,6 +29,15 @@ func TestGetCheckpointDir(t *testing.T) {
 
 	ckpoint, err := getCheckpointDir(ossModelPath, project)
 	a.NoError(err)
-	expectedCkp := fmt.Sprintf("oss://%s/p/t/m/?role_arn=acs:ram::9527:role/pai2oss_pr0j&host=h.com", BucketName)
+	expectedCkp := fmt.Sprintf("oss://%s/p/t/m/?role_arn=acs:ram::9527:role/pai2osspr0j&host=h.com", BucketName)
 	a.Equal(expectedCkp, ckpoint)
+}
+
+func TestGenRoleName(t *testing.T) {
+	a := assert.New(t)
+	a.Equal(genRoleName("a"), "pai2ossa")
+	a.Equal(genRoleName("abc"), "pai2ossabc")
+	a.Equal(genRoleName("a_b_c"), "pai2ossabc")
+	a.Equal(genRoleName("a_b_C"), "pai2ossabc")
+	a.Equal(genRoleName("a+b2_C"), "pai2ossab2c")
 }
