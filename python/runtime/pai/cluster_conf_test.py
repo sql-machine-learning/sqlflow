@@ -15,7 +15,7 @@ import unittest
 from unittest import TestCase
 
 from runtime.pai.cluster_conf import get_cluster_config
-from runtime.tensorflow.diag import SQLFlowDiagnostic
+from runtime.diag import SQLFlowDiagnostic
 
 
 class ClusterConfigTest(TestCase):

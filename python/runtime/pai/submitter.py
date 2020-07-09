@@ -19,7 +19,7 @@ import string
 from os import path
 
 from .. import db
-from ..tensorflow.diag import SQLFlowDiagnostic
+from runtime.diag import SQLFlowDiagnostic
 from . import cluster_conf, model
 from .entry import tensorflow as tensorflow_entry
 
