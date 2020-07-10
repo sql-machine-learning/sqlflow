@@ -328,13 +328,13 @@ class TestConnectWithDataSource(TestCase):
 class TestGetTableSchema(TestCase):
     def test_get_table_schema(self):
         if os.getenv("SQLFLOW_TEST_DB") == "mysql":
-            addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR")
+            addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "localhost:3306")
             schema = get_table_schema(
                 "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr,
                 "iris.train")
             expect = (
                 "[('sepal_length', 'float'), ('sepal_width', 'float'), "
-                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int')]"
+                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int(11)')]"
             )
             self.assertEqual(expect, str(schema))
         elif os.getenv("SQLFLOW_TEST_DB") == "hive":
@@ -358,5 +358,5 @@ class TestGetTableSchema(TestCase):
 
 
 if __name__ == "__main__":
-    os.environ["SQLFLOW_TEST_DB"] = "hive"
+    os.environ["SQLFLOW_TEST_DB"] = "mysql"
     unittest.main()
