@@ -25,30 +25,40 @@ import (
 	"sqlflow.org/sqlflow/go/parser"
 )
 
-const numSamples = 1000
+// FetchNSamples returns Rows according to the input Query.
+// If n == 0, return nil, err
+// If n > 0, return n sample(s) at most
+// If n < 0, return all samples
+func FetchNSamples(db *database.DB, query string, n int) (*sql.Rows, error) {
+	if n == 0 {
+		return nil, fmt.Errorf("cannot fetch 0 sample")
+	}
 
-// FetchSamples returns Rows according to the input Query
-func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
-	re, err := regexp.Compile("(?i)LIMIT [0-9]+")
-	if err != nil {
-		return nil, err
+	if n > 0 {
+		re := regexp.MustCompile("(?i)LIMIT [0-9]+")
+		limitClauseIndexes := re.FindStringIndex(query)
+		if limitClauseIndexes == nil {
+			query = fmt.Sprintf("%s LIMIT %d", query, n)
+		} else {
+			// TODO(typhoonzero): there may be complex SQL statements that contain multiple
+			// LIMIT clause, using regex replace will replace them all.
+			query = re.ReplaceAllStringFunc(query, func(limitClause string) string {
+				split := strings.SplitN(limitClause, " ", 2)
+				limitNum, _ := strconv.Atoi(split[1])
+				if limitNum > n {
+					limitNum = n
+				}
+				return fmt.Sprintf("LIMIT %d", limitNum)
+			})
+		}
 	}
-	limitClauseIndexes := re.FindStringIndex(query)
-	if limitClauseIndexes == nil {
-		query = fmt.Sprintf("%s LIMIT %d", query, numSamples)
-	} else {
-		// TODO(typhoonzero): there may be complex SQL statements that contain multiple
-		// LIMIT clause, using regex replace will replace them all.
-		query = re.ReplaceAllStringFunc(query, func(limitClause string) string {
-			splitted := strings.SplitN(limitClause, " ", 2)
-			limitNum, _ := strconv.Atoi(splitted[1])
-			if limitNum > numSamples {
-				limitNum = numSamples
-			}
-			return fmt.Sprintf("LIMIT %d", limitNum)
-		})
-	}
+
 	return db.Query(query)
+}
+
+// FetchSamples returns Rows according to the input Query, and return 1000 samples at most.
+func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
+	return FetchNSamples(db, query, 1000)
 }
 
 // FieldTypes type records a mapping from field name to field type name.

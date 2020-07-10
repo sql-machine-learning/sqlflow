@@ -541,66 +541,16 @@ def run_optimize_locally(datasource, select, variables, variable_type,
                              result_table=result_table)
 
 
-def run_optimize_on_optflow(datasource, train_table, variables, variable_type,
-                            result_value_name, objective, direction,
-                            constraints, solver, result_table, user_number):
-    variable_str = "@X"
-    data_frame_str = "@input"
-
+def run_optimize_on_optflow(train_table, variables, variable_type,
+                            result_value_name, objective_expression, direction,
+                            constraint_expressions, solver, result_table,
+                            user_number):
     if direction.lower() == "maximize":
         direction = "max"
     elif direction.lower() == "minimize":
         direction = "min"
     else:
         raise ValueError("direction must be maximize or minimize")
-
-    # Need to load the table data only when there is any GROUP BY clause.
-    load_schema_only = True
-    for c in constraints:
-        if c["group_by"]:
-            assert contains_aggregation_function(c["tokens"]), \
-                "GROUP BY must be used with aggregation functions"
-            load_schema_only = False
-
-    data_frame = load_db_data_to_data_frame(datasource=datasource,
-                                            odps_table=train_table,
-                                            load_schema_only=load_schema_only)
-
-    objective_expression = generate_objective_or_constraint_expressions(
-        tokens=objective,
-        data_frame=data_frame,
-        variables=variables,
-        result_value_name=result_value_name,
-        variable_str=variable_str,
-        data_frame_str=data_frame_str)
-    assert len(objective_expression) == 1 and len(objective_expression[0]) == 1, \
-        "there must be only one objective expression"
-    objective_expression = objective_expression[0][0]
-
-    constraint_expressions = []
-    for c in constraints:
-        tokens = c.get("tokens")
-        group_by = c.get("group_by")
-
-        expressions = generate_objective_or_constraint_expressions(
-            tokens=tokens,
-            data_frame=data_frame,
-            variables=variables,
-            result_value_name=result_value_name,
-            group_by=group_by,
-            variable_str=variable_str,
-            data_frame_str=data_frame_str)
-
-        for expr in expressions:
-            if len(expr) == 1:  # (expression, )
-                expr = expr[0]
-            else:  # (expression, range), where range may be None and None means all variables
-                range_expr = expr[1]
-                if range_expr is None:
-                    range_expr = variable_str
-                expr = "for i in {}: {}".format(range_expr, expr[0])
-
-            constraint_expressions.append(expr)
 
     fsl_file_content = '''
 variables: {}
