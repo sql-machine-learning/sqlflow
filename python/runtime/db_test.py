@@ -329,32 +329,37 @@ class TestGetTableSchema(TestCase):
     def test_get_table_schema(self):
         if os.getenv("SQLFLOW_TEST_DB") == "mysql":
             addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "localhost:3306")
-            schema = get_table_schema(
-                "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr,
-                "iris.train")
+            conn = connect_with_data_source(
+                "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr)
+            schema = get_table_schema(conn, "iris.train")
             expect = (
                 "[('sepal_length', 'float'), ('sepal_width', 'float'), "
                 "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int(11)')]"
             )
             self.assertEqual(expect, str(schema))
+            conn.close()
         elif os.getenv("SQLFLOW_TEST_DB") == "hive":
             addr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-            schema = get_table_schema(addr, "test_db")
+            conn = connect_with_data_source(addr)
+            schema = get_table_schema(conn, "test_db")
             expect = "[('features', 'string'), ('label', 'int')]"
             self.assertEqual(expect, str(schema))
+            conn.close()
         elif os.getenv("SQLFLOW_TEST_DB") == "maxcompute":
             AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
             SK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
             endpoint = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
             addr = "maxcompute://%s:%s@%s" % (AK, SK, endpoint)
             case_db = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
-            schema = get_table_schema(addr,
+            conn = connect_with_data_source(addr)
+            schema = get_table_schema(conn,
                                       "%s.sqlflow_test_iris_train" % case_db)
             expect = (
                 "[('sepal_length', 'float'), ('sepal_width', 'float'), "
                 "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int')]"
             )
             self.assertEqual(expect, str(schema))
+            conn.close()
 
 
 if __name__ == "__main__":

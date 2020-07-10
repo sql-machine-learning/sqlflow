@@ -373,7 +373,7 @@ def buffered_db_writer(driver,
         w.close()
 
 
-def get_table_schema(datasource, table):
+def get_table_schema(conn, table):
     """Get column name and type of given table
 
     Args:
@@ -383,7 +383,6 @@ def get_table_schema(datasource, table):
     Returns:
         Tuple of (field_name, field_type) tuples
     """
-    conn = connect_with_data_source(datasource)
     statement = "describe %s" % table
     if conn.driver == "maxcompute":
         compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
@@ -403,5 +402,4 @@ def get_table_schema(datasource, table):
             # add field name and type
             fields.append((field[0], field[1]))
         cursor.close()
-        conn.close()
     return fields
