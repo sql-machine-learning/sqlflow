@@ -17,6 +17,7 @@ import re
 import numpy as np
 import runtime.db_writer as db_writer
 import six
+from odps import ODPS, tunnel
 
 
 def parseMySQLDSN(dsn):
@@ -370,3 +371,37 @@ def buffered_db_writer(driver,
         yield w
     finally:
         w.close()
+
+
+def get_table_schema(datasource, table):
+    """Get column name and type of given table
+
+    Args:
+        datasource: datasource to connect, including auth info
+        table: table name or db.table
+
+    Returns:
+        Tuple of (field_name, field_type) tuples
+    """
+    conn = connect_with_data_source(datasource)
+    statement = "describe %s" % table
+    if conn.driver == "maxcompute":
+        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+        inst = conn.execute_sql(statement)
+        if not inst.is_successful():
+            return None
+        fields = []
+        with inst.open_reader(tunnel=True, compress_option=compress) as reader:
+            for row in reader[0:reader.count]:
+                fields.append((row[0], row[1]))
+        return fields
+    else:
+        cursor = conn.cursor()
+        cursor.execute(statement)
+        fields = []
+        for field in cursor:
+            # add field name and type
+            fields.append((field[0], field[1]))
+        cursor.close()
+        conn.close()
+    return fields
