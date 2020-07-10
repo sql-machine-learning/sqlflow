@@ -1,6 +1,6 @@
 # SQLFlow Code Generator
 
-SQLFlow is a compiler that takes a SQL program and generates Argo workflow, which is a `.YAML` file.
+SQLFlow is a compiler that compiles a SQL program to Argo workflow, which is a `.YAML` file.
 The Argo controller running on Kubernetes is the executor that executes the workflow. This is a design doc on how to implement
 the backend of the SQLFlow compiler.
 
