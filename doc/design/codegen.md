@@ -1,8 +1,15 @@
 # SQLFlow Code Generator
 
-SQLFlow is a compiler that compiles a SQL program to Argo workflow, which is a `.YAML` file.
-The Argo controller running on Kubernetes is the executor that executes the workflow. This is a design doc on how to implement
-the backend of the SQLFlow compiler.
+SQLFlow is a compiler that compiles a SQL program to an Argo workflow as the following pipeline:
+
+``` text
+parser -> AST -> sematic -> IR -> optimizer -> code generator
+   ↑                                                ↓
+sql program                                       .YAML
+```
+
+The Argo controller running on Kubernetes is the executor that executes the workflow. This is a design doc about how to implement
+the code generator.
 
 ## The High-level Design of the Code Generator
 
@@ -24,8 +31,10 @@ steps:
 From the above workflow `.YAML` file, each workflow step contains three parts:
 
 1. The execution command as the `command` spec to execute the program.
-1. The execution program called it the submitter program, which could be written in Python, R, or Bash programming language.
-The submitter program submits an AI task on an AI platform e.g., [ElasticDL](https://github.com/sql-machine-learning/elasticdl), [Alibaba PAI](https://www.alibabacloud.com/help/zh/doc-detail/75093.htm), or just running on host via `runtime` library.
+1. The execution program, which can be written in Python, R, or Bash. The program submits
+an AI task on an AI platform .e.g, [ElasticDL](https://github.com/sql-machine-learning/elasticdl),
+[Alibaba PAI](https://www.alibabacloud.com/help/zh/doc-detail/75093.htm) or just runs on a host by
+involving the SQLFlow `runtime` library.
 1. The runtime environment variables with the `env` spec.
 
 SQLFlow compiler provides the code generator component to generate the step program,
@@ -61,7 +70,7 @@ type ExecutionCtx struct {
 }
 
 type CodeGenerator interface {
-  ExecCtx(*ir.SQLStmt) ExecutionCtx
+  GenerateExecCtx(*ir.SQLStmt) ExecutionCtx
   EmitNormal(*ir.NormalStmt) (string, error)
   EmitTrain(*ir.TrainStmt) (string, error)
   EmitPredict(*ir.PredictStmt) (string, error)
@@ -82,12 +91,12 @@ assembler API that routes to a specified code generator, the pseudo-code is as t
 func Generate(session *pb.Session, stmt *ir.SQLStatement) (string, error) {
   // routing to a specified code generator from session.submitter
   cf := cgMapping[session.submitter]
-  
+
   switch v := stmt.(type) {
   case *ir.TrainStmt:
-    return cg.Train(stmt.(*ir.TrainStmt)), cg.ExecutionCtx, nil
+    return cg.EmitTrain(stmt.(*ir.TrainStmt)), cg.GenerateExecCtx(), nil
   case *ir.PredictStmt:
-    return cg.Predict(stmt.(*ir.TrainStmt)), cg.ExecutionCtx, nil
+    return cg.EmitPredict(stmt.(*ir.TrainStmt)), cg.GenerateExecCtx(), nil
   ...
   }
 }
