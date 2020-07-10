@@ -43,7 +43,9 @@ python -m pip install --quiet \
     pytest
 
 git clone https://github.com/sql-machine-learning/models.git
-(cd models && python setup.py install)
+(cd models && git fetch origin && \
+git checkout v0.0.4 -b v0.0.4 && \
+python setup.py install)
 
 # 3. install java parser
 echo "Build parser gRPC servers in Java ..."
