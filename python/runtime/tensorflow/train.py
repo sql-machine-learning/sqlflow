@@ -102,12 +102,6 @@ def train(datasource,
         num_workers = len(FLAGS.worker_hosts.split(","))
         worker_id = FLAGS.task_index
 
-    # TODO(typhoonzero): remove this after update the keras models.
-    # copy feature_name to name field for Keras functional models:
-    # https://github.com/sql-machine-learning/models/blob/develop/sqlflow_models/dnnclassifier_functional_api_example.py
-    for k in feature_metas:
-        feature_metas[k]["name"] = feature_metas[k]["feature_name"]
-
     train_dataset_fn, val_dataset_fn = get_dataset_fn(
         select,
         validation_select,
