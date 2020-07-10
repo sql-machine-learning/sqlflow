@@ -67,6 +67,7 @@ fi
 
 
 echo "Create a MySQL pod on Kubernetes ..."
+kubectl delete po mysql || true
 kubectl create -f ./scripts/test/mysql_pod.yaml
 
 TIMEOUT="true"
