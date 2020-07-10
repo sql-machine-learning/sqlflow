@@ -375,7 +375,7 @@ def get_table_schema(conn, table):
     """Get column name and type of given table
 
     Args:
-        datasource: datasource to connect, including auth info
+        conn: an open database connection, this function will leave it open
         table: table name or db.table
 
     Returns:
