@@ -121,7 +121,7 @@ def connect(driver,
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971
         from MySQLdb import connect
-        return connect(user=user,
+        conn = connect(user=user,
                        passwd=password,
                        db=database,
                        host=host,
@@ -136,12 +136,14 @@ def connect(driver,
                        auth_mechanism=auth)
         conn.default_db = database
         conn.session_cfg = session_cfg
-        return conn
     elif driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        return MaxCompute.connect(database, user, password, host)
+        conn = MaxCompute.connect(database, user, password, host)
+    else:
+        raise ValueError("unrecognized database driver: %s" % driver)
 
-    raise ValueError("unrecognized database driver: %s" % driver)
+    conn.driver = driver
+    return conn
 
 
 def read_feature(raw_val, feature_spec, feature_name):
