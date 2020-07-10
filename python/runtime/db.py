@@ -121,7 +121,7 @@ def connect(driver,
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971
         from MySQLdb import connect
-        return connect(user=user,
+        conn = connect(user=user,
                        passwd=password,
                        db=database,
                        host=host,
@@ -136,12 +136,14 @@ def connect(driver,
                        auth_mechanism=auth)
         conn.default_db = database
         conn.session_cfg = session_cfg
-        return conn
     elif driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        return MaxCompute.connect(database, user, password, host)
+        conn = MaxCompute.connect(database, user, password, host)
+    else:
+        raise ValueError("unrecognized database driver: %s" % driver)
 
-    raise ValueError("unrecognized database driver: %s" % driver)
+    conn.driver = driver
+    return conn
 
 
 def read_feature(raw_val, feature_spec, feature_name):
@@ -189,12 +191,13 @@ def read_feature(raw_val, feature_spec, feature_name):
         return raw_val,
 
 
-def selected_cols(driver, conn, select):
+def selected_cols(conn, select):
     select = select.strip().rstrip(";")
     limited = re.findall("LIMIT [0-9]*$", select.upper())
     if not limited:
         select += " LIMIT 1"
 
+    driver = conn.driver
     if driver == "hive":
         cursor = conn.cursor(configuration=conn.session_cfg)
         cursor.execute(select)
@@ -240,13 +243,9 @@ def read_features_from_row(row, select_cols, feature_column_names,
     return tuple(features)
 
 
-def db_generator(driver,
-                 conn,
-                 statement,
-                 feature_column_names=None,
-                 label_meta=None,
-                 feature_metas=None,
-                 fetch_size=128):
+def db_generator(conn, statement, label_meta=None, fetch_size=128):
+    driver = conn.driver
+
     def reader():
         if driver == "hive":
             cursor = conn.cursor(configuration=conn.session_cfg)
@@ -299,8 +298,7 @@ def db_generator(driver,
 
     if driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        return MaxCompute.db_generator(conn, statement, feature_column_names,
-                                       label_meta, feature_metas, fetch_size)
+        return MaxCompute.db_generator(conn, statement, label_meta, fetch_size)
     if driver == "hive":
         # trip the suffix ';' to avoid the ParseException in hive
         statement = statement.rstrip(';')

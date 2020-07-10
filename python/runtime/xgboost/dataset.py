@@ -72,10 +72,9 @@ def xgb_dataset(datasource,
         return
 
     conn = db.connect_with_data_source(datasource)
-    gen = db.db_generator(conn.driver, conn, dataset_sql, feature_column_names,
-                          label_meta, feature_metas)()
+    gen = db.db_generator(conn, dataset_sql, label_meta)()
 
-    selected_cols = db.selected_cols(conn.driver, conn, dataset_sql)
+    selected_cols = db.selected_cols(conn, dataset_sql)
     for _ in six.moves.range(epoch):
         step = 0
         # the filename per batch is [filename]_[step]

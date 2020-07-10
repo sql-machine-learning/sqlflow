@@ -418,11 +418,11 @@ def load_db_data_to_data_frame(datasource,
                                load_schema_only=False):
     if odps_table is None:
         conn = db.connect_with_data_source(datasource)
-        selected_cols = db.selected_cols(conn.driver, conn, select)
+        selected_cols = db.selected_cols(conn, select)
         if load_schema_only:
             return pd.DataFrame(columns=selected_cols)
 
-        generator = db.db_generator(conn.driver, conn, select)
+        generator = db.db_generator(conn, select)
     else:
         project, table = odps_table.split('.')
         conn = db.connect_with_data_source(datasource)
