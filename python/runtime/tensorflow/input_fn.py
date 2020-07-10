@@ -210,7 +210,7 @@ def get_dataset_fn(select,
                    shuffle_size=None,
                    num_workers=1,
                    worker_id=0):
-    def input_fn():
+    def dataset_input_fn():
         dataset = input_fn(select,
                            datasource,
                            feature_column_names,
@@ -228,4 +228,4 @@ def get_dataset_fn(select,
             dataset = dataset.repeat(epochs)
         return dataset
 
-    return input_fn
+    return dataset_input_fn
