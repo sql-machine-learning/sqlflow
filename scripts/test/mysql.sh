@@ -20,11 +20,15 @@ if [[ "$changed_fileext" == "md" ]]; then
     exit 0
 fi
 
-
-port=$(echo "$SQLFLOW_TEST_DB_MYSQL_ADDR" | awk -F":" '{print $2}')
-echo "Waiting mysql to launch on $port..."
-while ! nc -z localhost "$port"; do   
-  sleep 0.5
+# Wait for MySQL server to initialize, the the sqlflow/sqlflow:mysql will
+# start an HTTP server at 8890
+while true; do
+    if curl -s http://localhost:8890 > /dev/null 2>&1; then
+        break
+    else
+        echo "still waiting, MySQL server is not ready..."
+        sleep 5
+    fi
 done
 
 export SQLFLOW_TEST_DB=mysql
