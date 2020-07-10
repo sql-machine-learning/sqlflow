@@ -35,6 +35,7 @@ jobs:
     - name: hive unit test
       run: |
         set -e
+        source build/env/bin/activate
         docker pull sqlflow/gohive:dev
         docker stop hive || true
         docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
@@ -43,6 +44,7 @@ jobs:
     - name: maxcompute unit test
       run: |
         set -e
+        source build/env/bin/activate
         export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
         export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
         PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
@@ -54,6 +56,7 @@ jobs:
     - name: workflow mode ci
       run: |
         set -e
+        source build/env/bin/activate
         docker tag sqlflow/sqlflow:mysql sqlflow:mysql
         bash scripts/test/workflow.sh
         docker rmi sqlflow:mysql
