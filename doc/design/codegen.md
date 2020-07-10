@@ -1,7 +1,7 @@
 # SQLFlow Code Generator
 
 SQLFlow is a compiler that takes a SQL program and generates Argo workflow, which is a `.YAML` file.
-The Argo controller running on Kubernetes is the executor. This is a design doc on how to implement
+The Argo controller running on Kubernetes is the executor that executes the workflow. This is a design doc on how to implement
 the backend of the SQLFlow compiler.
 
 ## The High-level Design of the Code Generator
@@ -62,14 +62,14 @@ type ExecutionCtx struct {
 
 type CodeGenerator interface {
   ExecCtx(*ir.SQLStmt) ExecutionCtx
-  Normal(*ir.NormalStmt) (string, error)
-  Train(*ir.TrainStmt) (string, error)
-  Predict(*ir.PredictStmt) (string, error)
-  Explain(*ir.ExplainStmt) (string, error)
-  Evaluate(*ir.EvaluateStmt) (string, error)
-  ShowTrain(*ir.ShowTrainStmt) (string, error)
-  Optimize(*ir.OptimizeStmt) (string, error)
-  Run(*ir.RunStmt) (string, error)
+  EmitNormal(*ir.NormalStmt) (string, error)
+  EmitTrain(*ir.TrainStmt) (string, error)
+  EmitPredict(*ir.PredictStmt) (string, error)
+  EmitExplain(*ir.ExplainStmt) (string, error)
+  EmitEvaluate(*ir.EvaluateStmt) (string, error)
+  EmitShowTrain(*ir.ShowTrainStmt) (string, error)
+  EmitOptimize(*ir.OptimizeStmt) (string, error)
+  EmitRun(*ir.RunStmt) (string, error)
 }
 ```
 
