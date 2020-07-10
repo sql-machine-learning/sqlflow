@@ -237,7 +237,6 @@ function choose_fastest_apt_source() {
     install_requirements_if_not
     echo "Find fastest APT mirror ..."
     find_fastest_apt_source > /etc/apt/sources.list
-    cat /etc/apt/sources.list
     apt-get -qq update
 }
 
