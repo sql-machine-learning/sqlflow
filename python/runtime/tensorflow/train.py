@@ -80,7 +80,6 @@ def train(datasource,
                                         model_params, feature_columns_code,
                                         feature_metas, label_meta, None,
                                         model_repo_image)
-    # import custom model package
     runtime.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
 
@@ -89,7 +88,6 @@ def train(datasource,
     if is_pai and verbose < 1:  # always use verbose == 1 when using PAI to get more logs
         verbose = 1
     set_log_level(verbose, is_estimator)
-    # fill in feature columns parameters
     model_params.update(feature_columns)
 
     FLAGS = None
@@ -108,22 +106,24 @@ def train(datasource,
     for k in feature_metas:
         feature_metas[k]["name"] = feature_metas[k]["feature_name"]
 
-    train_dataset_fn, val_dataset_fn = get_dataset_fn(
-        select,
-        validation_select,
-        datasource,
-        feature_column_names,
-        feature_metas,
-        label_meta,
-        is_pai,
-        pai_table,
-        pai_val_table,
-        epoch,
-        batch_size,
-        1000,
-        num_workers=num_workers,
-        worker_id=worker_id,
-        is_estimator=is_estimator)
+    train_dataset_fn = get_dataset_fn(select,
+                                      datasource,
+                                      feature_column_names,
+                                      feature_metas,
+                                      label_meta,
+                                      is_pai,
+                                      pai_table,
+                                      batch_size,
+                                      epochs=epoch,
+                                      shuffle_size=1000,
+                                      num_workers=num_workers,
+                                      worker_id=worker_id)
+    val_dataset_fn = None
+    if validation_select:
+        val_dataset_fn = get_dataset_fn(validation_select, datasource,
+                                        feature_column_names, feature_metas,
+                                        label_meta, is_pai, pai_val_table,
+                                        batch_size)
 
     if not is_estimator:  # keras
         if isinstance(estimator, types.FunctionType):

@@ -199,47 +199,33 @@ def pai_dataset(table,
 
 
 def get_dataset_fn(select,
-                   validate_select,
                    datasource,
                    feature_column_names,
                    feature_metas,
                    label_meta,
                    is_pai,
                    pai_table,
-                   pai_val_table,
-                   epochs,
                    batch_size,
-                   shuffle_size,
+                   epochs=1,
+                   shuffle_size=None,
                    num_workers=1,
-                   worker_id=0,
-                   is_estimator=True):
-    def train_input_fn():
-        train_dataset = input_fn(select,
-                                 datasource,
-                                 feature_column_names,
-                                 feature_metas,
-                                 label_meta,
-                                 is_pai=is_pai,
-                                 pai_table=pai_table,
-                                 num_workers=num_workers,
-                                 worker_id=worker_id)
-        train_dataset = train_dataset.cache("cache_train").shuffle(
-            shuffle_size).batch(batch_size).repeat(epochs if epochs else 1)
-        return train_dataset
+                   worker_id=0):
+    def input_fn():
+        dataset = input_fn(select,
+                           datasource,
+                           feature_column_names,
+                           feature_metas,
+                           label_meta,
+                           is_pai=is_pai,
+                           pai_table=pai_table,
+                           num_workers=num_workers,
+                           worker_id=worker_id)
+        dataset = dataset.cache("cache_train")
+        if shuffle_size is not None:
+            dataset = dataset.shuffle(shuffle_size)
+        dataset = dataset.batch(batch_size)
+        if epochs > 1:
+            dataset = dataset.repeat(epochs)
+        return dataset
 
-    def validate_input_fn():
-        validate_dataset = input_fn(validate_select,
-                                    datasource,
-                                    feature_column_names,
-                                    feature_metas,
-                                    label_meta,
-                                    is_pai=is_pai,
-                                    pai_table=pai_val_table)
-        validate_dataset = validate_dataset.cache("cache_validation").batch(
-            batch_size)
-        return validate_dataset
-
-    if validate_select != "":
-        return train_input_fn, validate_input_fn
-    else:
-        return train_input_fn, None
+    return input_fn
