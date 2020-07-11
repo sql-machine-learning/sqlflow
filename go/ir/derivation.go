@@ -108,7 +108,8 @@ func unifyDatabaseTypeName(typeName string) string {
 	return strings.ToUpper(typeName)
 }
 
-func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
+// ScanRowValue returns the decoded row value from sql.Rows.
+func ScanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
@@ -124,8 +125,11 @@ func newRowValue(columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 		case "DOUBLE":
 			rowData[idx] = new(float64)
 		default:
-			return nil, fmt.Errorf("newRowValue: unsupported database column type: %s", typeName)
+			return nil, fmt.Errorf("ScanRowValue: unsupported database column type: %s", typeName)
 		}
+	}
+	if err := rows.Scan(rowData...); err != nil {
+		return nil, err
 	}
 	return rowData, nil
 }
@@ -483,14 +487,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDes
 func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDescMap, originalSizes map[string]int) error {
 	rowCount := 0
 	for rows.Next() {
-		rowData, err := newRowValue(columnTypes)
-		if err != nil {
-			return err
-		}
-		err = rows.Scan(rowData...)
-		if err != nil {
-			return err
-		}
+		rowData, err := ScanRowValue(rows, columnTypes)
 		err = fillFieldDesc(columnTypes, rowData, fmMap, rowCount, originalSizes)
 		if err != nil {
 			return err

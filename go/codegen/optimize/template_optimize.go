@@ -15,8 +15,7 @@ package optimize
 
 import "sqlflow.org/sqlflow/go/ir"
 
-type optimizeFiller struct {
-	UserID          string
+type pyomoNativeOptimizeFiller struct {
 	DataSource      string
 	Select          string
 	Variables       []string
@@ -27,11 +26,26 @@ type optimizeFiller struct {
 	Constraints     []*ir.OptimizeExpr
 	Solver          string
 	AttributeJSON   string
-	TrainTable      string
 	ResultTable     string
 }
 
-const pyomoVarObjectiveAndConstraintText = `
+type optFlowOptimizeFiller struct {
+	UserID                string
+	Variables             []string
+	ResultValueName       string
+	VariableType          string
+	ObjectiveExpression   string
+	Direction             string
+	ConstraintExpressions []string
+	Solver                string
+	AttributeJSON         string
+	TrainTable            string
+	ResultTable           string
+}
+
+const pyomoNativeOptimizeText = `
+from runtime.optimize import run_optimize_locally
+
 variables = [{{range .Variables}}"{{.}}",{{end}}]
 
 objective = [{{range .Objective.ExpressionTokens}}"{{.}}",{{end}}]
@@ -42,10 +56,6 @@ constraints = [{{range .Constraints}}
         "group_by": "{{.GroupBy}}",
     },
 {{end}}]
-`
-
-const pyomoNativeOptimizeText = pyomoVarObjectiveAndConstraintText + `
-from runtime.optimize import run_optimize_locally
 
 run_optimize_locally(datasource="{{.DataSource}}", 
                      select='''{{.Select}}''',
@@ -59,17 +69,20 @@ run_optimize_locally(datasource="{{.DataSource}}",
                      result_table="{{.ResultTable}}")
 `
 
-const optFlowOptimizeText = pyomoVarObjectiveAndConstraintText + `
+const optFlowOptimizeText = `
 from runtime.optimize import run_optimize_on_optflow
 
-run_optimize_on_optflow(datasource="{{.DataSource}}",
-                        train_table="{{.TrainTable}}",
+variables = [{{range .Variables}}"{{.}}",{{end}}]
+
+constraint_expressions = [{{range .ConstraintExpressions}}'''{{.}}''',{{end}}]
+
+run_optimize_on_optflow(train_table="{{.TrainTable}}",
                         variables=variables,
                         variable_type="{{.VariableType}}",
                         result_value_name="{{.ResultValueName}}",
-                        objective=objective,
+                        objective_expression='''{{.ObjectiveExpression}}''',
                         direction="{{.Direction}}",
-                        constraints=constraints,
+                        constraint_expressions=constraint_expressions,
                         solver="{{.Solver}}",
                         result_table="{{.ResultTable}}",
                         user_number="{{.UserID}}")
