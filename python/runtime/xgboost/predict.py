@@ -63,7 +63,7 @@ def pred(datasource,
         pai_table = "odps://{}/tables/{}".format(*pai_table.split("."))
         selected_cols = db.pai_selected_cols(pai_table)
     else:
-        selected_cols = db.selected_cols(conn.driver, conn, select)
+        selected_cols = db.selected_cols(conn, select)
 
     feature_file_id = 0
     train_label_name = train_label_meta["feature_name"]

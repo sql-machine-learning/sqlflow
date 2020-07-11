@@ -34,26 +34,7 @@ class MaxCompute:
         return field_names
 
     @staticmethod
-    def db_generator(conn, statement, feature_column_names, label_meta,
-                     feature_metas, fetch_size):
-        def read_feature(raw_val, feature_spec):
-            if feature_spec["is_sparse"]:
-                indices = np.fromstring(raw_val,
-                                        dtype=int,
-                                        sep=feature_spec["delimiter"])
-                indices = indices.reshape(indices.size, 1)
-                values = np.ones([indices.size], dtype=np.int32)
-                dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
-                return (indices, values, dense_shape)
-            else:
-                # Dense string vector
-                if feature_spec["delimiter"] != "":
-                    return np.fromstring(raw_val,
-                                         dtype=int,
-                                         sep=feature_spec["delimiter"])
-                else:
-                    return raw_val
-
+    def db_generator(conn, statement, label_meta, fetch_size):
         def reader():
             compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
             inst = conn.execute_sql(statement)
