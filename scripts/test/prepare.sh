@@ -44,7 +44,7 @@ python -m pip install --quiet \
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
-git checkout v0.0.4 -b v0.0.4 && \
+git checkout v0.0.5 -b v0.0.5 && \
 python setup.py install)
 
 # 3. install java parser
