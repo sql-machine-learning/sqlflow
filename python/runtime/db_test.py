@@ -12,14 +12,16 @@
 # limitations under the License.
 
 import os
+import unittest
 from unittest import TestCase
 
 import numpy as np
 import tensorflow as tf
 from odps import ODPS, tunnel
 from runtime.db import (buffered_db_writer, connect, connect_with_data_source,
-                        db_generator, parseHiveDSN, parseMaxComputeDSN,
-                        parseMySQLDSN, read_feature, read_features_from_row)
+                        db_generator, get_table_schema, parseHiveDSN,
+                        parseMaxComputeDSN, parseMySQLDSN, read_feature,
+                        read_features_from_row)
 
 
 def testing_mysql_cfg():
@@ -125,7 +127,7 @@ class TestDB(TestCase):
                                    conn,
                                    hdfs_namenode_addr="",
                                    hive_location=""):
-        create_db = '''create database test_db'''
+        create_db = '''create database if not exists test_db'''
         create_tbl = '''create table test_db.tbl (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'''
         drop_tbl = '''drop table if exists test_db.tbl'''
         select_tbl = '''select * from test_db.tbl'''
@@ -317,3 +319,45 @@ class TestConnectWithDataSource(TestCase):
                                                          dtype=int)))
         self.assertTrue(np.array_equal(values, np.array([1, 4, 6], dtype=int)))
         self.assertTrue(np.array_equal(shape, np.array([10], dtype='float')))
+
+
+class TestGetTableSchema(TestCase):
+    def test_get_table_schema(self):
+        if os.getenv("SQLFLOW_TEST_DB") == "mysql":
+            addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "localhost:3306")
+            conn = connect_with_data_source(
+                "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr)
+            schema = get_table_schema(conn, "iris.train")
+            expect = (
+                "[('sepal_length', 'float'), ('sepal_width', 'float'), "
+                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int(11)')]"
+            )
+            self.assertEqual(expect, str(schema))
+            conn.close()
+        elif os.getenv("SQLFLOW_TEST_DB") == "hive":
+            addr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
+            conn = connect_with_data_source(addr)
+            schema = get_table_schema(conn, "test_db")
+            expect = "[('features', 'string'), ('label', 'int')]"
+            self.assertEqual(expect, str(schema))
+            conn.close()
+        elif os.getenv("SQLFLOW_TEST_DB") == "maxcompute":
+            AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+            SK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+            endpoint = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
+            addr = "maxcompute://%s:%s@%s" % (AK, SK, endpoint)
+            case_db = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+            conn = connect_with_data_source(addr)
+            schema = get_table_schema(conn,
+                                      "%s.sqlflow_test_iris_train" % case_db)
+            expect = (
+                "[('sepal_length', 'float'), ('sepal_width', 'float'), "
+                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int')]"
+            )
+            self.assertEqual(expect, str(schema))
+            conn.close()
+
+
+if __name__ == "__main__":
+    os.environ["SQLFLOW_TEST_DB"] = "mysql"
+    unittest.main()
