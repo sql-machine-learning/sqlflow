@@ -60,7 +60,6 @@ jobs:
         set -e
         source build/env/bin/activate
         bash scripts/test/workflow.sh
-        docker rmi sqlflow:mysql
         # bash scripts/travis/upload_codecov.sh
   # TODO(typhoonzero): add below jobs
   # push:
