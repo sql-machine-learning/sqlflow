@@ -17,6 +17,7 @@ import re
 import numpy as np
 import runtime.db_writer as db_writer
 import six
+from odps import ODPS, tunnel
 
 
 def parseMySQLDSN(dsn):
@@ -121,7 +122,7 @@ def connect(driver,
         # NOTE: use MySQLdb to avoid bugs like infinite reading:
         # https://bugs.mysql.com/bug.php?id=91971
         from MySQLdb import connect
-        return connect(user=user,
+        conn = connect(user=user,
                        passwd=password,
                        db=database,
                        host=host,
@@ -136,12 +137,14 @@ def connect(driver,
                        auth_mechanism=auth)
         conn.default_db = database
         conn.session_cfg = session_cfg
-        return conn
     elif driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        return MaxCompute.connect(database, user, password, host)
+        conn = MaxCompute.connect(database, user, password, host)
+    else:
+        raise ValueError("unrecognized database driver: %s" % driver)
 
-    raise ValueError("unrecognized database driver: %s" % driver)
+    conn.driver = driver
+    return conn
 
 
 def read_feature(raw_val, feature_spec, feature_name):
@@ -189,12 +192,13 @@ def read_feature(raw_val, feature_spec, feature_name):
         return raw_val,
 
 
-def selected_cols(driver, conn, select):
+def selected_cols(conn, select):
     select = select.strip().rstrip(";")
     limited = re.findall("LIMIT [0-9]*$", select.upper())
     if not limited:
         select += " LIMIT 1"
 
+    driver = conn.driver
     if driver == "hive":
         cursor = conn.cursor(configuration=conn.session_cfg)
         cursor.execute(select)
@@ -240,13 +244,9 @@ def read_features_from_row(row, select_cols, feature_column_names,
     return tuple(features)
 
 
-def db_generator(driver,
-                 conn,
-                 statement,
-                 feature_column_names=None,
-                 label_meta=None,
-                 feature_metas=None,
-                 fetch_size=128):
+def db_generator(conn, statement, label_meta=None, fetch_size=128):
+    driver = conn.driver
+
     def reader():
         if driver == "hive":
             cursor = conn.cursor(configuration=conn.session_cfg)
@@ -299,8 +299,7 @@ def db_generator(driver,
 
     if driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        return MaxCompute.db_generator(conn, statement, feature_column_names,
-                                       label_meta, feature_metas, fetch_size)
+        return MaxCompute.db_generator(conn, statement, label_meta, fetch_size)
     if driver == "hive":
         # trip the suffix ';' to avoid the ParseException in hive
         statement = statement.rstrip(';')
@@ -370,3 +369,35 @@ def buffered_db_writer(driver,
         yield w
     finally:
         w.close()
+
+
+def get_table_schema(conn, table):
+    """Get column name and type of given table
+
+    Args:
+        datasource: datasource to connect, including auth info
+        table: table name or db.table
+
+    Returns:
+        Tuple of (field_name, field_type) tuples
+    """
+    statement = "describe %s" % table
+    if conn.driver == "maxcompute":
+        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+        inst = conn.execute_sql(statement)
+        if not inst.is_successful():
+            return None
+        fields = []
+        with inst.open_reader(tunnel=True, compress_option=compress) as reader:
+            for row in reader[0:reader.count]:
+                fields.append((row[0], row[1]))
+        return fields
+    else:
+        cursor = conn.cursor()
+        cursor.execute(statement)
+        fields = []
+        for field in cursor:
+            # add field name and type
+            fields.append((field[0], field[1]))
+        cursor.close()
+    return fields

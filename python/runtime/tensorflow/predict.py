@@ -74,9 +74,8 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
         gen = db.pai_maxcompute_db_generator(formatted_pai_table)
         selected_cols = feature_column_names
     else:
-        gen = db.db_generator(driver, conn, select, feature_column_names, None,
-                              feature_metas)
-        selected_cols = db.selected_cols(driver, conn, select)
+        gen = db.db_generator(conn, select)
+        selected_cols = db.selected_cols(conn, select)
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
@@ -184,10 +183,8 @@ def estimator_predict(estimator, model_params, save, result_table,
         driver = conn.driver
 
         # bypass all selected cols to the prediction result table
-        selected_cols = db.selected_cols(conn.driver, conn, select)
-        predict_generator = db.db_generator(conn.driver, conn, select,
-                                            feature_column_names, None,
-                                            feature_metas)()
+        selected_cols = db.selected_cols(conn, select)
+        predict_generator = db.db_generator(conn, select)()
 
     write_cols = selected_cols[:]
     try:
