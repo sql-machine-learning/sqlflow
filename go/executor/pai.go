@@ -500,8 +500,6 @@ func executeOptimizeUsingOptFlow(pythonExecutor *pythonExecutor, stmt *ir.Optimi
 	return nil
 }
 
-// TODO(sneaxiy): need to add some tests to this function, but it requires
-// optflow installed in docker image
 func (s *paiExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
 	return executeOptimizeUsingOptFlow(s.pythonExecutor, stmt)
 }
