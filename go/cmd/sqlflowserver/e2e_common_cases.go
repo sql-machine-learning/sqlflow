@@ -642,6 +642,7 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 //  1. add tests on PAI
 //  2. add tests of prediction, evaluation and explanation
 func caseXGBoostSparseKeyValueColumn(t *testing.T) {
+	t.Skip()
 	a := assert.New(t)
 
 	testDBType := os.Getenv("SQLFLOW_TEST_DB")

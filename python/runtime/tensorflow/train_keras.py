@@ -18,24 +18,17 @@ from os import path
 
 import six
 import tensorflow as tf
-from runtime.pai import model
+from runtime.model_metadata import save_model_metadata
 from runtime.seeding import get_tf_random_seed
-
-from ..model_metadata import save_model_metadata
-from . import metrics
-from .get_tf_version import tf_is_version2
-from .input_fn import input_fn
-from .keras_with_feature_column_input import init_model_with_feature_column
-from .pai_distributed import (dump_into_tf_config,
-                              make_distributed_info_without_evaluator)
-from .train_estimator import estimator_train_compiled
+from runtime.tensorflow import metrics
+from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.input_fn import input_fn
+from runtime.tensorflow.keras_with_feature_column_input import \
+    init_model_with_feature_column
+from runtime.tensorflow.train_estimator import estimator_train_compiled
 
 
-def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
-                         train_dataset_fn, val_dataset_fn, label_meta, epochs,
-                         verbose, metric_names, validation_steps,
-                         load_pretrained_model, model_meta):
-    print("Start training using keras model...")
+def keras_compile(estimator, model_params, save, metric_names):
     # remove optimizer param from model_params and use it when call "compile()"
     optimizer = None
     loss = None
@@ -47,7 +40,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         del model_params["loss"]
 
     classifier_pkg = sys.modules[estimator.__module__]
-    # setting training metrics
     model_metrics = []
     if hasattr(classifier_pkg, "eval_metrics_fn"):
         metrics_functions = classifier_pkg.eval_metrics_fn()
@@ -61,7 +53,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         if len(model_metrics) > 0:
             keras_metrics = model_metrics
         else:
-            # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
     # setting optimizer
@@ -86,13 +77,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
             if m == "loss":
                 loss = classifier_pkg.loss
 
-    # setting datasets
-    train_dataset = train_dataset_fn()
-    if val_dataset_fn != None:
-        validate_dataset = val_dataset_fn()
-    else:
-        validate_dataset = None
-
     classifier = init_model_with_feature_column(
         estimator, model_params, has_none_optimizer=has_none_optimizer)
 
@@ -108,6 +92,23 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
                            loss=loss,
                            metrics=keras_metrics)
 
+    return classifier, has_none_optimizer
+
+
+def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+                         train_dataset_fn, val_dataset_fn, label_meta, epochs,
+                         verbose, metric_names, validation_steps,
+                         load_pretrained_model, model_meta):
+    print("Start training using keras model...")
+    classifier, has_none_optimizer = keras_compile(estimator, model_params,
+                                                   save, metric_names)
+
+    train_dataset = train_dataset_fn()
+    if val_dataset_fn != None:
+        validate_dataset = val_dataset_fn()
+    else:
+        validate_dataset = None
+
     if load_pretrained_model:
         # Must run one batch to initialize parameters before load_weights
         inputs, targets = next(iter(train_dataset.take(1)))
@@ -117,59 +118,10 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         # let users to write the same WITH statements in SQL?
         classifier.load_weights(save)
 
-    if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
-        # train keras model distributed
-        cluster, task_type, task_index = make_distributed_info_without_evaluator(
-            FLAGS)
-        dump_into_tf_config(cluster, task_type, task_index)
-        dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
 
-        run_config = tf.estimator.RunConfig(
-            tf_random_seed=get_tf_random_seed(),
-            save_checkpoints_steps=100,
-            train_distribute=dist_strategy,
-            session_config=tf.ConfigProto(log_device_placement=True,
-                                          device_filters=None))
-        model_dir = FLAGS.checkpointDir
-
-        keras_estimator = tf.keras.estimator.model_to_estimator(
-            classifier, model_dir=model_dir, config=run_config)
-        estimator_train_compiled(
-            keras_estimator,
-            is_pai,
-            FLAGS,
-            train_dataset_fn,
-            val_dataset_fn,
-            # TODO(typhoonzero): do pass train settings.
-            100,
-            None,
-            60,
-            120)
-        # FIXME(typhoonzero): predict keras distributed model should also call model_to_estimator.
-        # export saved model for prediction
-        if "feature_columns" in model_params:
-            all_feature_columns = model_params["feature_columns"]
-        elif "linear_feature_columns" in model_params and "dnn_feature_columns" in model_params:
-            import copy
-            all_feature_columns = copy.copy(
-                model_params["linear_feature_columns"])
-            all_feature_columns.extend(model_params["dnn_feature_columns"])
-        else:
-            raise Exception("No expected feature columns in model params")
-        serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-            tf.feature_column.make_parse_example_spec(all_feature_columns))
-        export_path = keras_estimator.export_saved_model(
-            save, serving_input_fn)
-
-        # write the path under current directory
-        export_path_str = str(export_path.decode("utf-8"))
-        with open("exported_path", "w") as fn:
-            fn.write(export_path_str)
-        # write model metadata to model_meta.json
-        save_model_metadata("model_meta.json", model_meta)
-        print("Done training, model exported to: %s" % export_path_str)
-        return
-
+def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
+                         label_meta, epochs, verbose, model_meta,
+                         has_none_optimizer):
     if hasattr(classifier, 'sqlflow_train_loop'):
         classifier.sqlflow_train_loop(train_dataset)
     else:
@@ -212,10 +164,6 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         classifier.save_weights(save, save_format="h5")
         # write model metadata to model_meta.json
         save_model_metadata("model_meta.json", model_meta)
-        if is_pai:
-            print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-            model.save_file(FLAGS.sqlflow_oss_modeldir, save)
-            model.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
     except:
         if has_none_optimizer:
             warnings.warn("Saving model with None optimizer fails")

@@ -24,19 +24,19 @@ import runtime
 import tensorflow as tf
 from runtime.db import (connect_with_data_source, db_generator,
                         parseMaxComputeDSN)
+from runtime.model_metadata import collect_model_metadata
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.train_estimator import estimator_train_and_save
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
-from runtime.tensorflow.train_estimator import estimator_train_and_save
 from runtime.tensorflow.train_keras import keras_train_and_save
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
                                   DNNLinearCombinedRegressor, DNNRegressor,
                                   LinearClassifier, LinearRegressor)
-
-from ..model_metadata import collect_model_metadata
 
 try:
     import sqlflow_models
@@ -68,7 +68,7 @@ def train(datasource,
           save_checkpoints_steps=100,
           log_every_n_iter=10,
           load_pretrained_model=False,
-          is_pai=False,
+          is_pai=True,
           pai_table="",
           pai_val_table="",
           feature_columns_code="",
@@ -82,8 +82,16 @@ def train(datasource,
     runtime.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
     is_estimator = is_tf_estimator(estimator)
+
+    if verbose < 1:  # always use verbose == 1 when using PAI to get more logs
+        verbose = 1
     set_log_level(verbose, is_estimator)
     model_params.update(feature_columns)
+
+    FLAGS = define_tf_flags()
+    set_oss_environs(FLAGS)
+    num_workers = len(FLAGS.worker_hosts.split(","))
+    worker_id = FLAGS.task_index
 
     train_dataset_fn = get_dataset_fn(select,
                                       datasource,
@@ -94,7 +102,9 @@ def train(datasource,
                                       pai_table,
                                       batch_size,
                                       epochs=epoch,
-                                      shuffle_size=1000)
+                                      shuffle_size=1000,
+                                      num_workers=num_workers,
+                                      worker_id=worker_id)
     val_dataset_fn = None
     if validation_select:
         val_dataset_fn = get_dataset_fn(validation_select, datasource,
@@ -102,17 +112,17 @@ def train(datasource,
                                         label_meta, is_pai, pai_val_table,
                                         batch_size)
 
-    if not is_estimator:  # keras
+    if not is_estimator:
         if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
-        keras_train_and_save(estimator, model_params, save, is_pai, None,
+        keras_train_and_save(estimator, model_params, save, FLAGS,
                              train_dataset_fn, val_dataset_fn, label_meta,
                              epoch, verbose, validation_metrics,
                              validation_steps, load_pretrained_model,
                              model_meta)
     else:
-        estimator_train_and_save(estimator, model_params, save, None,
+        estimator_train_and_save(estimator, model_params, save, FLAGS,
                                  train_dataset_fn, val_dataset_fn,
                                  log_every_n_iter, max_steps,
                                  validation_start_delay_secs,
@@ -120,7 +130,4 @@ def train(datasource,
                                  save_checkpoints_steps, validation_metrics,
                                  load_pretrained_model, model_meta)
 
-    # remove cache files
-    any(map(os.remove, glob.glob('cache_train.*')))
-    any(map(os.remove, glob.glob('cache_validation.*')))
     print("Done training")
