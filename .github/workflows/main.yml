@@ -23,50 +23,49 @@ jobs:
         pre-commit run -a --show-diff-on-failure
     - name: build mysql image
       run: docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    # - name: mysql unit test
-    #   run: |
-    #     set -e
-    #     echo cwd ${{ github.workspace }}
-    #     bash scripts/test/prepare.sh
-    #     source build/env/bin/activate
-    #     docker stop mysql || true
-    #     docker rm mysql || true
-    #     docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow:mysql
-    #     SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
-    #     # bash scripts/travis/upload_codecov.sh
-    # - name: hive unit test
-    #   run: |
-    #     set -e
-    #     source build/env/bin/activate
-    #     docker pull sqlflow/gohive:dev
-    #     docker stop hive || true
-    #     docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
-    #     PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
-    #     # bash scripts/travis/upload_codecov.sh
-    # - name: maxcompute unit test
-    #   run: |
-    #     set -e
-    #     source build/env/bin/activate
-    #     export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
-    #     export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
-    #     PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
-    #     # bash scripts/travis/upload_codecov.sh
-    # - name: java unit test
-    #   run: |
-    #     set -e
-    #     bash scripts/test/java.sh
-    # - name: workflow mode ci
-    #   run: |
-    #     set -e
-    #     source build/env/bin/activate
-    #     bash scripts/test/workflow.sh
-    #     # bash scripts/travis/upload_codecov.sh
+    - name: mysql unit test
+      run: |
+        set -e
+        echo cwd ${{ github.workspace }}
+        bash scripts/test/prepare.sh
+        source build/env/bin/activate
+        docker stop mysql || true
+        docker rm mysql || true
+        docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow:mysql
+        SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
+        # bash scripts/travis/upload_codecov.sh
+    - name: hive unit test
+      run: |
+        set -e
+        source build/env/bin/activate
+        docker pull sqlflow/gohive:dev
+        docker stop hive || true
+        docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
+        PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
+        # bash scripts/travis/upload_codecov.sh
+    - name: maxcompute unit test
+      run: |
+        set -e
+        source build/env/bin/activate
+        export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
+        export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
+        PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
+        # bash scripts/travis/upload_codecov.sh
+    - name: java unit test
+      run: |
+        set -e
+        bash scripts/test/java.sh
+    - name: workflow mode ci
+      run: |
+        set -e
+        source build/env/bin/activate
+        bash scripts/test/workflow.sh
+        # bash scripts/travis/upload_codecov.sh
   push:
     runs-on: ubuntu-latest
     needs: test
     steps:
     - uses: actions/checkout@v2
-    - uses: nelonoel/branch-name@v1
     - uses: olegtarasov/get-tag@v2
       id: tagName
     - if: ${{ github.event_name == 'schedule' }}
@@ -77,36 +76,43 @@ jobs:
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_BRANCH=${GITHUB_REF##*/}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
-        echo tag $TRAVIS_TAG
-        echo branch $TRAVIS_BRANCH
-        echo pull request $TRAVIS_PULL_REQUEST
-        echo event type $TRAVIS_EVENT_TYPE
         bash scripts/travis/deploy_docker.sh
     - name: release latest linux client binary
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_BRANCH=${GITHUB_REF##*/}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
-        export TRAVIS_EVENT_TYPE=${{ steps.cronName.outputs.tag }}
-        echo tag $TRAVIS_TAG
-        echo branch $TRAVIS_BRANCH
-        echo pull request $TRAVIS_PULL_REQUEST
-        echo event type $TRAVIS_EVENT_TYPE
         bash scripts/travis/deploy_client.sh
-
-  # macos-client:
-  #   runs-on: macos-latest
-  #   needs: test
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: relase latest macos client binary
-  #     run: |
-  #       bash scripts/travis/deploy_client.sh
-  # windows-client:
-  #   runs-on: windows-latest
-  #   needs: test
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: relase latest windows client binary
-  #     run: |
-  #       bash scripts/travis/deploy_client.sh
+  # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
+  macos-client:
+    runs-on: macos-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v2
+    - uses: olegtarasov/get-tag@v2
+      id: tagName
+    - if: ${{ github.event_name == 'schedule' }}
+      id: cronName
+      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+    - name: relase latest macos client binary
+      run: |
+        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        bash scripts/travis/deploy_client.sh
+  windows-client:
+    runs-on: windows-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v2
+    - uses: olegtarasov/get-tag@v2
+      id: tagName
+    - if: ${{ github.event_name == 'schedule' }}
+      id: cronName
+      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+    - name: relase latest windows client binary
+      run: |
+        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        bash scripts/travis/deploy_client.sh
