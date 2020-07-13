@@ -443,6 +443,7 @@ def get_pai_predict_cmd(datasource, select, model_name, predict_table,
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
     else:
+        # (TODO:lhw) add cmd for other model_type
         raise SQLFlowDiagnostic("not implemented")
 
 
@@ -457,20 +458,20 @@ def create_predict_result_table(datasource, select, result_table,
         label_column: name of the label column, if not exist in select
             result, we will add a int column in the result table
     """
-    driver = datasource.split("//:")[0]
-    db.execute(datasource, "DROP TABLE IF EXISTS %s" % result_table)
+    conn = db.connect_with_data_source(datasource)
+    db.exec(conn, "DROP TABLE IF EXISTS %s" % result_table)
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
-    if driver == "hive":
+    if conn.driver == "hive":
         create_table_sql += (" ROW FORMAT DELIMITED FIELDS "
                              "TERMINATED BY \"\\001\" STORED AS TEXTFILE;")
-    db.execute(datasource, create_table_sql)
+    db.exec(conn, create_table_sql)
 
     # if label is not in data table, add a int column for it
     schema = db.get_table_schema(datasource, result_table)
     if not any(col[0] == label_column for col in schema):
-        db.execute(datasource,
-                   "ALTER TABLE %s ADD %sINT" % (result_table, label_column))
+        db.exec(conn,
+                "ALTER TABLE %s ADD %sINT" % (result_table, label_column))
 
 
 def submit_pytf_predict(datasource, select, result_table, label_column,

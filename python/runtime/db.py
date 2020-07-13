@@ -401,3 +401,27 @@ def get_table_schema(conn, table):
             fields.append((field[0], field[1]))
         cursor.close()
     return fields
+
+
+def exec(conn, sql_stmt):
+    """Execute given sql statement and return if successful
+
+    Args:
+        conn: an open database connection, this function will leave it open
+        sql_stmt: the sql statement to execute
+    
+    Returns:
+        If the query is successful
+    """
+    if conn.driver == "maxcompute":
+        inst = conn.execute_sql(sql_stmt)
+        return inst.is_successful
+    else:
+        try:
+            cur = conn.cursor()
+            cur.execute(sql_stmt)
+            conn.commit()
+            cur.close()
+            return True
+        except:
+            return False
