@@ -118,6 +118,10 @@ def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
         # let users to write the same WITH statements in SQL?
         classifier.load_weights(save)
 
+    keras_train_compiled(classifier, save, train_dataset, validate_dataset,
+                         label_meta, epochs, verbose, model_meta,
+                         has_none_optimizer)
+
 
 def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                          label_meta, epochs, verbose, model_meta,
