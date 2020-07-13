@@ -14,9 +14,8 @@
 import pickle
 import types
 
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.tensorflow import is_tf_estimator, train
-from runtime.tensorflow.pai_distributed import (define_tf_flags,
-                                                set_oss_environs)
 
 from .. import model
 

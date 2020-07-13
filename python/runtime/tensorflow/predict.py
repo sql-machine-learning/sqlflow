@@ -48,9 +48,6 @@ if tf_is_version2():
     tf.get_logger().setLevel(logging.ERROR)
 else:
     tf.logging.set_verbosity(tf.logging.ERROR)
-    from .pai_distributed import (define_tf_flags,
-                                  make_distributed_info_without_evaluator,
-                                  dump_into_tf_config)
 
 
 def keras_predict(estimator, model_params, save, result_table, is_pai,

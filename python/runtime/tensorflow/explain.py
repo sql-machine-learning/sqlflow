@@ -48,7 +48,6 @@ if tf_is_version2():
     tf.get_logger().setLevel(logging.ERROR)
 else:
     tf.logging.set_verbosity(tf.logging.ERROR)
-    from .pai_distributed import define_tf_flags
 
 
 def explain(datasource,
