@@ -31,7 +31,10 @@ echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
 # set to the tag’s name.
 echo "TRAVIS_TAG $TRAVIS_TAG"
 
-
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "Skip deployment on pull request"
+    exit 0
+fi
 
 # Figure out the tag to push sqlflow:ci.
 if [[ "$TRAVIS_BRANCH" == "develop" ]]; then

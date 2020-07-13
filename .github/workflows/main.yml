@@ -75,7 +75,7 @@ jobs:
     - name: push server images
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        export TRAVIS_BRANCH=$BRANCH_NAME
+        export TRAVIS_BRANCH=${GITHUB_REF##*/}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         echo tag $TRAVIS_TAG
         echo branch $TRAVIS_BRANCH
@@ -85,7 +85,7 @@ jobs:
     - name: release latest linux client binary
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        export TRAVIS_BRANCH=$BRANCH_NAME
+        export TRAVIS_BRANCH=${GITHUB_REF##*/}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         export TRAVIS_EVENT_TYPE=${{ steps.cronName.outputs.tag }}
         echo tag $TRAVIS_TAG
