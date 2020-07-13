@@ -32,7 +32,7 @@ SHELL_LINTER="shellcheck"
 YAML_LINTER="yamllint"
 OPTIMIZE_SOLVER="glpk-utils" # required solver packages of Pyomo
 # shellcheck disable=SC2086
-apt-get -qq install -y --no-install-recommends \
+apt-get -qq update && apt-get -qq install -y --no-install-recommends \
         $DOWNLOAD_TOOLS \
         $BUILD_ESSENTIAL \
         $PYTHON_DEV \
@@ -59,7 +59,7 @@ echo "Install pip packages ..."
 PRE_COMMIT="pre-commit==1.18.3"
 PY_TEST="pytest==5.3.0"
 JS_LINTER=jsbeautifier
-PYTHON_LINTER="yapf isort pylint flake8"
+PYTHON_LINTER="yapf isort<5,>=4.2.5 pylint>=2.5.3 flake8"
 WHEEL="wheel"
 # shellcheck disable=SC2086
 python -m pip install --quiet \

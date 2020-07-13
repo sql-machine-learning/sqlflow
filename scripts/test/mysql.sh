@@ -14,18 +14,22 @@
 
 set -e
 
-changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
+changed_fileext=$(git diff --name-only HEAD..origin/develop --|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
     echo "Only Markdown files changed.  No need to run unit tests."
     exit 0
 fi
 
-# Wait for the creation of file /work/mysql-inited.  The entrypoint
-# of sqlflow:mysql should create this file on a bind mount of the host
-# filesystem.  So, the container running this script should also bind
-# mount the same host directory to /work.
-while read -r i; do if [ "$i" = "mysql-inited" ]; then break; fi; done \
-    < <(inotifywait  -e create,open --format '%f' --quiet /work --monitor)
+# Wait for MySQL server to initialize, the the sqlflow/sqlflow:mysql will
+# start an HTTP server at 8890
+while true; do
+    if [ -f mysql-inited ]; then
+        break
+    else
+        echo "still waiting, MySQL server is not ready..."
+        sleep 1
+    fi
+done
 
 export SQLFLOW_TEST_DB=mysql
 

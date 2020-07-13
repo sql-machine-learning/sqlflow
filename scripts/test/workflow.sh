@@ -14,7 +14,7 @@
 
 set -e
 
-changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
+changed_fileext=$(git diff --name-only HEAD..origin/develop --|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
     echo "Only Markdown files changed.  No need to run unit tests."
     exit 0
@@ -67,6 +67,7 @@ fi
 
 
 echo "Create a MySQL pod on Kubernetes ..."
+kubectl delete po mysql || true
 kubectl create -f ./scripts/test/mysql_pod.yaml
 
 TIMEOUT="true"

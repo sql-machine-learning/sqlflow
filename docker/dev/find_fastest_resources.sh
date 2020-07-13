@@ -255,7 +255,7 @@ http://mirrors.tuna.tsinghua.edu.cn
 \t
 EOM
 
-    best=$(find_fastest_url $urls)
+    best=$(find_fastest_url "$urls")
     if [[ "$best" != "$default" ]]; then
         sed -i "s=http://dl-cdn.alpinelinux.org=$best=g" /etc/apk/repositories
     fi

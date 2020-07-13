@@ -34,6 +34,20 @@ CREATE TABLE IF NOT EXISTS %[1]s.%[2]s(
 INSERT INTO %[1]s.%[2]s VALUES %s;
 `, "xgboost_sparse_data_test_db", "xgboost_sparse_data_train", insertData)
 
+// XGBoostHiveSparseDataCaseSQL is the data preparation SQL statements
+// for sparse data tests
+var XGBoostHiveSparseDataCaseSQL = fmt.Sprintf(`
+DROP DATABASE IF EXISTS %[1]s CASCADE;
+CREATE DATABASE %[1]s;
+
+CREATE TABLE IF NOT EXISTS %[1]s.%[2]s(
+    c1 VARCHAR(255), 
+    label_col FLOAT
+);
+
+INSERT INTO %[1]s.%[2]s VALUES %s;
+`, "xgboost_sparse_data_test_db", "xgboost_sparse_data_train", insertData)
+
 // XGBoostMaxComputeSparseDataCaseSQL is the data preparation SQL
 // statements for sparse data tests in MaxCompute
 var XGBoostMaxComputeSparseDataCaseSQL = `

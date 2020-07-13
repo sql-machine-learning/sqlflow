@@ -16,7 +16,7 @@
 # is a status port indicates the hive server container
 # is ready, see .travis.yml for the details
 
-changed_fileext=$(git diff --name-only HEAD..develop|awk -F. '{print $NF}'|uniq)
+changed_fileext=$(git diff --name-only HEAD..origin/develop --|awk -F. '{print $NF}'|uniq)
 if [[ "$changed_fileext" == "md" ]]; then
     echo "Only Markdown files changed.  No need to run unit tests."
     exit 0
@@ -43,7 +43,7 @@ export SQLFLOW_TEST_DB=hive
 # NOTE: we have already installed runtime under Python installation
 # path using latest develop branch, but when testing on CI, we need to use the
 # code in the current pull request.
-export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python
+export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python:$PYTHONPATH
 
 go generate ./...
 go install ./...

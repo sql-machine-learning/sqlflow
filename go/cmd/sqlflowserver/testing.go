@@ -93,10 +93,15 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, []string, error) {
 }
 
 func sqlRequest(sql string) *pb.Request {
+	hiveLocation := os.Getenv("SQLFLOW_HIVE_LOCATION")
+	if hiveLocation == "" {
+		hiveLocation = "/sqlflow"
+	}
 	se := &pb.Session{
 		Token:            "user-unittest",
 		DbConnStr:        dbConnStr,
 		HdfsNamenodeAddr: os.Getenv("SQLFLOW_TEST_NAMENODE_ADDR"),
+		HiveLocation:     hiveLocation,
 	}
 	return &pb.Request{Sql: sql, Session: se}
 }
@@ -225,7 +230,7 @@ func prepareTestData(dbStr string) error {
 			testdata.FeatureDerivationCaseSQLHive,
 			testdata.HousingSQL,
 			testdata.OptimizeCaseSQL,
-			testdata.XGBoostSparseDataCaseSQL}
+			testdata.XGBoostHiveSparseDataCaseSQL}
 	case "maxcompute", "alisa":
 		if os.Getenv("SQLFLOW_submitter") == "alps" {
 			datasets = []string{

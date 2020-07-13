@@ -17,7 +17,7 @@ set -e
 
 
 echo "Init mysqld if needed ..."
-if [[ -d "/docker-entrypoint-initdb.d" ]]; then
+if [ -d "/docker-entrypoint-initdb.d" ]; then
     echo "Skip"
 else
     mkdir -p /var/run/mysqld
@@ -67,12 +67,11 @@ for f in /datasets/*; do
 done
 echo "Done."
 
-
 # If we run the contaienr with -v host_dir:/work, then the following
 # command would create host_dir/mysql-inited file.  A bash script (on
 # the host or a container) would be able to wait the creation of this
 # file using the trick https://unix.stackexchange.com/a/185370/325629.
-mkdir -p /work && touch /work/mysql-inited
+mkdir -p /work && touch /work/mysql-inited && chmod 777 /work/mysql-inited
 
 
 # c.f. https://stackoverflow.com/questions/2935183/bash-infinite-sleep-infinite-blocking for BusyBox
@@ -80,4 +79,3 @@ echo "Serving ..."
 while true; 
     do sleep 1d;
 done
-
