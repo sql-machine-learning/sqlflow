@@ -460,30 +460,28 @@ func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	return e
 }
 
-// TODO(sneaxiy): need to add some tests to this function, but it requires
-// optflow installed in docker image
-func (s *paiExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
-	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
+func executeOptimizeUsingOptFlow(pythonExecutor *pythonExecutor, stmt *ir.OptimizeStmt) error {
+	dbName, tableName, err := createTmpTableFromSelect(stmt.Select, pythonExecutor.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
-	defer dropTmpTables([]string{tableName}, s.Session.DbConnStr)
+	defer dropTmpTables([]string{tableName}, pythonExecutor.Session.DbConnStr)
 
-	db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
+	db, err := database.OpenAndConnectDB(pythonExecutor.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	splittedResultTable := strings.SplitN(cl.ResultTable, ".", 2)
+	splittedResultTable := strings.SplitN(stmt.ResultTable, ".", 2)
 	var resultTable string
 	if len(splittedResultTable) == 2 {
 		if splittedResultTable[0] != dbName {
 			return fmt.Errorf("database name of result table must be the same as source table")
 		}
-		resultTable = cl.ResultTable
+		resultTable = stmt.ResultTable
 	} else {
-		resultTable = fmt.Sprintf("%s.%s", dbName, cl.ResultTable)
+		resultTable = fmt.Sprintf("%s.%s", dbName, stmt.ResultTable)
 	}
 
 	_, err = db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", resultTable))
@@ -491,15 +489,19 @@ func (s *paiExecutor) ExecuteOptimize(cl *ir.OptimizeStmt) error {
 		return err
 	}
 
-	code, err := optimize.GenerateOptimizeCode(cl, s.Session, tableName, true)
+	code, err := optimize.GenerateOptimizeCode(stmt, pythonExecutor.Session, tableName, true)
 	if err != nil {
 		return err
 	}
 
-	if err = s.runProgram(code, false); err != nil {
+	if err = pythonExecutor.runProgram(code, false); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *paiExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
+	return executeOptimizeUsingOptFlow(s.pythonExecutor, stmt)
 }
 
 func (s *paiExecutor) ExecuteRun(runStmt *ir.RunStmt) error {

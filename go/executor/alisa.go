@@ -287,8 +287,8 @@ func (s *alisaExecutor) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 	return s.uploadResourceAndSubmitAlisaTask(code, requirements, paiCmd, estimator)
 }
 
-func (s *alisaExecutor) ExecuteOptimize(es *ir.OptimizeStmt) error {
-	return fmt.Errorf("ExecuteOptimize is not implemented in alisa submitter")
+func (s *alisaExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
+	return executeOptimizeUsingOptFlow(s.pythonExecutor, stmt)
 }
 
 func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
