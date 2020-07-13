@@ -380,9 +380,9 @@ def submit_pytf_train(datasource, estimator, select, validation_select,
     drop_tmp_tables([train_table, val_table], datasource)
 
 
-def get_oss_saved_model_type(model_name, project):
+def get_oss_saved_model_type_and_estimator(model_name, project):
     """Get oss model type and estimator name, model can be:
-    1. randomforests: model is saved by pai
+    1. PAI ML models: model is saved by pai
     2. xgboost: on OSS with model file xgboost_model_desc
     3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
 
@@ -415,17 +415,21 @@ def get_oss_saved_model_type(model_name, project):
     return model.MODEL_TYPE_PAIML, ""
 
 
-def get_pai_predict_cmd(datasource, select, model_name, predict_table,
-                        result_table, model_type):
+def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
+                        model_name, predict_table, result_table, model_type,
+                        cwd):
     """Get predict command for PAI task
 
     Args:
+        cluster_conf: PAI cluster configuration
         datasource: current datasource
-        select: sql statement to get predict data set
+        project: current project
+        oss_model_path: the place to load model
         model_name: model used to do prediction
         predict_table: where to store the tmp prediction data set
         result_table: prediction result
         model_type: type of th model, see also get_oss_saved_model_type
+        cwd: current working dir
 
     Returns:
         The command to submit PAI prediction task
@@ -442,9 +446,14 @@ def get_pai_predict_cmd(datasource, select, model_name, predict_table,
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
-    else:
-        # (TODO:lhw) add cmd for other model_type
+    elif model_type == model.MODEL_TYPE_XGB:
+        # (TODO:lhw) add cmd for XGB
         raise SQLFlowDiagnostic("not implemented")
+    else:
+        return get_pai_tf_cmd(cluster_conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
+                              ENTRY_DIR + "tensorflow.py", model_name,
+                              oss_model_path, predict_table, "", result_table,
+                              project, cwd)
 
 
 def create_predict_result_table(datasource, select, result_table,
@@ -462,9 +471,6 @@ def create_predict_result_table(datasource, select, result_table,
     db.exec(conn, "DROP TABLE IF EXISTS %s" % result_table)
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
-    if conn.driver == "hive":
-        create_table_sql += (" ROW FORMAT DELIMITED FIELDS "
-                             "TERMINATED BY \"\\001\" STORED AS TEXTFILE;")
     db.exec(conn, create_table_sql)
 
     # if label is not in data table, add a int column for it
@@ -505,12 +511,14 @@ def submit_pytf_predict(datasource, select, result_table, label_column,
                                 label_column)
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
-    model_type, estimator = get_oss_saved_model_type(oss_model_path, project)
+    model_type, estimator = get_oss_saved_model_type_and_estimator(
+        oss_model_path, project)
 
     conf = cluster_conf.get_cluster_config(model_attrs)
     prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
                     oss_model_path, params)
 
-    cmd = get_pai_predict_cmd(datasource, select, model_name, data_table,
-                              result_table, model_type)
+    cmd = get_pai_predict_cmd(conf, datasource, project, oss_model_path,
+                              model_name, data_table, result_table, model_type,
+                              cwd)
     submit_pai_task(cmd, datasource)

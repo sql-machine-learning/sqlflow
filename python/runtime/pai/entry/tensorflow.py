@@ -87,7 +87,7 @@ def do_predict(params):
                  **params)
 
 
-def entry_point():
+def entrypoint():
     with open("train_params.pkl", "r") as file:
         params = pickle.load(file)
     if params["entry_type"] == "train":
@@ -99,4 +99,4 @@ def entry_point():
 if __name__ == "__main__":
     FLAGS = define_tf_flags()
     set_oss_environs(FLAGS)
-    entry_point()
+    entrypoint()
