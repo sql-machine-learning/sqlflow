@@ -37,5 +37,6 @@ pip install --quiet \
     jpmml-evaluator==0.3.1 \
     PyUtilib==5.8.0 \
     pyomo==5.6.9 \
-    pyodps==0.8.3
+    pyodps==0.8.3 \
+    requests==2.23.0
 
