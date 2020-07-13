@@ -103,6 +103,9 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 			} else if sql.Evaluate {
 				logger.Info("resolveSQL:evaluate")
 				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+			} else if sql.Optimize {
+				logger.Info("resolveSQL:optimize")
+				r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Run {
 				logger.Info("resolveSQL:run")
 				r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
