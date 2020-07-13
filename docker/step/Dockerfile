@@ -25,7 +25,8 @@ WORKDIR /install
 
 ENV PATH="${PATH}:/install/bin"
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get -qq install -y wget unzip build-essential libmysqlclient-dev python3-pip && \
+RUN apt-get update && \
+  apt-get -qq install -y wget unzip build-essential libmysqlclient-dev python3-pip && \
   ln -s /usr/bin/pip3 /usr/bin/pip && \
   pip install --upgrade pip && \
   wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip && \
