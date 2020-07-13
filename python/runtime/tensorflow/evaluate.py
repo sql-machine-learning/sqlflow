@@ -57,7 +57,6 @@ def evaluate(datasource,
              hdfs_pass="",
              is_pai=False,
              pai_table=""):
-    # import custom model package
     runtime.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
 
@@ -65,19 +64,9 @@ def evaluate(datasource,
 
     set_log_level(verbose, is_estimator)
 
-    eval_dataset, _ = get_dataset_fn(select,
-                                     "",
-                                     datasource,
-                                     feature_column_names,
-                                     feature_metas,
-                                     label_meta,
-                                     is_pai,
-                                     pai_table,
-                                     "",
-                                     1,
-                                     batch_size,
-                                     1,
-                                     is_estimator=is_estimator)
+    eval_dataset = get_dataset_fn(select, datasource, feature_column_names,
+                                  feature_metas, label_meta, is_pai, pai_table,
+                                  batch_size)
 
     model_params.update(feature_columns)
     if is_estimator:
@@ -139,7 +128,6 @@ def estimator_evaluate(estimator, eval_dataset, validation_metrics):
 
 def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
                    validation_metrics):
-    # setting training metrics
     model_metrics = []
     if hasattr(keras_model_pkg, "eval_metrics_fn"):
         metrics_functions = keras_model_pkg.eval_metrics_fn()
