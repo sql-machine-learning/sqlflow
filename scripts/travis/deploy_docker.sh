@@ -31,7 +31,11 @@ echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
 # set to the tag’s name.
 echo "TRAVIS_TAG $TRAVIS_TAG"
 
-
+# Early stop the process if it is a PR build
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "Skip deployment on pull request"
+    exit 0
+fi
 
 # Figure out the tag to push sqlflow:ci.
 if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
@@ -49,11 +53,6 @@ fi
 
 # Build sqlflow:dev, sqlflow:ci, and sqlflow:release.
 "$(dirname "$0")"/build.sh
-
-if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-    echo "Skip deployment on pull request"
-    exit 0
-fi
 
 function push_image() {
     LOCAL_TAG=$1
