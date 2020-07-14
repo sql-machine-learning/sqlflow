@@ -375,7 +375,7 @@ def get_table_schema(conn, table):
     """Get column name and type of given table
 
     Args:
-        datasource: datasource to connect, including auth info
+        conn: a database connection, this function will leave it open
         table: table name or db.table
 
     Returns:
@@ -401,3 +401,27 @@ def get_table_schema(conn, table):
             fields.append((field[0], field[1]))
         cursor.close()
     return fields
+
+
+def exec(conn, sql_stmt):
+    """Execute the given sql statement and return True on success
+
+    Args:
+        conn: a database connection, this function will leave it open
+        sql_stmt: the sql statement to execute
+    
+    Returns:
+        True on success and False on failure
+    """
+    if conn.driver == "maxcompute":
+        inst = conn.execute_sql(sql_stmt)
+        return inst.is_successful
+    else:
+        try:
+            cur = conn.cursor()
+            cur.execute(sql_stmt)
+            conn.commit()
+            cur.close()
+            return True
+        except:
+            return False
