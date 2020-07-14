@@ -71,8 +71,11 @@ func sqlflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
 		cmd = exec.Command("docker", "run", "--rm",
 			fmt.Sprintf("-v%s:/work", cwd),
 			"-w/work", "--network=host", "-i", tfImg, "python")
+	} else if hasPython() {
+		cmd = exec.Command("python", "-u")
+		cmd.Dir = cwd
 	} else {
-		log.Fatalf("No local TensorFlow or Docker.  No way to run TensorFlow programs")
+		log.Fatalf("No local TensorFlow, Docker and Python.  No way to run the program")
 	}
 	return cmd
 }

@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import collections
-import os
 
 import numpy as np
 import pandas as pd
@@ -539,35 +538,3 @@ def run_optimize_locally(datasource, select, variables, variable_type,
                              result_value_name=result_value_name,
                              datasource=datasource,
                              result_table=result_table)
-
-
-def run_optimize_on_optflow(train_table, variables, variable_type,
-                            result_value_name, objective_expression, direction,
-                            constraint_expressions, solver, result_table,
-                            user_number):
-    if direction.lower() == "maximize":
-        direction = "max"
-    elif direction.lower() == "minimize":
-        direction = "min"
-    else:
-        raise ValueError("direction must be maximize or minimize")
-
-    fsl_file_content = '''
-variables: {}
-
-var_type: {}
-
-objective: {}
-{}
-
-constraints:
-{}
-'''.format(",".join(variables), variable_type, direction, objective_expression,
-           "\n".join(constraint_expressions))
-
-    from runtime.optimize.optflow_submit import submit_optflow_job
-    submit_optflow_job(train_table=train_table,
-                       result_table=result_table,
-                       fsl_file_content=fsl_file_content,
-                       solver=solver,
-                       user_number=user_number)
