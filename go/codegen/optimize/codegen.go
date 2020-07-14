@@ -82,8 +82,8 @@ func generateGroupByRangeAndIndexStr(groupBy string, dataStr string) (string, st
 		numpyStr = `__import__("numpy")`
 	)
 	groupByDataStr := fmt.Sprintf(`%s["%s"]`, dataStr, groupBy)
-	outerRangeStr := fmt.Sprintf(`for value, %s in zip(*%s.unique(%s.to_numpy(), return_index=True))`, indexStr, numpyStr, groupByDataStr)
-	innerRangeStr := fmt.Sprintf(`%s.where(%s == value)[0].tolist()`, numpyStr, groupByDataStr)
+	outerRangeStr := fmt.Sprintf(`for value, %s in zip(*%s.unique(%s, return_index=True))`, indexStr, numpyStr, groupByDataStr)
+	innerRangeStr := fmt.Sprintf(`%s.where(%s == value)[0]`, numpyStr, groupByDataStr)
 	return outerRangeStr, innerRangeStr, indexStr
 }
 

@@ -174,8 +174,8 @@ func TestOptimizeExpressionGenerationWithGroupBy(t *testing.T) {
 	assert.Equal(t, `sum([@input["distance"][i_0]*@X[i_0]*90/1000 for i_0 in @X])`, objExpr1)
 	assert.True(t, reflect.DeepEqual(
 		cExprs1, []string{
-			`for value, index in zip(*__import__("numpy").unique(@input["plants"].to_numpy(), return_index=True)): sum([@X[i_0] for i_0 in __import__("numpy").where(@input["plants"] == value)[0].tolist()])<=@input["capacity"][index]`,
-			`for value, index in zip(*__import__("numpy").unique(@input["markets"].to_numpy(), return_index=True)): sum([@X[i_0] for i_0 in __import__("numpy").where(@input["markets"] == value)[0].tolist()])>=@input["demand"][index]`,
+			`for value, index in zip(*__import__("numpy").unique(@input["plants"], return_index=True)): sum([@X[i_0] for i_0 in __import__("numpy").where(@input["plants"] == value)[0]])<=@input["capacity"][index]`,
+			`for value, index in zip(*__import__("numpy").unique(@input["markets"], return_index=True)): sum([@X[i_0] for i_0 in __import__("numpy").where(@input["markets"] == value)[0]])>=@input["demand"][index]`,
 			`for i in @X: @X[i]*100>=@input["demand"][i]`,
 		}))
 }
