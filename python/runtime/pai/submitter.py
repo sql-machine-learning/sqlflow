@@ -538,19 +538,40 @@ def submit_pytf_predict(datasource, select, result_table, label_column,
     drop_tmp_tables([data_table], datasource)
 
 
-def get_create_shape_result_sql(conn, data_table, result_table, label_column):
+def get_create_shap_result_sql(conn, data_table, result_table, label_column):
+    """Get a sql statement which create a result table for shap
+
+    Args:
+        conn: a database connection
+        data_table: table name to read data from
+        result_table: result table name
+        label_column: column name of label 
+    
+    Returns:
+        a sql statement to create shap result table
+    """
     schema = db.get_table_schema(conn, data_table)
     fields = ["%s STRING" % f[0] for f in schema if f[0] != label_column]
-    return "CREATE TABLE IF NOT EXISTS %s (%s)", (result_table,
-                                                  ",".join(fields))
+    return "CREATE TABLE IF NOT EXISTS %s (%s)" % (result_table,
+                                                   ",".join(fields))
 
 
 # (TODO: lhw) This function is a common tool for prediction
 # on all platforms, we need to move it to a new file
 def create_explain_result_table(datasource, select, result_table, model_type,
                                 estimator, label_column):
+    """Create explain result table from given datasource
+
+    Args:
+        datasource: current datasource
+        select: sql statement to select data
+        result_table: table name to store the result
+        model_type: type of the model to use
+        estimator: estimator class if the model is TensorFlow estimator
+        label_column: column name of the predict label
+    """
     conn = db.connect_with_data_source(datasource)
-    drop_stmt = "DROP TABLE IF EXISTS %s;" % result_table
+    drop_stmt = "DROP TABLE IF EXISTS %s" % result_table
     db.exec(conn, drop_stmt)
 
     create_stmt = ""
@@ -569,15 +590,15 @@ def create_explain_result_table(datasource, select, result_table, model_type,
                 raise SQLFlowDiagnostic(
                     "need to specify WITH label_col=lable_col_name "
                     "when explaining deep models")
-            create_stmt = get_create_shape_result_sql(conn, result_table,
-                                                      select, label_column)
+            create_stmt = get_create_shap_result_sql(conn, result_table,
+                                                     select, label_column)
     elif model_type == model.MODEL_TYPE_XGB:
         if len(label_column) == 0:
             raise SQLFlowDiagnostic(
                 "need to specify WITH label_col=lable_col_name "
                 "when explaining xgboost models")
-        create_stmt = get_create_shape_result_sql(conn, result_table, select,
-                                                  label_column)
+        create_stmt = get_create_shap_result_sql(conn, result_table, select,
+                                                 label_column)
     else:
         raise SQLFlowDiagnostic(
             "not supported modelType %d for creating Explain result table" %
@@ -589,6 +610,18 @@ def create_explain_result_table(datasource, select, result_table, model_type,
 
 def get_explain_random_forests_cmd(datasource, model_name, data_table,
                                    result_table, label_column):
+    """Get PAI random forest explanation command
+
+    Args:
+        datasource: current datasoruce
+        model_name: model name on PAI
+        data_table: input data table name
+        result_table: result table name
+        label_column: name of the label column
+    
+    Returns:
+        a PAI cmd to explain the data using given model
+    """
     # NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
     # since the model saving is fully done by PAI. We directly use the columns in SELECT
     # statement for prediction, error will be reported by PAI job if the columns not match.
