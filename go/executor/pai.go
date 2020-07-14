@@ -465,7 +465,33 @@ func executeOptimizeUsingOptFlow(pythonExecutor *pythonExecutor, stmt *ir.Optimi
 	if err != nil {
 		return err
 	}
-	defer dropTmpTables([]string{tableName}, pythonExecutor.Session.DbConnStr)
+
+	dropTmpTableFunc := func(table string) {
+		dropTmpTables([]string{table}, pythonExecutor.Session.DbConnStr)
+	}
+
+	if len(stmt.Variables) > 1 {
+		joinedVarName := strings.Join(stmt.Variables, "__")
+		concatColumnNames := make([]string, 0)
+		for i, v := range stmt.Variables {
+			if i >= 1 {
+				concatColumnNames = append(concatColumnNames, `','`)
+			}
+			concatColumnNames = append(concatColumnNames, v)
+		}
+		concatColumnExpr := fmt.Sprintf("CONCAT(%s) AS %s", strings.Join(concatColumnNames, ","), joinedVarName)
+		selectStmt := fmt.Sprintf("SELECT *, %s FROM %s.%s", concatColumnExpr, dbName, tableName)
+		newDBName, newTableName, err := createTmpTableFromSelect(selectStmt, pythonExecutor.Session.DbConnStr)
+		dropTmpTableFunc(tableName) // drop the first created table whatever
+		if err != nil {
+			return err
+		}
+		stmt.Variables = []string{joinedVarName}
+		dbName = newDBName
+		tableName = newTableName
+	}
+
+	defer dropTmpTableFunc(tableName)
 
 	db, err := database.OpenAndConnectDB(pythonExecutor.Session.DbConnStr)
 	if err != nil {
