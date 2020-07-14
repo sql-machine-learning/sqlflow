@@ -95,7 +95,7 @@ def keras_compile(estimator, model_params, save, metric_names):
     return classifier, has_none_optimizer
 
 
-def keras_train_and_save(estimator, model_params, save, is_pai, FLAGS,
+def keras_train_and_save(estimator, model_params, save, is_pai,
                          train_dataset_fn, val_dataset_fn, label_meta, epochs,
                          verbose, metric_names, validation_steps,
                          load_pretrained_model, model_meta):

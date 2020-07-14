@@ -21,9 +21,8 @@ from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.metrics import get_tf_metrics
 
 
-def estimator_train_and_save(estimator, model_params, save, FLAGS,
-                             train_dataset_fn, val_dataset_fn,
-                             log_every_n_iter, train_max_steps,
+def estimator_train_and_save(estimator, model_params, save, train_dataset_fn,
+                             val_dataset_fn, log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs,
                              save_checkpoints_steps, metric_names,
                              load_pretrained_model, model_meta):
@@ -42,8 +41,8 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
         classifier = tf.estimator.add_metrics(classifier,
                                               get_tf_metrics(metric_names))
 
-    estimator_train_compiled(classifier, FLAGS, train_dataset_fn,
-                             val_dataset_fn, log_every_n_iter, train_max_steps,
+    estimator_train_compiled(classifier, train_dataset_fn, val_dataset_fn,
+                             log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs)
     estimator_save(classifier, save, model_params, model_meta)
 
@@ -70,8 +69,8 @@ def estimator_save(classifier, save, model_params, model_meta):
     print("Done training, model exported to: %s" % export_path_str)
 
 
-def estimator_train_compiled(estimator, FLAGS, train_dataset_fn,
-                             val_dataset_fn, log_every_n_iter, train_max_steps,
+def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
+                             log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs):
     if val_dataset_fn != None:
         train_spec = tf.estimator.TrainSpec(

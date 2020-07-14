@@ -106,19 +106,17 @@ def train(datasource,
         if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
-        keras_train_and_save(estimator, model_params, save, is_pai, None,
+        keras_train_and_save(estimator, model_params, save, is_pai,
                              train_dataset_fn, val_dataset_fn, label_meta,
                              epoch, verbose, validation_metrics,
                              validation_steps, load_pretrained_model,
                              model_meta)
     else:
-        estimator_train_and_save(estimator, model_params, save, None,
-                                 train_dataset_fn, val_dataset_fn,
-                                 log_every_n_iter, max_steps,
-                                 validation_start_delay_secs,
-                                 validation_throttle_secs,
-                                 save_checkpoints_steps, validation_metrics,
-                                 load_pretrained_model, model_meta)
+        estimator_train_and_save(
+            estimator, model_params, save, train_dataset_fn, val_dataset_fn,
+            log_every_n_iter, max_steps, validation_start_delay_secs,
+            validation_throttle_secs, save_checkpoints_steps,
+            validation_metrics, load_pretrained_model, model_meta)
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))
