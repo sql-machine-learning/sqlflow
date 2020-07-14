@@ -22,7 +22,7 @@ import six
 from runtime.pai.oss import get_bucket
 
 __all__ = [
-    'submit_optflow_job',
+    'run_optimize_on_optflow',
 ]
 
 OPTFLOW_HTTP_HEADERS = {
@@ -182,3 +182,34 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
     finally:
         if should_delete_object:
             bucket.delete_object(fsl_file_id)
+
+
+def run_optimize_on_optflow(train_table, variables, variable_type,
+                            result_value_name, objective_expression, direction,
+                            constraint_expressions, solver, result_table,
+                            user_number):
+    if direction.lower() == "maximize":
+        direction = "max"
+    elif direction.lower() == "minimize":
+        direction = "min"
+    else:
+        raise ValueError("direction must be maximize or minimize")
+
+    fsl_file_content = '''
+variables: {}
+
+var_type: {}
+
+objective: {}
+{}
+
+constraints:
+{}
+'''.format(",".join(variables), variable_type, direction, objective_expression,
+           "\n".join(constraint_expressions))
+
+    submit_optflow_job(train_table=train_table,
+                       result_table=result_table,
+                       fsl_file_content=fsl_file_content,
+                       solver=solver,
+                       user_number=user_number)
