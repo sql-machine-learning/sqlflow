@@ -57,8 +57,9 @@ def train(train_dataset,
     for per_batch_dmatrix in train_dataset:
         watchlist = [(per_batch_dmatrix, "train")]
         if val_dataset:
-            # the xgboost.train API accepts the XGBoost DMatrix object,
-            # we should convert generator to DMatrix here.
+            # the `xgboost.train` API accepts the XGBoost DMatrix object
+            # as the training or validation dataste, so we should convert
+            # the generator to DMatrix.
             if isinstance(val_dataset, types.GeneratorType):
                 val_dataset = list(val_dataset)[0]
             watchlist.append((val_dataset, "validate"))
