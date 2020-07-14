@@ -456,8 +456,8 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
                               project, cwd)
 
 
-def create_predict_result_table(datasource, select, result_table,
-                                label_column):
+def create_predict_result_table(datasource, select, result_table, label_column,
+                                train_label_column):
     """Create predict result table with given name and label column
 
     Args:
@@ -466,6 +466,7 @@ def create_predict_result_table(datasource, select, result_table,
         result_table: the table name to save result
         label_column: name of the label column, if not exist in select
             result, we will add a int column in the result table
+        train_label_column: name of the label column when training
     """
     conn = db.connect_with_data_source(datasource)
     db.exec(conn, "DROP TABLE IF EXISTS %s" % result_table)
@@ -475,13 +476,24 @@ def create_predict_result_table(datasource, select, result_table,
 
     # if label is not in data table, add a int column for it
     schema = db.get_table_schema(datasource, result_table)
-    if not any(col[0] == label_column for col in schema):
-        db.exec(conn,
-                "ALTER TABLE %s ADD %sINT" % (result_table, label_column))
+    col_type = "INT"
+    for (name, ctype) in schema:
+        if name == train_label_column or name == label_column:
+            col_type = ctype
+            break
+    col_names = [col[0] for col in schema]
+    if label_column not in col_names:
+        db.exec(
+            conn, "ALTER TABLE %s ADD %s %s" %
+            (result_table, label_column, col_type))
+    if train_label_column != label_column and train_label_column in col_names:
+        db.exec(
+            conn, "ALTER TABLE %s DROP COLUMN %s" %
+            (result_table, train_label_column))
 
 
 def submit_pytf_predict(datasource, select, result_table, label_column,
-                        model_name, model_attrs):
+                        train_label_column, model_name, model_attrs):
     """This function pack need params and resource to a tarball
     and submit a prediction task to PAI
 
@@ -490,6 +502,7 @@ def submit_pytf_predict(datasource, select, result_table, label_column,
         select: sql statement to get prediction data set
         result_table: the table name to save result
         label_column: name of the label column, if not exist in select
+        train_label_column: name of the label column when training
         model_name: model used to do prediction
         model_params: dict, Params for training, crossponding to WITH clause
     """
@@ -508,7 +521,7 @@ def submit_pytf_predict(datasource, select, result_table, label_column,
         result_table = "%s.%s" % (project, result_table)
 
     create_predict_result_table(datasource, data_table, result_table,
-                                label_column)
+                                label_column, train_label_column)
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     model_type, estimator = get_oss_saved_model_type_and_estimator(
