@@ -40,6 +40,7 @@ jobs:
         source build/env/bin/activate
         docker pull sqlflow/gohive:dev
         docker stop hive || true
+        docker rm hive || true
         docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
         PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
         # bash scripts/travis/upload_codecov.sh
