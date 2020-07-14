@@ -77,11 +77,14 @@ func generateOptimizeAttributeJSONString(attrs map[string]interface{}) (string, 
 }
 
 func generateGroupByRangeAndIndexStr(groupBy string, dataStr string) (string, string, string) {
-	groupByDf := fmt.Sprintf(`%s["%s"]`, dataStr, groupBy)
-	numpyStr := `__import__("numpy")`
-	outerRangeStr := fmt.Sprintf(`for value, index in zip(*%s.unique(%s.to_numpy(), return_index=True))`, numpyStr, groupByDf)
-	innerRangeStr := fmt.Sprintf(`%s.where(%s == value)[0].tolist()`, numpyStr, groupByDf)
-	return outerRangeStr, innerRangeStr, "index"
+	const (
+		indexStr = `index`
+		numpyStr = `__import__("numpy")`
+	)
+	groupByDataStr := fmt.Sprintf(`%s["%s"]`, dataStr, groupBy)
+	outerRangeStr := fmt.Sprintf(`for value, %s in zip(*%s.unique(%s.to_numpy(), return_index=True))`, indexStr, numpyStr, groupByDataStr)
+	innerRangeStr := fmt.Sprintf(`%s.where(%s == value)[0].tolist()`, numpyStr, groupByDataStr)
+	return outerRangeStr, innerRangeStr, indexStr
 }
 
 // tryConvertToAggregationFunction tries to convert the token to an aggregation function
