@@ -111,8 +111,11 @@ jobs:
       id: cronName
       run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
     - name: relase latest windows client binary
+      env: 
+        TRAVIS_OS_NAME: windows
       run: |
-        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        export TRAVIS_BRANCH=${GITHUB_REF##*/}
-        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        set TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        set TRAVIS_BRANCH=${{ github.ref }}
+        set TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        echo branch $TRAVIS_BRANCH
         bash scripts/travis/deploy_client.sh
