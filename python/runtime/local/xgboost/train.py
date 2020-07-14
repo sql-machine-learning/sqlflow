@@ -10,7 +10,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
-
+""" XGBoost Local Training.
+This module launches a XGBoost training task on host.
+"""
 import types
 
 import xgboost as xgb
@@ -31,8 +33,7 @@ def train(train_dataset,
           train_params,
           model_params,
           val_dataset=None,
-          load_pretrained_model=False,
-          epoch=1):
+          load_pretrained_model=False):
     """ XGBoost local training API
 
     Args:
@@ -46,8 +47,6 @@ def train(train_dataset,
             validation datasets generator with XGBoost DMatrix generator
         load_pretrained_model: bool
             load pre-trained model or not
-        epoch: int
-            training epochs
     Returns:
         evaluation result
     """
