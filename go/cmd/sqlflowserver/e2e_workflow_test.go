@@ -76,11 +76,6 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
 	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
 	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
-
-	if driverName == "mysql" {
-		t.Run("CaseTestOptimizeClauseWithoutGroupBy", caseTestOptimizeClauseWithoutGroupBy)
-		t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
-	}
 }
 
 func CaseWorkflowStepErrorMessage(t *testing.T) {
