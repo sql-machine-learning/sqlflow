@@ -28,7 +28,6 @@ from tensorflow.estimator import (BoostedTreesClassifier,
 from . import metrics
 from .input_fn import get_dataset_fn
 from .keras_with_feature_column_input import init_model_with_feature_column
-from .pai_distributed import define_tf_flags
 from .set_log_level import set_log_level
 
 try:

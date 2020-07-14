@@ -30,7 +30,7 @@ import json
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.predict import pred
 from runtime.pai import model
-from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
@@ -97,7 +97,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 from runtime.xgboost.explain import explain
 from runtime.pai import model
-from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
@@ -157,7 +157,7 @@ import json
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.evaluate import evaluate
 from runtime.pai import model
-from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)

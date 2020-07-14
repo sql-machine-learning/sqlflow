@@ -69,7 +69,7 @@ from runtime.tensorflow import is_tf_estimator
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
 	from runtime.pai import model
-	from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+	from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 except:
 	pass # PAI is not always needed
 
