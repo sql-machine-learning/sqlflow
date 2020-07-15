@@ -35,15 +35,16 @@ func FetchNSamples(db *database.DB, query string, n int) (*sql.Rows, error) {
 	}
 
 	if n > 0 {
-		re := regexp.MustCompile("(?i)LIMIT [0-9]+")
+		re := regexp.MustCompile("(?i)LIMIT\\s+[0-9]+")
 		limitClauseIndexes := re.FindStringIndex(query)
 		if limitClauseIndexes == nil {
 			query = fmt.Sprintf("%s LIMIT %d", query, n)
 		} else {
 			// TODO(typhoonzero): there may be complex SQL statements that contain multiple
 			// LIMIT clause, using regex replace will replace them all.
+			splitRe := regexp.MustCompile("\\s+")
 			query = re.ReplaceAllStringFunc(query, func(limitClause string) string {
-				split := strings.SplitN(limitClause, " ", 2)
+				split := splitRe.Split(limitClause, 2)
 				limitNum, _ := strconv.Atoi(split[1])
 				if limitNum > n {
 					limitNum = n
