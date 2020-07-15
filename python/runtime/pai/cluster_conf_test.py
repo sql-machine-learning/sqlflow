@@ -14,8 +14,8 @@
 import unittest
 from unittest import TestCase
 
-from runtime.pai.cluster_conf import get_cluster_config
 from runtime.diag import SQLFlowDiagnostic
+from runtime.pai.cluster_conf import get_cluster_config
 
 
 class ClusterConfigTest(TestCase):
