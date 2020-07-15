@@ -120,11 +120,8 @@ def make_estimator_distributed_runconfig(FLAGS,
                     '/job:%s/task:%d' % (task_type, task_index)
                 ]
         else:
-            # try:
-            tf.distribute.experimental.ParameterServerStrategy()
-            # except Exception:
-            #     dist_strategy = tf.compat.v1.distribute.experimental.ParameterServerStrategy(
-            #     )
+            dist_strategy = tf.distribute.experimental.ParameterServerStrategy(
+            )
         run_config = tf.estimator.RunConfig(
             tf_random_seed=get_tf_random_seed(),
             save_checkpoints_steps=save_checkpoints_steps,
