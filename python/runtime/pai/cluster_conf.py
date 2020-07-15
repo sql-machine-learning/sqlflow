@@ -19,7 +19,7 @@ def get_cluster_config(attrs):
 
     Args:
         attrs: input config
-    
+
     Returns:
         The merged config by attrs and default
     """
@@ -34,7 +34,8 @@ def get_cluster_config(attrs):
         "train.evaluator_cpu": 200,
         "train.evaluator_gpu": 0,
     }
-    if not all(isinstance(v, int) for v in attrs.values()):
+    update = dict([(k,v) for (k,v) in attrs.items() if k in default_map])
+    if not all(isinstance(v, int) for v in update.values()):
         raise SQLFlowDiagnostic("value for cluster config should be int")
     default_map.update(attrs)
 

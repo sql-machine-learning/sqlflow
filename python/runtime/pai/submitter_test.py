@@ -12,14 +12,18 @@
 # limitations under the License.
 
 import os
+import copy
 import unittest
 from unittest import TestCase
+from dotenv import load_dotenv
+import tensorflow as tf
 
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 
 
-class SubmitterTestCase(TestCase):
+# class SubmitterTestCase(TestCase):
+class SubmitterTestCase():
     def test_get_oss_model_url(self):
         url = submitter.get_oss_model_url("user_a/model")
         self.assertEqual("oss://sqlflow-models/user_a/model", url)
@@ -66,6 +70,124 @@ class SubmitterTestCase(TestCase):
         )
         self.assertEqual(expected, cmd)
         del os.environ["SQLFLOW_OSS_CHECKPOINT_DIR"]
+
+
+class SubmitPAITrainTask(TestCase):
+    def setUp(self):
+        load_dotenv("/Users/linhongwu/ws/sqlflow/.env")
+        self.db_type = os.getenv("SQLFLOW_TEST_DB")
+        self.submitter = os.getenv("SQLFLOW_submitter")
+        self.AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
+        self.SK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
+        self.endpoint = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
+        self.datasource = "maxcompute://%s:%s@%s" % (
+            self.AK, self.SK, self.endpoint)
+        if self.db_type != "maxcompute" or self.submitter != "pai":
+            self.skipTest("Not on PAI, skip.")
+        if any(i == None for i in [self.AK, self.SK, self.endpoint, self.datasource]):
+            self.fail("Invalid config.")
+
+    def test_submit_pai_train_task(self):
+        feature_column_names = [
+            "sepal_length",
+            "sepal_width",
+            "petal_length",
+            "petal_width",
+        ]
+
+        # feature_column_names_map is used to determine the order of feature columns of each target:
+        # e.g. when using DNNLinearCombinedClassifer.
+        # feature_column_names_map will be saved to a single file when using PAI.
+        feature_column_names_map = dict()
+        feature_column_names_map["feature_columns"] = [
+            "sepal_length", "sepal_width", "petal_length", "petal_width", ]
+
+        feature_metas = dict()
+        feature_metas["sepal_length"] = {
+            "feature_name": "sepal_length",
+            "dtype": "float32",
+            "delimiter": "",
+            "format": "",
+            "shape": [1],
+            "is_sparse": "false" == "true"
+        }
+        feature_metas["sepal_width"] = {
+            "feature_name": "sepal_width",
+            "dtype": "float32",
+            "delimiter": "",
+            "format": "",
+            "shape": [1],
+            "is_sparse": "false" == "true"
+        }
+        feature_metas["petal_length"] = {
+            "feature_name": "petal_length",
+            "dtype": "float32",
+            "delimiter": "",
+            "format": "",
+            "shape": [1],
+            "is_sparse": "false" == "true"
+        }
+        feature_metas["petal_width"] = {
+            "feature_name": "petal_width",
+            "dtype": "float32",
+            "delimiter": "",
+            "format": "",
+            "shape": [1],
+            "is_sparse": "false" == "true"
+        }
+
+        label_meta = {
+            "feature_name": "class",
+            "dtype": "int64",
+            "delimiter": "",
+            "shape": [],
+            "is_sparse": "false" == "true"
+        }
+
+        model_params = dict()
+        model_params["hidden_units"] = [10, 20]
+        model_params["n_classes"] = 3
+
+        # feature_columns_code will be used to save the training informations together
+        # with the saved model.
+        feature_columns_code = """{"feature_columns": [tf.feature_column.numeric_column("sepal_length", shape=[1]),
+        tf.feature_column.numeric_column("sepal_width", shape=[1]),
+        tf.feature_column.numeric_column("petal_length", shape=[1]),
+        tf.feature_column.numeric_column("petal_width", shape=[1])]}"""
+        feature_columns = eval(feature_columns_code)
+
+        submitter.submit_pytf_train(
+            self.datasource,
+            "DNNClassifier",
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "",
+            model_params,
+            "e2etest_pai_dnn",
+            None,
+            feature_columns=feature_columns,
+            feature_column_names=feature_column_names,
+            feature_metas=feature_metas,
+            label_meta=label_meta,
+            validation_metrics="Accuracy".split(","),
+            save="model_save",
+            batch_size=1,
+            epoch=1,
+            validation_steps=1,
+            verbose=0,
+            max_steps=None,
+            validation_start_delay_secs=0,
+            validation_throttle_secs=0,
+            save_checkpoints_steps=100,
+            log_every_n_iter=10,
+            load_pretrained_model=False,
+            is_pai=True,
+            feature_columns_code=feature_columns_code,
+            model_repo_image="",
+            original_sql='''SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
+    TO TRAIN DNNClassifier
+    WITH model.n_classes = 3, model.hidden_units = [10, 20]
+    LABEL class
+    INTO e2etest_pai_dnn;''')
 
 
 if __name__ == "__main__":

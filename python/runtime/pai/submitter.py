@@ -10,7 +10,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import subprocess
+import shutil
+import tempfile
 import json
 import os
 import pickle
@@ -60,18 +62,14 @@ def create_tmp_table_from_select(select, datasource):
         select: string, the selection statement
         datasource: string, the datasource to connect
     """
-    if len(select.strip()) == 0:
-        return ""
+    if not select:
+        return None
     conn = db.connect_with_data_source(datasource)
     project = get_project(datasource)
     tmp_tb_name = gen_rand_string()
     create_sql = "CREATE TABLE %s LIFECYCLE %s AS %s" % (
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
-    cursor = conn.cursor()
-    cursor.execute(create_sql)
-    conn.commit()
-    cursor.close()
-    conn.close()
+    db.execute(conn, create_sql)
     return "%s.%s" % (project, tmp_tb_name)
 
 
@@ -126,7 +124,7 @@ def create_pai_hyper_param_file(cwd, filename, model_path):
         file.write("sqlflow_oss_sk=\"%s\"\n" % oss_sk)
         file.write("sqlflow_oss_ep=\"%s\"\n" % oss_ep)
         oss_model_url = get_oss_model_url(model_path)
-        file.write("sqlflow_oss_modeldir=\"%s\"\n", oss_model_url)
+        file.write("sqlflow_oss_modeldir=\"%s\"\n" % oss_model_url)
         file.flush()
 
 
@@ -139,7 +137,7 @@ def find_python_module_path(module):
     Returns:
         The path of the Python module
     """
-    proc = os.popen("python -c import %s;print(%s.__path__[0])" %
+    proc = os.popen("python -c \"import %s;print(%s.__path__[0])\"" %
                     (module, module))
     output = proc.readline()
     return output.strip()
@@ -152,8 +150,10 @@ def copy_python_package(module, dest):
         module: The module to copy
         dest: the destination directory
     """
-    path = find_python_module_path(module)
-    os.execl("cp", "-r", path, dest)
+    module_path = find_python_module_path(module)
+    if not module_path:
+        raise SQLFlowDiagnostic("Can't find module %s" % module)
+    shutil.copytree(module_path, path.join(dest, path.basename(module_path)))
 
 
 def copy_custom_package(estimator, dst):
@@ -173,11 +173,13 @@ def submit_pai_task(pai_cmd, datasource):
         datasource: The datasource this cmd will manipulate
     """
     user, passwd, address, project = db.parseMaxComputeDSN(datasource)
-    os.execl("odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
-             "--project", project, "--endpoint", address, "-e", pai_cmd)
+    os.execlp("odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
+              "--project", project, "--endpoint", address, "-e", pai_cmd)
 
 
 def get_oss_model_save_path(datasource, model_name):
+    if not model_name:
+        return None
     dsn = get_datasource_dsn(datasource)
     user, _, _, project = db.parseMaxComputeDSN(dsn)
     return "/".join([project, user, model_name])
@@ -217,7 +219,9 @@ def delete_oss_dir_recursive(bucket, directory):
     if len(loc.prefix_list) > 0:
         for sub_prefix in loc.prefix_list:
             delete_oss_dir_recursive(bucket, sub_prefix)
-    bucket.batch_delete_objects(object_path_list)
+    # empty list param will raise error
+    if len(object_path_list) > 0:
+        bucket.batch_delete_objects(object_path_list)
 
 
 def clean_oss_model_path(oss_path):
@@ -301,17 +305,20 @@ def prepare_archive(cwd, conf, project, estimator, model_name, train_tbl,
     """package needed resource into a tarball"""
     create_pai_hyper_param_file(cwd, PARAMS_FILE, model_save_path)
 
-    with open(path.join(cwd, TRAIN_PARAMS_FILE), "w") as param_file:
+    with open(path.join(cwd, TRAIN_PARAMS_FILE), "wb") as param_file:
         pickle.dump(train_params, param_file)
 
     with open(path.join(cwd, "requirements.txt"), "w") as require:
         require.write(TF_REQUIREMENT)
-    copy_python_package("sqlflow_submitter", cwd)
+    copy_python_package("runtime", cwd)
     copy_python_package("sqlflow_models", cwd)
     copy_custom_package(estimator, cwd)
 
-    os.execl("tar", "czf", JOB_ARCHIVE_FILE, "./sqlflow_submitter",
-             "./sqlflow_models", "requirements.txt", TRAIN_PARAMS_FILE)
+    ret = subprocess.call(
+        ["tar", "czf", JOB_ARCHIVE_FILE, "runtime",
+         "sqlflow_models", "requirements.txt", TRAIN_PARAMS_FILE], cwd=cwd)
+    if ret != 0:
+        raise SQLFlowDiagnostic("Can't zip resource")
 
 
 def save_model_to_sqlfs(datasource, model_oss_path, model_name):
@@ -344,12 +351,12 @@ def submit_pytf_train(datasource, estimator, select, validation_select,
 
     # prepare params for tensorflow train,
     # the params will be pickled into train_params.pkl
-    params = locals()
+    params = dict(locals())
     del params["train_params"]
     params.update(train_params)
     params["entry_type"] = "train"
 
-    cwd = os.getcwd()
+    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
     conf = cluster_conf.get_cluster_config(model_params)
 
     train_table, val_table = create_train_and_eval_tmp_table(
@@ -545,8 +552,8 @@ def get_create_shap_result_sql(conn, data_table, result_table, label_column):
         conn: a database connection
         data_table: table name to read data from
         result_table: result table name
-        label_column: column name of label 
-    
+        label_column: column name of label
+
     Returns:
         a sql statement to create shap result table
     """
@@ -572,7 +579,7 @@ def create_explain_result_table(datasource, select, result_table, model_type,
     """
     conn = db.connect_with_data_source(datasource)
     drop_stmt = "DROP TABLE IF EXISTS %s" % result_table
-    db.exec(conn, drop_stmt)
+    db.execute(conn, drop_stmt)
 
     create_stmt = ""
     if model_type == model.MODEL_TYPE_TF:
@@ -604,7 +611,7 @@ def create_explain_result_table(datasource, select, result_table, model_type,
             "not supported modelType %d for creating Explain result table" %
             model_type)
 
-    db.exec(conn, create_stmt)
+    db.execute(conn, create_stmt)
     conn.close()
 
 
@@ -618,7 +625,7 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
         data_table: input data table name
         result_table: result table name
         label_column: name of the label column
-    
+
     Returns:
         a PAI cmd to explain the data using given model
     """
@@ -631,7 +638,7 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
 
     conn = db.connect_with_data_source(datasource)
     # drop result table if exists
-    db.exec(conn, "DROP TABLE IF EXISTS %s;" % result_table)
+    db.execute(conn, "DROP TABLE IF EXISTS %s;" % result_table)
     schema = db.get_table_schema(conn, data_table)
     fields = [f[0] for f in schema if f[0] != label_column]
     return (
@@ -657,7 +664,7 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     params = locals()
     params["entry_type"] = "explain"
 
-    cwd = os.getcwd()
+    cwd = tempfile.mkdtemp(prefix="sqlflow")
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
     # "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
