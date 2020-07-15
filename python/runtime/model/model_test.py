@@ -20,7 +20,8 @@ from runtime.tensorflow.diag import SQLFlowDiagnostic
 class TestModel(unittest.TestCase):
     def test_unsupport_driver(self):
         uri = "unknown://path"
-        m = Model(EstimatorType.XGBOOST, {})
+        meta = {"train_params": {"n_classes": 3}}
+        m = Model(EstimatorType.XGBOOST, meta)
         with self.assertRaises(SQLFlowDiagnostic) as ctx:
             m.save(uri)
         self.assertEqual(ctx.exception.args[0],

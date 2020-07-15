@@ -46,8 +46,6 @@ Usage:
     def __init__(self, typ, meta):
         """
         Args:
-        cwd, string
-            the current working direction.
 
         typ, ModelType
             the enum value of ModelType.
@@ -55,6 +53,7 @@ Usage:
         meta, JSON
             the training meta with JSON format.
         """
+        self._typ = typ
         self._cwd = os.getcwd()
         self._meta = meta
 
