@@ -578,14 +578,14 @@ def create_explain_result_table(datasource, data_table, result_table,
     create_stmt = ""
     if model_type == model.MODEL_TYPE_TF:
         if estimator.startsWith("BoostedTrees"):
-            columnDef = ""
+            column_def = ""
             if conn.driver == "mysql":
-                columnDef = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
+                column_def = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
             else:
                 # Hive & MaxCompute
-                columnDef = "(feature STRING, dfc STRING, gain STRING)"
+                column_def = "(feature STRING, dfc STRING, gain STRING)"
             create_stmt = "CREATE TABLE IF NOT EXISTS %s %s;" % (result_table,
-                                                                 columnDef)
+                                                                 column_def)
         else:
             if not label_column:
                 raise SQLFlowDiagnostic(
