@@ -41,7 +41,11 @@ import copy
 import traceback
 import tensorflow as tf
 import runtime
+{{ if .IsPAI }}
+from runtime.pai.train import train
+{{ else }}
 from runtime.tensorflow.train import train
+{{ end }}
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from tensorflow.estimator import (DNNClassifier,
                                   DNNRegressor,

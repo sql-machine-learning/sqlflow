@@ -96,13 +96,14 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 		paiPredictTable = ir.TmpPredictTable
 	}
 	filler := predictFiller{
-		OSSModelDir: ossModelDir,
-		DataSource:  session.DbConnStr,
-		Select:      ir.Select,
-		ResultTable: ir.ResultTable,
-		IsPAI:       tensorflow.IsPAI(),
-		PAITable:    paiPredictTable,
-		Using:       ir.Using,
+		OSSModelDir:  ossModelDir,
+		DataSource:   session.DbConnStr,
+		Select:       ir.Select,
+		ResultTable:  ir.ResultTable,
+		ResultColumn: ir.ResultColumn,
+		IsPAI:        tensorflow.IsPAI(),
+		PAITable:     paiPredictTable,
+		Using:        ir.Using,
 	}
 	var code bytes.Buffer
 	if err := tpl.Execute(&code, filler); err != nil {

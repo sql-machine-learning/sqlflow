@@ -25,13 +25,14 @@ type loadModelFiller struct {
 }
 
 type predictFiller struct {
-	OSSModelDir string
-	DataSource  string
-	Select      string
-	ResultTable string
-	IsPAI       bool
-	PAITable    string
-	Using       string
+	OSSModelDir  string
+	DataSource   string
+	Select       string
+	ResultTable  string
+	ResultColumn string
+	IsPAI        bool
+	PAITable     string
+	Using        string
 }
 
 type explainFiller struct {
@@ -191,7 +192,8 @@ predict.pred(datasource="{{.DataSource}}",
              feature_columns=feature_columns,
              feature_column_names=feature_column_names,
              feature_column_names_map=feature_column_names_map,
-             result_col_name=label_meta["feature_name"],
+             train_label_name=label_meta["feature_name"],
+             result_col_name="{{.ResultColumn}}",
              feature_metas=feature_metas,
              model_params=model_params,
              save="model_save",

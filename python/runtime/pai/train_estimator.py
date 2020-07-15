@@ -14,15 +14,14 @@
 from os import path
 
 import tensorflow as tf
+from runtime.model_metadata import save_model_metadata
 from runtime.pai.pai_distributed import make_estimator_distributed_runconfig
+from runtime.tensorflow import metrics
 from runtime.tensorflow.diag import init_model, load_pretrained_model_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.train_estimator import (estimator_save,
                                                 estimator_train_compiled)
-
-from ..model_metadata import save_model_metadata
-from . import metrics
 
 
 def estimator_train_and_save(estimator, model_params, save, FLAGS,
@@ -55,8 +54,8 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
         classifier = tf.estimator.add_metrics(
             classifier, metrics.get_tf_metrics(metric_names))
 
-    estimator_train_compiled(classifier, FLAGS, train_dataset_fn,
-                             val_dataset_fn, log_every_n_iter, train_max_steps,
+    estimator_train_compiled(classifier, train_dataset_fn, val_dataset_fn,
+                             log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs)
 
     if FLAGS.task_index != 0:
