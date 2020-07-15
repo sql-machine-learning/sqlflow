@@ -708,10 +708,18 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
 	a.NoError(err)
 	a.Equal(3, len(rows))
-	a.Equal(2, len(columns))
+	if isPai {
+		// TODO(typhoonzero): currently sqlflowserver can not get the original train statement when predicting.
+		// So the label used when training is not removed from the predict result table.
+		// We can fix this when we move creating predicting table at Python runtime.
+		a.Equal(3, len(columns))
+		a.Equal("label_col", columns[1])
+	} else {
+		a.Equal(2, len(columns))
+		a.Equal("new_label_col", columns[1])
+	}
 	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
-	a.Equal("new_label_col", columns[1])
 
 	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "label_col", trainedModel)
 	executeSQLFunc(predictSQLWithoutOriginalLabel)
