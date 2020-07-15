@@ -33,7 +33,7 @@ def train(train_dataset,
           train_params,
           model_params,
           val_dataset=None,
-          load_pretrained_model=False):
+          load_xgb_pretrained_model=False):
     """ XGBoost local training API
 
     Args:
@@ -51,7 +51,7 @@ def train(train_dataset,
         evaluation result
     """
 
-    bst = init_xgb_booster(load_pretrained_model)
+    bst = init_xgb_booster(load_xgb_pretrained_model)
     eval_result = dict()
     for per_batch_dmatrix in train_dataset:
         watchlist = [(per_batch_dmatrix, "train")]
