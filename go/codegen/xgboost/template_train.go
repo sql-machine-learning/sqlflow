@@ -42,7 +42,7 @@ const trainTemplateText = `
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.train import train
 import runtime.xgboost.feature_column as xgboost_feature_column
-from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 import json
 
 if "{{.IsPAI}}" == "true":
@@ -91,7 +91,7 @@ train(datasource='''{{.DataSource}}''',
 const distTrainTemplateText = `
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.train import dist_train
-from runtime.tensorflow.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 import json
 
 FLAGS = define_tf_flags()

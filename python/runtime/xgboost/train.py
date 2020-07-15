@@ -15,14 +15,13 @@ import json
 import os
 import sys
 
-import runtime.tensorflow.pai_distributed as pai_dist
+import runtime.pai.pai_distributed as pai_dist
 import six
 import xgboost as xgb
-from runtime.pai import model
+from runtime.model_metadata import collect_model_metadata, save_model_metadata
+from runtime.pai import model as pai_model_store
 from runtime.xgboost.dataset import xgb_dataset
 from runtime.xgboost.pai_rabit import PaiXGBoostTracker, PaiXGBoostWorker
-
-from ..model_metadata import collect_model_metadata, save_model_metadata
 
 
 def dist_train(flags,
@@ -249,11 +248,11 @@ def save_model_to_local_file(booster, model_params, meta, filename):
 
 def save_model(model_dir, filename, model_params, train_params, feature_metas,
                feature_column_names, label_meta, feature_column_code):
-    model.save_file(model_dir, filename)
-    model.save_file(model_dir, "{}.pmml".format(filename))
-    model.save_file(model_dir, "model_meta.json")
+    pai_model_store.save_file(model_dir, filename)
+    pai_model_store.save_file(model_dir, "{}.pmml".format(filename))
+    pai_model_store.save_file(model_dir, "model_meta.json")
     # (TODO:lhw) remove this function call, use the new metadata in load_metas
-    model.save_metas(
+    pai_model_store.save_metas(
         model_dir,
         1,
         "xgboost_model_desc",

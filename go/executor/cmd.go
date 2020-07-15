@@ -72,6 +72,8 @@ func sqlflowCmd(cwd, driverName string) (cmd *exec.Cmd) {
 			fmt.Sprintf("-v%s:/work", cwd),
 			"-w/work", "--network=host", "-i", tfImg, "python")
 	} else if hasPython() {
+		// NOTE: some docker images (for example server images on Dataworks) do not
+		// install TensorFlow and Docker. Just run the Python code directly.
 		cmd = exec.Command("python", "-u")
 		cmd.Dir = cwd
 	} else {

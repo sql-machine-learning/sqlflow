@@ -40,6 +40,7 @@ jobs:
         source build/env/bin/activate
         docker pull sqlflow/gohive:dev
         docker stop hive || true
+        docker rm hive || true
         docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
         PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
         # bash scripts/travis/upload_codecov.sh
@@ -61,38 +62,61 @@ jobs:
         source build/env/bin/activate
         bash scripts/test/workflow.sh
         # bash scripts/travis/upload_codecov.sh
-  # TODO(typhoonzero): add below jobs
-  # push:
-  #   runs-on: ubuntu-latest
-  #   needs: test
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - uses: nelonoel/branch-name@v1
-  #   - uses: olegtarasov/get-tag@v2
-  #     id: tagName
-  #   - name: push server images
-  #     run: |
-  #       export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-  #       export TRAVIS_BRANCH=$BRANCH_NAME
-  #       export TRAVIS_PULL_REQUEST=${{ github.event.number }}
-  #       bash scripts/travis/deploy_docker.sh
-  #   - name: release latest linux client binary
-  #     run: |
-  #       bash scripts/travis/deploy_client.sh
-
-  # macos-client:
-  #   runs-on: macos-latest
-  #   needs: test
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: relase latest macos client binary
-  #     run: |
-  #       bash scripts/travis/deploy_client.sh
-  # windows-client:
-  #   runs-on: windows-latest
-  #   needs: test
-  #   steps:
-  #   - uses: actions/checkout@v2
-  #   - name: relase latest windows client binary
-  #     run: |
-  #       bash scripts/travis/deploy_client.sh
+  push:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v2
+    - uses: olegtarasov/get-tag@v2
+      id: tagName
+    - if: ${{ github.event_name == 'schedule' }}
+      id: cronName
+      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+    - name: push server images
+      run: |
+        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        bash scripts/travis/deploy_docker.sh
+    - name: release latest linux client binary
+      run: |
+        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        bash scripts/travis/deploy_client.sh
+  # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
+  macos-client:
+    runs-on: macos-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v2
+    - uses: olegtarasov/get-tag@v2
+      id: tagName
+    - if: ${{ github.event_name == 'schedule' }}
+      id: cronName
+      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+    - name: relase latest macos client binary
+      run: |
+        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        bash scripts/travis/deploy_client.sh
+  windows-client:
+    runs-on: windows-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v2
+    - uses: olegtarasov/get-tag@v2
+      id: tagName
+    - if: ${{ github.event_name == 'schedule' }}
+      id: cronName
+      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+    - name: relase latest windows client binary
+      env: 
+        TRAVIS_OS_NAME: windows
+      run: |
+        set TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        set TRAVIS_BRANCH=${{ github.ref }}
+        set TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        echo branch $TRAVIS_BRANCH
+        bash scripts/travis/deploy_client.sh

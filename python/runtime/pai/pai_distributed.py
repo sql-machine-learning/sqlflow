@@ -16,8 +16,6 @@ import os
 
 from runtime.seeding import get_tf_random_seed
 
-from .get_tf_version import tf_is_version2
-
 try:
     import tensorflow.compat.v1 as tf
 except:
