@@ -469,10 +469,10 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         train_label_column: name of the label column when training
     """
     conn = db.connect_with_data_source(datasource)
-    db.exec(conn, "DROP TABLE IF EXISTS %s" % result_table)
+    db.execute(conn, "DROP TABLE IF EXISTS %s" % result_table)
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
-    db.exec(conn, create_table_sql)
+    db.execute(conn, create_table_sql)
 
     # if label is not in data table, add a int column for it
     schema = db.get_table_schema(datasource, result_table)
@@ -483,11 +483,11 @@ def create_predict_result_table(datasource, select, result_table, label_column,
             break
     col_names = [col[0] for col in schema]
     if label_column not in col_names:
-        db.exec(
+        db.execute(
             conn, "ALTER TABLE %s ADD %s %s" %
             (result_table, label_column, col_type))
     if train_label_column != label_column and train_label_column in col_names:
-        db.exec(
+        db.execute(
             conn, "ALTER TABLE %s DROP COLUMN %s" %
             (result_table, train_label_column))
 

@@ -403,7 +403,7 @@ def get_table_schema(conn, table):
     return fields
 
 
-def exec(conn, sql_stmt):
+def execute(conn, sql_stmt):
     """Execute the given sql statement and return True on success
 
     Args:
