@@ -18,8 +18,9 @@ import random
 import string
 from os import path
 
-from .. import db
 from runtime.diag import SQLFlowDiagnostic
+
+from .. import db
 from . import cluster_conf, model
 from .entry import tensorflow as tensorflow_entry
 
