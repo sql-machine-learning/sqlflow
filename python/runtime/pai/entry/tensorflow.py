@@ -16,7 +16,7 @@ import types
 
 from runtime.pai import model
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
-from runtime.tensorflow import is_tf_estimator, predict, train
+from runtime.tensorflow import explain, is_tf_estimator, predict, train
 from runtime.tensorflow.diag import SQLFlowDiagnostic
 
 
@@ -85,6 +85,12 @@ def do_predict(params):
                  **params)
 
 
+def do_explain(params):
+    explain.explain(params["datasource"], params["estimator"],
+                    params["select"], params["feature_columns"],
+                    params["feature_column_names"], **params)
+
+
 def entrypoint():
     with open("train_params.pkl", "r") as file:
         params = pickle.load(file)
@@ -92,6 +98,8 @@ def entrypoint():
         do_train(params)
     elif params["entry_type"] == "predict":
         do_predict(params)
+    elif params["entry_type"] == "explain":
+        do_explain(params)
 
 
 if __name__ == "__main__":
