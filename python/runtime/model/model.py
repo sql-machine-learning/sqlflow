@@ -86,9 +86,8 @@ def parseURI(uri):
     """
     array = uri.split("://")
     if len(array) != 2:
-        raise SQLFlowDiagnostic(
-            "invalid model saving URI: %s,\
-            which should be <driver>://<path>", uri)
+        raise SQLFlowDiagnostic("invalid model saving URI: {0},\
+            which should be <driver>://<path>".format(uri))
     return array[0], array[1]
 
 
