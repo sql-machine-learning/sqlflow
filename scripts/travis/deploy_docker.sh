@@ -26,10 +26,17 @@ echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
 # - for builds triggered by a tag, this is the same as the name of the
 #   tag (TRAVIS_TAG).
 echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
+echo "TRAVIS_EVENT_TYPE $TRAVIS_EVENT_TYPE"
 
 # TRAVIS_TAG: If the current build is for a git tag, this variable is
 # set to the tag’s name.
 echo "TRAVIS_TAG $TRAVIS_TAG"
+
+# For github actions build, TRAVIS_PULL_REQUEST is "" when it is not a
+# pull request build, so set it to false when it's empty.
+if [[ "$TRAVIS_PULL_REQUEST" == "" ]]; then
+    TRAVIS_PULL_REQUEST="false"
+fi
 
 # Early stop the process if it is a PR build
 if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
