@@ -21,7 +21,7 @@ from odps import ODPS, tunnel
 from runtime.db import (buffered_db_writer, connect, connect_with_data_source,
                         db_generator, get_table_schema, parseHiveDSN,
                         parseMaxComputeDSN, parseMySQLDSN, read_feature,
-                        read_features_from_row)
+                        read_features_from_row, selected_columns_and_types)
 
 
 def testing_mysql_cfg():
@@ -329,17 +329,48 @@ class TestGetTableSchema(TestCase):
                 "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr)
             schema = get_table_schema(conn, "iris.train")
             expect = (
-                "[('sepal_length', 'float'), ('sepal_width', 'float'), "
-                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int(11)')]"
+                ('sepal_length', 'FLOAT'),
+                ('sepal_width', 'FLOAT'),
+                ('petal_length', 'FLOAT'),
+                ('petal_width', 'FLOAT'),
+                ('class', 'INT(11)'),
             )
-            self.assertEqual(expect, str(schema))
+            self.assertTrue(np.array_equal(expect, schema))
+
+            schema = selected_columns_and_types(
+                conn,
+                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM iris.train"
+            )
+            expect = [
+                ("sepal_length", "FLOAT"),
+                ("new_petal_width", "DOUBLE"),
+                ("class", "INT"),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
             conn.close()
         elif os.getenv("SQLFLOW_TEST_DB") == "hive":
             addr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
             conn = connect_with_data_source(addr)
-            schema = get_table_schema(conn, "test_db")
-            expect = "[('features', 'string'), ('label', 'int')]"
-            self.assertEqual(expect, str(schema))
+            schema = get_table_schema(conn, "iris.train")
+            expect = (
+                ('sepal_length', 'FLOAT'),
+                ('sepal_width', 'FLOAT'),
+                ('petal_length', 'FLOAT'),
+                ('petal_width', 'FLOAT'),
+                ('class', 'INT(11)'),
+            )
+            self.assertTrue(np.array_equal(expect, schema))
+
+            schema = selected_columns_and_types(
+                conn,
+                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM iris.train"
+            )
+            expect = [
+                ("sepal_length", "FLOAT"),
+                ("new_petal_width", "DOUBLE"),
+                ("class", "INT"),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
             conn.close()
         elif os.getenv("SQLFLOW_TEST_DB") == "maxcompute":
             AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
@@ -348,16 +379,28 @@ class TestGetTableSchema(TestCase):
             addr = "maxcompute://%s:%s@%s" % (AK, SK, endpoint)
             case_db = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
             conn = connect_with_data_source(addr)
-            schema = get_table_schema(conn,
-                                      "%s.sqlflow_test_iris_train" % case_db)
-            expect = (
-                "[('sepal_length', 'float'), ('sepal_width', 'float'), "
-                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int')]"
-            )
-            self.assertEqual(expect, str(schema))
-            conn.close()
+            table = "%s.sqlflow_test_iris_train_2" % case_db
+            schema = get_table_schema(conn, table)
+            expect = [
+                ('sepal_length', 'DOUBLE'),
+                ('sepal_width', 'DOUBLE'),
+                ('petal_length', 'DOUBLE'),
+                ('petal_width', 'DOUBLE'),
+                ('class', 'BIGINT'),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
+
+            schema = selected_columns_and_types(
+                conn,
+                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM %s"
+                % table)
+            expect = [
+                ("sepal_length", "DOUBLE"),
+                ("new_petal_width", "DOUBLE"),
+                ("class", "BIGINT"),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
 
 
 if __name__ == "__main__":
-    os.environ["SQLFLOW_TEST_DB"] = "mysql"
     unittest.main()

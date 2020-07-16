@@ -52,6 +52,8 @@ if [ -f profile.out ]; then
     rm profile.out
 fi
 
+python -m unittest discover -v python "db_test.py"
+
 # TODO(shendiaomo): fix CI after the PAI service initiated in the MaxCompute
 # project.
 # export SQLFLOW_submitter=pai
