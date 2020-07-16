@@ -29,18 +29,6 @@ import (
 // TODO(typhoonzero): fieldTypes are copied from verifier.go, need refactor.
 type fieldTypes map[string]string
 
-// TODO(typhoonzero): decomp is copied from verifier.go, need to refactor the structure to avoid copying.
-func decomp(ident string) (tbl string, fld string) {
-	// Note: Hive driver represents field names in lower cases, so we convert all identifier
-	// to lower case
-	ident = strings.ToLower(ident)
-	idx := strings.LastIndex(ident, ".")
-	if idx == -1 {
-		return "", ident
-	}
-	return ident[0:idx], ident[idx+1:]
-}
-
 // ColumnMap is like: target -> key -> []FeatureColumn
 // one column's data can be used by multiple feature columns, e.g.
 // EMBEDDING(c1), CROSS(c1, c2)
@@ -277,7 +265,7 @@ func getMaxIndexOfKeyValueData(str string) (int, error) {
 
 func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fieldDescMap FieldDescMap, rowCount int, originalSizes map[string]int) error {
 	for idx, ct := range columnTypeList {
-		_, fld := decomp(ct.Name())
+		_, fld := verifier.Decomp(ct.Name())
 		// add a default ColumnSpec for updating.
 		if _, ok := fieldDescMap[fld]; !ok {
 			fieldDescMap[fld] = newDefaultFieldDesc(fld)
@@ -358,7 +346,7 @@ func InferFeatureColumns(trainStmt *TrainStmt, db *database.DB) error {
 	selectFieldTypeMap := make(fieldTypes)
 	selectFieldNames := []string{}
 	for _, ct := range columnTypes {
-		_, fld := decomp(ct.Name())
+		_, fld := verifier.Decomp(ct.Name())
 		typeName := ct.DatabaseTypeName()
 		if _, ok := selectFieldTypeMap[fld]; ok {
 			return fmt.Errorf("duplicated field name %s", fld)
