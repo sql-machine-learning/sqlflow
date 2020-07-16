@@ -46,7 +46,7 @@ def gen_rand_string(slen=16):
 
     Args:
         slen: int, the length of the output string
-    
+
     Returns:
         A random string with slen length
     """
@@ -67,10 +67,9 @@ def create_tmp_table_from_select(select, datasource):
     tmp_tb_name = gen_rand_string()
     create_sql = "CREATE TABLE %s LIFECYCLE %s AS %s" % (
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
-    cursor = conn.cursor()
-    cursor.execute(create_sql)
-    conn.commit()
-    cursor.close()
+    if not db.execute(conn, create_sql):
+        conn.close()
+        raise SQLFlowDiagnostic("Can't crate tmp table for %s" % select)
     conn.close()
     return "%s.%s" % (project, tmp_tb_name)
 
@@ -78,14 +77,16 @@ def create_tmp_table_from_select(select, datasource):
 def drop_tmp_tables(tables, datasource):
     """Drop given tables in datasource"""
     conn = db.connect_with_data_source(datasource)
-    cursor = conn.cursor()
-    for table in tables:
-        if table != "":
-            drop_sql = "DROP TABLE %s" % table
-            cursor.execute(drop_sql)
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        for table in tables:
+            if table != "":
+                drop_sql = "DROP TABLE %s" % table
+                db.execute(conn, drop_sql)
+        conn.close()
+    except:
+        # odps will clear table itself, so even fail here, we do
+        # not need to raise error
+        conn.close()
 
 
 def create_train_and_eval_tmp_table(train_select, valid_select, datasource):
@@ -99,7 +100,7 @@ def get_oss_model_url(model_full_path):
 
     Args:
         model_full_path: string, the path in OSS bucket
-    
+
     Returns:
         The OSS url of the model
     """
@@ -189,7 +190,7 @@ def get_datasource_dsn(datasource):
 
 def get_project(datasource):
     """Get the project info from given datasource
-    
+
     Args:
         datasource: The odps url to extract project
     """
@@ -200,7 +201,7 @@ def get_project(datasource):
 
 def delete_oss_dir_recursive(bucket, directory):
     """Recursively delete a directory on the OSS
-    
+
     Args:
         bucket: bucket on OSS
         directory: the directory to delete
@@ -360,6 +361,7 @@ def submit_pytf_train(datasource, estimator, select, validation_select,
     path_to_save = get_oss_model_save_path(datasource, model_name)
     path_to_load = get_oss_model_save_path(datasource, pre_trained_model)
     project = get_project(datasource)
+    params["oss_model_dir"] = path_to_save
 
     if path_to_load == "" or path_to_load != path_to_save:
         clean_oss_model_path(path_to_save + "/")
@@ -377,3 +379,323 @@ def submit_pytf_train(datasource, estimator, select, validation_select,
     # save trained model to sqlfs
     save_model_to_sqlfs(datasource, path_to_save, model_name)
     drop_tmp_tables([train_table, val_table], datasource)
+
+
+def get_oss_saved_model_type_and_estimator(model_name, project):
+    """Get oss model type and estimator name, model can be:
+    1. PAI ML models: model is saved by pai
+    2. xgboost: on OSS with model file xgboost_model_desc
+    3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
+
+    Args:
+        model_name: the model to get info
+        project: current odps project
+
+    Returns:
+        If model is TensorFlow model, return type and estimator name
+        If model is XGBoost, or other PAI model, just return model type
+    """
+    # FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
+    # should use a general method to fetch the model and see the model type.
+    bucket = model.get_models_bucket()
+    tf = bucket.object_exists(model_name + "/tensorflow_model_desc")
+    if tf:
+        modelType = model.MODEL_TYPE_TF
+        bucket.get_object_to_file(
+            model_name + "/tensorflow_model_desc_estimator",
+            "tmp_estimator_name")
+        with open("tmp_estimator_name") as file:
+            estimator = file.readline()
+        return modelType, estimator
+
+    xgb = bucket.object_exists(model_name + "/xgboost_model_desc")
+    if xgb:
+        modelType = model.MODEL_TYPE_XGB
+        return modelType, ""
+
+    return model.MODEL_TYPE_PAIML, ""
+
+
+def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
+                        model_name, predict_table, result_table, model_type,
+                        cwd):
+    """Get predict command for PAI task
+
+    Args:
+        cluster_conf: PAI cluster configuration
+        datasource: current datasource
+        project: current project
+        oss_model_path: the place to load model
+        model_name: model used to do prediction
+        predict_table: where to store the tmp prediction data set
+        result_table: prediction result
+        model_type: type of th model, see also get_oss_saved_model_type
+        cwd: current working dir
+
+    Returns:
+        The command to submit PAI prediction task
+    """
+    # NOTE(typhoonzero): for PAI machine learning toolkit predicting, we can not load the TrainStmt
+    # since the model saving is fully done by PAI. We directly use the columns in SELECT
+    # statement for prediction, error will be reported by PAI job if the columns not match.
+    schema = db.get_table_schema(datasource, result_table)
+    result_fields = [col[0] for col in schema]
+
+    if model_type == model.MODEL_TYPE_PAIML:
+        return ('''pai -name prediction -DmodelName="%s"  '''
+                '''-DinputTableName="%s"  DoutputTableName="%s"  '''
+                '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
+                    model_name, predict_table, result_table,
+                    ",".join(result_fields), ",".join(result_fields))
+    elif model_type == model.MODEL_TYPE_XGB:
+        # (TODO:lhw) add cmd for XGB
+        raise SQLFlowDiagnostic("not implemented")
+    else:
+        return get_pai_tf_cmd(cluster_conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
+                              ENTRY_DIR + "tensorflow.py", model_name,
+                              oss_model_path, predict_table, "", result_table,
+                              project, cwd)
+
+
+def create_predict_result_table(datasource, select, result_table, label_column,
+                                train_label_column):
+    """Create predict result table with given name and label column
+
+    Args:
+        datasource: current datasource
+        select: sql statement to get prediction data set
+        result_table: the table name to save result
+        label_column: name of the label column, if not exist in select
+            result, we will add a int column in the result table
+        train_label_column: name of the label column when training
+    """
+    conn = db.connect_with_data_source(datasource)
+    db.execute(conn, "DROP TABLE IF EXISTS %s" % result_table)
+    create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
+        result_table, select)
+    db.execute(conn, create_table_sql)
+
+    # if label is not in data table, add a int column for it
+    schema = db.get_table_schema(datasource, result_table)
+    col_type = "INT"
+    for (name, ctype) in schema:
+        if name == train_label_column or name == label_column:
+            col_type = ctype
+            break
+    col_names = [col[0] for col in schema]
+    if label_column not in col_names:
+        db.execute(
+            conn, "ALTER TABLE %s ADD %s %s" %
+            (result_table, label_column, col_type))
+    if train_label_column != label_column and train_label_column in col_names:
+        db.execute(
+            conn, "ALTER TABLE %s DROP COLUMN %s" %
+            (result_table, train_label_column))
+
+
+def submit_pytf_predict(datasource, select, result_table, label_column,
+                        train_label_column, model_name, model_attrs):
+    """This function pack need params and resource to a tarball
+    and submit a prediction task to PAI
+
+    Args:
+        datasource: current datasource
+        select: sql statement to get prediction data set
+        result_table: the table name to save result
+        label_column: name of the label column, if not exist in select
+        train_label_column: name of the label column when training
+        model_name: model used to do prediction
+        model_params: dict, Params for training, crossponding to WITH clause
+    """
+    params = locals()
+    params["entry_type"] = "predict"
+
+    cwd = os.getcwd()
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+    # "SELECT fields,... FROM table"
+    data_table = create_tmp_table_from_select(select, datasource)
+
+    # format resultTable name to "db.table" to let the codegen form a submitting
+    # argument of format "odps://project/tables/table_name"
+    project = get_project(datasource)
+    if result_table.count(".") == 0:
+        result_table = "%s.%s" % (project, result_table)
+
+    create_predict_result_table(datasource, data_table, result_table,
+                                label_column, train_label_column)
+
+    oss_model_path = get_oss_model_save_path(datasource, model_name)
+    model_type, estimator = get_oss_saved_model_type_and_estimator(
+        oss_model_path, project)
+
+    conf = cluster_conf.get_cluster_config(model_attrs)
+    prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
+                    oss_model_path, params)
+
+    cmd = get_pai_predict_cmd(conf, datasource, project, oss_model_path,
+                              model_name, data_table, result_table, model_type,
+                              cwd)
+    submit_pai_task(cmd, datasource)
+    drop_tmp_tables([data_table], datasource)
+
+
+def get_create_shap_result_sql(conn, data_table, result_table, label_column):
+    """Get a sql statement which create a result table for SHAP
+
+    Args:
+        conn: a database connection
+        data_table: table name to read data from
+        result_table: result table name
+        label_column: column name of label 
+
+    Returns:
+        a sql statement to create SHAP result table
+    """
+    schema = db.get_table_schema(conn, data_table)
+    fields = ["%s STRING" % f[0] for f in schema if f[0] != label_column]
+    return "CREATE TABLE IF NOT EXISTS %s (%s)" % (result_table,
+                                                   ",".join(fields))
+
+
+# (TODO: lhw) This function is a common tool for prediction
+# on all platforms, we need to move it to a new file
+def create_explain_result_table(datasource, data_table, result_table,
+                                model_type, estimator, label_column):
+    """Create explain result table from given datasource
+
+    Args:
+        datasource: current datasource
+        data_table: input data table name
+        result_table: table name to store the result
+        model_type: type of the model to use
+        estimator: estimator class if the model is TensorFlow estimator
+        label_column: column name of the predict label
+    """
+    conn = db.connect_with_data_source(datasource)
+    drop_stmt = "DROP TABLE IF EXISTS %s" % result_table
+    db.execute(conn, drop_stmt)
+
+    create_stmt = ""
+    if model_type == model.MODEL_TYPE_TF:
+        if estimator.startsWith("BoostedTrees"):
+            column_def = ""
+            if conn.driver == "mysql":
+                column_def = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
+            else:
+                # Hive & MaxCompute
+                column_def = "(feature STRING, dfc STRING, gain STRING)"
+            create_stmt = "CREATE TABLE IF NOT EXISTS %s %s;" % (result_table,
+                                                                 column_def)
+        else:
+            if not label_column:
+                raise SQLFlowDiagnostic(
+                    "need to specify WITH label_col=lable_col_name "
+                    "when explaining deep models")
+            create_stmt = get_create_shap_result_sql(conn, data_table,
+                                                     result_table,
+                                                     label_column)
+    elif model_type == model.MODEL_TYPE_XGB:
+        if not label_column:
+            raise SQLFlowDiagnostic(
+                "need to specify WITH label_col=lable_col_name "
+                "when explaining xgboost models")
+        create_stmt = get_create_shap_result_sql(conn, data_table,
+                                                 result_table, label_column)
+    else:
+        raise SQLFlowDiagnostic(
+            "not supported modelType %d for creating Explain result table" %
+            model_type)
+
+    if not db.execute(conn, create_stmt):
+        conn.close()
+        raise SQLFlowDiagnostic("Can't create explain result table")
+    # (TODO: lhw) conn should be in with context,
+    # we have to modify the db interface to support this feature
+    conn.close()
+
+
+def get_explain_random_forests_cmd(datasource, model_name, data_table,
+                                   result_table, label_column):
+    """Get PAI random forest explanation command
+
+    Args:
+        datasource: current datasoruce
+        model_name: model name on PAI
+        data_table: input data table name
+        result_table: result table name
+        label_column: name of the label column
+
+    Returns:
+        a PAI cmd to explain the data using given model
+    """
+    # NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
+    # since the model saving is fully done by PAI. We directly use the columns in SELECT
+    # statement for prediction, error will be reported by PAI job if the columns not match.
+    if not label_column:
+        raise SQLFlowDiagnostic("must specify WITH label_column when using "
+                                "pai random forest to explain models")
+
+    conn = db.connect_with_data_source(datasource)
+    # drop result table if exists
+    db.execute(conn, "DROP TABLE IF EXISTS %s;" % result_table)
+    schema = db.get_table_schema(conn, data_table)
+    fields = [f[0] for f in schema if f[0] != label_column]
+    return (
+        '''pai -name feature_importance -project algo_public '''
+        '''-DmodelName="%s" -DinputTableName="%s"  '''
+        '''-DoutputTableName="%s" -DlabelColName="%s" -DfeatureColNames="%s" '''
+    ) % (model_name, data_table, result_table, label_column, ",".join(fields))
+
+
+def submit_explain(datasource, select, result_table, label_column, model_name,
+                   model_attrs):
+    """This function pack need params and resource to a tarball
+    and submit a explain task to PAI
+
+    Args:
+        datasource: current datasource
+        select: sql statement to get explain data set
+        result_table: the table name to save result
+        label_column: name of the label column
+        model_name: model used to do prediction
+        model_params: dict, Params for training, crossponding to WITH clause
+    """
+    params = locals()
+    params["entry_type"] = "explain"
+
+    cwd = os.getcwd()
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
+    # "SELECT fields,... FROM table"
+    data_table = create_tmp_table_from_select(select, datasource)
+
+    # format resultTable name to "db.table" to let the codegen form a submitting
+    # argument of format "odps://project/tables/table_name"
+    project = get_project(datasource)
+    if result_table(".") == 0:
+        result_table = "%s.%s" % (project, result_table)
+
+    oss_model_path = get_oss_model_save_path(datasource, model_name)
+    model_type, estimator = get_oss_saved_model_type_and_estimator(
+        oss_model_path, project)
+
+    create_explain_result_table(datasource, data_table, result_table,
+                                model_type, estimator, label_column)
+
+    conf = cluster_conf.get_cluster_config(model_attrs)
+    prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
+                    oss_model_path, params)
+
+    if model_type == model.MODEL_TYPE_PAIML:
+        cmd = get_explain_random_forests_cmd(datasource, model_name,
+                                             data_table, result_table,
+                                             label_column)
+    elif model_type == model.MODEL_TYPE_XGB:
+        # (TODO:lhw) add XGB explain cmd
+        pass
+    else:
+        cmd = get_pai_tf_cmd(conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
+                             ENTRY_DIR + "tensorflow.py", model_name,
+                             oss_model_path, data_table, "", result_table,
+                             project, cwd)
+    submit_pai_task(cmd, datasource)
+    drop_tmp_tables([data_table], datasource)

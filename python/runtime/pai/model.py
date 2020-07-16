@@ -24,6 +24,13 @@ from runtime.pai.oss import get_bucket
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to save models trained.
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"
 
+# ModelTypeTF is the mode type that trained by PAI Tensorflow.
+MODEL_TYPE_TF = 1
+# ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
+MODEL_TYPE_XGB = 2
+# ModelTypePAIML is the model type that trained by PAI machine learning algorithm toolkit
+MODEL_TYPE_PAIML = 3
+
 
 def get_models_bucket():
     return get_bucket(SQLFLOW_MODELS_BUCKET)

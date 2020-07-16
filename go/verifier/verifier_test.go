@@ -14,6 +14,7 @@
 package verifier
 
 import (
+	"database/sql"
 	"os"
 	"testing"
 
@@ -88,4 +89,51 @@ func TestDescribeEmptyTables(t *testing.T) {
 	a := assert.New(t)
 	_, e := Verify(`SELECT * FROM iris.iris_empty LIMIT 10;`, database.GetTestingDBSingleton())
 	a.EqualError(e, `query SELECT * FROM iris.iris_empty LIMIT 10; gives 0 row`)
+}
+
+func TestFetchSamples(t *testing.T) {
+	testDBType := os.Getenv("SQLFLOW_TEST_DB")
+	if testDBType != "mysql" && testDBType != "hive" {
+		t.Skip("skip when SQLFLOW_TEST_DB is not mysql or hive")
+	}
+
+	getRowNum := func(rows *sql.Rows) int {
+		num := 0
+		for rows.Next() {
+			num++
+		}
+		return num
+	}
+
+	db := database.GetTestingDBSingleton()
+	selectStmt := "SELECT * FROM iris.train"
+
+	totalRows, err := db.Query(selectStmt)
+	assert.NoError(t, err)
+	totalRowNum := getRowNum(totalRows)
+	assert.Greater(t, totalRowNum, 3)
+
+	rows, err := FetchSamples(db, selectStmt, 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, getRowNum(rows))
+
+	rows, err = FetchSamples(db, selectStmt, -1)
+	assert.NoError(t, err)
+	assert.Equal(t, totalRowNum, getRowNum(rows))
+
+	rows, err = FetchSamples(db, selectStmt+" LIMIT 1", -1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, getRowNum(rows))
+
+	rows, err = FetchSamples(db, selectStmt+" LIMIT  \t2", -1)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, getRowNum(rows))
+
+	rows, err = FetchSamples(db, selectStmt+" LIMIT  3", -1)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, getRowNum(rows))
+
+	rows, err = FetchSamples(db, selectStmt+" LIMIT  2", 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, getRowNum(rows))
 }

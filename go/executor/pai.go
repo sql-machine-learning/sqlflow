@@ -23,8 +23,9 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sqlflow.org/sqlflow/go/codegen/optimize"
 	"strings"
+
+	"sqlflow.org/sqlflow/go/codegen/optimize"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"sqlflow.org/gomaxcompute"

@@ -16,8 +16,6 @@ import os
 
 from runtime.seeding import get_tf_random_seed
 
-from .get_tf_version import tf_is_version2
-
 try:
     import tensorflow.compat.v1 as tf
 except:
@@ -122,7 +120,8 @@ def make_estimator_distributed_runconfig(FLAGS,
                     '/job:%s/task:%d' % (task_type, task_index)
                 ]
         else:
-            dist_strategy = tf.contrib.distribute.ParameterServerStrategy()
+            dist_strategy = tf.distribute.experimental.ParameterServerStrategy(
+            )
         run_config = tf.estimator.RunConfig(
             tf_random_seed=get_tf_random_seed(),
             save_checkpoints_steps=save_checkpoints_steps,

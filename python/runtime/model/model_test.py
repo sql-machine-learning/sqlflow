@@ -11,11 +11,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.optimize.optflow_submit import run_optimize_on_optflow
+import unittest
 
-# Step images which submit job to OptFlow may not require pyomo module
-try:
-    from runtime.optimize.optimize import (generate_model_with_data_frame,
-                                           run_optimize_locally)
-except:
-    pass
+from runtime.model import EstimatorType, Model
+from runtime.tensorflow.diag import SQLFlowDiagnostic
+
+
+class TestModel(unittest.TestCase):
+    def test_unsupport_driver(self):
+        uri = "unknown://path"
+        meta = {"train_params": {"n_classes": 3}}
+        m = Model(EstimatorType.XGBOOST, meta)
+        with self.assertRaises(SQLFlowDiagnostic) as ctx:
+            m.save(uri)
+        self.assertEqual(ctx.exception.args[0],
+                         "unsupported driven to save model: unknown")
+
+
+if __name__ == '__main__':
+    unittest.main()

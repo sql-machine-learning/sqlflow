@@ -14,36 +14,20 @@
 from os import path
 
 import tensorflow as tf
-
-from ..model_metadata import save_model_metadata
-from . import metrics
-from .diag import init_model, load_pretrained_model_estimator
-from .get_tf_version import tf_is_version2
-from .input_fn import input_fn
-from .pai_distributed import make_estimator_distributed_runconfig
+from runtime.model_metadata import save_model_metadata
+from runtime.tensorflow.diag import init_model, load_pretrained_model_estimator
+from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.input_fn import input_fn
+from runtime.tensorflow.metrics import get_tf_metrics
 
 
-def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
-                             train_dataset_fn, val_dataset_fn,
-                             log_every_n_iter, train_max_steps,
+def estimator_train_and_save(estimator, model_params, save, train_dataset_fn,
+                             val_dataset_fn, log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs,
                              save_checkpoints_steps, metric_names,
                              load_pretrained_model, model_meta):
     print("Start training using estimator model...")
-
-    is_distributed = False
-    if is_pai and len(FLAGS.worker_hosts.split(",")) > 1:
-        is_distributed = True
-    model_params["config"] = make_estimator_distributed_runconfig(
-        FLAGS,
-        estimator,
-        is_distributed,
-        save_checkpoints_steps=save_checkpoints_steps)
-    if is_pai:
-        print("Using checkpoint path: %s" % FLAGS.checkpointDir)
-        model_params["model_dir"] = FLAGS.checkpointDir
-    else:
-        model_params["model_dir"] = save
+    model_params["model_dir"] = save
 
     warm_start_from = save if load_pretrained_model else None
     if warm_start_from:
@@ -54,16 +38,16 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     # when the estimator is a regressor, and estimator seems automatically add some
     # metrics. Only add additional metrics when user specified with `WITH`.
     if tf_is_version2() and metric_names != ["Accuracy"]:
-        classifier = tf.estimator.add_metrics(
-            classifier, metrics.get_tf_metrics(metric_names))
+        classifier = tf.estimator.add_metrics(classifier,
+                                              get_tf_metrics(metric_names))
 
-    estimator_train_compiled(classifier, is_pai, FLAGS, train_dataset_fn,
-                             val_dataset_fn, log_every_n_iter, train_max_steps,
+    estimator_train_compiled(classifier, train_dataset_fn, val_dataset_fn,
+                             log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs)
+    estimator_save(classifier, save, model_params, model_meta)
 
-    if is_pai and FLAGS.task_index != 0:
-        print("skip exporting model on worker != 0")
-        return
+
+def estimator_save(classifier, save, model_params, model_meta):
     # export saved model for prediction
     if "feature_columns" in model_params:
         all_feature_columns = model_params["feature_columns"]
@@ -85,8 +69,8 @@ def estimator_train_and_save(estimator, model_params, save, is_pai, FLAGS,
     print("Done training, model exported to: %s" % export_path_str)
 
 
-def estimator_train_compiled(estimator, is_pai, FLAGS, train_dataset_fn,
-                             val_dataset_fn, log_every_n_iter, train_max_steps,
+def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
+                             log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs):
     if val_dataset_fn != None:
         train_spec = tf.estimator.TrainSpec(
@@ -97,8 +81,7 @@ def estimator_train_compiled(estimator, is_pai, FLAGS, train_dataset_fn,
             throttle_secs=eval_throttle_secs)
         result = tf.estimator.train_and_evaluate(estimator, train_spec,
                                                  eval_spec)
-        # FIXME(typhoonzero): find out why pai will have result == None
-        if not is_pai:
+        if result:
             print(result[0])
     else:
         # NOTE(typhoonzero): if only do training, no validation result will be printed.
