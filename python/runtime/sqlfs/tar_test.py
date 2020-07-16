@@ -16,7 +16,7 @@ import shutil
 import tempfile
 import unittest
 
-from runtime.sqlfs.tar import unzip_dir, zip_dir
+from runtime.sqlfs import unzip_dir, zip_dir
 
 
 class TestTarOperator(unittest.TestCase):
