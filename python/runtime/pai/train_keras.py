@@ -18,8 +18,8 @@ from os import path
 
 import six
 import tensorflow as tf
+from runtime import oss
 from runtime.model_metadata import save_model_metadata
-from runtime.pai import model
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
@@ -61,10 +61,10 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
 
     print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
     if len(FLAGS.worker_hosts.split(",")) > 1:
-        model.save_dir(FLAGS.sqlflow_oss_modeldir, save)
+        oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
     else:
-        model.save_file(FLAGS.sqlflow_oss_modeldir, save)
-    model.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
+        oss.save_file(FLAGS.sqlflow_oss_modeldir, save)
+    oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
 
 def keras_train_distributed(classifier,

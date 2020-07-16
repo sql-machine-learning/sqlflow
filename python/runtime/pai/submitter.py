@@ -18,10 +18,10 @@ import random
 import string
 from os import path
 
-from .. import db
-from ..tensorflow.diag import SQLFlowDiagnostic
-from . import cluster_conf, model
-from .entry import tensorflow as tensorflow_entry
+from runtime import db, oss
+from runtime.pai import cluster_conf
+from runtime.pai.entry import tensorflow as tensorflow_entry
+from runtime.tensorflow.diag import SQLFlowDiagnostic
 
 LIFECYCLE_ON_TMP_TABLE = 7
 JOB_ARCHIVE_FILE = "job.tar.gz"
@@ -104,7 +104,7 @@ def get_oss_model_url(model_full_path):
     Returns:
         The OSS url of the model
     """
-    return "oss://%s/%s" % (model.SQLFLOW_MODELS_BUCKET, model_full_path)
+    return "oss://%s/%s" % (oss.SQLFLOW_MODELS_BUCKET, model_full_path)
 
 
 def create_pai_hyper_param_file(cwd, filename, model_path):
@@ -222,7 +222,7 @@ def delete_oss_dir_recursive(bucket, directory):
 
 
 def clean_oss_model_path(oss_path):
-    bucket = model.get_models_bucket()
+    bucket = oss.get_models_bucket()
     delete_oss_dir_recursive(bucket, oss_path)
 
 
@@ -397,10 +397,10 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
     """
     # FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
     # should use a general method to fetch the model and see the model type.
-    bucket = model.get_models_bucket()
+    bucket = oss.get_models_bucket()
     tf = bucket.object_exists(model_name + "/tensorflow_model_desc")
     if tf:
-        modelType = model.MODEL_TYPE_TF
+        modelType = oss.MODEL_TYPE_TF
         bucket.get_object_to_file(
             model_name + "/tensorflow_model_desc_estimator",
             "tmp_estimator_name")
@@ -410,10 +410,10 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
 
     xgb = bucket.object_exists(model_name + "/xgboost_model_desc")
     if xgb:
-        modelType = model.MODEL_TYPE_XGB
+        modelType = oss.MODEL_TYPE_XGB
         return modelType, ""
 
-    return model.MODEL_TYPE_PAIML, ""
+    return oss.MODEL_TYPE_PAIML, ""
 
 
 def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
@@ -441,13 +441,13 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
     schema = db.get_table_schema(datasource, result_table)
     result_fields = [col[0] for col in schema]
 
-    if model_type == model.MODEL_TYPE_PAIML:
+    if model_type == oss.MODEL_TYPE_PAIML:
         return ('''pai -name prediction -DmodelName="%s"  '''
                 '''-DinputTableName="%s"  DoutputTableName="%s"  '''
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
-    elif model_type == model.MODEL_TYPE_XGB:
+    elif model_type == oss.MODEL_TYPE_XGB:
         # (TODO:lhw) add cmd for XGB
         raise SQLFlowDiagnostic("not implemented")
     else:
@@ -576,7 +576,7 @@ def create_explain_result_table(datasource, data_table, result_table,
     db.execute(conn, drop_stmt)
 
     create_stmt = ""
-    if model_type == model.MODEL_TYPE_TF:
+    if model_type == oss.MODEL_TYPE_TF:
         if estimator.startsWith("BoostedTrees"):
             column_def = ""
             if conn.driver == "mysql":
@@ -594,7 +594,7 @@ def create_explain_result_table(datasource, data_table, result_table,
             create_stmt = get_create_shap_result_sql(conn, data_table,
                                                      result_table,
                                                      label_column)
-    elif model_type == model.MODEL_TYPE_XGB:
+    elif model_type == oss.MODEL_TYPE_XGB:
         if not label_column:
             raise SQLFlowDiagnostic(
                 "need to specify WITH label_col=lable_col_name "
@@ -685,11 +685,11 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
                     oss_model_path, params)
 
-    if model_type == model.MODEL_TYPE_PAIML:
+    if model_type == oss.MODEL_TYPE_PAIML:
         cmd = get_explain_random_forests_cmd(datasource, model_name,
                                              data_table, result_table,
                                              label_column)
-    elif model_type == model.MODEL_TYPE_XGB:
+    elif model_type == oss.MODEL_TYPE_XGB:
         # (TODO:lhw) add XGB explain cmd
         pass
     else:
