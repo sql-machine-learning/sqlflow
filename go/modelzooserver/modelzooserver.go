@@ -90,6 +90,11 @@ func StartModelZooServer(port int, dbConnStr string) {
 			logger.Fatalf("failed to create model zoo tables: %v", err)
 		}
 	}
+	// Add default model definitions so that models trained using DNNClassifier
+	// can be released.
+	if err := addDefaultModelDefs(mysqlConn); err != nil {
+		logger.Fatalf("failed to add default model definitions: %v", err)
+	}
 
 	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
@@ -359,6 +364,10 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 	// reformat it to db_table as the table name in model zoo database.
 	modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
 	modelRepoImage := modelMeta.GetMetaAsString("model_repo_image")
+	if modelRepoImage == "" {
+		// use a default model repo image: sqlflow/sqlflow:latest
+		modelRepoImage = "sqlflow/sqlflow:latest"
+	}
 	imageAndTag := strings.Split(modelRepoImage, ":")
 	if len(imageAndTag) == 2 {
 		if err := checkImageURL(imageAndTag[0]); err != nil {
@@ -395,6 +404,7 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 
 	// Get model_def_id from model_definition table
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
+	fmt.Println(sql)
 	rowsImageID, err := s.DB.Query(sql)
 	if err != nil {
 		return nil, err
@@ -497,7 +507,7 @@ func (s *modelZooServer) ReleaseModelFromLocal(stream pb.ModelZooServer_ReleaseM
 	defer rowsImageID.Close()
 	end := rowsImageID.Next()
 	if !end {
-		return fmt.Errorf("when release model, no model repo %s found", req.ModelRepoImageUrl)
+		return fmt.Errorf("when release model local, no model repo %s found", req.ModelRepoImageUrl)
 	}
 	var modelCollID int
 	if err = rowsImageID.Scan(&modelCollID); err != nil {
