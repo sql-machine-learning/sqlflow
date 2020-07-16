@@ -29,7 +29,7 @@ from runtime.tensorflow.train import train
 
 if __name__ == "__main__":
     train(datasource=datasource,
-          estimator_name="sqlflow_models.DNNClassifier",
+          estimator_string="sqlflow_models.DNNClassifier",
           select=select,
           validation_select=validate_select,
           feature_columns=feature_columns,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     os.unlink("mymodel_keras")
 
     train(datasource=datasource,
-          estimator_name="sqlflow_models.RawDNNClassifier",
+          estimator_string="sqlflow_models.RawDNNClassifier",
           select=select,
           validation_select=validate_select,
           feature_columns=feature_columns,

@@ -49,7 +49,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 def train(datasource,
-          estimator_name,
+          estimator_string,
           select,
           validation_select,
           feature_columns,
@@ -77,12 +77,12 @@ def train(datasource,
           original_sql="",
           feature_column_names_map=None):
     model_meta = collect_model_metadata(original_sql, select,
-                                        validation_select, estimator_name,
+                                        validation_select, estimator_string,
                                         model_params, feature_columns_code,
                                         feature_metas, label_meta, None,
                                         model_repo_image)
-    runtime.import_model_def(estimator_name, globals())
-    estimator = eval(estimator_name)
+    runtime.import_model_def(estimator_string, globals())
+    estimator = eval(estimator_string)
     is_estimator = is_tf_estimator(estimator)
 
     if verbose < 1:  # always use verbose == 1 when using PAI to get more logs
@@ -135,7 +135,7 @@ def train(datasource,
     # save model to OSS
     if num_workers == 1 or worker_id == 0:
         oss_model_dir = FLAGS.sqlflow_oss_modeldir
-        oss.save_oss_model(oss_model_dir, estimator_name, is_estimator,
+        oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
                            feature_column_names, feature_column_names_map,
                            feature_metas, label_meta, model_params,
                            feature_columns_code, num_workers)

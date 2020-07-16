@@ -356,15 +356,15 @@ def save_model_to_sqlfs(datasource, model_oss_path, model_name):
 
 
 # (TODO: lhw) adapt this interface after we do feature derivation in Python
-def submit_pai_tf_train(datasource, estimator_name, select, validation_select,
-                        model_params, model_name, pre_trained_model,
-                        **train_params):
+def submit_pai_tf_train(datasource, estimator_string, select,
+                        validation_select, model_params, model_name,
+                        pre_trained_model, **train_params):
     """This function submit PAI-TF train task to PAI platform
 
     Args:
         datasource: string
             Like: odps://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
-        estimator_name: string
+        estimator_string: string
             The name of tensorflow estimator
         select: string
             The SQL statement for selecting data for train
@@ -402,7 +402,7 @@ def submit_pai_tf_train(datasource, estimator_name, select, validation_select,
         clean_oss_model_path(path_to_save + "/")
 
     # zip all required resource to a tarball
-    prepare_archive(cwd, conf, project, estimator_name, model_name,
+    prepare_archive(cwd, conf, project, estimator_string, model_name,
                     train_table, val_table, path_to_save, params)
 
     # submit pai task to execute the training
