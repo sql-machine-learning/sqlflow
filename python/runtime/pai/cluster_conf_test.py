@@ -14,7 +14,7 @@
 import unittest
 from unittest import TestCase
 
-from runtime.diag import SQLFlowDiagnostic
+from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.cluster_conf import get_cluster_config
 
 

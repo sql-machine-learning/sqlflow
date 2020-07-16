@@ -15,7 +15,7 @@ import inspect
 
 import tensorflow as tf
 
-from ..diag import init_model
+from runtime.diagnostics import init_model
 
 
 class WrappedKerasModel(tf.keras.Model):

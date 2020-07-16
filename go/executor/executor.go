@@ -42,7 +42,7 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-var rePyDiagnosis = regexp.MustCompile("runtime.diag.SQLFlowDiagnostic: (.*)")
+var rePyDiagnostics = regexp.MustCompile("runtime.diagnostics.SQLFlowDiagnostic: (.*)")
 
 // Figures contains analyzed figures as strings
 type Figures struct {
@@ -177,7 +177,7 @@ func (s *pythonExecutor) runProgram(program string, logStderr bool) error {
 	errorLog, e := s.runCommand(cmd, nil, logStderr)
 	if e != nil {
 		// return the diagnostic message
-		sub := rePyDiagnosis.FindStringSubmatch(errorLog)
+		sub := rePyDiagnostics.FindStringSubmatch(errorLog)
 		if len(sub) == 2 {
 			return fmt.Errorf("%s", sub[1])
 		}

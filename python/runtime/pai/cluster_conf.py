@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.diag import SQLFlowDiagnostic
+from runtime.diagnostics import SQLFlowDiagnostic
 
 
 def get_cluster_config(attrs):
