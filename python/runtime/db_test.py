@@ -321,6 +321,54 @@ class TestConnectWithDataSource(TestCase):
         self.assertTrue(np.array_equal(shape, np.array([10], dtype='float')))
 
 
+def get_all_type_description(conn, db):
+    result = {}
+
+    def get_data_type(t):
+        RANDOM_TABLE_NAME = "my_random_table_name"
+        drop_sql = "DROP TABLE IF EXISTS {}.{}".format(db, RANDOM_TABLE_NAME)
+        create_sql = "CREATE TABLE IF NOT EXISTS {}.{}(a {})".format(
+            db, RANDOM_TABLE_NAME, t)
+        select_sql = "SELECT * FROM {}.{}".format(db, RANDOM_TABLE_NAME)
+
+        if conn.driver == "hive":
+            cursor = conn.cursor(configuration=conn.session_cfg)
+        else:
+            cursor = conn.cursor()
+
+        cursor.execute(drop_sql)
+        try:
+            import copy
+            cursor.execute(create_sql)
+            cursor.execute(select_sql)
+            desc = copy.copy(cursor.description)
+        except:
+            desc = None
+
+        result[t] = desc
+
+        cursor.execute(drop_sql)
+        cursor.close()
+
+    TYPES = [
+        "CHAR(255)",
+        "VARCHAR(255)",
+        "TEXT",
+        "STRING",
+        "INT",
+        "TINYINT",
+        "BIGINT",
+        "DECIMAL",
+        "FLOAT",
+        "DOUBLE",
+    ]
+
+    for t in TYPES:
+        get_data_type(t)
+
+    raise ValueError(str(result))
+
+
 class TestGetTableSchema(TestCase):
     def test_get_table_schema(self):
         if os.getenv("SQLFLOW_TEST_DB") == "mysql":
@@ -333,6 +381,7 @@ class TestGetTableSchema(TestCase):
                 "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int(11)')]"
             )
             self.assertEqual(expect, str(schema))
+            get_all_type_description(conn, "iris")
             conn.close()
         elif os.getenv("SQLFLOW_TEST_DB") == "hive":
             addr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
@@ -340,6 +389,7 @@ class TestGetTableSchema(TestCase):
             schema = get_table_schema(conn, "test_db")
             expect = "[('features', 'string'), ('label', 'int')]"
             self.assertEqual(expect, str(schema))
+            get_all_type_description(conn, "iris")
             conn.close()
         elif os.getenv("SQLFLOW_TEST_DB") == "maxcompute":
             AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
