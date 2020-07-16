@@ -43,22 +43,22 @@ func TestPickPAILogViwerURL(t *testing.T) {
 		"http://logview.odps.com:8080/logview/?h=http://service.sqlflow.com/api&p=my_project&id=2"}, pickPAILogViewerURL(mockPAIOutput))
 }
 
-func TestGuessError(t *testing.T) {
+func TestDiagnose(t *testing.T) {
 	a := assert.New(t)
-	err := guessError("PAI", mockPAIOutput)
+	err := diagnose("PAI", mockPAIOutput)
 	a.Error(err)
 	a.True(strings.HasPrefix(err.Error(), "PAI task failed, please go to check details error logs in the LogViewer website: "))
 
 	rolArnTips := "The role_arn you provide not exists in OSS auth service"
 	outputWithOSSError := mockPAIOutput + "\n" + rolArnTips
-	err = guessError("PAI", outputWithOSSError)
+	err = diagnose("PAI", outputWithOSSError)
 	a.Error(err)
 	a.True(strings.HasPrefix(err.Error(), "PAI task failed, due to lack of the auth for PAI to access OSS(need to contact your administrator), please go to"))
 
 	tips := "let m3 help u"
 	os.Setenv("ERROR_PAI2OSS", tips)
 	defer os.Unsetenv("ERROR_PAI2OSS")
-	err = guessError("PAI", outputWithOSSError)
+	err = diagnose("PAI", outputWithOSSError)
 	a.Error(err)
 	a.True(strings.HasPrefix(err.Error(), "PAI task failed, "+tips+", please go to check"))
 }

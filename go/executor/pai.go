@@ -720,7 +720,7 @@ func pickPAILogViewerURL(output string) []string {
 	return reODPSLogURL.FindAllString(output, -1)
 }
 
-func guessError(taskType, output string) error {
+func diagnose(taskType, output string) error {
 	msg := fmt.Sprintf("%s task failed", taskType)
 	if strings.Contains(output, ossAuthErrorMsg) {
 		tips := os.Getenv("ERROR_PAI2OSS")

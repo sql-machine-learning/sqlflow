@@ -79,11 +79,11 @@ func (s *alisaExecutor) submitAlisaTask(taskType int, submitCode string, args st
 	switch taskType {
 	case AlisaTaskTypePAI:
 		if e := alisa.ExecWithWriter(submitCode, w); e != nil {
-			return guessError("PAI", b.String())
+			return diagnose("PAI", b.String())
 		}
 	case AlisaTaskTypePyODPS:
 		if e := alisa.ExecPyODPSWithWriter(submitCode, args, w); e != nil {
-			return guessError("PyODPS", b.String())
+			return diagnose("PyODPS", b.String())
 		}
 	default:
 		return fmt.Errorf("Unknown AlisaTaskType %d", taskType)
