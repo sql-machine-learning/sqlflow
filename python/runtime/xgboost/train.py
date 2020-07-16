@@ -43,7 +43,8 @@ def dist_train(flags,
                oss_model_dir="",
                transform_fn=None,
                feature_column_code="",
-               model_repo_image=""):
+               model_repo_image="",
+               original_sql=""):
     if not is_pai:
         raise Exception(
             "XGBoost distributed training is only supported on PAI")
@@ -93,7 +94,8 @@ def dist_train(flags,
                   oss_model_dir=oss_model_dir,
                   transform_fn=transform_fn,
                   feature_column_code=feature_column_code,
-                  model_repo_image=model_repo_image)
+                  model_repo_image=model_repo_image,
+                  original_sql=original_sql)
     except Exception as e:
         print("node={}, id={}, exception={}".format(node, task_id, e))
         six.reraise(*sys.exc_info())  # For better backtrace

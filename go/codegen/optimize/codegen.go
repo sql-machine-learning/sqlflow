@@ -281,7 +281,7 @@ func getTableDataAndGroupByIndexRanges(stmt *ir.OptimizeStmt, columns []string, 
 	}
 
 	selectStmt := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columns, ","), tableName)
-	rows, err := verifier.FetchNSamples(db, selectStmt, -1)
+	rows, err := verifier.FetchSamples(db, selectStmt, -1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -330,7 +330,7 @@ func tryConvertToAggregationFunction(token string) string {
 // updateOptimizeStmtByTableColumnNames updates the OptimizeStmt by the column names
 // returned by selectStmt. This function returns the column names.
 func updateOptimizeStmtByTableColumnNames(stmt *ir.OptimizeStmt, db *database.DB, selectStmt string) ([]string, error) {
-	rows, err := verifier.FetchNSamples(db, selectStmt, 1)
+	rows, err := verifier.FetchSamples(db, selectStmt, 1)
 	if err != nil {
 		return nil, err
 	}

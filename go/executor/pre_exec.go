@@ -90,7 +90,7 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 // getSQLFieldType is quiet like verify but accept a SQL string as input, and returns
 // an ordered list of the field types.
 func getSQLFieldType(slct string, db *database.DB) ([]string, []string, error) {
-	rows, err := verifier.FetchSamples(db, slct)
+	rows, err := verifier.FetchSamples(db, slct, 1)
 	if err != nil {
 		return nil, nil, err
 	}

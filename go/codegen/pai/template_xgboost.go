@@ -18,6 +18,7 @@ type xgbPredictFiller struct {
 	DataSource       string
 	PredSelect       string
 	ResultTable      string
+	ResultColumn     string
 	HDFSNameNodeAddr string
 	HiveLocation     string
 	HDFSUser         string
@@ -27,6 +28,7 @@ type xgbPredictFiller struct {
 
 const xgbPredTemplateText = `
 import json
+import copy
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.predict import pred
 from runtime.pai import model
@@ -45,6 +47,9 @@ feature_column_names,
 label_meta,
 feature_column_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
+pred_label_meta = copy.copy(label_meta)
+pred_label_meta["feature_name"] = "{{.ResultColumn}}"
+
 feature_column_transformers = eval('[{}]'.format(feature_column_code))
 transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
 
@@ -52,7 +57,8 @@ pred(datasource='''{{.DataSource}}''',
     select='''{{.PredSelect}}''',
     feature_metas=feature_metas,
     feature_column_names=feature_column_names,
-    label_meta=label_meta,
+    train_label_meta=label_meta,
+    pred_label_meta=label_meta,
     result_table='''{{.ResultTable}}''',
     is_pai=True,
     hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
@@ -181,7 +187,7 @@ evaluate(datasource='''{{.DataSource}}''',
          feature_column_names=feature_column_names,
          label_meta=label_meta,
          result_table='''{{.ResultTable}}''',
-         validation_metrics="{{.MetricNames}}".split(","), 
+         validation_metrics="{{.MetricNames}}".split(","),
          hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
          hive_location='''{{.HiveLocation}}''',
          hdfs_user='''{{.HDFSUser}}''',

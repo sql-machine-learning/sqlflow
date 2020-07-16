@@ -69,21 +69,26 @@ def create_tmp_table_from_select(select, datasource):
     tmp_tb_name = gen_rand_string()
     create_sql = "CREATE TABLE %s LIFECYCLE %s AS %s" % (
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
-    db.execute(conn, create_sql)
+    # (NOTE: lhw) maxcompute conn doesn't support close
+    # we should unify db interface
+    if not db.execute(conn, create_sql):
+        raise SQLFlowDiagnostic("Can't crate tmp table for %s" % select)
     return "%s.%s" % (project, tmp_tb_name)
 
 
 def drop_tmp_tables(tables, datasource):
     """Drop given tables in datasource"""
     conn = db.connect_with_data_source(datasource)
-    cursor = conn.cursor()
-    for table in tables:
-        if table != "":
-            drop_sql = "DROP TABLE %s" % table
-            cursor.execute(drop_sql)
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        for table in tables:
+            if table != "":
+                drop_sql = "DROP TABLE %s" % table
+                db.execute(conn, drop_sql)
+        conn.close()
+    except:
+        # odps will clear table itself, so even fail here, we do
+        # not need to raise error
+        conn.close()
 
 
 def create_train_and_eval_tmp_table(train_select, valid_select, datasource):
@@ -563,16 +568,16 @@ def submit_pytf_predict(datasource, select, result_table, label_column,
 
 
 def get_create_shap_result_sql(conn, data_table, result_table, label_column):
-    """Get a sql statement which create a result table for shap
+    """Get a sql statement which create a result table for SHAP
 
     Args:
         conn: a database connection
         data_table: table name to read data from
         result_table: result table name
-        label_column: column name of label
+        label_column: column name of label 
 
     Returns:
-        a sql statement to create shap result table
+        a sql statement to create SHAP result table
     """
     schema = db.get_table_schema(conn, data_table)
     fields = ["%s STRING" % f[0] for f in schema if f[0] != label_column]
@@ -582,13 +587,13 @@ def get_create_shap_result_sql(conn, data_table, result_table, label_column):
 
 # (TODO: lhw) This function is a common tool for prediction
 # on all platforms, we need to move it to a new file
-def create_explain_result_table(datasource, select, result_table, model_type,
-                                estimator, label_column):
+def create_explain_result_table(datasource, data_table, result_table,
+                                model_type, estimator, label_column):
     """Create explain result table from given datasource
 
     Args:
         datasource: current datasource
-        select: sql statement to select data
+        data_table: input data table name
         result_table: table name to store the result
         model_type: type of the model to use
         estimator: estimator class if the model is TensorFlow estimator
@@ -601,34 +606,39 @@ def create_explain_result_table(datasource, select, result_table, model_type,
     create_stmt = ""
     if model_type == model.MODEL_TYPE_TF:
         if estimator.startsWith("BoostedTrees"):
-            columnDef = ""
+            column_def = ""
             if conn.driver == "mysql":
-                columnDef = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
+                column_def = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
             else:
                 # Hive & MaxCompute
-                columnDef = "(feature STRING, dfc STRING, gain STRING)"
+                column_def = "(feature STRING, dfc STRING, gain STRING)"
             create_stmt = "CREATE TABLE IF NOT EXISTS %s %s;" % (result_table,
-                                                                 columnDef)
+                                                                 column_def)
         else:
-            if len(label_column) == 0:
+            if not label_column:
                 raise SQLFlowDiagnostic(
                     "need to specify WITH label_col=lable_col_name "
                     "when explaining deep models")
-            create_stmt = get_create_shap_result_sql(conn, result_table,
-                                                     select, label_column)
+            create_stmt = get_create_shap_result_sql(conn, data_table,
+                                                     result_table,
+                                                     label_column)
     elif model_type == model.MODEL_TYPE_XGB:
-        if len(label_column) == 0:
+        if not label_column:
             raise SQLFlowDiagnostic(
                 "need to specify WITH label_col=lable_col_name "
                 "when explaining xgboost models")
-        create_stmt = get_create_shap_result_sql(conn, result_table, select,
-                                                 label_column)
+        create_stmt = get_create_shap_result_sql(conn, data_table,
+                                                 result_table, label_column)
     else:
         raise SQLFlowDiagnostic(
             "not supported modelType %d for creating Explain result table" %
             model_type)
 
-    db.execute(conn, create_stmt)
+    if not db.execute(conn, create_stmt):
+        conn.close()
+        raise SQLFlowDiagnostic("Can't create explain result table")
+    # (TODO: lhw) conn should be in with context,
+    # we have to modify the db interface to support this feature
     conn.close()
 
 
@@ -649,7 +659,7 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
     # NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
     # since the model saving is fully done by PAI. We directly use the columns in SELECT
     # statement for prediction, error will be reported by PAI job if the columns not match.
-    if len(label_column) == 0:
+    if not label_column:
         raise SQLFlowDiagnostic("must specify WITH label_column when using "
                                 "pai random forest to explain models")
 
@@ -681,7 +691,7 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     params = locals()
     params["entry_type"] = "explain"
 
-    cwd = tempfile.mkdtemp(prefix="sqlflow")
+    cwd = tempfile.mkdtemp()
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
     # "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
@@ -689,6 +699,7 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     # format resultTable name to "db.table" to let the codegen form a submitting
     # argument of format "odps://project/tables/table_name"
     project = get_project(datasource)
+    result_table.has()
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
 
@@ -696,8 +707,8 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     model_type, estimator = get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
 
-    create_explain_result_table(datasource, select, result_table, model_type,
-                                estimator, label_column)
+    create_explain_result_table(datasource, data_table, result_table,
+                                model_type, estimator, label_column)
 
     conf = cluster_conf.get_cluster_config(model_attrs)
     prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",

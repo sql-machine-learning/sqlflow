@@ -28,11 +28,11 @@ from runtime.model_metadata import collect_model_metadata
 from runtime.pai import model
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.train_estimator import estimator_train_and_save
+from runtime.pai.train_keras import keras_train_and_save
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
-from runtime.tensorflow.train_keras import keras_train_and_save
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
