@@ -28,7 +28,7 @@ func addDefaultModelDefs(mysqlConn *database.DB) error {
 	defer rows.Close()
 	hasNext := rows.Next()
 	if hasNext {
-		// default model defs already added.
+		// default model defs already added, do not add again.
 		return nil
 	}
 	addModelRepoStmt := fmt.Sprintf("INSERT INTO %s (name, version) VALUES ('sqlflow/sqlflow', 'latest');", modelCollTable)

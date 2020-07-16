@@ -404,7 +404,6 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 
 	// Get model_def_id from model_definition table
 	sql := fmt.Sprintf("SELECT id FROM %s WHERE name='%s' AND version='%s';", modelCollTable, imageAndTag[0], imageAndTag[1])
-	fmt.Println(sql)
 	rowsImageID, err := s.DB.Query(sql)
 	if err != nil {
 		return nil, err
