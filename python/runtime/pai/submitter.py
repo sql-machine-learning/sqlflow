@@ -320,6 +320,7 @@ def get_project_role_name(project):
     Args:
         project: string
             project name
+
     Returns:
         role name for the project
     """
@@ -697,7 +698,7 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     params = locals()
     params["entry_type"] = "explain"
 
-    cwd = tempfile.mkdtemp()
+    cwd = os.getcwd()
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
     # "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
@@ -705,7 +706,6 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     # format resultTable name to "db.table" to let the codegen form a submitting
     # argument of format "odps://project/tables/table_name"
     project = get_project(datasource)
-    result_table.has()
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
 

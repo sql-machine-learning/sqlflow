@@ -24,8 +24,8 @@ from runtime.tensorflow.diag import SQLFlowDiagnostic
 
 def call_fun(func, params):
     """Call a function with given params, entries in params will be treated
-    as func' param if the key matches some argument name in the func. Do not
-    support var-args in func.
+    as func' param if the key matches some argument name. Do not support 
+    var-args in func.
 
     Arags:
         func: callable
@@ -41,10 +41,11 @@ def call_fun(func, params):
     # getargspec returns (pos_args, var_args, dict_args, defaults)
     sig = getargspec(func)
     required_len = len(sig[0]) - (0 if sig[3] is None else len(sig[3]))
+    # if func has dict args, pass all params into it
     if sig[2] is not None:
         return func(**params)
 
-    # if fun has no dict args, we need to
+    # if func has no dict args, we need to remove non-param entries in params
     dict_args = dict()
     for i, name in enumerate(sig[0]):
         if i < required_len:
