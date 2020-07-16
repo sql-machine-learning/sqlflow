@@ -14,7 +14,6 @@
 import inspect
 
 import tensorflow as tf
-
 from runtime.diagnostics import init_model
 
 

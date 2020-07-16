@@ -14,7 +14,6 @@
 from os import path
 
 import tensorflow as tf
-
 from runtime.diagnostics import init_model, load_pretrained_model_estimator
 from runtime.model_metadata import save_model_metadata
 from runtime.pai.pai_distributed import make_estimator_distributed_runconfig
