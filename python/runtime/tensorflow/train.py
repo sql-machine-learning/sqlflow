@@ -48,7 +48,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 def train(datasource,
-          estimator_string,
+          estimator_name,
           select,
           validation_select,
           feature_columns,
@@ -75,12 +75,12 @@ def train(datasource,
           model_repo_image="",
           original_sql=""):
     model_meta = collect_model_metadata(original_sql, select,
-                                        validation_select, estimator_string,
+                                        validation_select, estimator_name,
                                         model_params, feature_columns_code,
                                         feature_metas, label_meta, None,
                                         model_repo_image)
-    runtime.import_model_def(estimator_string, globals())
-    estimator = eval(estimator_string)
+    runtime.import_model_def(estimator_name, globals())
+    estimator = eval(estimator_name)
     is_estimator = is_tf_estimator(estimator)
     set_log_level(verbose, is_estimator)
     model_params.update(feature_columns)

@@ -25,7 +25,7 @@ from runtime.tensorflow.train import train
 if __name__ == "__main__":
     # Train and explain BoostedTreesClassifier
     train(datasource=datasource,
-          estimator_string="tf.estimator.BoostedTreesClassifier",
+          estimator_name="tf.estimator.BoostedTreesClassifier",
           select="SELECT * FROM iris.train where class!=2",
           validation_select="SELECT * FROM iris.test where class!=2",
           feature_columns=feature_columns,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     # Train and explain DNNClassifier
     train(datasource=datasource,
-          estimator_string="tf.estimator.DNNClassifier",
+          estimator_name="tf.estimator.DNNClassifier",
           select="SELECT * FROM iris.train",
           validation_select="SELECT * FROM iris.test",
           feature_columns=feature_columns,
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     # Train and explain DNNRegressor
     train(datasource=datasource,
-          estimator_string="tf.estimator.DNNRegressor",
+          estimator_name="tf.estimator.DNNRegressor",
           select="SELECT * FROM iris.train",
           validation_select="SELECT * FROM iris.test",
           feature_columns=feature_columns,
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     # Train and explain LinearRegressor
     train(datasource=datasource,
-          estimator_string="tf.estimator.LinearRegressor",
+          estimator_name="tf.estimator.LinearRegressor",
           select="SELECT * FROM iris.train",
           validation_select="SELECT * FROM iris.test",
           feature_columns=feature_columns,

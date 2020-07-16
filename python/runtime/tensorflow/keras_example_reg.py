@@ -147,7 +147,7 @@ label_meta = {
 
 if __name__ == "__main__":
     train(datasource=datasource,
-          estimator_string="sqlflow_models.DNNRegressor",
+          estimator_name="sqlflow_models.DNNRegressor",
           select=select,
           validation_select=validation_select,
           feature_columns=feature_columns,

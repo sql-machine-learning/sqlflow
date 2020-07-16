@@ -11,13 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import copy
+import os
 import unittest
 from unittest import TestCase
-from dotenv import load_dotenv
-import tensorflow as tf
 
+import tensorflow as tf
+from dotenv import load_dotenv
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 
@@ -80,11 +80,12 @@ class SubmitPAITrainTask(TestCase):
         self.AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
         self.SK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
         self.endpoint = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
-        self.datasource = "maxcompute://%s:%s@%s" % (
-            self.AK, self.SK, self.endpoint)
+        self.datasource = "maxcompute://%s:%s@%s" % (self.AK, self.SK,
+                                                     self.endpoint)
         if self.db_type != "maxcompute" or self.submitter != "pai":
             self.skipTest("Not on PAI, skip.")
-        if any(i == None for i in [self.AK, self.SK, self.endpoint, self.datasource]):
+        if any(i == None
+               for i in [self.AK, self.SK, self.endpoint, self.datasource]):
             self.fail("Invalid config.")
 
     def test_submit_pai_train_task(self):
@@ -100,7 +101,11 @@ class SubmitPAITrainTask(TestCase):
         # feature_column_names_map will be saved to a single file when using PAI.
         feature_column_names_map = dict()
         feature_column_names_map["feature_columns"] = [
-            "sepal_length", "sepal_width", "petal_length", "petal_width", ]
+            "sepal_length",
+            "sepal_width",
+            "petal_length",
+            "petal_width",
+        ]
 
         feature_metas = dict()
         feature_metas["sepal_length"] = {
@@ -166,6 +171,7 @@ class SubmitPAITrainTask(TestCase):
             None,
             feature_columns=feature_columns,
             feature_column_names=feature_column_names,
+            feature_column_names_map=feature_column_names_map,
             feature_metas=feature_metas,
             label_meta=label_meta,
             validation_metrics="Accuracy".split(","),
@@ -183,7 +189,8 @@ class SubmitPAITrainTask(TestCase):
             is_pai=True,
             feature_columns_code=feature_columns_code,
             model_repo_image="",
-            original_sql='''SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
+            original_sql=
+            '''SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
     TO TRAIN DNNClassifier
     WITH model.n_classes = 3, model.hidden_units = [10, 20]
     LABEL class
