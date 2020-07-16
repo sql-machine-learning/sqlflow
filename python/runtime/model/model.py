@@ -26,7 +26,7 @@ class EstimatorType(Enum):
     XGBOOST = 2
 
 
-class Model(object):
+class Model:
     """Model module represents a SQLFlow trained model, which includes
     three parts:
     1. the estimator type indicates which SQLFlow estimator comes from.
@@ -62,7 +62,9 @@ class Model(object):
         Args:
 
         uri: string
-            model saving URL with format: <driver>://<path>
+            the URI represents where to save the model, the format
+            is like <driver>://<path>. This save API supports
+            "sqlfs" and "file" driver.
 
         datasource: string
             the connection datasource DSN is required if saving with sqlfs.
@@ -90,6 +92,6 @@ def parseURI(uri):
     return array[0], array[1]
 
 
-def load(uri, datasource):
+def load(uri, datasource=None):
     # TODO(yancey1989): load model object from model storage with uri.
-    pass
+    raise NotImplementedError
