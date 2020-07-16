@@ -329,7 +329,8 @@ def get_all_type_description(conn, db):
         drop_sql = "DROP TABLE IF EXISTS {}.{}".format(db, RANDOM_TABLE_NAME)
         create_sql = "CREATE TABLE IF NOT EXISTS {}.{}(a {})".format(
             db, RANDOM_TABLE_NAME, t)
-        select_sql = "SELECT * FROM {}.{}".format(db, RANDOM_TABLE_NAME)
+        select_sql = "SELECT * FROM {}.{} LIMIT 0".format(
+            db, RANDOM_TABLE_NAME)
 
         if conn.driver == "hive":
             cursor = conn.cursor(configuration=conn.session_cfg)
