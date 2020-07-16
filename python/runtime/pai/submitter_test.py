@@ -17,7 +17,6 @@ import unittest
 from unittest import TestCase
 
 import tensorflow as tf
-from dotenv import load_dotenv
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 
@@ -73,7 +72,6 @@ class SubmitterTestCase(TestCase):
 
 class SubmitPAITrainTask(TestCase):
     def setUp(self):
-        load_dotenv("/Users/linhongwu/ws/sqlflow/.env")
         self.db_type = os.getenv("SQLFLOW_TEST_DB")
         self.submitter = os.getenv("SQLFLOW_submitter")
         self.AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
