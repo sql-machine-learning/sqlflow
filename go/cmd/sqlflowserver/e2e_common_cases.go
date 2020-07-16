@@ -716,9 +716,9 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		a.Equal("label_col", columns[1])
 	} else {
 		a.Equal(2, len(columns))
+		columns = removeColumnNamePrefix(columns)
 		a.Equal("new_label_col", columns[1])
 	}
-	columns = removeColumnNamePrefix(columns)
 	a.Equal("c1", columns[0])
 
 	predictSQLWithoutOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "label_col", trainedModel)
