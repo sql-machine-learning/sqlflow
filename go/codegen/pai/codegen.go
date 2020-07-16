@@ -172,6 +172,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, paramsFile, model
 			DataSource:       session.DbConnStr,
 			PredSelect:       ir.Select,
 			ResultTable:      ir.ResultTable,
+			ResultColumn:     ir.ResultColumn,
 			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
 			HiveLocation:     session.HiveLocation,
 			HDFSUser:         session.HdfsUser,

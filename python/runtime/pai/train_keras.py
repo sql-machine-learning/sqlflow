@@ -57,10 +57,13 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
     else:
         keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                              label_meta, epochs, verbose, model_meta,
-                             has_none_optimizer)
+                             validation_steps, has_none_optimizer)
 
     print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-    oss.save_file(FLAGS.sqlflow_oss_modeldir, save)
+    if len(FLAGS.worker_hosts.split(",")) > 1:
+        oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
+    else:
+        oss.save_file(FLAGS.sqlflow_oss_modeldir, save)
     oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
 
@@ -90,8 +93,6 @@ def keras_train_distributed(classifier,
         classifier, model_dir=model_dir, config=run_config)
     estimator_train_compiled(
         keras_estimator,
-        is_pai,
-        FLAGS,
         train_dataset_fn,
         val_dataset_fn,
         # TODO(typhoonzero): do pass train settings.

@@ -120,12 +120,12 @@ def keras_train_and_save(estimator, model_params, save, is_pai,
 
     keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                          label_meta, epochs, verbose, model_meta,
-                         has_none_optimizer)
+                         validation_steps, has_none_optimizer)
 
 
 def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                          label_meta, epochs, verbose, model_meta,
-                         has_none_optimizer):
+                         validation_steps, has_none_optimizer):
     if hasattr(classifier, 'sqlflow_train_loop'):
         classifier.sqlflow_train_loop(train_dataset)
     else:
