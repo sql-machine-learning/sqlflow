@@ -345,7 +345,7 @@ func InferFeatureColumns(trainStmt *TrainStmt, db *database.DB) error {
 
 	// TODO(typhoonzero): find a way to using subqueries like select * from (%s) AS a LIMIT 100
 	// q := trainStmt.Select
-	rows, err := verifier.FetchSamples(db, trainStmt.Select)
+	rows, err := verifier.FetchSamples(db, trainStmt.Select, 1000)
 	if err != nil {
 		return err
 	}

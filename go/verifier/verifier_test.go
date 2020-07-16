@@ -91,7 +91,7 @@ func TestDescribeEmptyTables(t *testing.T) {
 	a.EqualError(e, `query SELECT * FROM iris.iris_empty LIMIT 10; gives 0 row`)
 }
 
-func TestFetchNSamples(t *testing.T) {
+func TestFetchSamples(t *testing.T) {
 	testDBType := os.Getenv("SQLFLOW_TEST_DB")
 	if testDBType != "mysql" && testDBType != "hive" {
 		t.Skip("skip when SQLFLOW_TEST_DB is not mysql or hive")
@@ -113,23 +113,27 @@ func TestFetchNSamples(t *testing.T) {
 	totalRowNum := getRowNum(totalRows)
 	assert.Greater(t, totalRowNum, 3)
 
-	rows, err := FetchNSamples(db, selectStmt, 1)
+	rows, err := FetchSamples(db, selectStmt, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, getRowNum(rows))
 
-	rows, err = FetchNSamples(db, selectStmt, -1)
+	rows, err = FetchSamples(db, selectStmt, -1)
 	assert.NoError(t, err)
 	assert.Equal(t, totalRowNum, getRowNum(rows))
 
-	rows, err = FetchSamples(db, selectStmt+" LIMIT 1")
+	rows, err = FetchSamples(db, selectStmt+" LIMIT 1", -1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, getRowNum(rows))
 
-	rows, err = FetchSamples(db, selectStmt+" LIMIT  \t2")
+	rows, err = FetchSamples(db, selectStmt+" LIMIT  \t2", -1)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, getRowNum(rows))
 
-	rows, err = FetchSamples(db, selectStmt+" LIMIT  3")
+	rows, err = FetchSamples(db, selectStmt+" LIMIT  3", -1)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, getRowNum(rows))
+
+	rows, err = FetchSamples(db, selectStmt+" LIMIT  2", 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, getRowNum(rows))
 }
