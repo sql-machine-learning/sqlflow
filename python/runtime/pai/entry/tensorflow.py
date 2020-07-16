@@ -15,9 +15,9 @@ import pickle
 import types
 
 from runtime import oss
+from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.tensorflow import explain, is_tf_estimator, predict, train
-from runtime.tensorflow.diag import SQLFlowDiagnostic
 
 
 def load_oss_model(params, oss_model_dir, estimator):

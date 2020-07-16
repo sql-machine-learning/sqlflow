@@ -15,8 +15,7 @@
 import os
 from enum import Enum
 
-# TODO(yancey1989): move diag to the upper directory.
-from runtime.tensorflow.diag import SQLFlowDiagnostic
+from runtime.diagnostics import SQLFlowDiagnostic
 
 
 class EstimatorType(Enum):
