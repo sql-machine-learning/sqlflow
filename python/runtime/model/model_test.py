@@ -13,8 +13,8 @@
 
 import unittest
 
+from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType, Model
-from runtime.tensorflow.diag import SQLFlowDiagnostic
 
 
 class TestModel(unittest.TestCase):

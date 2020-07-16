@@ -14,6 +14,7 @@
 """
 import os
 from enum import Enum
+
 from runtime.diagnostics import SQLFlowDiagnostic
 
 
