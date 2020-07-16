@@ -25,6 +25,7 @@ var XGBoostObjectiveDocs = map[string]string{
 	"rank:ndcg":           "Use LambdaMART to perform list-wise ranking where Normalized Discounted Cumulative Gain (NDCG) is maximized",
 	"rank:pairwise":       "Use LambdaMART to perform pairwise ranking where the pairwise loss is minimized",
 	"reg:gamma":           "gamma regression with log-link. Output is a mean of gamma distribution. It might be useful, e.g., for modeling insurance claims severity, or for any outcome that might be gamma-distributed.",
+	"reg:linear":          "linear regression",
 	"reg:logistic":        "logistic regression",
 	"reg:squarederror":    "regression with squared loss.",
 	"reg:squaredlogerror": "regression with squared log loss 1/2[log(pred+1)\u2212log(label+1)]^2",
