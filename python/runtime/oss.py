@@ -18,8 +18,6 @@ import tarfile
 
 import oss2
 import tensorflow as tf
-from runtime import db
-from runtime.pai.oss import get_bucket
 from runtime.tensorflow import is_tf_estimator
 
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to save models trained.
@@ -33,12 +31,41 @@ MODEL_TYPE_XGB = 2
 MODEL_TYPE_PAIML = 3
 
 
+def remove_bucket_prefix(oss_uri):
+    return oss_uri.replace("oss://%s/" % SQLFLOW_MODELS_BUCKET, "")
+
+
 def get_models_bucket():
     return get_bucket(SQLFLOW_MODELS_BUCKET)
 
 
-def remove_bucket_prefix(oss_uri):
-    return oss_uri.replace("oss://%s/" % SQLFLOW_MODELS_BUCKET, "")
+def get_bucket(name, ak=None, sk=None, endpoint=None):
+    if ak is None:
+        ak = os.getenv("SQLFLOW_OSS_AK", "")
+    if sk is None:
+        sk = os.getenv("SQLFLOW_OSS_SK", "")
+    if endpoint is None:
+        endpoint = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT", "")
+    if ak == "" or sk == "":
+        raise ValueError(
+            "must configure SQLFLOW_OSS_AK and SQLFLOW_OSS_SK when submitting to PAI"
+        )
+    if endpoint == "":
+        raise ValueError(
+            "must configure SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
+    auth = oss2.Auth(ak, sk)
+    bucket = oss2.Bucket(auth, endpoint, name)
+    return bucket
+
+
+def copyfileobj(source, dest, ak, sk, endpoint, bucket_name):
+    '''
+    copy_file_to_oss copies alocal file (source) to an object on OSS (dest), overwrite
+    if the oss object exists.
+    '''
+    auth = oss2.Auth(ak, sk)
+    bucket = oss2.Bucket(auth, endpoint, bucket_name)
+    bucket.put_object_from_file(dest, source)
 
 
 def get_oss_path_from_uri(oss_model_dir, file_name):

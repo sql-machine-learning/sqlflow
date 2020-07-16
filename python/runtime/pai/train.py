@@ -25,7 +25,7 @@ import tensorflow as tf
 from runtime.db import (connect_with_data_source, db_generator,
                         parseMaxComputeDSN)
 from runtime.model_metadata import collect_model_metadata
-from runtime.pai import model
+from runtime import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.train_estimator import estimator_train_and_save
 from runtime.pai.train_keras import keras_train_and_save
@@ -135,7 +135,7 @@ def train(datasource,
     # save model to OSS
     if num_workers == 1 or worker_id == 0:
         oss_model_dir = FLAGS.sqlflow_oss_modeldir
-        model.save_oss_model(oss_model_dir, estimator_name, is_estimator,
+        oss.save_oss_model(oss_model_dir, estimator_name, is_estimator,
                              feature_column_names, feature_column_names_map,
                              feature_metas, label_meta, model_params,
                              feature_columns_code, num_workers)

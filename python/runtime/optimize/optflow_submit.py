@@ -19,7 +19,7 @@ import uuid
 import oss2
 import requests
 import six
-from runtime.pai.oss import get_bucket
+from runtime.oss import get_bucket
 
 __all__ = [
     'run_optimize_on_optflow',

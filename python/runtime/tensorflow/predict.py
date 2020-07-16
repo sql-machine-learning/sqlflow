@@ -22,7 +22,6 @@ import numpy as np
 import runtime
 import tensorflow as tf
 from runtime import db
-from runtime.pai import model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,

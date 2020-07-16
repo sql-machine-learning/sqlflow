@@ -17,13 +17,11 @@ import unittest
 from unittest import TestCase
 
 import tensorflow as tf
-from dotenv import load_dotenv
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 
 
-# class SubmitterTestCase(TestCase):
-class SubmitterTestCase():
+class SubmitterTestCase(TestCase):
     def test_get_oss_model_url(self):
         url = submitter.get_oss_model_url("user_a/model")
         self.assertEqual("oss://sqlflow-models/user_a/model", url)
@@ -38,8 +36,7 @@ class SubmitterTestCase():
 
     def test_get_pai_tf_cmd(self):
         conf = get_cluster_config({})
-        os.environ[
-            "SQLFLOW_OSS_CHECKPOINT_DIR"] = '''{"Arn":"arn", "Host":"host"}'''
+        os.environ["SQLFLOW_OSS_CHECKPOINT_CONFIG"] = '''{"arn":"arn", "host":"host"}'''
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
@@ -49,8 +46,8 @@ class SubmitterTestCase():
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
             "-Dtables=odps://test_project/tables/input_table,odps://test_project/tables/val_table "
-            "-Doutputs=odps://test_project/tables/res_table -DhyperParameters=\"params.txt\" "
-            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?role_arn=arn/pai2oss_test_project&host=host' "
+            "-Doutputs=odps://test_project/tables/res_table -DhyperParameters='params.txt' "
+            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?role_arn=arn/pai2osstestproject&host=host' "
             "-DgpuRequired='0'")
         self.assertEqual(expected, cmd)
 
@@ -64,17 +61,16 @@ class SubmitterTestCase():
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
             "-Dtables=odps://test_project/tables/input_table,odps://test_project/tables/val_table "
-            "-Doutputs=odps://test_project/tables/res_table -DhyperParameters=\"params.txt\" "
-            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?role_arn=arn/pai2oss_test_project&host=host' "
+            "-Doutputs=odps://test_project/tables/res_table -DhyperParameters='params.txt' "
+            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?role_arn=arn/pai2osstestproject&host=host' "
             r'''-Dcluster="{\"ps\": {\"count\": 1, \"cpu\": 200, \"gpu\": 0}, \"worker\": {\"count\": 5, \"cpu\": 400, \"gpu\": 0}}"'''
         )
         self.assertEqual(expected, cmd)
-        del os.environ["SQLFLOW_OSS_CHECKPOINT_DIR"]
+        del os.environ["SQLFLOW_OSS_CHECKPOINT_CONFIG"]
 
 
 class SubmitPAITrainTask(TestCase):
     def setUp(self):
-        load_dotenv("/Users/linhongwu/ws/sqlflow/.env")
         self.db_type = os.getenv("SQLFLOW_TEST_DB")
         self.submitter = os.getenv("SQLFLOW_submitter")
         self.AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
