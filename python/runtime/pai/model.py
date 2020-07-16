@@ -187,7 +187,7 @@ def load_oss_model(oss_model_dir, estimator):
         load_file(oss_model_dir, "model_save")
 
 
-def save_oss_model(oss_model_dir, estimator_name, is_estimator,
+def save_oss_model(oss_model_dir, model_name, is_estimator,
                    feature_column_names, feature_column_names_map,
                    feature_metas, label_meta, model_params,
                    feature_columns_code, num_workers):
@@ -204,6 +204,6 @@ def save_oss_model(oss_model_dir, estimator_name, is_estimator,
         else:
             save_file(oss_model_dir, "model_save")
 
-    save_metas(oss_model_dir, num_workers, "tensorflow_model_desc",
-               estimator_name, feature_column_names, feature_column_names_map,
-               feature_metas, label_meta, model_params, feature_columns_code)
+    save_metas(oss_model_dir, num_workers, "tensorflow_model_desc", model_name,
+               feature_column_names, feature_column_names_map, feature_metas,
+               label_meta, model_params, feature_columns_code)

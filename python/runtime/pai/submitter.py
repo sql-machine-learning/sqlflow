@@ -21,6 +21,7 @@ import tempfile
 from os import path
 
 from runtime import db
+from runtime.db_writer import PAIMaxComputeDBWriter
 from runtime.pai import cluster_conf, model
 from runtime.pai.entry import tf as tensorflow_entry
 from runtime.tensorflow.diag import SQLFlowDiagnostic
@@ -84,11 +85,10 @@ def drop_tmp_tables(tables, datasource):
             if table != "":
                 drop_sql = "DROP TABLE %s" % table
                 db.execute(conn, drop_sql)
-        conn.close()
     except:
         # odps will clear table itself, so even fail here, we do
         # not need to raise error
-        conn.close()
+        print("Encounter error on drop tmp table")
 
 
 def create_train_and_eval_tmp_table(train_select, valid_select, datasource):
@@ -194,6 +194,7 @@ def get_oss_model_save_path(datasource, model_name):
         return None
     dsn = get_datasource_dsn(datasource)
     user, _, _, project = db.parseMaxComputeDSN(dsn)
+    user = user or "unknown"
     return "/".join([project, user, model_name])
 
 
@@ -334,12 +335,11 @@ def prepare_archive(cwd, conf, project, estimator, model_name, train_tbl,
     copy_python_package("sqlflow_models", cwd)
     copy_custom_package(estimator, cwd)
 
-    ret = subprocess.call([
+    args = [
         "tar", "czf", JOB_ARCHIVE_FILE, "runtime", "sqlflow_models",
         "requirements.txt", TRAIN_PARAMS_FILE
-    ],
-                          cwd=cwd)
-    if ret != 0:
+    ]
+    if subprocess.call(args, cwd=cwd) != 0:
         raise SQLFlowDiagnostic("Can't zip resource")
 
 
