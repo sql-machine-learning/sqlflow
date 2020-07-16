@@ -192,9 +192,7 @@ def read_feature(raw_val, feature_spec, feature_name):
         return raw_val,
 
 
-INT64_TYPE = long if six.PY2 else int
-LIMIT_PATTERN = re.compile("LIMIT\\s+[0-9]+", flags=re.I)
-BLANK_PATTERN = re.compile("\\s+")
+LIMIT_PATTERN = re.compile("LIMIT\\s+([0-9]+)", flags=re.I)
 
 
 def limit_select(select, n):
@@ -211,14 +209,11 @@ def limit_select(select, n):
     if n < 0:
         return select
 
-    def replace_limit_num(limit_str):
-        num = INT64_TYPE(BLANK_PATTERN.split(limit_str)[1])
-        if num > n:
-            return "LIMIT {}".format(n)
-        else:
-            return limit_str
+    def replace_limit_num(matched_limit):
+        num = int(matched_limit.group(1))
+        return "LIMIT {}".format(min(num, n))
 
-    if LIMIT_PATTERN.match(select) is None:
+    if LIMIT_PATTERN.search(select) is None:
         return select + " LIMIT {}".format(n)
     else:
         return LIMIT_PATTERN.sub(repl=replace_limit_num, string=select)

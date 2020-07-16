@@ -363,7 +363,7 @@ class TestGetTableSchema(TestCase):
 
             schema = selected_columns_and_types(
                 conn,
-                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM iris.train"
+                "SELECT sepal_length, petal_width * 2.3 AS new_petal_width, class FROM iris.train"
             )
             expect = [
                 ("sepal_length", "FLOAT"),
