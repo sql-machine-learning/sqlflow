@@ -379,7 +379,7 @@ class TestGetTableSchema(TestCase):
             addr = "maxcompute://%s:%s@%s" % (AK, SK, endpoint)
             case_db = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
             conn = connect_with_data_source(addr)
-            table = "%s.sqlflow_test_iris_train_2" % case_db
+            table = "%s.sqlflow_test_iris_train" % case_db
             schema = get_table_schema(conn, table)
             expect = [
                 ('sepal_length', 'DOUBLE'),
