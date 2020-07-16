@@ -14,7 +14,7 @@
 import pickle
 import types
 
-from runtime.pai import model
+from runtime import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.tensorflow import explain, is_tf_estimator, predict, train
 from runtime.tensorflow.diag import SQLFlowDiagnostic
@@ -31,11 +31,11 @@ def load_oss_model(params, oss_model_dir, estimator):
     # Keras single node is using h5 format to save the model, no need to deal with export model format.
     # Keras distributed mode will use estimator, so this is also needed.
     if is_estimator:
-        model.load_file(oss_model_dir, "exported_path")
+        oss.load_file(oss_model_dir, "exported_path")
         # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-        model.load_dir(oss_model_dir + "/model_save")
+        oss.load_dir(oss_model_dir + "/model_save")
     else:
-        model.load_file(oss_model_dir, "model_save")
+        oss.load_file(oss_model_dir, "model_save")
 
 
 def do_train(params):
@@ -62,19 +62,19 @@ def save_oss_model(oss_model_dir, estimator, feature_column_names,
         if FLAGS.task_index == 0:
             with open("exported_path", "r") as fn:
                 saved_model_path = fn.read()
-            model.save_dir(oss_model_dir, saved_model_path)
-            model.save_file(oss_model_dir, "exported_path")
+            oss.save_dir(oss_model_dir, saved_model_path)
+            oss.save_file(oss_model_dir, "exported_path")
     else:
         if len(FLAGS.worker_hosts.split(",")) > 1:
             if FLAGS.task_index == 0:
-                model.save_file(oss_model_dir, "exported_path")
+                oss.save_file(oss_model_dir, "exported_path")
         else:
-            model.save_file(oss_model_dir, "model_save")
+            oss.save_file(oss_model_dir, "model_save")
 
-    model.save_metas(oss_model_dir, num_workers, "tensorflow_model_desc",
-                     estimator, feature_column_names, feature_column_names_map,
-                     feature_metas, label_meta, model_params,
-                     feature_columns_code)
+    oss.save_metas(oss_model_dir, num_workers, "tensorflow_model_desc",
+                   estimator, feature_column_names, feature_column_names_map,
+                   feature_metas, label_meta, model_params,
+                   feature_columns_code)
 
 
 def do_predict(params):
