@@ -36,7 +36,8 @@ class SubmitterTestCase(TestCase):
 
     def test_get_pai_tf_cmd(self):
         conf = get_cluster_config({})
-        os.environ["SQLFLOW_OSS_CHECKPOINT_CONFIG"] = '''{"arn":"arn", "host":"host"}'''
+        os.environ[
+            "SQLFLOW_OSS_CHECKPOINT_CONFIG"] = '''{"arn":"arn", "host":"host"}'''
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
@@ -157,7 +158,7 @@ class SubmitPAITrainTask(TestCase):
         tf.feature_column.numeric_column("petal_width", shape=[1])]}"""
         feature_columns = eval(feature_columns_code)
 
-        submitter.submit_pytf_train(
+        submitter.submit_pai_tf_train(
             self.datasource,
             "DNNClassifier",
             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",

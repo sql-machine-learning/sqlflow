@@ -313,8 +313,15 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
 
 
 def get_project_role_name(project):
-    """ A valid role name contains letters and numbers only.
+    """Get oss role form project name.
+    A valid role name contains letters and numbers only.
     The prefix 'pai2oss' of the role name denotes PAI access OS
+
+    Args:
+        project: string
+            project name
+    Returns:
+        role name for the project
     """
     return "pai2oss" + "".join(x for x in project.lower()
                                if x in string.ascii_lowercase + string.digits)
@@ -348,9 +355,9 @@ def save_model_to_sqlfs(datasource, model_oss_path, model_name):
 
 
 # (TODO: lhw) adapt this interface after we do feature derivation in Python
-def submit_pytf_train(datasource, estimator_name, select, validation_select,
-                      model_params, model_name, pre_trained_model,
-                      **train_params):
+def submit_pai_tf_train(datasource, estimator_name, select, validation_select,
+                        model_params, model_name, pre_trained_model,
+                        **train_params):
     """This function submit PAI-TF train task to PAI platform
 
     Args:
