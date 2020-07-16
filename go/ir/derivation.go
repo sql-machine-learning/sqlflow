@@ -26,9 +26,6 @@ import (
 	"sqlflow.org/sqlflow/go/verifier"
 )
 
-// TODO(typhoonzero): fieldTypes are copied from verifier.go, need refactor.
-type fieldTypes map[string]string
-
 // ColumnMap is like: target -> key -> []FeatureColumn
 // one column's data can be used by multiple feature columns, e.g.
 // EMBEDDING(c1), CROSS(c1, c2)
@@ -343,7 +340,7 @@ func InferFeatureColumns(trainStmt *TrainStmt, db *database.DB) error {
 		return err
 	}
 
-	selectFieldTypeMap := make(fieldTypes)
+	selectFieldTypeMap := make(verifier.FieldTypes)
 	selectFieldNames := []string{}
 	for _, ct := range columnTypes {
 		_, fld := verifier.Decomp(ct.Name())
@@ -397,7 +394,7 @@ func getFeatureColumnTargets(trainStmt *TrainStmt) []string {
 }
 
 // deriveFeatureColumn will fill in "fcMap" with derivated FeatureColumns.
-func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDescMap, selectFieldTypeMap fieldTypes, trainStmt *TrainStmt) error {
+func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDescMap, selectFieldTypeMap verifier.FieldTypes, trainStmt *TrainStmt) error {
 	// 1. Infer omitted category_id_column for embedding_columns
 	// 2. Add derivated feature column.
 	//
