@@ -38,6 +38,5 @@ def unzip_dir(tarball, dest_dir="./"):
         dest_dir: string
         the output path.
     """
-
     with tarfile.open(tarball, 'r:gz') as tar:
         tar.extractall(path=dest_dir)
