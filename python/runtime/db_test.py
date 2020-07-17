@@ -18,7 +18,7 @@ from unittest import TestCase
 import numpy as np
 import tensorflow as tf
 from odps import ODPS, tunnel
-from runtime.db import (MYSQL_DATA_TYPE_DICT, buffered_db_writer, connect,
+from runtime.db import (MYSQL_FIELD_TYPE_DICT, buffered_db_writer, connect,
                         connect_with_data_source, db_generator,
                         get_table_schema, limit_select, parseHiveDSN,
                         parseMaxComputeDSN, parseMySQLDSN, read_feature,
@@ -407,7 +407,7 @@ class TestMySQLFieldType(TestCase):
     @unittest.skipUnless(
         os.getenv("SQLFLOW_TEST_DB") == "mysql", "run only in mysql")
     def test_field_type(self):
-        self.assertGreater(len(MYSQL_DATA_TYPE_DICT), 0)
+        self.assertGreater(len(MYSQL_FIELD_TYPE_DICT), 0)
 
         addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "localhost:3306")
         conn = connect_with_data_source(
@@ -419,7 +419,7 @@ class TestMySQLFieldType(TestCase):
         create_table_sql = "CREATE TABLE IF NOT EXISTS " + table_name + "(a %s)"
         select_sql = "SELECT * FROM %s" % table_name
 
-        for int_type, str_type in MYSQL_DATA_TYPE_DICT.items():
+        for int_type, str_type in MYSQL_FIELD_TYPE_DICT.items():
             if str_type in ["VARCHAR", "CHAR"]:
                 str_type += "(255)"
 

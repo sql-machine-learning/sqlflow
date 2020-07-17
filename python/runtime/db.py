@@ -226,7 +226,7 @@ def limit_select(select, n):
 try:
     import MySQLdb.constants.FIELD_TYPE as MYSQL_FIELD_TYPE
     # Refer to http://mysql-python.sourceforge.net/MySQLdb-1.2.2/public/MySQLdb.constants.FIELD_TYPE-module.html
-    MYSQL_DATA_TYPE_DICT = {
+    MYSQL_FIELD_TYPE_DICT = {
         MYSQL_FIELD_TYPE.TINY: "TINYINT",  # 1
         MYSQL_FIELD_TYPE.LONG: "INT",  # 3
         MYSQL_FIELD_TYPE.FLOAT: "FLOAT",  # 4
@@ -238,7 +238,7 @@ try:
         MYSQL_FIELD_TYPE.STRING: "CHAR",  # 254
     }
 except:
-    MYSQL_DATA_TYPE_DICT = {}
+    MYSQL_FIELD_TYPE_DICT = {}
 
 
 def selected_columns_and_types(conn, select):
@@ -263,7 +263,7 @@ def selected_columns_and_types(conn, select):
             for desc in cursor.description:
                 # NOTE: MySQL returns an integer number instead of a string
                 # to represent the data type.
-                typ = MYSQL_DATA_TYPE_DICT.get(desc[1])
+                typ = MYSQL_FIELD_TYPE_DICT.get(desc[1])
                 if typ is None:
                     raise ValueError(
                         "unsupported data type of column {}".format(desc[0]))
