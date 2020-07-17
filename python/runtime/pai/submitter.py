@@ -23,7 +23,6 @@ from os import path
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai import cluster_conf
-from runtime.pai.entry import tensorflow as tensorflow_entry
 
 LIFECYCLE_ON_TMP_TABLE = 7
 JOB_ARCHIVE_FILE = "job.tar.gz"
