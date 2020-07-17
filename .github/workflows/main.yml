@@ -116,7 +116,7 @@ jobs:
         TRAVIS_OS_NAME: windows
       run: |
         set TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        set TRAVIS_BRANCH=${{ github.ref }}
+        set TRAVIS_BRANCH=${GITHUB_REF##*/}
         set TRAVIS_PULL_REQUEST=${{ github.event.number }}
         echo branch $TRAVIS_BRANCH
         bash scripts/travis/deploy_client.sh
