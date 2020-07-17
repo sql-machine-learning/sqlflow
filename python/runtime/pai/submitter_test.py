@@ -182,7 +182,7 @@ class SubmitPAITrainTask(TestCase):
 
     def test_submit_pai_predict_task(self):
         submitter.submit_pai_tf_predict(
-            self.datasource,
+            testing.get_datasource(),
             """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
             "alifin_jtest_dev.pai_dnn_predict", "class", "e2etest_pai_dnn", {})
 
