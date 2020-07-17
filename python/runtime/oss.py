@@ -155,10 +155,14 @@ def load_file(oss_model_dir, file_name):
 
 
 def load_string(oss_file_path):
+    data = load_bytes(oss_file_path)
+    return data.decode("utf-8")
+
+
+def load_bytes(oss_file_path):
     bucket = get_models_bucket()
     oss_file_path = remove_bucket_prefix(oss_file_path)
-    data = bucket.get_object(oss_file_path).read()
-    return data.decode("utf-8")
+    return bucket.get_object(oss_file_path).read()
 
 
 def save_metas(oss_model_dir, num_workers, file_name, *meta):
@@ -189,16 +193,17 @@ def save_metas(oss_model_dir, num_workers, file_name, *meta):
 
 
 def load_metas(oss_model_dir, file_name):
-    '''
-    Load and restore a directory and metadata that are saved by `model.save`
-    from a MaxCompute table
+    '''Load model meta which are saved by save_metas from OSS
+
     Args:
-        oss_model_dir: OSS URI that the model will be saved to.
-    Return:
+        oss_model_dir: OSS URI that the model meta saved to.
+        file_name: meta data file name
+
+    Returns:
         A list contains the saved python objects
     '''
     oss_path = "/".join([oss_model_dir.rstrip("/"), file_name])
-    serialized = load_string(oss_path)
+    serialized = load_bytes(oss_path)
     return pickle.loads(serialized)
 
 
