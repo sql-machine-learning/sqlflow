@@ -214,9 +214,8 @@ def limit_select(select, n):
         return "LIMIT {}".format(min(num, n))
 
     if LIMIT_PATTERN.search(select) is None:
-        if ";" in select:
-            idx = select.rindex(";")
-        else:
+        idx = select.rfind(";")
+        if idx < 0:
             idx = len(select)
 
         return select[0:idx] + " LIMIT {}".format(n) + select[idx:]
