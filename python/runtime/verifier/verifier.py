@@ -15,12 +15,43 @@ import runtime.db as db
 
 
 def fetch_samples(conn, query, n=1):
+    '''
+    Fetch n sample(s) at most according to the query statement.
+
+    Args:
+        conn: the connection object.
+        query (str): the select SQL statement.
+        n (int): the maximum sample number to query. Query all samples if n < 0.
+
+    Returns:
+        A generator which yields each row of the data.
+    '''
+
     query = db.limit_select(query, n)
     for rows, _ in db.db_generator(conn, query)():
         yield rows
 
 
 def verify_column_name_and_type(conn, train_select, pred_select, label):
+    '''
+    Verify whether the columns in the SQL statement for prediction
+    contain all columns except the label column in the SQL statement for
+    training. This method would also verify whether the field type are
+    the same for the same columns between the SQL statement for training
+    and prediction.
+
+    Args:
+        conn: the connection object.
+        train_select (str): the select SQL statement for training.
+        pred_select (str): the select SQL statement for prediction.
+        label (str): the label name for training.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: if any column name or type does not match.
+    '''
     train_schema = db.selected_columns_and_types(conn, train_select)
     pred_schema = dict(db.selected_columns_and_types(conn, pred_select))
 
