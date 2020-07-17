@@ -41,8 +41,7 @@ class SubmitterTestCase(TestCase):
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
-            "test_project.val_table", "test_project.res_table", "test_project",
-            "/tmp")
+            "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
@@ -56,8 +55,7 @@ class SubmitterTestCase(TestCase):
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
-            "test_project.val_table", "test_project.res_table", "test_project",
-            "/tmp")
+            "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
