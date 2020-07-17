@@ -180,6 +180,9 @@ class SubmitPAITrainTask(TestCase):
     LABEL class
     INTO e2etest_pai_dnn;''')
 
+    @unittest.skipUnless(testing.get_driver() == "maxcompute"
+                         and testing.get_submitter() == "pai",
+                         "skip non PAI tests")
     def test_submit_pai_predict_task(self):
         submitter.submit_pai_tf_predict(
             testing.get_datasource(),
