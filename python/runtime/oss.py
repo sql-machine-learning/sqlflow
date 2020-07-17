@@ -18,7 +18,7 @@ import tarfile
 
 import oss2
 import tensorflow as tf
-from runtime import db
+from runtime.tensorflow import is_tf_estimator
 
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to save models trained.
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"
@@ -200,3 +200,37 @@ def load_metas(oss_model_dir, file_name):
     oss_path = "/".join([oss_model_dir.rstrip("/"), file_name])
     serialized = load_string(oss_path)
     return pickle.loads(serialized)
+
+
+def load_oss_model(oss_model_dir, estimator):
+    is_estimator = is_tf_estimator(estimator)
+    # Keras single node is using h5 format to save the model, no need to deal with export model format.
+    # Keras distributed mode will use estimator, so this is also needed.
+    if is_estimator:
+        load_file(oss_model_dir, "exported_path")
+        # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+        load_dir(oss_model_dir + "/model_save")
+    else:
+        load_file(oss_model_dir, "model_save")
+
+
+def save_oss_model(oss_model_dir, model_name, is_estimator,
+                   feature_column_names, feature_column_names_map,
+                   feature_metas, label_meta, model_params,
+                   feature_columns_code, num_workers):
+    # Keras single node is using h5 format to save the model, no need to deal with export model format.
+    # Keras distributed mode will use estimator, so this is also needed.
+    if is_estimator:
+        with open("exported_path", "rb") as fn:
+            saved_model_path = fn.read()
+        save_dir(oss_model_dir, saved_model_path)
+        save_file(oss_model_dir, "exported_path")
+    else:
+        if num_workers > 1:
+            save_file(oss_model_dir, "exported_path")
+        else:
+            save_file(oss_model_dir, "model_save")
+
+    save_metas(oss_model_dir, num_workers, "tensorflow_model_desc", model_name,
+               feature_column_names, feature_column_names_map, feature_metas,
+               label_meta, model_params, feature_columns_code)

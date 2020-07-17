@@ -10,24 +10,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
 import os
 import pickle
 import random
+import shutil
 import string
+import subprocess
+import tempfile
 from os import path
 
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai import cluster_conf
-from runtime.pai.entry import tensorflow as tensorflow_entry
 
 LIFECYCLE_ON_TMP_TABLE = 7
 JOB_ARCHIVE_FILE = "job.tar.gz"
 PARAMS_FILE = "params.txt"
 TRAIN_PARAMS_FILE = "train_params.pkl"
-ENTRY_DIR = "sqlflow_submitter/pai/entry/"
+ENTRY_DIR = "runtime/pai/entry/"
 
 TF_REQUIREMENT = """
 adanet==0.8.0
@@ -60,17 +61,17 @@ def create_tmp_table_from_select(select, datasource):
         select: string, the selection statement
         datasource: string, the datasource to connect
     """
-    if len(select.strip()) == 0:
-        return ""
+    if not select:
+        return None
     conn = db.connect_with_data_source(datasource)
     project = get_project(datasource)
     tmp_tb_name = gen_rand_string()
     create_sql = "CREATE TABLE %s LIFECYCLE %s AS %s" % (
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
+    # (NOTE: lhw) maxcompute conn doesn't support close
+    # we should unify db interface
     if not db.execute(conn, create_sql):
-        conn.close()
         raise SQLFlowDiagnostic("Can't crate tmp table for %s" % select)
-    conn.close()
     return "%s.%s" % (project, tmp_tb_name)
 
 
@@ -82,11 +83,10 @@ def drop_tmp_tables(tables, datasource):
             if table != "":
                 drop_sql = "DROP TABLE %s" % table
                 db.execute(conn, drop_sql)
-        conn.close()
     except:
         # odps will clear table itself, so even fail here, we do
         # not need to raise error
-        conn.close()
+        print("Encounter error on drop tmp table")
 
 
 def create_train_and_eval_tmp_table(train_select, valid_select, datasource):
@@ -127,7 +127,7 @@ def create_pai_hyper_param_file(cwd, filename, model_path):
         file.write("sqlflow_oss_sk=\"%s\"\n" % oss_sk)
         file.write("sqlflow_oss_ep=\"%s\"\n" % oss_ep)
         oss_model_url = get_oss_model_url(model_path)
-        file.write("sqlflow_oss_modeldir=\"%s\"\n", oss_model_url)
+        file.write("sqlflow_oss_modeldir=\"%s\"\n" % oss_model_url)
         file.flush()
 
 
@@ -140,7 +140,7 @@ def find_python_module_path(module):
     Returns:
         The path of the Python module
     """
-    proc = os.popen("python -c import %s;print(%s.__path__[0])" %
+    proc = os.popen("python -c \"import %s;print(%s.__path__[0])\"" %
                     (module, module))
     output = proc.readline()
     return output.strip()
@@ -153,8 +153,10 @@ def copy_python_package(module, dest):
         module: The module to copy
         dest: the destination directory
     """
-    path = find_python_module_path(module)
-    os.execl("cp", "-r", path, dest)
+    module_path = find_python_module_path(module)
+    if not module_path:
+        raise SQLFlowDiagnostic("Can't find module %s" % module)
+    shutil.copytree(module_path, path.join(dest, path.basename(module_path)))
 
 
 def copy_custom_package(estimator, dst):
@@ -173,14 +175,24 @@ def submit_pai_task(pai_cmd, datasource):
         pai_cmd: The command to submit
         datasource: The datasource this cmd will manipulate
     """
-    user, passwd, address, project = db.parseMaxComputeDSN(datasource)
-    os.execl("odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
-             "--project", project, "--endpoint", address, "-e", pai_cmd)
+    dsn = get_datasource_dsn(datasource)
+    user, passwd, address, project = db.parseMaxComputeDSN(dsn)
+    cmd = [
+        "odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
+        "--project", project, "--endpoint", address, "-e", pai_cmd
+    ]
+    print(" ".join(cmd))
+    if subprocess.call(cmd) != 0:
+        raise SQLFlowDiagnostic("Execute odps cmd fail: cmd is %s" %
+                                " ".join(cmd))
 
 
 def get_oss_model_save_path(datasource, model_name):
+    if not model_name:
+        return None
     dsn = get_datasource_dsn(datasource)
     user, _, _, project = db.parseMaxComputeDSN(dsn)
+    user = user or "unknown"
     return "/".join([project, user, model_name])
 
 
@@ -218,7 +230,9 @@ def delete_oss_dir_recursive(bucket, directory):
     if len(loc.prefix_list) > 0:
         for sub_prefix in loc.prefix_list:
             delete_oss_dir_recursive(bucket, sub_prefix)
-    bucket.batch_delete_objects(object_path_list)
+    # empty list param will raise error
+    if len(object_path_list) > 0:
+        bucket.batch_delete_objects(object_path_list)
 
 
 def clean_oss_model_path(oss_path):
@@ -260,7 +274,7 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
 
     # submit table should format as: odps://<project>/tables/<table >,odps://<project>/tables/<table > ...
     submit_tables = max_compute_table_url(train_table)
-    if train_table != val_table and val_table != "":
+    if train_table != val_table and val_table:
         val_table = max_compute_table_url(val_table)
         submit_tables = "%s,%s" % (submit_tables, val_table)
     output_tables = ""
@@ -272,22 +286,22 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     # TODO(typhoonzero): need to find a more secure way to pass credentials.
     cmd = ("pai -name tensorflow1150 -project algo_public_dev "
            "-DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn "
-           "-Dscript=%s -DentryFile=%s -Dtables=%s %s -DhyperParameters=\"%s\""
+           "-Dscript=%s -DentryFile=%s -Dtables=%s %s -DhyperParameters='%s'"
            ) % (job_name, tarball, entry_file, submit_tables, output_tables,
                 params_file)
 
     # format the oss checkpoint path with ARN authorization.
-    oss_checkpoint_configs = os.getenv("SQLFLOW_OSS_CHECKPOINT_DIR")
-    if oss_checkpoint_configs == "":
+    oss_checkpoint_configs = os.getenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
+    if not oss_checkpoint_configs:
         raise SQLFlowDiagnostic(
-            "need to configure SQLFLOW_OSS_CHECKPOINT_DIR when submitting to PAI"
+            "need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when submitting to PAI"
         )
     ckpt_conf = json.loads(oss_checkpoint_configs)
     model_url = get_oss_model_url(oss_model_path)
-    role_name = "pai2oss_%s" % project
+    role_name = get_project_role_name(project)
     # format the oss checkpoint path with ARN authorization.
     oss_checkpoint_path = "%s/?role_arn=%s/%s&host=%s" % (
-        model_url, ckpt_conf["Arn"], role_name, ckpt_conf["Host"])
+        model_url, ckpt_conf["arn"], role_name, ckpt_conf["host"])
     cmd = "%s -DcheckpointDir='%s'" % (cmd, oss_checkpoint_path)
 
     if cluster_config["worker"]["count"] > 1:
@@ -297,22 +311,42 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     return cmd
 
 
+def get_project_role_name(project):
+    """Get oss role form project name.
+    A valid role name contains letters and numbers only.
+    The prefix 'pai2oss' of the role name denotes PAI access OS
+
+    Args:
+        project: string
+            project name
+
+    Returns:
+        role name for the project
+    """
+    return "pai2oss" + "".join(x for x in project.lower()
+                               if x in string.ascii_lowercase + string.digits)
+
+
 def prepare_archive(cwd, conf, project, estimator, model_name, train_tbl,
                     val_tbl, model_save_path, train_params):
     """package needed resource into a tarball"""
     create_pai_hyper_param_file(cwd, PARAMS_FILE, model_save_path)
 
-    with open(path.join(cwd, TRAIN_PARAMS_FILE), "w") as param_file:
-        pickle.dump(train_params, param_file)
+    with open(path.join(cwd, TRAIN_PARAMS_FILE), "wb") as param_file:
+        pickle.dump(train_params, param_file, protocol=2)
 
     with open(path.join(cwd, "requirements.txt"), "w") as require:
         require.write(TF_REQUIREMENT)
-    copy_python_package("sqlflow_submitter", cwd)
+    copy_python_package("runtime", cwd)
     copy_python_package("sqlflow_models", cwd)
     copy_custom_package(estimator, cwd)
 
-    os.execl("tar", "czf", JOB_ARCHIVE_FILE, "./sqlflow_submitter",
-             "./sqlflow_models", "requirements.txt", TRAIN_PARAMS_FILE)
+    args = [
+        "tar", "czf", JOB_ARCHIVE_FILE, "runtime", "sqlflow_models",
+        "requirements.txt", TRAIN_PARAMS_FILE
+    ]
+    if subprocess.call(args, cwd=cwd) != 0:
+        raise SQLFlowDiagnostic("Can't zip resource")
 
 
 def save_model_to_sqlfs(datasource, model_oss_path, model_name):
@@ -321,15 +355,15 @@ def save_model_to_sqlfs(datasource, model_oss_path, model_name):
 
 
 # (TODO: lhw) adapt this interface after we do feature derivation in Python
-def submit_pytf_train(datasource, estimator, select, validation_select,
-                      model_params, model_name, pre_trained_model,
-                      **train_params):
-    """This function submit PY-TF train task to PAI platform
+def submit_pai_tf_train(datasource, estimator_string, select,
+                        validation_select, model_params, model_name,
+                        pre_trained_model, **train_params):
+    """This function submit PAI-TF train task to PAI platform
 
     Args:
         datasource: string
             Like: odps://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
-        estimator: string
+        estimator_string: string
             The name of tensorflow estimator
         select: string
             The SQL statement for selecting data for train
@@ -340,17 +374,17 @@ def submit_pytf_train(datasource, estimator, select, validation_select,
         pre_trained_model: string
             The pre-trained model name to load
         train_params: dict
-            Extra train params, they will be passed to sqlflow_submitter.tensorflow.train
+            Extra train params, they will be passed to runtime.tensorflow.train
     """
 
     # prepare params for tensorflow train,
     # the params will be pickled into train_params.pkl
-    params = locals()
+    params = dict(locals())
     del params["train_params"]
     params.update(train_params)
     params["entry_type"] = "train"
 
-    cwd = os.getcwd()
+    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
     conf = cluster_conf.get_cluster_config(model_params)
 
     train_table, val_table = create_train_and_eval_tmp_table(
@@ -367,12 +401,13 @@ def submit_pytf_train(datasource, estimator, select, validation_select,
         clean_oss_model_path(path_to_save + "/")
 
     # zip all required resource to a tarball
-    prepare_archive(cwd, conf, project, estimator, model_name, train_table,
-                    val_table, path_to_save, params)
+    prepare_archive(cwd, conf, project, estimator_string, model_name,
+                    train_table, val_table, path_to_save, params)
 
     # submit pai task to execute the training
-    cmd = get_pai_tf_cmd(conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
-                         ENTRY_DIR + "tensorflow.py", model_name, path_to_save,
+    cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                         "file://" + path.join(cwd, PARAMS_FILE),
+                         ENTRY_DIR + "tf.py", model_name, path_to_save,
                          train_table, val_table, "", project, cwd)
     submit_pai_task(cmd, datasource)
 
@@ -452,9 +487,8 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
         raise SQLFlowDiagnostic("not implemented")
     else:
         return get_pai_tf_cmd(cluster_conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
-                              ENTRY_DIR + "tensorflow.py", model_name,
-                              oss_model_path, predict_table, "", result_table,
-                              project, cwd)
+                              ENTRY_DIR + "tf.py", model_name, oss_model_path,
+                              predict_table, "", result_table, project, cwd)
 
 
 def create_predict_result_table(datasource, select, result_table, label_column,
@@ -671,7 +705,7 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     # format resultTable name to "db.table" to let the codegen form a submitting
     # argument of format "odps://project/tables/table_name"
     project = get_project(datasource)
-    if result_table(".") == 0:
+    if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
@@ -694,8 +728,7 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
         pass
     else:
         cmd = get_pai_tf_cmd(conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
-                             ENTRY_DIR + "tensorflow.py", model_name,
-                             oss_model_path, data_table, "", result_table,
-                             project, cwd)
+                             ENTRY_DIR + "tf.py", model_name, oss_model_path,
+                             data_table, "", result_table, project, cwd)
     submit_pai_task(cmd, datasource)
     drop_tmp_tables([data_table], datasource)

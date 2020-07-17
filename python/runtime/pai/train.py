@@ -22,6 +22,7 @@ import types
 import numpy as np
 import runtime
 import tensorflow as tf
+from runtime import oss
 from runtime.db import (connect_with_data_source, db_generator,
                         parseMaxComputeDSN)
 from runtime.model_metadata import collect_model_metadata
@@ -73,7 +74,8 @@ def train(datasource,
           pai_val_table="",
           feature_columns_code="",
           model_repo_image="",
-          original_sql=""):
+          original_sql="",
+          feature_column_names_map=None):
     model_meta = collect_model_metadata(original_sql, select,
                                         validation_select, estimator_string,
                                         model_params, feature_columns_code,
@@ -130,4 +132,12 @@ def train(datasource,
                                  save_checkpoints_steps, validation_metrics,
                                  load_pretrained_model, model_meta)
 
+    # save model to OSS
+    if num_workers == 1 or worker_id == 0:
+        oss_model_dir = FLAGS.sqlflow_oss_modeldir
+        oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
+                           feature_column_names, feature_column_names_map,
+                           feature_metas, label_meta, model_params,
+                           feature_columns_code, num_workers)
+        print("Model saved to oss: %s" % oss_model_dir)
     print("Done training")

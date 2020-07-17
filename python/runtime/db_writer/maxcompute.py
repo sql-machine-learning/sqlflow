@@ -12,8 +12,7 @@
 # limitations under the License.
 
 from odps import ODPS, tunnel
-
-from .base import BufferedDBWriter
+from runtime.db_writer.base import BufferedDBWriter
 
 
 class MaxComputeDBWriter(BufferedDBWriter):
