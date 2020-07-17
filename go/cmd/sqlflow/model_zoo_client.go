@@ -128,13 +128,19 @@ func releaseModelFromLocal(opts *options) error {
 	if err != nil {
 		return err
 	}
+	modelRepoImage := model.GetMetaAsString("model_repo_image")
+	if modelRepoImage == "" {
+		// use a default model repo image sqlflow/sqlflow:latest
+		modelRepoImage = "sqlflow/sqlflow:latest"
+	}
+
 	request := &pb.ReleaseModelLocalRequest{
 		Name:              opts.ModelName,
 		Tag:               opts.Version,
 		Description:       opts.Description,
 		EvaluationMetrics: model.GetMetaAsString("evaluation"),
 		ModelClassName:    model.GetMetaAsString("class_name"),
-		ModelRepoImageUrl: model.GetMetaAsString("model_repo_image"),
+		ModelRepoImageUrl: modelRepoImage,
 		ContentTar:        nil,
 	}
 	buf := make([]byte, 1024*10)

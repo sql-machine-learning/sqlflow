@@ -11,22 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.model import EstimatorType, Model
-
-
-class TestModel(unittest.TestCase):
-    def test_unsupport_driver(self):
-        uri = "unknown://path"
-        meta = {"train_params": {"n_classes": 3}}
-        m = Model(EstimatorType.XGBOOST, meta)
-        with self.assertRaises(SQLFlowDiagnostic) as ctx:
-            m.save(uri)
-        self.assertEqual(ctx.exception.args[0],
-                         "unsupported driven to save model: unknown")
-
-
-if __name__ == '__main__':
-    unittest.main()
+from runtime.sqlfs.tar import unzip_dir, zip_dir
