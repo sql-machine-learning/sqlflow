@@ -87,7 +87,7 @@ class TestDB(TestCase):
     @unittest.skipUnless(testing.get_driver() == "hive", "skip non hive tests")
     def test_hive(self):
         driver = testing.get_driver()
-        user, password, host, port, database, _ = parseMySQLDSN(
+        user, password, host, port, database, _, _ = parseHiveDSN(
             testing.get_hive_dsn())
         conn = connect(driver,
                        database,
