@@ -478,13 +478,14 @@ def execute(conn, sql_stmt):
     """
     if conn.driver == "maxcompute":
         inst = conn.execute_sql(sql_stmt)
-        return inst.is_successful
+        return inst.is_successful()
     else:
+        cur = conn.cursor()
         try:
-            cur = conn.cursor()
             cur.execute(sql_stmt)
             conn.commit()
-            cur.close()
             return True
         except:
             return False
+        finally:
+            cur.close()
