@@ -357,7 +357,7 @@ class TestGetTableSchema(TestCase):
                 ('sepal_width', 'FLOAT'),
                 ('petal_length', 'FLOAT'),
                 ('petal_width', 'FLOAT'),
-                ('class', 'INT(11)'),
+                ('class', 'INT'),
             )
             self.assertTrue(np.array_equal(expect, schema))
 
@@ -367,7 +367,7 @@ class TestGetTableSchema(TestCase):
             )
             expect = [
                 ("sepal_length", "FLOAT"),
-                ("new_petal_width", "DOUBLE"),
+                ("new_petal_width", "FLOAT"),
                 ("class", "INT"),
             ]
             self.assertTrue(np.array_equal(expect, schema))
