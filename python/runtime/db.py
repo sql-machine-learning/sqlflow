@@ -214,22 +214,32 @@ def limit_select(select, n):
         return "LIMIT {}".format(min(num, n))
 
     if LIMIT_PATTERN.search(select) is None:
-        return select + " LIMIT {}".format(n)
+        if ";" in select:
+            idx = select.rindex(";")
+        else:
+            idx = len(select)
+
+        return select[0:idx] + " LIMIT {}".format(n) + select[idx:]
     else:
         return LIMIT_PATTERN.sub(repl=replace_limit_num, string=select)
 
 
-MYSQL_DATA_TYPE_DICT = {
-    1: "TINYINT",
-    3: "INT",
-    4: "FLOAT",
-    5: "DOUBLE",
-    8: "BIGINT",
-    246: "DECIMAL",
-    252: "TEXT",
-    253: "VARCHAR",
-    254: "CHAR",
-}
+try:
+    import MySQLdb.constants.FIELD_TYPE as MYSQL_FIELD_TYPE
+    # Refer to http://mysql-python.sourceforge.net/MySQLdb-1.2.2/public/MySQLdb.constants.FIELD_TYPE-module.html
+    MYSQL_DATA_TYPE_DICT = {
+        MYSQL_FIELD_TYPE.TINY: "TINYINT",  # 1
+        MYSQL_FIELD_TYPE.LONG: "INT",  # 3
+        MYSQL_FIELD_TYPE.FLOAT: "FLOAT",  # 4
+        MYSQL_FIELD_TYPE.DOUBLE: "DOUBLE",  # 5
+        MYSQL_FIELD_TYPE.LONGLONG: "BIGINT",  # 8
+        MYSQL_FIELD_TYPE.NEWDECIMAL: "DECIMAL",  # 246
+        MYSQL_FIELD_TYPE.BLOB: "TEXT",  # 252
+        MYSQL_FIELD_TYPE.VAR_STRING: "VARCHAR",  # 253
+        MYSQL_FIELD_TYPE.STRING: "CHAR",  # 254
+    }
+except:
+    MYSQL_DATA_TYPE_DICT = {}
 
 
 def selected_columns_and_types(conn, select):

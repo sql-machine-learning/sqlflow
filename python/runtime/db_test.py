@@ -18,8 +18,9 @@ from unittest import TestCase
 import numpy as np
 import tensorflow as tf
 from odps import ODPS, tunnel
-from runtime.db import (buffered_db_writer, connect, connect_with_data_source,
-                        db_generator, get_table_schema, parseHiveDSN,
+from runtime.db import (MYSQL_DATA_TYPE_DICT, buffered_db_writer, connect,
+                        connect_with_data_source, db_generator,
+                        get_table_schema, limit_select, parseHiveDSN,
                         parseMaxComputeDSN, parseMySQLDSN, read_feature,
                         read_features_from_row, selected_columns_and_types)
 
@@ -400,6 +401,52 @@ class TestGetTableSchema(TestCase):
                 ("class", "BIGINT"),
             ]
             self.assertTrue(np.array_equal(expect, schema))
+
+
+class TestMySQLFieldType(TestCase):
+    @unittest.skipUnless(
+        os.getenv("SQLFLOW_TEST_DB") == "mysql", "run only in mysql")
+    def test_field_type(self):
+        self.assertGreater(len(MYSQL_DATA_TYPE_DICT), 0)
+
+        addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "localhost:3306")
+        conn = connect_with_data_source(
+            "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr)
+        cursor = conn.cursor()
+
+        table_name = "iris.test_mysql_field_type_table"
+        drop_table_sql = "DROP TABLE IF EXISTS %s" % table_name
+        create_table_sql = "CREATE TABLE IF NOT EXISTS " + table_name + "(a %s)"
+        select_sql = "SELECT * FROM %s" % table_name
+
+        for int_type, str_type in MYSQL_DATA_TYPE_DICT.items():
+            if str_type in ["VARCHAR", "CHAR"]:
+                str_type += "(255)"
+
+            cursor.execute(drop_table_sql)
+            cursor.execute(create_table_sql % str_type)
+            cursor.execute(select_sql)
+
+            int_type_actual = cursor.description[0][1]
+            cursor.execute(drop_table_sql)
+
+            self.assertEqual(int_type_actual, int_type,
+                             "%s not match" % str_type)
+
+
+class TestLimitSelect(TestCase):
+    def test_limit_select(self):
+        self.assertEqual("SELECT * FROM t LIMIT 2",
+                         limit_select("SELECT * FROM t LIMIT 30", 2))
+
+        self.assertEqual("SELECT * FROM t LIMIT 30; \t",
+                         limit_select("SELECT * FROM t LIMIT 30; \t", 100))
+
+        self.assertEqual("SELECT * FROM t LIMIT 3",
+                         limit_select("SELECT * FROM t", 3))
+
+        self.assertEqual("SELECT * FROM t \t  LIMIT 4; ",
+                         limit_select("SELECT * FROM t \t ; ", 4))
 
 
 if __name__ == "__main__":
