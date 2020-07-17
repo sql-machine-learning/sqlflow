@@ -40,7 +40,11 @@ import (
 const (
 	tarball    = "job.tar.gz"
 	paramsFile = "params.txt"
-
+	// Let's guess the OSS auth error from message body:
+	// ...
+	// FAILED: Failed 26***306:kNotFound:The role_arn you provide not exists in OSS auth service. Please check carefully.
+	// ...
+	ossAuthErrorMsg = "The role_arn you provide not exists in OSS auth service"
 	// lifecycleOnTmpTable indicates 7 days for the temporary table
 	// which create from SELECT statement
 	lifecycleOnTmpTable = 7
@@ -714,4 +718,17 @@ func (s *paiExecutor) GetTrainStmtFromModel() bool { return false }
 
 func pickPAILogViewerURL(output string) []string {
 	return reODPSLogURL.FindAllString(output, -1)
+}
+
+func diagnose(taskType, output string) error {
+	msg := fmt.Sprintf("%s task failed", taskType)
+	if strings.Contains(output, ossAuthErrorMsg) {
+		tips := os.Getenv("ERROR_PAI2OSS")
+		if len(tips) == 0 {
+			tips = "due to lack of the auth for PAI to access OSS(need to contact your administrator)"
+		}
+		msg = fmt.Sprintf("%s, %s", msg, tips)
+	}
+	lv := pickPAILogViewerURL(output)
+	return fmt.Errorf("%s, please go to check details error logs in the LogViewer website: %s", msg, strings.Join(lv, "\n"))
 }
