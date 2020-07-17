@@ -33,7 +33,7 @@ def parseMySQLDSN(dsn):
 
 
 def parseHiveDSN(dsn):
-    # usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr
+    # usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_queuename=mr
     user_passwd, address_database, config_str = re.findall(
         "^(.*)@([.a-zA-Z0-9/:_]*)(\?.*)?", dsn)[0]
     user, passwd = user_passwd.split(":")
