@@ -40,8 +40,7 @@ class SubmitterTestCase(TestCase):
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
-            "test_project.val_table", "test_project.res_table", "test_project",
-            "/tmp")
+            "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
@@ -55,8 +54,7 @@ class SubmitterTestCase(TestCase):
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
-            "test_project.val_table", "test_project.res_table", "test_project",
-            "/tmp")
+            "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
@@ -181,6 +179,15 @@ class SubmitPAITrainTask(TestCase):
     WITH model.n_classes = 3, model.hidden_units = [10, 20]
     LABEL class
     INTO e2etest_pai_dnn;''')
+
+    @unittest.skipUnless(testing.get_driver() == "maxcompute"
+                         and testing.get_submitter() == "pai",
+                         "skip non PAI tests")
+    def test_submit_pai_predict_task(self):
+        submitter.submit_pai_tf_predict(
+            testing.get_datasource(),
+            """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
+            "alifin_jtest_dev.pai_dnn_predict", "class", "e2etest_pai_dnn", {})
 
 
 if __name__ == "__main__":
