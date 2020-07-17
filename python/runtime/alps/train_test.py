@@ -16,13 +16,15 @@ import subprocess
 import unittest
 from unittest import TestCase
 
+import runtime.testing as testing
+
 
 class TestALPSTrain(TestCase):
     '''NOTE: we must test tensorflow training and predicting in separated processes, or
     TensorFlow will raise error "Graph is finalized.'''
+    @unittest.skipUnless(testing.get_submitter() == "alps",
+                         "skip non alps tests")
     def test_train(self):
-        if os.getenv("SQLFLOW_submitter") != "alps":
-            return
         try:
             # should run this test under directory $GOPATH/sqlflow.org/sqlflow
             ret = subprocess.run([
