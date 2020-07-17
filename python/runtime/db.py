@@ -192,29 +192,97 @@ def read_feature(raw_val, feature_spec, feature_name):
         return raw_val,
 
 
-def selected_cols(conn, select):
+LIMIT_PATTERN = re.compile("LIMIT\\s+([0-9]+)", flags=re.I)
+
+
+def limit_select(select, n):
+    """Make the select SQL statement with limited row number to query.
+
+    Args:
+        select (str): the select SQL statement.
+        n (int): the limited row number to query.
+
+    Returns:
+        If n >= 0, return a new SQL statement which would query n row(s) at most.
+        If n < 0, return the original SQL statement.
+    """
+    if n < 0:
+        return select
+
+    def replace_limit_num(matched_limit):
+        num = int(matched_limit.group(1))
+        return "LIMIT {}".format(min(num, n))
+
+    if LIMIT_PATTERN.search(select) is None:
+        return select + " LIMIT {}".format(n)
+    else:
+        return LIMIT_PATTERN.sub(repl=replace_limit_num, string=select)
+
+
+MYSQL_DATA_TYPE_DICT = {
+    1: "TINYINT",
+    3: "INT",
+    4: "FLOAT",
+    5: "DOUBLE",
+    8: "BIGINT",
+    246: "DECIMAL",
+    252: "TEXT",
+    253: "VARCHAR",
+    254: "CHAR",
+}
+
+
+def selected_columns_and_types(conn, select):
+    """Get the columns and types returned by the select statement.
+
+    Args:
+        conn: the connection object.
+        select (str): the select SQL statement.
+
+    Returns:
+        A tuple whose each element is (column_name, column_type).
+    """
     select = select.strip().rstrip(";")
-    limited = re.findall("LIMIT [0-9]*$", select.upper())
-    if not limited:
-        select += " LIMIT 1"
+    select = limit_select(select, 1)
 
     driver = conn.driver
+    if driver == "mysql":
+        cursor = conn.cursor()
+        cursor.execute(select)
+        try:
+            name_and_type = []
+            for desc in cursor.description:
+                # NOTE: MySQL returns an integer number instead of a string
+                # to represent the data type.
+                typ = MYSQL_DATA_TYPE_DICT.get(desc[1])
+                if typ is None:
+                    raise ValueError(
+                        "unsupported data type of column {}".format(desc[0]))
+                name_and_type.append((desc[0], typ))
+            return name_and_type
+        finally:
+            cursor.close()
+
     if driver == "hive":
         cursor = conn.cursor(configuration=conn.session_cfg)
         cursor.execute(select)
-        field_names = None if cursor.description is None \
-            else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+        name_and_type = []
+        for desc in cursor.description:
+            name = desc[0].split('.')[-1]
+            name_and_type.append((name, desc[1]))
         cursor.close()
-    elif driver == "maxcompute":
+        return name_and_type
+
+    if driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        field_names = MaxCompute.selected_cols(conn, select)
-    else:
-        cursor = conn.cursor()
-        cursor.execute(select)
-        field_names = None if cursor.description is None \
-            else [i[0] for i in cursor.description]
-        cursor.close()
-    return field_names
+        return MaxCompute.selected_columns_and_types(conn, select)
+
+    raise NotImplementedError("unsupported driver {}".format(driver))
+
+
+def selected_cols(conn, select):
+    name_and_type = selected_columns_and_types(conn, select)
+    return [item[0] for item in name_and_type]
 
 
 def pai_selected_cols(table):
@@ -381,24 +449,19 @@ def get_table_schema(conn, table):
     Returns:
         Tuple of (field_name, field_type) tuples
     """
-    statement = "describe %s" % table
     if conn.driver == "maxcompute":
-        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
-        inst = conn.execute_sql(statement)
-        if not inst.is_successful():
-            return None
-        fields = []
-        with inst.open_reader(tunnel=True, compress_option=compress) as reader:
-            for row in reader[0:reader.count]:
-                fields.append((row[0], row[1]))
-        return fields
+        schema = conn.get_table(table).schema
+        names_and_types = [(c.name, str(c.type).upper())
+                           for c in schema.columns]
+        return names_and_types
     else:
+        statement = "describe %s" % table
         cursor = conn.cursor()
         cursor.execute(statement)
         fields = []
         for field in cursor:
             # add field name and type
-            fields.append((field[0], field[1]))
+            fields.append((field[0], field[1].upper()))
         cursor.close()
     return fields
 
