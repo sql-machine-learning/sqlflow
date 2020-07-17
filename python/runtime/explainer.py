@@ -34,6 +34,11 @@ def plot_and_save(plotfunc,
     plot_and_save plots and saves matplotlib figures using different backends
     Args:
         plotfunc: A callable that plot the figures
+        oss_dest: The oss path to save the figures
+        oss_ak: The access key of the oss service
+        oss_sk: The security key of the oss service
+        oss_endpoint: The endpoint of the oss service
+        oss_bucket_name: The bucket name of the oss service
         filename: The prefix of the figure files to be saved
     Return:
         None
