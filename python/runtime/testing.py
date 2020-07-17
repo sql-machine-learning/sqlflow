@@ -55,12 +55,11 @@ def get_maxcompute_dsn():
     scheme = None
     if endpoint.startswith("http://"):
         scheme = "http"
-        endpoint = endpoint[len(scheme) + 2]
     elif endpoint.startswith("https://"):
         scheme = "https"
 
     if scheme:
-        endpoint = endpoint[len(scheme) + 2:]
+        endpoint = endpoint[len(scheme) + 3:]
 
     params = {}
     idx = endpoint.find("?")
