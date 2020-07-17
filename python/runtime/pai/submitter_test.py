@@ -11,12 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import os
 import unittest
 from unittest import TestCase
 
-import tensorflow as tf
+import runtime.testing as testing
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 
@@ -41,8 +40,7 @@ class SubmitterTestCase(TestCase):
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
-            "test_project.val_table", "test_project.res_table", "test_project",
-            "/tmp")
+            "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
@@ -56,8 +54,7 @@ class SubmitterTestCase(TestCase):
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
-            "test_project.val_table", "test_project.res_table", "test_project",
-            "/tmp")
+            "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
             "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
             "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
@@ -71,20 +68,9 @@ class SubmitterTestCase(TestCase):
 
 
 class SubmitPAITrainTask(TestCase):
-    def setUp(self):
-        self.db_type = os.getenv("SQLFLOW_TEST_DB")
-        self.submitter = os.getenv("SQLFLOW_submitter")
-        self.AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
-        self.SK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
-        self.endpoint = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
-        self.datasource = "maxcompute://%s:%s@%s" % (self.AK, self.SK,
-                                                     self.endpoint)
-        if self.db_type != "maxcompute" or self.submitter != "pai":
-            self.skipTest("Not on PAI, skip.")
-        if any(i == None
-               for i in [self.AK, self.SK, self.endpoint, self.datasource]):
-            self.fail("Invalid config.")
-
+    @unittest.skipUnless(testing.get_driver() == "maxcompute"
+                         and testing.get_submitter() == "pai",
+                         "skip non PAI tests")
     def test_submit_pai_train_task(self):
 
         feature_column_names = [
@@ -160,7 +146,7 @@ class SubmitPAITrainTask(TestCase):
         feature_columns = eval(feature_columns_code)
 
         submitter.submit_pai_tf_train(
-            self.datasource,
+            testing.get_datasource(),
             "DNNClassifier",
             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
             "",
@@ -193,6 +179,15 @@ class SubmitPAITrainTask(TestCase):
     WITH model.n_classes = 3, model.hidden_units = [10, 20]
     LABEL class
     INTO e2etest_pai_dnn;''')
+
+    @unittest.skipUnless(testing.get_driver() == "maxcompute"
+                         and testing.get_submitter() == "pai",
+                         "skip non PAI tests")
+    def test_submit_pai_predict_task(self):
+        submitter.submit_pai_tf_predict(
+            testing.get_datasource(),
+            """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
+            "alifin_jtest_dev.pai_dnn_predict", "class", "e2etest_pai_dnn", {})
 
 
 if __name__ == "__main__":

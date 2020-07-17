@@ -28,7 +28,7 @@ LIFECYCLE_ON_TMP_TABLE = 7
 JOB_ARCHIVE_FILE = "job.tar.gz"
 PARAMS_FILE = "params.txt"
 TRAIN_PARAMS_FILE = "train_params.pkl"
-ENTRY_DIR = "runtime/pai/entry/"
+ENTRY_DIR = "runtime/pai/"
 
 TF_REQUIREMENT = """
 adanet==0.8.0
@@ -250,7 +250,7 @@ def max_compute_table_url(table):
 
 def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
                    model_name, oss_model_path, train_table, val_table,
-                   res_table, project, cwd):
+                   res_table, project):
     """Get PAI-TF cmd for training
 
     Args:
@@ -264,7 +264,6 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
         val_table: evaluate data table
         res_table: table to save train model, if given
         project: current odps project
-        cwd: current working dir
 
     Retruns:
         The cmd to run on PAI
@@ -407,8 +406,8 @@ def submit_pai_tf_train(datasource, estimator_string, select,
     # submit pai task to execute the training
     cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                          "file://" + path.join(cwd, PARAMS_FILE),
-                         ENTRY_DIR + "tf.py", model_name, path_to_save,
-                         train_table, val_table, "", project, cwd)
+                         ENTRY_DIR + "entry.py", model_name, path_to_save,
+                         train_table, val_table, "", project)
     submit_pai_task(cmd, datasource)
 
     # save trained model to sqlfs
@@ -473,7 +472,8 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
     # NOTE(typhoonzero): for PAI machine learning toolkit predicting, we can not load the TrainStmt
     # since the model saving is fully done by PAI. We directly use the columns in SELECT
     # statement for prediction, error will be reported by PAI job if the columns not match.
-    schema = db.get_table_schema(datasource, result_table)
+    conn = db.connect_with_data_source(datasource)
+    schema = db.get_table_schema(conn, result_table)
     result_fields = [col[0] for col in schema]
 
     if model_type == oss.MODEL_TYPE_PAIML:
@@ -486,9 +486,12 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
         # (TODO:lhw) add cmd for XGB
         raise SQLFlowDiagnostic("not implemented")
     else:
-        return get_pai_tf_cmd(cluster_conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
-                              ENTRY_DIR + "tf.py", model_name, oss_model_path,
-                              predict_table, "", result_table, project, cwd)
+        return get_pai_tf_cmd(cluster_conf,
+                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                              "file://" + path.join(cwd, PARAMS_FILE),
+                              ENTRY_DIR + "entry.py", model_name,
+                              oss_model_path, predict_table, "", result_table,
+                              project)
 
 
 def create_predict_result_table(datasource, select, result_table, label_column,
@@ -510,7 +513,7 @@ def create_predict_result_table(datasource, select, result_table, label_column,
     db.execute(conn, create_table_sql)
 
     # if label is not in data table, add a int column for it
-    schema = db.get_table_schema(datasource, result_table)
+    schema = db.get_table_schema(conn, result_table)
     col_type = "INT"
     for (name, ctype) in schema:
         if name == train_label_column or name == label_column:
@@ -527,9 +530,21 @@ def create_predict_result_table(datasource, select, result_table, label_column,
             (result_table, train_label_column))
 
 
-def submit_pytf_predict(datasource, select, result_table, label_column,
-                        train_label_column, model_name, model_attrs):
-    """This function pack need params and resource to a tarball
+def setup_predict_entry(params, model_type):
+    """Setup PAI prediction entry function according to model type"""
+    if model_type == oss.MODEL_TYPE_TF:
+        params["entry_type"] = "predict_tf"
+    elif model_type == oss.MODEL_TYPE_PAIML:
+        params["entry_type"] = "predict_paiml"
+    elif model_type == oss.MODEL_TYPE_XGB:
+        params["entry_type"] = "predict_xgb"
+    else:
+        raise SQLFlowDiagnostic("unsupported model type: %d" % model_type)
+
+
+def submit_pai_tf_predict(datasource, select, result_table, label_column,
+                          model_name, model_attrs):
+    """This function pack needed params and resource to a tarball
     and submit a prediction task to PAI
 
     Args:
@@ -537,17 +552,16 @@ def submit_pytf_predict(datasource, select, result_table, label_column,
         select: sql statement to get prediction data set
         result_table: the table name to save result
         label_column: name of the label column, if not exist in select
-        train_label_column: name of the label column when training
         model_name: model used to do prediction
         model_params: dict, Params for training, crossponding to WITH clause
     """
-    params = locals()
-    params["entry_type"] = "predict"
+    params = dict(locals())
 
-    cwd = os.getcwd()
+    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
     # "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
+    params["data_table"] = data_table
 
     # format resultTable name to "db.table" to let the codegen form a submitting
     # argument of format "odps://project/tables/table_name"
@@ -555,12 +569,15 @@ def submit_pytf_predict(datasource, select, result_table, label_column,
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
 
+    # (TODO:lhw) get train label column from model meta
     create_predict_result_table(datasource, data_table, result_table,
-                                label_column, train_label_column)
+                                label_column, None)
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
+    params["oss_model_path"] = oss_model_path
     model_type, estimator = get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
+    setup_predict_entry(params, model_type)
 
     conf = cluster_conf.get_cluster_config(model_attrs)
     prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
@@ -728,7 +745,8 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
         pass
     else:
         cmd = get_pai_tf_cmd(conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
-                             ENTRY_DIR + "tf.py", model_name, oss_model_path,
-                             data_table, "", result_table, project, cwd)
+                             ENTRY_DIR + "entry.py", model_name,
+                             oss_model_path, data_table, "", result_table,
+                             project)
     submit_pai_task(cmd, datasource)
     drop_tmp_tables([data_table], datasource)

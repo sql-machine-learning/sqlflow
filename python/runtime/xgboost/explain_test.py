@@ -16,12 +16,11 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
-from runtime.db_test import testing_mysql_db_url
-from runtime.xgboost.explain import explain as xgb_explain
+import runtime.testing as testing
 from runtime.xgboost.explain import xgb_shap_dataset, xgb_shap_values
 from runtime.xgboost.train import train as xgb_train
 
-datasource = testing_mysql_db_url()
+datasource = testing.get_datasource()
 
 select = "SELECT * FROM boston.train;"
 

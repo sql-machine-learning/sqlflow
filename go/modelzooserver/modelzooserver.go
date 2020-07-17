@@ -253,8 +253,16 @@ func (s *modelZooServer) ReleaseModelRepo(stream pb.ModelZooServer_ReleaseModelR
 		// do not push images when testing on CI
 		dryrun = true
 	}
-	if err := buildAndPushImage(modelExtractDir, reqName, reqTag, dryrun); err != nil {
-		return err
+	_, err = os.Stat("/var/run/docker.sock")
+	if os.IsNotExist(err) {
+		// build image using kaniko if can not run `docker build`
+		if err := buildAndPushImageKaniko(modelExtractDir, reqName, reqTag, dryrun); err != nil {
+			return err
+		}
+	} else {
+		if err := buildAndPushImage(modelExtractDir, reqName, reqTag, dryrun); err != nil {
+			return err
+		}
 	}
 
 	// get model_repo id, if exists, return already existed error
