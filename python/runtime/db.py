@@ -241,6 +241,45 @@ except:
     MYSQL_FIELD_TYPE_DICT = {}
 
 
+def _get_mysql_columns_and_types(cursor):
+    '''
+    Get the column names and types of the MySQL cursor.
+
+    Args:
+         cursor: the cursor of the MySQL connection object.
+
+    Returns:
+        A tuple whose each element is (column_name, column_type).
+    '''
+    name_and_type = []
+    for desc in cursor.description:
+        # NOTE: MySQL returns an integer number instead of a string
+        # to represent the data type.
+        typ = MYSQL_FIELD_TYPE_DICT.get(desc[1])
+        if typ is None:
+            raise ValueError("unsupported data type of column {}".format(
+                desc[0]))
+        name_and_type.append((desc[0], typ))
+    return name_and_type
+
+
+def _get_hive_columns_and_types(cursor):
+    '''
+    Get the column names and types of the Hive cursor.
+
+    Args:
+         cursor: the cursor of the Hive connection object.
+
+    Returns:
+        A tuple whose each element is (column_name, column_type).
+    '''
+    name_and_type = []
+    for desc in cursor.description:
+        name = desc[0].split('.')[-1]
+        name_and_type.append((name, desc[1]))
+    return name_and_type
+
+
 def selected_columns_and_types(conn, select):
     """Get the columns and types returned by the select statement.
 
@@ -259,26 +298,14 @@ def selected_columns_and_types(conn, select):
         cursor = conn.cursor()
         cursor.execute(select)
         try:
-            name_and_type = []
-            for desc in cursor.description:
-                # NOTE: MySQL returns an integer number instead of a string
-                # to represent the data type.
-                typ = MYSQL_FIELD_TYPE_DICT.get(desc[1])
-                if typ is None:
-                    raise ValueError(
-                        "unsupported data type of column {}".format(desc[0]))
-                name_and_type.append((desc[0], typ))
-            return name_and_type
+            return _get_mysql_columns_and_types(cursor)
         finally:
             cursor.close()
 
     if driver == "hive":
         cursor = conn.cursor(configuration=conn.session_cfg)
         cursor.execute(select)
-        name_and_type = []
-        for desc in cursor.description:
-            name = desc[0].split('.')[-1]
-            name_and_type.append((name, desc[1]))
+        name_and_type = _get_hive_columns_and_types(cursor)
         cursor.close()
         return name_and_type
 
@@ -331,17 +358,19 @@ def db_generator(conn, statement, label_meta=None, fetch_size=128):
             cursor = conn.cursor()
         cursor.execute(statement)
         if driver == "hive":
-            field_names = None if cursor.description is None \
-                else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+            name_and_type = _get_hive_columns_and_types(cursor)
         else:
-            field_names = None if cursor.description is None \
-                else [i[0] for i in cursor.description]
+            name_and_type = _get_mysql_columns_and_types(cursor)
+
+        reader.field_names = [item[0] for item in name_and_type]
+        reader.field_types = [item[1] for item in name_and_type]
 
         if label_meta:
             try:
-                label_idx = field_names.index(label_meta["feature_name"])
+                label_idx = reader.field_names.index(
+                    label_meta["feature_name"])
             except ValueError:
-                # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
+                # NOTE(typhoonzero): For clustering model, label_column_name may not in reader.field_names when predicting.
                 label_idx = None
         else:
             label_idx = None

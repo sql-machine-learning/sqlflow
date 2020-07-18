@@ -13,6 +13,7 @@
 
 import unittest
 
+import numpy as np
 import runtime.db as db
 import runtime.testing as testing
 from runtime.verifier import fetch_samples, verify_column_name_and_type
@@ -33,27 +34,46 @@ class TestFetchSamples(unittest.TestCase):
         conn = testing.get_singleton_db_connection()
 
         select = "SELECT * FROM iris.train"
-        column_num = len(db.selected_columns_and_types(conn, select))
+        name_and_type = db.selected_columns_and_types(conn, select)
+        expect_field_names = [item[0] for item in name_and_type]
+        expect_field_types = [item[1] for item in name_and_type]
+        column_num = len(name_and_type)
+
+        gen = fetch_samples(conn, select, n=0)
+        self.assertTrue(gen is None)
 
         gen = fetch_samples(conn, select, n=-1)
-        row_num = length(gen)
+        row_num = length(gen())
+        self.assertTrue(np.array_equal(gen.field_names, expect_field_names))
+        self.assertTrue(np.array_equal(gen.field_types, expect_field_types))
         self.assertGreater(row_num, 25)
 
         gen = fetch_samples(conn, select, n=25)
         n = 0
-        for rows in gen:
+
+        self.assertTrue(np.array_equal(gen.field_names, expect_field_names))
+        self.assertTrue(np.array_equal(gen.field_types, expect_field_types))
+
+        for rows in gen():
             self.assertEqual(len(rows), column_num)
             n += 1
+
         self.assertEqual(n, 25)
 
         gen = fetch_samples(conn, select, n=10)
-        self.assertEqual(length(gen), 10)
+        self.assertTrue(np.array_equal(gen.field_names, expect_field_names))
+        self.assertTrue(np.array_equal(gen.field_types, expect_field_types))
+        self.assertEqual(length(gen()), 10)
 
         gen = fetch_samples(conn, "%s LIMIT 1" % select, n=1000)
-        self.assertEqual(length(gen), 1)
+        self.assertTrue(np.array_equal(gen.field_names, expect_field_names))
+        self.assertTrue(np.array_equal(gen.field_types, expect_field_types))
+        self.assertEqual(length(gen()), 1)
 
         gen = fetch_samples(conn, select, n=row_num * 2)
-        self.assertEqual(length(gen), row_num)
+        self.assertTrue(np.array_equal(gen.field_names, expect_field_names))
+        self.assertTrue(np.array_equal(gen.field_types, expect_field_types))
+        self.assertEqual(length(gen()), row_num)
 
 
 class TestFetchVerifyColumnNameAndType(unittest.TestCase):
