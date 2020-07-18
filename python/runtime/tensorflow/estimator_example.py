@@ -14,13 +14,12 @@
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 import shutil
 
-import runtime
+import runtime.testing as testing
 import tensorflow as tf
-from runtime.db_test import testing_mysql_db_url
 from runtime.tensorflow.predict import pred
 from runtime.tensorflow.train import train
 
-datasource = testing_mysql_db_url()
+datasource = testing.get_datasource()
 select = "SELECT * FROM iris.train;"
 validate_select = "SELECT * FROM iris.test;"
 select_binary = "SELECT * FROM iris.train WHERE class!=2;"

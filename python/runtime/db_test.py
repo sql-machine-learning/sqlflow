@@ -16,27 +16,13 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
-import tensorflow as tf
+import runtime.testing as testing
 from odps import ODPS, tunnel
-from runtime.db import (buffered_db_writer, connect, connect_with_data_source,
-                        db_generator, get_table_schema, parseHiveDSN,
+from runtime.db import (MYSQL_FIELD_TYPE_DICT, buffered_db_writer, connect,
+                        connect_with_data_source, db_generator,
+                        get_table_schema, limit_select, parseHiveDSN,
                         parseMaxComputeDSN, parseMySQLDSN, read_feature,
-                        read_features_from_row)
-
-
-def testing_mysql_cfg():
-    user = os.environ.get('SQLFLOW_TEST_DB_MYSQL_USER') or "root"
-    password = os.environ.get('SQLFLOW_TEST_DB_MYSQL_PASSWD') or "root"
-    addr = os.environ.get('SQLFLOW_TEST_DB_MYSQL_ADDR') or "127.0.0.1:3306"
-    host, port = addr.split(":")
-    database = "iris"
-    return (user, password, host, port, database)
-
-
-def testing_mysql_db_url():
-    user, password, host, port, database = testing_mysql_cfg()
-    return "mysql://{0}:{1}@tcp({2}:{3})/{4}?maxAllowedPacket=0".format(
-        user, password, host, port, database)
+                        read_features_from_row, selected_columns_and_types)
 
 
 def _execute_maxcompute(conn, statement):
@@ -80,47 +66,47 @@ class TestDB(TestCase):
     select_statement = "select * from test_db"
     drop_statement = "drop table if exists test_db"
 
+    @unittest.skipUnless(testing.get_driver() == "mysql",
+                         "skip non mysql tests")
     def test_mysql(self):
-        driver = os.environ.get('SQLFLOW_TEST_DB')
-        if driver == "mysql":
-            user, password, host, port, database = testing_mysql_cfg()
-            conn = connect(driver,
-                           database,
-                           user=user,
-                           password=password,
-                           host=host,
-                           port=port)
-            self._do_test(driver, conn)
+        driver = testing.get_driver()
+        user, password, host, port, database, _ = parseMySQLDSN(
+            testing.get_mysql_dsn())
+        conn = connect(driver,
+                       database,
+                       user=user,
+                       password=password,
+                       host=host,
+                       port=port)
+        self._do_test(driver, conn)
+        conn.close()
 
-            conn = connect_with_data_source(testing_mysql_db_url())
-            self._do_test(driver, conn)
+        conn = testing.get_singleton_db_connection()
+        self._do_test(driver, conn)
 
+    @unittest.skipUnless(testing.get_driver() == "hive", "skip non hive tests")
     def test_hive(self):
-        driver = os.environ.get('SQLFLOW_TEST_DB')
-        if driver == "hive":
-            host = "127.0.0.1"
-            port = "10000"
-            conn = connect(driver,
-                           "iris",
-                           user="root",
-                           password="root",
-                           host=host,
-                           port=port)
-            self._do_test(driver,
-                          conn,
-                          hdfs_namenode_addr="127.0.0.1:8020",
-                          hive_location="/sqlflow")
-            conn.close()
+        driver = testing.get_driver()
+        user, password, host, port, database, _, _ = parseHiveDSN(
+            testing.get_hive_dsn())
+        conn = connect(driver,
+                       database,
+                       user=user,
+                       password=password,
+                       host=host,
+                       port=port)
+        self._do_test(driver,
+                      conn,
+                      hdfs_namenode_addr="127.0.0.1:8020",
+                      hive_location="/sqlflow")
+        conn.close()
 
-            conn = connect_with_data_source(
-                "hive://root:root@127.0.0.1:10000/iris")
-            self._do_test(driver, conn)
-            self._do_test_hive_specified_db(
-                driver,
-                conn,
-                hdfs_namenode_addr="127.0.0.1:8020",
-                hive_location="/sqlflow")
-            conn.close()
+        conn = testing.get_singleton_db_connection()
+        self._do_test(driver, conn)
+        self._do_test_hive_specified_db(driver,
+                                        conn,
+                                        hdfs_namenode_addr="127.0.0.1:8020",
+                                        hive_location="/sqlflow")
 
     def _do_test_hive_specified_db(self,
                                    driver,
@@ -191,80 +177,56 @@ class TestGenerator(TestCase):
     drop_statement = "drop table if exists test_table_float_fea"
     insert_statement = "insert into test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)"
 
+    @unittest.skipUnless(testing.get_driver() == "mysql",
+                         "skip non mysql tests")
     def test_generator(self):
-        driver = os.environ.get('SQLFLOW_TEST_DB')
-        if driver == "mysql":
-            database = "iris"
-            user, password, host, port, database = testing_mysql_cfg()
-            conn = connect(driver,
-                           database,
-                           user=user,
-                           password=password,
-                           host=host,
-                           port=int(port))
-            # prepare test data
-            execute(driver, conn, self.drop_statement)
-            execute(driver, conn, self.create_statement)
-            execute(driver, conn, self.insert_statement)
+        driver = testing.get_driver()
+        user, password, host, port, database, _ = parseMySQLDSN(
+            testing.get_mysql_dsn())
+        conn = connect(driver,
+                       database,
+                       user=user,
+                       password=password,
+                       host=host,
+                       port=int(port))
+        # prepare test data
+        execute(driver, conn, self.drop_statement)
+        execute(driver, conn, self.create_statement)
+        execute(driver, conn, self.insert_statement)
 
-            column_name_to_type = {
-                "features": {
-                    "feature_name": "features",
-                    "delimiter": "",
-                    "dtype": "float32",
-                    "is_sparse": False,
-                    "shape": []
-                }
+        column_name_to_type = {
+            "features": {
+                "feature_name": "features",
+                "delimiter": "",
+                "dtype": "float32",
+                "is_sparse": False,
+                "shape": []
             }
-            label_meta = {
-                "feature_name": "label",
-                "shape": [],
-                "delimiter": ""
-            }
-            gen = db_generator(conn, "SELECT * FROM test_table_float_fea",
-                               label_meta)
-            idx = 0
-            for row, label in gen():
-                features = read_features_from_row(row, ["features"],
-                                                  ["features"],
-                                                  column_name_to_type)
-                d = (features, label)
-                if idx == 0:
-                    self.assertEqual(d, (((1.0, ), ), 0))
-                elif idx == 1:
-                    self.assertEqual(d, (((2.0, ), ), 1))
-                idx += 1
-            self.assertEqual(idx, 2)
+        }
+        label_meta = {"feature_name": "label", "shape": [], "delimiter": ""}
+        gen = db_generator(conn, "SELECT * FROM test_table_float_fea",
+                           label_meta)
+        idx = 0
+        for row, label in gen():
+            features = read_features_from_row(row, ["features"], ["features"],
+                                              column_name_to_type)
+            d = (features, label)
+            if idx == 0:
+                self.assertEqual(d, (((1.0, ), ), 0))
+            elif idx == 1:
+                self.assertEqual(d, (((2.0, ), ), 1))
+            idx += 1
+        self.assertEqual(idx, 2)
 
+    @unittest.skipUnless(testing.get_driver() == "mysql",
+                         "skip non mysql tests")
     def test_generate_fetch_size(self):
-        driver = os.environ.get('SQLFLOW_TEST_DB')
-        if driver == "mysql":
-            user, password, host, port, database = testing_mysql_cfg()
-            conn = connect(driver,
-                           database,
-                           user=user,
-                           password=password,
-                           host=host,
-                           port=port)
-            column_name_to_type = {
-                "sepal_length": {
-                    "feature_name": "sepal_length",
-                    "delimiter": "",
-                    "dtype": "float32",
-                    "is_sparse": False,
-                    "shape": []
-                }
-            }
-            label_meta = {
-                "feature_name": "label",
-                "shape": [],
-                "delimiter": ""
-            }
-            gen = db_generator(conn,
-                               'SELECT * FROM iris.train limit 10',
-                               label_meta,
-                               fetch_size=4)
-            self.assertEqual(len([g for g in gen()]), 10)
+        label_meta = {"feature_name": "label", "shape": [], "delimiter": ""}
+        gen = db_generator(testing.get_singleton_db_connection(),
+                           'SELECT * FROM iris.train limit 10',
+                           label_meta,
+                           fetch_size=4)
+        self.assertEqual(len([g for g in gen()]), 10)
 
 
 class TestConnectWithDataSource(TestCase):
@@ -323,41 +285,120 @@ class TestConnectWithDataSource(TestCase):
 
 class TestGetTableSchema(TestCase):
     def test_get_table_schema(self):
-        if os.getenv("SQLFLOW_TEST_DB") == "mysql":
-            addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "localhost:3306")
-            conn = connect_with_data_source(
-                "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr)
+        driver = testing.get_driver()
+        conn = testing.get_singleton_db_connection()
+        if driver == "mysql":
             schema = get_table_schema(conn, "iris.train")
             expect = (
-                "[('sepal_length', 'float'), ('sepal_width', 'float'), "
-                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int(11)')]"
+                ('sepal_length', 'FLOAT'),
+                ('sepal_width', 'FLOAT'),
+                ('petal_length', 'FLOAT'),
+                ('petal_width', 'FLOAT'),
+                ('class', 'INT(11)'),
             )
-            self.assertEqual(expect, str(schema))
-            conn.close()
-        elif os.getenv("SQLFLOW_TEST_DB") == "hive":
-            addr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
-            conn = connect_with_data_source(addr)
-            schema = get_table_schema(conn, "test_db")
-            expect = "[('features', 'string'), ('label', 'int')]"
-            self.assertEqual(expect, str(schema))
-            conn.close()
-        elif os.getenv("SQLFLOW_TEST_DB") == "maxcompute":
-            AK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")
-            SK = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
-            endpoint = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
-            addr = "maxcompute://%s:%s@%s" % (AK, SK, endpoint)
-            case_db = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
-            conn = connect_with_data_source(addr)
-            schema = get_table_schema(conn,
-                                      "%s.sqlflow_test_iris_train" % case_db)
+            self.assertTrue(np.array_equal(expect, schema))
+
+            schema = selected_columns_and_types(
+                conn,
+                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM iris.train"
+            )
+            expect = [
+                ("sepal_length", "FLOAT"),
+                ("new_petal_width", "DOUBLE"),
+                ("class", "INT"),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
+        elif driver == "hive":
+            schema = get_table_schema(conn, "iris.train")
             expect = (
-                "[('sepal_length', 'float'), ('sepal_width', 'float'), "
-                "('petal_length', 'float'), ('petal_width', 'float'), ('class', 'int')]"
+                ('sepal_length', 'FLOAT'),
+                ('sepal_width', 'FLOAT'),
+                ('petal_length', 'FLOAT'),
+                ('petal_width', 'FLOAT'),
+                ('class', 'INT'),
             )
-            self.assertEqual(expect, str(schema))
-            conn.close()
+            self.assertTrue(np.array_equal(expect, schema))
+
+            schema = selected_columns_and_types(
+                conn,
+                "SELECT sepal_length, petal_width * 2.3 AS new_petal_width, class FROM iris.train"
+            )
+            expect = [
+                ("sepal_length", "FLOAT"),
+                ("new_petal_width", "FLOAT"),
+                ("class", "INT"),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
+        elif driver == "maxcompute":
+            case_db = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
+            table = "%s.sqlflow_test_iris_train" % case_db
+            schema = get_table_schema(conn, table)
+            expect = [
+                ('sepal_length', 'DOUBLE'),
+                ('sepal_width', 'DOUBLE'),
+                ('petal_length', 'DOUBLE'),
+                ('petal_width', 'DOUBLE'),
+                ('class', 'BIGINT'),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
+
+            schema = selected_columns_and_types(
+                conn,
+                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM %s"
+                % table)
+            expect = [
+                ("sepal_length", "DOUBLE"),
+                ("new_petal_width", "DOUBLE"),
+                ("class", "BIGINT"),
+            ]
+            self.assertTrue(np.array_equal(expect, schema))
+
+
+class TestMySQLFieldType(TestCase):
+    @unittest.skipUnless(
+        os.getenv("SQLFLOW_TEST_DB") == "mysql", "run only in mysql")
+    def test_field_type(self):
+        self.assertGreater(len(MYSQL_FIELD_TYPE_DICT), 0)
+
+        addr = os.getenv("SQLFLOW_TEST_DB_MYSQL_ADDR", "localhost:3306")
+        conn = connect_with_data_source(
+            "mysql://root:root@tcp(%s)/?maxAllowedPacket=0" % addr)
+        cursor = conn.cursor()
+
+        table_name = "iris.test_mysql_field_type_table"
+        drop_table_sql = "DROP TABLE IF EXISTS %s" % table_name
+        create_table_sql = "CREATE TABLE IF NOT EXISTS " + table_name + "(a %s)"
+        select_sql = "SELECT * FROM %s" % table_name
+
+        for int_type, str_type in MYSQL_FIELD_TYPE_DICT.items():
+            if str_type in ["VARCHAR", "CHAR"]:
+                str_type += "(255)"
+
+            cursor.execute(drop_table_sql)
+            cursor.execute(create_table_sql % str_type)
+            cursor.execute(select_sql)
+
+            int_type_actual = cursor.description[0][1]
+            cursor.execute(drop_table_sql)
+
+            self.assertEqual(int_type_actual, int_type,
+                             "%s not match" % str_type)
+
+
+class TestLimitSelect(TestCase):
+    def test_limit_select(self):
+        self.assertEqual("SELECT * FROM t LIMIT 2",
+                         limit_select("SELECT * FROM t LIMIT 30", 2))
+
+        self.assertEqual("SELECT * FROM t LIMIT 30; \t",
+                         limit_select("SELECT * FROM t LIMIT 30; \t", 100))
+
+        self.assertEqual("SELECT * FROM t LIMIT 3",
+                         limit_select("SELECT * FROM t", 3))
+
+        self.assertEqual("SELECT * FROM t \t  LIMIT 4; ",
+                         limit_select("SELECT * FROM t \t ; ", 4))
 
 
 if __name__ == "__main__":
-    os.environ["SQLFLOW_TEST_DB"] = "mysql"
     unittest.main()

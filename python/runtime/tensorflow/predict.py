@@ -22,7 +22,6 @@ import numpy as np
 import runtime
 import tensorflow as tf
 from runtime import db
-from runtime.pai import model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
@@ -106,7 +105,10 @@ def keras_predict(estimator, model_params, save, result_table, is_pai,
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
 
     column_names = selected_cols[:]
-    train_label_index = selected_cols.index(train_label_name)
+    try:
+        train_label_index = selected_cols.index(train_label_name)
+    except:
+        train_label_index = -1
     if train_label_index != -1:
         del column_names[train_label_index]
     column_names.append(result_col_name)

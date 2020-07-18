@@ -18,8 +18,8 @@ from os import path
 
 import six
 import tensorflow as tf
+from runtime import oss
 from runtime.model_metadata import save_model_metadata
-from runtime.pai import model
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
@@ -57,11 +57,14 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
     else:
         keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                              label_meta, epochs, verbose, model_meta,
-                             has_none_optimizer)
+                             validation_steps, has_none_optimizer)
 
     print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-    model.save_file(FLAGS.sqlflow_oss_modeldir, save)
-    model.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
+    if len(FLAGS.worker_hosts.split(",")) > 1:
+        oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
+    else:
+        oss.save_file(FLAGS.sqlflow_oss_modeldir, save)
+    oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
 
 def keras_train_distributed(classifier,
@@ -90,8 +93,6 @@ def keras_train_distributed(classifier,
         classifier, model_dir=model_dir, config=run_config)
     estimator_train_compiled(
         keras_estimator,
-        is_pai,
-        FLAGS,
         train_dataset_fn,
         val_dataset_fn,
         # TODO(typhoonzero): do pass train settings.

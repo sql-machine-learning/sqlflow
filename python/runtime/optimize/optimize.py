@@ -262,8 +262,8 @@ def generate_objective_or_aggregated_constraint_expression(
 
         i = next_idx
 
-    result_expresion = "".join(result_tokens)
-    return result_expresion
+    result_expression = "".join(result_tokens)
+    return result_expression
 
 
 def generate_objective_or_constraint_expressions(tokens,

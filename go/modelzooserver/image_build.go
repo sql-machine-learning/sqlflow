@@ -109,11 +109,6 @@ func buildAndPushImage(dir, name, tag string, dryrun bool) error {
 }
 
 func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
-	k8sHost := os.Getenv("KUBERNETES_SERVICE_HOST")
-	k8sPort := os.Getenv("KUBERNETES_SERVICE_PORT")
-	if k8sHost == "" || k8sPort == "" {
-		return fmt.Errorf("buildAndPushImageKaniko must be called when model zoo server is deployed in Kubernetes cluster")
-	}
 	reg := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY")
 	// default push to dockerhub
 	if reg == "" {

@@ -108,10 +108,11 @@ func TestModelZooServer(t *testing.T) {
 
 		res, err := client.ListModelRepos(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 		a.NoError(err)
-		a.Equal(1, len(res.ModelDefList))
-		a.Equal("sqlflow/my_test_model", res.ModelDefList[0].ImageUrl)
+		a.Equal(18, len(res.ModelDefList)) // we have 17 default modeldefs
+		a.Equal("sqlflow/sqlflow", res.ModelDefList[0].ImageUrl)
+		a.Equal("sqlflow/my_test_model", res.ModelDefList[17].ImageUrl)
 		a.Equal("DNNClassifier", res.ModelDefList[0].ClassName)
-		a.Equal(307, len(res.ModelDefList[0].ArgDescs))
+		a.Equal(307, len(res.ModelDefList[17].ArgDescs))
 	})
 
 	t.Run("ReleaseTrainedModel", func(t *testing.T) {
@@ -205,6 +206,6 @@ func TestModelZooServer(t *testing.T) {
 
 		res, err := client.ListModelRepos(context.Background(), &pb.ListModelRequest{Start: 0, Size: -1})
 		a.NoError(err)
-		a.Equal(0, len(res.ModelDefList))
+		a.Equal(17, len(res.ModelDefList))
 	})
 }

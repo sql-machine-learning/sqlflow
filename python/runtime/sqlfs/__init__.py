@@ -11,17 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-
-def get_tf_random_seed():
-    """
-    get_tf_random_seed returns an integer from the environment variable
-    SQLFLOW_TF_RANDOM_SEED, that can be used as a random seed.
-    Args:
-        None
-    Return:
-        int or None
-    """
-    env = os.environ.get('SQLFLOW_TF_RANDOM_SEED', None)
-    return int(env) if env is not None else None
+from runtime.sqlfs.tar import unzip_dir, zip_dir

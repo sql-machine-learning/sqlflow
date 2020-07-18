@@ -11,17 +11,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import unittest
+
+from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.model import EstimatorType, Model
 
 
-def get_tf_random_seed():
-    """
-    get_tf_random_seed returns an integer from the environment variable
-    SQLFLOW_TF_RANDOM_SEED, that can be used as a random seed.
-    Args:
-        None
-    Return:
-        int or None
-    """
-    env = os.environ.get('SQLFLOW_TF_RANDOM_SEED', None)
-    return int(env) if env is not None else None
+class TestModel(unittest.TestCase):
+    def test_unsupport_driver(self):
+        uri = "unknown://path"
+        meta = {"train_params": {"n_classes": 3}}
+        m = Model(EstimatorType.XGBOOST, meta)
+        with self.assertRaises(SQLFlowDiagnostic) as ctx:
+            m.save(uri)
+        self.assertEqual(ctx.exception.args[0],
+                         "unsupported driven to save model: unknown")
+
+
+if __name__ == '__main__':
+    unittest.main()

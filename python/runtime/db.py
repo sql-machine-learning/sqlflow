@@ -33,7 +33,7 @@ def parseMySQLDSN(dsn):
 
 
 def parseHiveDSN(dsn):
-    # usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr
+    # usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_queuename=mr
     user_passwd, address_database, config_str = re.findall(
         "^(.*)@([.a-zA-Z0-9/:_]*)(\?.*)?", dsn)[0]
     user, passwd = user_passwd.split(":")
@@ -192,29 +192,106 @@ def read_feature(raw_val, feature_spec, feature_name):
         return raw_val,
 
 
-def selected_cols(conn, select):
+LIMIT_PATTERN = re.compile("LIMIT\\s+([0-9]+)", flags=re.I)
+
+
+def limit_select(select, n):
+    """Make the select SQL statement with limited row number to query.
+
+    Args:
+        select (str): the select SQL statement.
+        n (int): the limited row number to query.
+
+    Returns:
+        If n >= 0, return a new SQL statement which would query n row(s) at most.
+        If n < 0, return the original SQL statement.
+    """
+    if n < 0:
+        return select
+
+    def replace_limit_num(matched_limit):
+        num = int(matched_limit.group(1))
+        return "LIMIT {}".format(min(num, n))
+
+    if LIMIT_PATTERN.search(select) is None:
+        idx = select.rfind(";")
+        if idx < 0:
+            idx = len(select)
+
+        return select[0:idx] + " LIMIT {}".format(n) + select[idx:]
+    else:
+        return LIMIT_PATTERN.sub(repl=replace_limit_num, string=select)
+
+
+try:
+    import MySQLdb.constants.FIELD_TYPE as MYSQL_FIELD_TYPE
+    # Refer to http://mysql-python.sourceforge.net/MySQLdb-1.2.2/public/MySQLdb.constants.FIELD_TYPE-module.html
+    MYSQL_FIELD_TYPE_DICT = {
+        MYSQL_FIELD_TYPE.TINY: "TINYINT",  # 1
+        MYSQL_FIELD_TYPE.LONG: "INT",  # 3
+        MYSQL_FIELD_TYPE.FLOAT: "FLOAT",  # 4
+        MYSQL_FIELD_TYPE.DOUBLE: "DOUBLE",  # 5
+        MYSQL_FIELD_TYPE.LONGLONG: "BIGINT",  # 8
+        MYSQL_FIELD_TYPE.NEWDECIMAL: "DECIMAL",  # 246
+        MYSQL_FIELD_TYPE.BLOB: "TEXT",  # 252
+        MYSQL_FIELD_TYPE.VAR_STRING: "VARCHAR",  # 253
+        MYSQL_FIELD_TYPE.STRING: "CHAR",  # 254
+    }
+except:
+    MYSQL_FIELD_TYPE_DICT = {}
+
+
+def selected_columns_and_types(conn, select):
+    """Get the columns and types returned by the select statement.
+
+    Args:
+        conn: the connection object.
+        select (str): the select SQL statement.
+
+    Returns:
+        A tuple whose each element is (column_name, column_type).
+    """
     select = select.strip().rstrip(";")
-    limited = re.findall("LIMIT [0-9]*$", select.upper())
-    if not limited:
-        select += " LIMIT 1"
+    select = limit_select(select, 1)
 
     driver = conn.driver
+    if driver == "mysql":
+        cursor = conn.cursor()
+        cursor.execute(select)
+        try:
+            name_and_type = []
+            for desc in cursor.description:
+                # NOTE: MySQL returns an integer number instead of a string
+                # to represent the data type.
+                typ = MYSQL_FIELD_TYPE_DICT.get(desc[1])
+                if typ is None:
+                    raise ValueError(
+                        "unsupported data type of column {}".format(desc[0]))
+                name_and_type.append((desc[0], typ))
+            return name_and_type
+        finally:
+            cursor.close()
+
     if driver == "hive":
         cursor = conn.cursor(configuration=conn.session_cfg)
         cursor.execute(select)
-        field_names = None if cursor.description is None \
-            else [i[0][i[0].find('.') + 1:] for i in cursor.description]
+        name_and_type = []
+        for desc in cursor.description:
+            name = desc[0].split('.')[-1]
+            name_and_type.append((name, desc[1]))
         cursor.close()
-    elif driver == "maxcompute":
+        return name_and_type
+
+    if driver == "maxcompute":
         from runtime.maxcompute import MaxCompute
-        field_names = MaxCompute.selected_cols(conn, select)
-    else:
-        cursor = conn.cursor()
-        cursor.execute(select)
-        field_names = None if cursor.description is None \
-            else [i[0] for i in cursor.description]
-        cursor.close()
-    return field_names
+        return MaxCompute.selected_columns_and_types(conn, select)
+
+    raise NotImplementedError("unsupported driver {}".format(driver))
+
+
+def selected_cols(conn, select):
+    name_and_type = selected_columns_and_types(conn, select)
+    return [item[0] for item in name_and_type]
 
 
 def pai_selected_cols(table):
@@ -381,24 +458,19 @@ def get_table_schema(conn, table):
     Returns:
         Tuple of (field_name, field_type) tuples
     """
-    statement = "describe %s" % table
     if conn.driver == "maxcompute":
-        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
-        inst = conn.execute_sql(statement)
-        if not inst.is_successful():
-            return None
-        fields = []
-        with inst.open_reader(tunnel=True, compress_option=compress) as reader:
-            for row in reader[0:reader.count]:
-                fields.append((row[0], row[1]))
-        return fields
+        schema = conn.get_table(table).schema
+        names_and_types = [(c.name, str(c.type).upper())
+                           for c in schema.columns]
+        return names_and_types
     else:
+        statement = "describe %s" % table
         cursor = conn.cursor()
         cursor.execute(statement)
         fields = []
         for field in cursor:
             # add field name and type
-            fields.append((field[0], field[1]))
+            fields.append((field[0], field[1].upper()))
         cursor.close()
     return fields
 
@@ -415,13 +487,14 @@ def execute(conn, sql_stmt):
     """
     if conn.driver == "maxcompute":
         inst = conn.execute_sql(sql_stmt)
-        return inst.is_successful
+        return inst.is_successful()
     else:
+        cur = conn.cursor()
         try:
-            cur = conn.cursor()
             cur.execute(sql_stmt)
             conn.commit()
-            cur.close()
             return True
         except:
             return False
+        finally:
+            cur.close()

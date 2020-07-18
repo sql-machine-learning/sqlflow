@@ -152,7 +152,7 @@ class SlaveEntry(object):
                 continue
             self.port = self.sock.recvint()
             rmset = []
-            # all connection was successuly setup
+            # all connection was successfully setup
             for r in conset:
                 wait_conn[r].wait_accept -= 1
                 if wait_conn[r].wait_accept == 0:
@@ -283,7 +283,7 @@ class RabitTracker(object):
         return tree_map_, parent_map_, ring_map_
 
     def accept_slaves(self, nslave):
-        # set of nodes that finishs the job
+        # set of nodes that finishes the job
         shutdown = {}
         # set of nodes that is waiting for connections
         wait_conn = {}

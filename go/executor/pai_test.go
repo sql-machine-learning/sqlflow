@@ -14,6 +14,8 @@
 package executor
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,5 +41,24 @@ func TestPickPAILogViwerURL(t *testing.T) {
 	a := assert.New(t)
 	a.Equal([]string{"http://logview.odps.com:8080/logview/?h=http://service.sqlflow.com/api&p=my_project&id=1",
 		"http://logview.odps.com:8080/logview/?h=http://service.sqlflow.com/api&p=my_project&id=2"}, pickPAILogViewerURL(mockPAIOutput))
+}
 
+func TestDiagnose(t *testing.T) {
+	a := assert.New(t)
+	err := diagnose("PAI", mockPAIOutput)
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "PAI task failed, please go to check details error logs in the LogViewer website: "))
+
+	rolArnTips := "The role_arn you provide not exists in OSS auth service"
+	outputWithOSSError := mockPAIOutput + "\n" + rolArnTips
+	err = diagnose("PAI", outputWithOSSError)
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "PAI task failed, due to lack of the auth for PAI to access OSS(need to contact your administrator), please go to"))
+
+	tips := "let m3 help u"
+	os.Setenv("ERROR_PAI2OSS", tips)
+	defer os.Unsetenv("ERROR_PAI2OSS")
+	err = diagnose("PAI", outputWithOSSError)
+	a.Error(err)
+	a.True(strings.HasPrefix(err.Error(), "PAI task failed, "+tips+", please go to check"))
 }

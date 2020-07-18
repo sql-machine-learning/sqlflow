@@ -25,11 +25,11 @@ import (
 	"sqlflow.org/sqlflow/go/parser"
 )
 
-// FetchNSamples returns Rows according to the input Query.
+// FetchSamples returns Rows according to the input Query.
 // If n == 0, return nil, err
 // If n > 0, return n sample(s) at most
 // If n < 0, return all samples
-func FetchNSamples(db *database.DB, query string, n int) (*sql.Rows, error) {
+func FetchSamples(db *database.DB, query string, n int) (*sql.Rows, error) {
 	if n == 0 {
 		return nil, fmt.Errorf("cannot fetch 0 sample")
 	}
@@ -55,11 +55,6 @@ func FetchNSamples(db *database.DB, query string, n int) (*sql.Rows, error) {
 	}
 
 	return db.Query(query)
-}
-
-// FetchSamples returns Rows according to the input Query, and return 1000 samples at most.
-func FetchSamples(db *database.DB, query string) (*sql.Rows, error) {
-	return FetchNSamples(db, query, 1000)
 }
 
 // FieldTypes type records a mapping from field name to field type name.
@@ -99,7 +94,7 @@ func Decomp(ident string) (tbl string, fld string) {
 //
 // It returns a FieldTypes describing types of fields in SELECT.
 func Verify(q string, db *database.DB) (FieldTypes, error) {
-	rows, err := FetchSamples(db, q)
+	rows, err := FetchSamples(db, q, 1)
 	if err != nil {
 		return nil, err
 	}

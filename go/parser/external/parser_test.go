@@ -20,26 +20,46 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func parserAcceptSemicolon(p Parser) bool {
-	switch pr := p.(type) {
-	case *javaParser:
-		if pr.typ == "odps" {
-			return true
-		}
-		return false
-	default:
-		return true
-	}
-}
-
 func commonThirdPartyCases(p Parser, a *assert.Assertions) {
-	// one standard SQL statement
+	isMaxComputeParser := false
+	if jp, ok := p.(*javaParser); ok && jp.typ == "maxcompute" {
+		isMaxComputeParser = true
+	}
+
+	testSelectCases := make([]string, 0)
 	for _, sql := range SelectCases {
+		// NOTE: OdpsParserAdaptor cannot parse /*...*/
+		if isMaxComputeParser {
+			for {
+				startIdx := strings.Index(sql, "/*")
+				if startIdx < 0 {
+					break
+				}
+				endIdx := strings.Index(sql, "*/")
+				sql = sql[0:startIdx] + sql[endIdx+2:]
+			}
+		}
+		testSelectCases = append(testSelectCases, sql)
+	}
+
+	// NOTE: we cannot use p.(*javaParser).typ == "maxcompute"|"odps" to
+	// check whether the MaxCompute parser accepts semicolon. It is because
+	// the inner MaxCompute parser may use OdpsParserAdaptor or
+	// CalciteParserAdaptor. Please see
+	// https://github.com/sql-machine-learning/sqlflow/blob/c1a15910ff6ed3e6e4f94bc7c8a39eea96396c9e/java/parser/src/main/java/org/sqlflow/parser/ParserFactory.java#L77
+	parserAcceptSemicolon := false
+
+	// one standard SQL statement
+	for i, sql := range testSelectCases {
 		s, idx, err := p.Parse(sql + ";")
 		a.NoError(err)
 		a.Equal(-1, idx)
 		a.Equal(1, len(s))
-		if parserAcceptSemicolon(p) {
+		if i == 0 && sql+";" == s[0].String {
+			parserAcceptSemicolon = true
+		}
+
+		if parserAcceptSemicolon {
 			a.Equal(sql+`;`, s[0].String)
 		} else {
 			a.Equal(sql, s[0].String)
@@ -47,22 +67,22 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	}
 
 	{ // several standard SQL statements with comments
-		sqls := strings.Join(SelectCases, `;`) + `;`
+		sqls := strings.Join(testSelectCases, `;`) + `;`
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(-1, idx)
-		a.Equal(len(SelectCases), len(s))
+		a.Equal(len(testSelectCases), len(s))
 		for i := range s {
-			if parserAcceptSemicolon(p) {
-				a.Equal(SelectCases[i]+`;`, s[i].String)
+			if parserAcceptSemicolon {
+				a.Equal(testSelectCases[i]+`;`, s[i].String)
 			} else {
-				a.Equal(SelectCases[i], s[i].String)
+				a.Equal(testSelectCases[i], s[i].String)
 			}
 		}
 	}
 
 	// two SQL statements, the first one is extendedSQL
-	for _, sql := range SelectCases {
+	for _, sql := range testSelectCases {
 		sqls := fmt.Sprintf(`%s to train;%s;`, sql, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
@@ -72,13 +92,13 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	}
 
 	// two SQL statements, the second one is extendedSQL
-	for _, sql := range SelectCases {
+	for _, sql := range testSelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;`, sql, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if parserAcceptSemicolon(p) {
+		if parserAcceptSemicolon {
 			a.Equal(sql+`;`, s[0].String)
 		} else {
 			a.Equal(sql, s[0].String)
@@ -87,13 +107,13 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	}
 
 	// three SQL statements, the second one is extendedSQL
-	for _, sql := range SelectCases {
+	for _, sql := range testSelectCases {
 		sqls := fmt.Sprintf(`%s;%s to train;%s;`, sql, sql, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
 		a.Equal(len(sql)+1+len(sql)+1, idx)
 		a.Equal(2, len(s))
-		if parserAcceptSemicolon(p) {
+		if parserAcceptSemicolon {
 			a.Equal(sql+`;`, s[0].String)
 		} else {
 			a.Equal(sql, s[0].String)
@@ -110,7 +130,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 	}
 
 	// two SQL statements, the second standard SQL has an error.
-	for _, sql := range SelectCases {
+	for _, sql := range testSelectCases {
 		sqls := fmt.Sprintf(`%s to train; select select 1;`, sql)
 		s, idx, err := p.Parse(sqls)
 		a.NoError(err)
@@ -119,7 +139,7 @@ func commonThirdPartyCases(p Parser, a *assert.Assertions) {
 		a.Equal(sql+` `, s[0].String)
 	}
 
-	if pr, ok := p.(*javaParser); !ok || pr.typ != "odps" { // non select statement before to train
+	if pr, ok := p.(*javaParser); !ok || pr.typ != "maxcompute" { // non select statement before to train
 		sql := `describe table to train;`
 		s, idx, err := p.Parse(sql)
 		a.Nil(err)

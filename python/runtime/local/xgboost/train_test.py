@@ -16,7 +16,7 @@ import tempfile
 import unittest
 from unittest import TestCase
 
-from runtime.db_test import testing_mysql_db_url
+import runtime.testing as testing
 from runtime.local.xgboost import train
 from runtime.xgboost.dataset import xgb_dataset
 
@@ -64,13 +64,10 @@ label_meta = {
 
 
 class TestXGBoostTrain(TestCase):
+    @unittest.skipUnless(testing.get_driver() == "mysql",
+                         "skip non mysql tests")
     def test_train(self):
-        driver = os.environ.get('SQLFLOW_TEST_DB')
-        if driver != "mysql":
-            print("Skipping mysql tests")
-            return
-
-        ds = testing_mysql_db_url()
+        ds = testing.get_datasource()
         select = "SELECT * FROM iris.train"
         val_select = "SELECT * FROM iris.test"
         feature_column_names = [

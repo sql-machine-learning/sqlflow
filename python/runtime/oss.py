@@ -18,8 +18,7 @@ import tarfile
 
 import oss2
 import tensorflow as tf
-from runtime import db
-from runtime.pai.oss import get_bucket
+from runtime.tensorflow import is_tf_estimator
 
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to save models trained.
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"
@@ -32,12 +31,41 @@ MODEL_TYPE_XGB = 2
 MODEL_TYPE_PAIML = 3
 
 
+def remove_bucket_prefix(oss_uri):
+    return oss_uri.replace("oss://%s/" % SQLFLOW_MODELS_BUCKET, "")
+
+
 def get_models_bucket():
     return get_bucket(SQLFLOW_MODELS_BUCKET)
 
 
-def remove_bucket_prefix(oss_uri):
-    return oss_uri.replace("oss://%s/" % SQLFLOW_MODELS_BUCKET, "")
+def get_bucket(name, ak=None, sk=None, endpoint=None):
+    if ak is None:
+        ak = os.getenv("SQLFLOW_OSS_AK", "")
+    if sk is None:
+        sk = os.getenv("SQLFLOW_OSS_SK", "")
+    if endpoint is None:
+        endpoint = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT", "")
+    if ak == "" or sk == "":
+        raise ValueError(
+            "must configure SQLFLOW_OSS_AK and SQLFLOW_OSS_SK when submitting to PAI"
+        )
+    if endpoint == "":
+        raise ValueError(
+            "must configure SQLFLOW_OSS_MODEL_ENDPOINT when submitting to PAI")
+    auth = oss2.Auth(ak, sk)
+    bucket = oss2.Bucket(auth, endpoint, name)
+    return bucket
+
+
+def copyfileobj(source, dest, ak, sk, endpoint, bucket_name):
+    '''
+    copy_file_to_oss copies alocal file (source) to an object on OSS (dest), overwrite
+    if the oss object exists.
+    '''
+    auth = oss2.Auth(ak, sk)
+    bucket = oss2.Bucket(auth, endpoint, bucket_name)
+    bucket.put_object_from_file(dest, source)
 
 
 def get_oss_path_from_uri(oss_model_dir, file_name):
@@ -127,10 +155,14 @@ def load_file(oss_model_dir, file_name):
 
 
 def load_string(oss_file_path):
+    data = load_bytes(oss_file_path)
+    return data.decode("utf-8")
+
+
+def load_bytes(oss_file_path):
     bucket = get_models_bucket()
     oss_file_path = remove_bucket_prefix(oss_file_path)
-    data = bucket.get_object(oss_file_path).read()
-    return data.decode("utf-8")
+    return bucket.get_object(oss_file_path).read()
 
 
 def save_metas(oss_model_dir, num_workers, file_name, *meta):
@@ -161,14 +193,49 @@ def save_metas(oss_model_dir, num_workers, file_name, *meta):
 
 
 def load_metas(oss_model_dir, file_name):
-    '''
-    Load and restore a directory and metadata that are saved by `model.save`
-    from a MaxCompute table
+    '''Load model meta which are saved by save_metas from OSS
+
     Args:
-        oss_model_dir: OSS URI that the model will be saved to.
-    Return:
+        oss_model_dir: OSS URI that the model meta saved to.
+        file_name: meta data file name
+
+    Returns:
         A list contains the saved python objects
     '''
     oss_path = "/".join([oss_model_dir.rstrip("/"), file_name])
-    serialized = load_string(oss_path)
+    serialized = load_bytes(oss_path)
     return pickle.loads(serialized)
+
+
+def load_oss_model(oss_model_dir, estimator):
+    is_estimator = is_tf_estimator(estimator)
+    # Keras single node is using h5 format to save the model, no need to deal with export model format.
+    # Keras distributed mode will use estimator, so this is also needed.
+    if is_estimator:
+        load_file(oss_model_dir, "exported_path")
+        # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+        load_dir(oss_model_dir + "/model_save")
+    else:
+        load_file(oss_model_dir, "model_save")
+
+
+def save_oss_model(oss_model_dir, model_name, is_estimator,
+                   feature_column_names, feature_column_names_map,
+                   feature_metas, label_meta, model_params,
+                   feature_columns_code, num_workers):
+    # Keras single node is using h5 format to save the model, no need to deal with export model format.
+    # Keras distributed mode will use estimator, so this is also needed.
+    if is_estimator:
+        with open("exported_path", "rb") as fn:
+            saved_model_path = fn.read()
+        save_dir(oss_model_dir, saved_model_path)
+        save_file(oss_model_dir, "exported_path")
+    else:
+        if num_workers > 1:
+            save_file(oss_model_dir, "exported_path")
+        else:
+            save_file(oss_model_dir, "model_save")
+
+    save_metas(oss_model_dir, num_workers, "tensorflow_model_desc", model_name,
+               feature_column_names, feature_column_names_map, feature_metas,
+               label_meta, model_params, feature_columns_code)

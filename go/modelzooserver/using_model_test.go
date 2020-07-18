@@ -119,7 +119,6 @@ func releaseDemoModelRepo(client proto.ModelZooServerClient) error {
 }
 
 func TestUsingModelZooModel(t *testing.T) {
-	t.Skip("Fix this test by adding a default model definitions of the image sqlflow/sqlflow")
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}

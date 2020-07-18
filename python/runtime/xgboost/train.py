@@ -18,8 +18,8 @@ import sys
 import runtime.pai.pai_distributed as pai_dist
 import six
 import xgboost as xgb
+from runtime import oss as pai_model_store
 from runtime.model_metadata import collect_model_metadata, save_model_metadata
-from runtime.pai import model as pai_model_store
 from runtime.xgboost.dataset import xgb_dataset
 from runtime.xgboost.pai_rabit import PaiXGBoostTracker, PaiXGBoostWorker
 
@@ -43,7 +43,8 @@ def dist_train(flags,
                oss_model_dir="",
                transform_fn=None,
                feature_column_code="",
-               model_repo_image=""):
+               model_repo_image="",
+               original_sql=""):
     if not is_pai:
         raise Exception(
             "XGBoost distributed training is only supported on PAI")
@@ -93,7 +94,8 @@ def dist_train(flags,
                   oss_model_dir=oss_model_dir,
                   transform_fn=transform_fn,
                   feature_column_code=feature_column_code,
-                  model_repo_image=model_repo_image)
+                  model_repo_image=model_repo_image,
+                  original_sql=original_sql)
     except Exception as e:
         print("node={}, id={}, exception={}".format(node, task_id, e))
         six.reraise(*sys.exc_info())  # For better backtrace
