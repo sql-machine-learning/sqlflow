@@ -42,13 +42,18 @@ class MaxCompute:
                 return
 
             r = inst.open_reader(tunnel=True, compress_option=compress)
-            field_names = None if r._schema.columns is None \
-                else [col.name for col in r._schema.columns]
+
+            columns = r._schema.columns
+
+            reader.field_names = [col.name for col in columns]
+            reader.field_types = [col.type for col in columns]
+
             if label_meta:
                 try:
-                    label_idx = field_names.index(label_meta["feature_name"])
+                    label_idx = reader.field_names.index(
+                        label_meta["feature_name"])
                 except ValueError:
-                    # NOTE(typhoonzero): For clustering model, label_column_name may not in field_names when predicting.
+                    # NOTE(typhoonzero): For clustering model, label_column_name may not in reader.field_names when predicting.
                     label_idx = None
             else:
                 label_idx = None

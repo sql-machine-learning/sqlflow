@@ -28,8 +28,30 @@ def fetch_samples(conn, query, n=1):
     '''
 
     query = db.limit_select(query, n)
-    for rows, _ in db.db_generator(conn, query)():
-        yield rows
+    gen = db.db_generator(conn, query)
+
+    # Note: Only when the iteration begins, we can get
+    # gen.field_names and gen.field_types. So we take
+    # the first element in the generator first, and
+    # set field_names and field_types to the returned
+    # result.
+    gen_iter = iter(gen())
+    rows = next(gen_iter, None)
+
+    if rows is None:
+        # No fetch data, just return None
+        return None
+
+    def reader():
+        r = rows
+        while r is not None:
+            # r = (row_data, label_data), and label_data is None here
+            yield r[0]
+            r = next(gen_iter, None)
+
+    reader.field_names = gen.field_names
+    reader.field_types = gen.field_types
+    return reader
 
 
 def verify_column_name_and_type(conn, train_select, pred_select, label):
