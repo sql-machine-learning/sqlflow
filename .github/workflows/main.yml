@@ -117,8 +117,6 @@ jobs:
       run: |
         $TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         $TRAVIS_PULL_REQUEST=${{ github.event.number }}
-        echo GITHUB_REF $GITHUB_REF
-        echo TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST
-        $TRAVIS_BRANCH=${{ github.head_ref }}
+        $TRAVIS_BRANCH="${{ github.head_ref }}"
         echo TRAVIS_BRANCH $TRAVIS_BRANCH
         scripts/travis/deploy_client.sh
