@@ -117,7 +117,7 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
 	regUsername := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_USER")
 	regPasswd := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_PASS")
 	regEmail := os.Getenv("SQLFLOW_MODEL_ZOO_REGISTRY_EMAIL")
-	if regUsername == "" || regPasswd == "" {
+	if regUsername == "" || regPasswd == "" || regEmail == "" {
 		return fmt.Errorf("need to set SQLFLOW_MODEL_ZOO_REGISTRY_USER and SQLFLOW_MODEL_ZOO_REGISTRY_PASS for model zoo server")
 	}
 	regSecret := fmt.Sprintf("kaniko-regcred-%s", strings.ToLower(randstring.Generate(8)))
@@ -153,15 +153,20 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
 	if kanikoImage == "" {
 		kanikoImage = "registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/kaniko-executor"
 	}
+	kanikoPodName := fmt.Sprintf("kaniko-%s", strings.ToLower(randstring.Generate(8)))
 	destination := fmt.Sprintf("%s:%s", name, tag)
+	// pod tolerations/nodeSelector JSON like: '"tolerations": [...],', if empty string, tolerations will not be set.
+	tolerations := os.Getenv("SQLFLOW_MODEL_ZOO_TOLERATIONS")
+	nodeSelector := os.Getenv("SQLFLOW_MODEL_ZOO_NODE_SELECTOR")
 	podTemplate := fmt.Sprintf(`'{
   "apiVersion": "v1",
   "spec": {
+    %s
+    %s
     "containers": [
     {
-      "name": "kaniko",
+      "name": "%s",
       "image": "%s",
-      "imagePullPolicy": "Never",
       "stdin": true,
       "stdinOnce": true,
       "args": [
@@ -183,11 +188,11 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
       }}
     ]
   }
-}'`, kanikoImage, destination, regSecret)
+}'`, tolerations, nodeSelector, kanikoPodName, kanikoImage, destination, regSecret)
 
 	tarContextCmd := exec.Command("tar", "czf", "-", ".")
 	// exec.Command can not handle quotes correctly, use bach -c here.
-	kanikoBuildCmdStr := fmt.Sprintf(`kubectl run kaniko --rm --stdin=true --restart=Never --image=%s --overrides=%s`, kanikoImage, podTemplate)
+	kanikoBuildCmdStr := fmt.Sprintf(`kubectl run %s --rm --stdin=true --restart=Never --image=%s --overrides=%s`, kanikoPodName, kanikoImage, podTemplate)
 	kanikoBuildCmdStdin := exec.Command("bash", "-c", kanikoBuildCmdStr)
 
 	r, w := io.Pipe()
