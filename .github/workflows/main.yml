@@ -119,7 +119,8 @@ jobs:
         $TRAVIS_PULL_REQUEST=${{ github.event.number }}
         echo GITHUB_REF $GITHUB_REF
         echo TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST
-        $splited = $GITHUB_REF.split("/")
+        $BRANCH_REF=${{ github.head_ref }}
+        $splited = $BRANCH_REF.split("/")
         $TRAVIS_BRANCH=$splited[$splited.length - 1]
         echo TRAVIS_BRANCH $TRAVIS_BRANCH
         scripts/travis/deploy_client.sh
