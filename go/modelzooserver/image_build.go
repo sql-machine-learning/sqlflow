@@ -155,9 +155,14 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
 	}
 	kanikoPodName := fmt.Sprintf("kaniko-%s", strings.ToLower(randstring.Generate(8)))
 	destination := fmt.Sprintf("%s:%s", name, tag)
+	// pod tolerations/nodeSelector JSON like: '"tolerations": [...],', if empty string, tolerations will not be set.
+	tolerations := os.Getenv("SQLFLOW_MODEL_ZOO_TOLERATIONS")
+	nodeSelector := os.Getenv("SQLFLOW_MODEL_ZOO_NODE_SELECTOR")
 	podTemplate := fmt.Sprintf(`'{
   "apiVersion": "v1",
   "spec": {
+    %s
+    %s
     "containers": [
     {
       "name": "%s",
@@ -183,7 +188,7 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
       }}
     ]
   }
-}'`, kanikoPodName, kanikoImage, destination, regSecret)
+}'`, tolerations, nodeSelector, kanikoPodName, kanikoImage, destination, regSecret)
 
 	tarContextCmd := exec.Command("tar", "czf", "-", ".")
 	// exec.Command can not handle quotes correctly, use bach -c here.
