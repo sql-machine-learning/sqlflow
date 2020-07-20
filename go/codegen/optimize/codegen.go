@@ -96,6 +96,23 @@ func tryConvertToAggregationFunction(token string) string {
 	return aggregationFunctions[strings.ToUpper(token)]
 }
 
+// tryConvertComparisionToken tries to convert the comparision token in the
+// SQL statement to the desired comparison token which would be accepted by
+// the optimize model. If the token is not a comparision token, it returns
+// "".
+func tryConvertComparisionToken(token string) string {
+	var comparisionTokenMap = map[string]string{
+		"LE": "<=",
+		"GE": ">=",
+		"LT": "<",
+		"GT": ">",
+		"EQ": "==",
+		"NE": "!=",
+		"=":  "==",
+	}
+	return comparisionTokenMap[strings.ToUpper(token)]
+}
+
 // updateOptimizeStmtByTableColumnNames updates the OptimizeStmt by the column names
 // returned by selectStmt. This function returns the column names.
 func updateOptimizeStmtByTableColumnNames(stmt *ir.OptimizeStmt, db *database.DB, selectStmt string) ([]string, error) {
@@ -254,6 +271,10 @@ func generateTokenInNonAggregationExpression(token string, groupBy string, stmt 
 		return tryConvertToAggregationFunction(token), nil
 	}
 
+	if tryConvertComparisionToken(token) != "" {
+		return tryConvertComparisionToken(token), nil
+	}
+
 	if token == stmt.ResultValueName {
 		if len(stmt.Variables) == 1 {
 			return fmt.Sprintf(`%s["%s"]`, dataStr, stmt.Variables[0]), nil
@@ -292,6 +313,10 @@ func generateTokenInAggregationExpression(token string,
 		return tryConvertToAggregationFunction(token), nil
 	}
 
+	if tryConvertComparisionToken(token) != "" {
+		return tryConvertComparisionToken(token), nil
+	}
+
 	if token == stmt.ResultValueName {
 		return fmt.Sprintf(`%s[i_%d]`, variableStr, depth), nil
 	}
@@ -326,6 +351,11 @@ func generateNonAggregatedConstraintExpression(tokens []string, stmt *ir.Optimiz
 	resultTokens := make([]string, 0)
 
 	for _, token := range tokens {
+		if tryConvertComparisionToken(token) != "" {
+			resultTokens = append(resultTokens, tryConvertComparisionToken(token))
+			continue
+		}
+
 		if token == stmt.ResultValueName {
 			resultTokens = append(resultTokens, fmt.Sprintf("%s[i]", variableStr))
 			continue
