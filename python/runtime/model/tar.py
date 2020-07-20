@@ -13,6 +13,7 @@
 """ This module provides two APIs to compress and decompress a
 directory.
 """
+import os
 import tarfile
 
 
@@ -29,7 +30,7 @@ def zip_dir(src_dir, tarball):
         tar.add(src_dir, recursive=True)
 
 
-def unzip_dir(tarball, dest_dir="./"):
+def unzip_dir(tarball, dest_dir=os.getcwd()):
     """decompress a tarball to a directory.
     Args:
         tarball: string

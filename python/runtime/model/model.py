@@ -16,6 +16,16 @@ import os
 from enum import Enum
 
 from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.model.db import read_with_generator, write_with_generator
+from runtime.model.tar import unzip_dir, zip_dir
+
+try:
+    import cPickle as pickle
+except ModuleNotFoundError:
+    import pickle
+
+# achieve the current work director into a tarball
+tarball = "model.tar.gz"
 
 
 class EstimatorType(Enum):
@@ -39,7 +49,7 @@ class Model:
         meta = runtime.collect_model_metadata(train_params={...},
                                               model_params={...})
         m = runtime.model.Model(ModelType.XGBOOST, meta)
-        m.save(uri="sqlfs://mydatabase/mytable")
+        m.save(datasource="mysql://", "sqlflow_models.my_model")
 
     """
     def __init__(self, typ, meta):
@@ -53,43 +63,51 @@ class Model:
             the training meta with JSON format.
         """
         self._typ = typ
-        self._cwd = os.getcwd()
         self._meta = meta
+        self._dump_file = "sqlflow_model.pkl"
 
-    def save(self, uri, datasource=None):
-        """ save this model object.
+    def save(self, datasource, table, cwd="./"):
+        """ save this model object into a table
         Args:
 
-        uri: string
-            the URI represents where to save the model, the format
-            is like <driver>://<path>. This save API supports
-            "sqlfs" and "file" driver.
-
         datasource: string
-            the connection datasource DSN is required if saving with sqlfs.
+            the connection string to DBMS.
+        table: string
+            the saved table name.
         """
-        driver, path = parseURI(uri)
-        if driver == "file":
-            # TODO(yancey1989): save model with local file system.
-            raise NotImplementedError
-        elif driver == "sqlfs":
-            # TODO(yancey1989): save model with SQL file system.
-            raise NotImplementedError
-        else:
-            raise SQLFlowDiagnostic("unsupported driven to save model: %s" %
-                                    driver)
+        _dump_pkl(self, self._dump_file)
+        zip_dir(cwd, tarball)
+
+        def _bytes_reader(filename, buf_size=8 * 32):
+            def _gen():
+                with open(filename, "rb") as f:
+                    while True:
+                        data = f.read(buf_size)
+                        if data:
+                            yield data
+                        else:
+                            break
+
+            return _gen
+
+        write_with_generator(datasource, table, _bytes_reader(tarball))
 
 
-def parseURI(uri):
-    """Parse the model URI into two parts: driver and path.
-    """
-    array = uri.split("://")
-    if len(array) != 2:
-        raise SQLFlowDiagnostic("invalid model saving URI: {0},\
-            which should be <driver>://<path>".format(uri))
-    return array[0], array[1]
+def _dump_pkl(obj, to_file):
+    with open(to_file, "wb") as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
-def load(uri, datasource=None):
-    # TODO(yancey1989): load model object from model storage with uri.
-    raise NotImplementedError
+def _load_pkl(filename):
+    with open(filename, "rb") as f:
+        return pickle.load(f)
+
+
+def load(datasource, table, cwd="./"):
+    gen = read_with_generator(datasource, table)
+    with open(tarball, "wb") as f:
+        for data in gen():
+            f.write(bytes(data))
+
+    unzip_dir(tarball, cwd)
+    return _load_pkl("sqlflow_model.pkl")
