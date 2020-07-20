@@ -102,13 +102,7 @@ func tryConvertToAggregationFunction(token string) string {
 // "".
 func tryConvertComparisionToken(token string) string {
 	var comparisionTokenMap = map[string]string{
-		"LE": "<=",
-		"GE": ">=",
-		"LT": "<",
-		"GT": ">",
-		"EQ": "==",
-		"NE": "!=",
-		"=":  "==",
+		"=": "==",
 	}
 	return comparisionTokenMap[strings.ToUpper(token)]
 }
