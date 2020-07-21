@@ -70,8 +70,9 @@ jobs:
     - uses: olegtarasov/get-tag@v2
       id: tagName
     - if: ${{ github.event_name == 'schedule' }}
-      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-      run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+      run: |
+        echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+        echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
     - if: ${{ github.event_name = 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
@@ -95,8 +96,9 @@ jobs:
     - uses: olegtarasov/get-tag@v2
       id: tagName
     - if: ${{ github.event_name == 'schedule' }}
-      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-      run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+      run: |
+        echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+        echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
     - if: ${{ github.event_name = 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
@@ -114,8 +116,9 @@ jobs:
     - uses: olegtarasov/get-tag@v2
       id: tagName
     - if: ${{ github.event_name == 'schedule' }}
-      run: echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-      run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+      run: |
+        echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
+        echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
     - if: ${{ github.event_name = 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
