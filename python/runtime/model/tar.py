@@ -13,30 +13,33 @@
 """ This module provides two APIs to compress and decompress a
 directory.
 """
+import os
 import tarfile
 
 
 def zip_dir(src_dir, tarball):
-    """compress a directory into tarball
+    """To compress a directory into tarball.
+
     Args:
         src_dir: string
-        the source directory to compress.
+            The source directory to compress.
 
         tarball: string
-        the output tarball name.
+            The output tarball name.
     """
     with tarfile.open(tarball, "w:gz") as tar:
         tar.add(src_dir, recursive=True)
 
 
-def unzip_dir(tarball, dest_dir="./"):
-    """decompress a tarball to a directory.
+def unzip_dir(tarball, dest_dir=os.getcwd()):
+    """To decompress a tarball to a directory.
+
     Args:
         tarball: string
-        the tarball to decompress.
+            The tarball to decompress.
 
         dest_dir: string
-        the output path.
+            The output path.
     """
     with tarfile.open(tarball, 'r:gz') as tar:
         tar.extractall(path=dest_dir)
