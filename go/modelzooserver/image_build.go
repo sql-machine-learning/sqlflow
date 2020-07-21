@@ -172,6 +172,7 @@ func buildAndPushImageKaniko(dir, name, tag string, dryrun bool) error {
       "args": [
         "--dockerfile=Dockerfile",
         "--context=tar://stdin",
+        "--force",
         "--destination=%s"],
       "volumeMounts": [
         {
