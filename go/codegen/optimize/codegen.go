@@ -17,13 +17,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"sqlflow.org/sqlflow/go/attribute"
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/verifier"
-	"strconv"
 	"strings"
 	"text/template"
 )
@@ -78,244 +76,15 @@ func generateOptimizeAttributeJSONString(attrs map[string]interface{}) (string, 
 	return string(parsedAttrJSON), nil
 }
 
-// convertRowDataToList converts the row data read from db to be one of []int64,
-// []float64 and []string
-func convertRowDataToList(rowData []interface{}) (interface{}, error) {
-	var columnType int
-	switch firstCellType := rowData[0].(type) {
-	case *string:
-		columnType = ir.String
-	case *int32:
-		columnType = ir.Int
-	case *int64:
-		columnType = ir.Int
-	case *float32:
-		columnType = ir.Float
-	case *float64:
-		columnType = ir.Float
-	default:
-		return nil, fmt.Errorf("not supported rowData type %T", firstCellType)
-	}
-
-	if columnType == ir.Int {
-		result := make([]int64, len(rowData))
-		for i, cell := range rowData {
-			switch v := cell.(type) {
-			case *int32:
-				result[i] = int64(*v)
-			case *int64:
-				result[i] = int64(*v)
-			default:
-				return nil, fmt.Errorf("not supported rowData type %T", v)
-			}
-		}
-		return result, nil
-	}
-
-	if columnType == ir.Float {
-		floatResult := make([]float64, len(rowData))
-		isFloat := false
-		for i, cell := range rowData {
-			switch v := cell.(type) {
-			case *float32:
-				floatResult[i] = float64(*v)
-			case *float64:
-				floatResult[i] = float64(*v)
-			default:
-				return nil, fmt.Errorf("not supported rowData type %T", v)
-			}
-
-			if floatResult[i] != float64(int64(floatResult[i])) {
-				isFloat = true
-			}
-		}
-
-		if isFloat {
-			return floatResult, nil
-		}
-		intResult := make([]int64, len(floatResult))
-		for i, v := range floatResult {
-			intResult[i] = int64(v)
-		}
-		return intResult, nil
-	}
-
-	strValue := make([]string, len(rowData))
-	isNumber := true
-	isFloat := false
-	for i, cell := range rowData {
-		strCell, ok := cell.(*string)
-		if !ok {
-			return nil, fmt.Errorf("not supported rowData type %T", strCell)
-		}
-		strValue[i] = *strCell
-		if !isNumber {
-			continue
-		}
-
-		floatValue, err := strconv.ParseFloat(strValue[i], 64)
-		if err != nil {
-			isNumber = false
-			continue
-		}
-
-		if !isFloat {
-			if floatValue != float64(int64(floatValue)) {
-				isFloat = true
-			}
-		}
-	}
-
-	if !isNumber {
-		return strValue, nil
-	}
-
-	if isFloat {
-		floatResult := make([]float64, len(strValue))
-		for i, v := range strValue {
-			floatResult[i], _ = strconv.ParseFloat(v, 64)
-		}
-		return floatResult, nil
-	}
-
-	intResult := make([]int64, len(strValue))
-	for i, v := range strValue {
-		intResult[i], _ = strconv.ParseInt(v, 10, 64)
-	}
-	return intResult, nil
-}
-
-// getGroupByIndexRanges generates the data range of GROUP BY
-// Supposing that we have a table:
-//   +-----+-----+
-//   |  A  |  B  |
-//   +-----+-----+
-//   | "x" | "z" |
-//   | "x" | "w" |
-//   | "y" | "z" |
-//   | "y" | "w" |
-//   +-----+-----+
-// If groupByColumns = ["A"], we would get {"A": [[0, 1], [2, 3]]}
-// If groupByColumns = ["B"], we would get {"B": [[0, 2], [1, 3]]}
-func getGroupByIndexRanges(tableData map[string]interface{}, groupByColumns []string) (map[string][][]int, error) {
-	isEqual := func(list interface{}, i int, j int) bool {
-		switch v := list.(type) {
-		case []int64:
-			return v[i] == v[j]
-		case []float64:
-			return v[i] == v[j]
-		case []string:
-			return v[i] == v[j]
-		default:
-			// not important, because v must be type of []int64, []float64 or []string
-			return false
-		}
-	}
-
-	result := make(map[string][][]int)
-	for _, groupBy := range groupByColumns {
-		groupByValues, ok := tableData[groupBy]
-		if !ok {
-			return nil, fmt.Errorf("cannot find GROUP BY column %s", groupBy)
-		}
-
-		uniqueValueIndices := make([][]int, 0)
-		length := reflect.ValueOf(groupByValues).Len()
-		for i := 0; i < length; i++ {
-			existIndex := -1
-			for j, indices := range uniqueValueIndices {
-				if isEqual(groupByValues, i, indices[0]) {
-					existIndex = j
-					break
-				}
-			}
-
-			if existIndex >= 0 {
-				uniqueValueIndices[existIndex] = append(uniqueValueIndices[existIndex], i)
-			} else {
-				uniqueValueIndices = append(uniqueValueIndices, []int{i})
-			}
-		}
-
-		result[groupBy] = uniqueValueIndices
-	}
-	return result, nil
-}
-
-// getTableDataAndGroupByIndexRanges reads all data from the table
-// and returns (tableData, groupByIndexRanges, error)
-func getTableDataAndGroupByIndexRanges(stmt *ir.OptimizeStmt, columns []string, db *database.DB, tableName string) (
-	map[string]interface{}, map[string][][]int, error) {
-	groupByColumns := make([]string, 0)
-	for _, c := range stmt.Constraints {
-		if c.GroupBy != "" {
-			hasAggregationFunction := false
-			for _, token := range c.ExpressionTokens {
-				if tryConvertToAggregationFunction(token) != "" {
-					hasAggregationFunction = true
-					break
-				}
-			}
-
-			if !hasAggregationFunction {
-				return nil, nil, fmt.Errorf("GROUP BY %s must be used with aggregation function together", c.GroupBy)
-			}
-
-			exists := false
-			for _, name := range groupByColumns {
-				if c.GroupBy == name {
-					exists = true
-				}
-			}
-
-			// only find unique GROUP BY column names
-			if !exists {
-				groupByColumns = append(groupByColumns, c.GroupBy)
-			}
-		}
-	}
-
-	// If there is no GROUP BY, table data is not necessary for generating the optimize model code.
-	if len(groupByColumns) == 0 {
-		return nil, nil, nil
-	}
-
-	selectStmt := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columns, ","), tableName)
-	rows, err := verifier.FetchSamples(db, selectStmt, -1)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	allRowData := make([][]interface{}, len(columns))
-	for rows.Next() {
-		rowData, err := ir.ScanRowValue(rows, columnTypes)
-		if err != nil {
-			return nil, nil, err
-		}
-		for i, cellValue := range rowData {
-			allRowData[i] = append(allRowData[i], cellValue)
-		}
-	}
-
-	tableData := make(map[string]interface{})
-	for i, rowData := range allRowData {
-		valueList, err := convertRowDataToList(rowData)
-		if err != nil {
-			return nil, nil, err
-		}
-		tableData[columns[i]] = valueList
-	}
-
-	ranges, err := getGroupByIndexRanges(tableData, groupByColumns)
-	if err != nil {
-		return nil, nil, err
-	}
-	return tableData, ranges, err
+func generateGroupByRangeAndIndexStr(groupBy string, dataStr string) (string, string, string) {
+	const (
+		indexStr = `index`
+		numpyStr = `__import__("numpy")`
+	)
+	groupByDataStr := fmt.Sprintf(`%s["%s"]`, dataStr, groupBy)
+	outerRangeStr := fmt.Sprintf(`for value, %s in zip(*%s.unique(%s, return_index=True))`, indexStr, numpyStr, groupByDataStr)
+	innerRangeStr := fmt.Sprintf(`%s.where(%s == value)[0]`, numpyStr, groupByDataStr)
+	return outerRangeStr, innerRangeStr, indexStr
 }
 
 // tryConvertToAggregationFunction tries to convert the token to an aggregation function
@@ -325,6 +94,17 @@ func tryConvertToAggregationFunction(token string) string {
 	// the value of aggregationFunctions is the aggregation function name of Python.
 	var aggregationFunctions = map[string]string{"SUM": "sum"}
 	return aggregationFunctions[strings.ToUpper(token)]
+}
+
+// tryConvertComparisionToken tries to convert the comparision token in the
+// SQL statement to the desired comparison token which would be accepted by
+// the optimize model. If the token is not a comparision token, it returns
+// "".
+func tryConvertComparisionToken(token string) string {
+	var comparisionTokenMap = map[string]string{
+		"=": "==",
+	}
+	return comparisionTokenMap[strings.ToUpper(token)]
 }
 
 // updateOptimizeStmtByTableColumnNames updates the OptimizeStmt by the column names
@@ -480,10 +260,13 @@ func findMatchedAggregationFunctionBrackets(tokens []string, startIdx int) ([]in
 }
 
 // generateTokenInNonAggregationExpression generates the proper token in the non-aggregation expression part
-func generateTokenInNonAggregationExpression(token string, stmt *ir.OptimizeStmt, columns []string,
-	tableData map[string]interface{}, indices []int, dataStr string) (string, error) {
+func generateTokenInNonAggregationExpression(token string, groupBy string, stmt *ir.OptimizeStmt, columns []string, dataStr string, indexStr string) (string, error) {
 	if tryConvertToAggregationFunction(token) != "" {
 		return tryConvertToAggregationFunction(token), nil
+	}
+
+	if tryConvertComparisionToken(token) != "" {
+		return tryConvertComparisionToken(token), nil
 	}
 
 	if token == stmt.ResultValueName {
@@ -505,16 +288,12 @@ func generateTokenInNonAggregationExpression(token string, stmt *ir.OptimizeStmt
 			continue
 		}
 
-		if indices == nil || len(indices) == 0 {
-			return "", fmt.Errorf(
-				"invalid expression: column %s should not occur in the non-aggregation part of constraint clause without GROUP BY", token)
+		if groupBy == "" {
+			return "", fmt.Errorf("column %s should not occur without GROUP BY", token)
 		}
 
-		if values, ok := tableData[token]; ok {
-			// return the value of the first row when using GROUP BY
-			return fmt.Sprintf("%v", reflect.ValueOf(values).Index(indices[0]).Interface()), nil
-		}
-		return "", fmt.Errorf("cannot find column %s", token)
+		// return the value of the first row when using GROUP BY
+		return fmt.Sprintf(`%s["%s"][%s]`, dataStr, token, indexStr), nil
 	}
 	return token, nil
 }
@@ -526,6 +305,10 @@ func generateTokenInAggregationExpression(token string,
 	variableStr string, dataStr string, depth int) (string, error) {
 	if tryConvertToAggregationFunction(token) != "" {
 		return tryConvertToAggregationFunction(token), nil
+	}
+
+	if tryConvertComparisionToken(token) != "" {
+		return tryConvertComparisionToken(token), nil
 	}
 
 	if token == stmt.ResultValueName {
@@ -558,10 +341,15 @@ func getBracketDepth(idx int, leftBracketIndices []int, rightBracketIndices []in
 // generateNonAggregatedConstraintExpression generates the expression from tokens without aggregation functions.
 // Input SQL statement: CONSTRAINT product >= demand , where product is the variable
 // Output expression: @X[i] >= @input["demand"][i], if variableStr = "@X" and dataStr = "@input"
-func generateNonAggregatedConstraintExpression(tokens []string, stmt *ir.OptimizeStmt, columns []string, variableStr string, dataStr string) (string, error) {
+func generateNonAggregatedConstraintExpression(tokens []string, stmt *ir.OptimizeStmt, columns []string, variableStr string, dataStr string) (string, string, error) {
 	resultTokens := make([]string, 0)
 
 	for _, token := range tokens {
+		if tryConvertComparisionToken(token) != "" {
+			resultTokens = append(resultTokens, tryConvertComparisionToken(token))
+			continue
+		}
+
 		if token == stmt.ResultValueName {
 			resultTokens = append(resultTokens, fmt.Sprintf("%s[i]", variableStr))
 			continue
@@ -582,17 +370,26 @@ func generateNonAggregatedConstraintExpression(tokens []string, stmt *ir.Optimiz
 
 		resultTokens = append(resultTokens, token)
 	}
-	return strings.Join(resultTokens, ""), nil
+
+	rangeStr := fmt.Sprintf("for i in %s", variableStr)
+	return strings.Join(resultTokens, ""), rangeStr, nil
 }
 
 // generateObjectiveOrAggregatedConstraintExpression generates the expression from tokens with aggregation functions.
 // Input SQL statement: TO MAXIMIZE sum((price - cost) * amount)
 // Output expression: sum([(@input["price"] - @input["cost"]) * @X[i] for i in @X]), if variableStr = "@X" and dataStr = "@input"
 // If there is GROUP BY in the CONSTRAINT clause, indices must be provided.
-func generateObjectiveOrAggregatedConstraintExpression(tokens []string, stmt *ir.OptimizeStmt, columns []string,
-	tableData map[string]interface{}, indices []int, variableStr string, dataStr string) (string, error) {
+func generateObjectiveOrAggregatedConstraintExpression(
+	tokens []string, groupBy string, stmt *ir.OptimizeStmt, columns []string, variableStr string, dataStr string) (string, string, error) {
 	idx := 0
 	resultTokens := make([]string, 0)
+
+	indexStr := ""
+	outerRangeStr := ""
+	innerRangeStr := ""
+	if groupBy != "" {
+		outerRangeStr, innerRangeStr, indexStr = generateGroupByRangeAndIndexStr(groupBy, dataStr)
+	}
 
 	contains := func(slice []int, v int) bool {
 		for _, sliceValue := range slice {
@@ -606,7 +403,7 @@ func generateObjectiveOrAggregatedConstraintExpression(tokens []string, stmt *ir
 	for idx < len(tokens) {
 		leftBracketIndices, rightBracketIndices, nextIdx, err := findMatchedAggregationFunctionBrackets(tokens, idx)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		leftBracketIdx := nextIdx
@@ -617,9 +414,9 @@ func generateObjectiveOrAggregatedConstraintExpression(tokens []string, stmt *ir
 		}
 
 		for ; idx < leftBracketIdx; idx++ {
-			token, err := generateTokenInNonAggregationExpression(tokens[idx], stmt, columns, tableData, indices, dataStr)
+			token, err := generateTokenInNonAggregationExpression(tokens[idx], groupBy, stmt, columns, dataStr, indexStr)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			resultTokens = append(resultTokens, token)
 		}
@@ -639,21 +436,17 @@ func generateObjectiveOrAggregatedConstraintExpression(tokens []string, stmt *ir
 
 			depth, err := getBracketDepth(idx, leftBracketIndices, rightBracketIndices)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 
 			if tokens[idx] == ")" {
 				if contains(rightBracketIndices, idx) { // right bracket of the SUM(...)
 					resultTokens = append(resultTokens, " ")
 					forRangeStr := ""
-					if indices == nil || len(indices) == 0 {
+					if groupBy == "" {
 						forRangeStr = fmt.Sprintf(`for i_%d in %s`, depth, variableStr)
 					} else {
-						jsonIndices, err := json.Marshal(indices)
-						if err != nil {
-							return "", err
-						}
-						forRangeStr = fmt.Sprintf(`for i_%d in %s`, depth, jsonIndices)
+						forRangeStr = fmt.Sprintf(`for i_%d in %s`, depth, innerRangeStr)
 					}
 					resultTokens = append(resultTokens, forRangeStr, "]")
 				}
@@ -663,32 +456,31 @@ func generateObjectiveOrAggregatedConstraintExpression(tokens []string, stmt *ir
 
 			token, err := generateTokenInAggregationExpression(tokens[idx], stmt, columns, variableStr, dataStr, depth)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			resultTokens = append(resultTokens, token)
 		}
 
 		for idx = rightBracketIdx + 1; idx < nextIdx; idx++ {
-			token, err := generateTokenInNonAggregationExpression(tokens[idx], stmt, columns, tableData, indices, dataStr)
+			token, err := generateTokenInNonAggregationExpression(tokens[idx], groupBy, stmt, columns, dataStr, indexStr)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			resultTokens = append(resultTokens, token)
 		}
 	}
 
-	return strings.Join(resultTokens, ""), nil
+	return strings.Join(resultTokens, ""), outerRangeStr, nil
 }
 
 type rangedExpression struct {
-	Expr     string
-	HasRange bool
+	Expr  string
+	Range string
 }
 
 // generateObjectiveOrConstraintExpressions generates expression of objective or constraint
 func generateObjectiveOrConstraintExpressions(tokens []string, groupBy string, stmt *ir.OptimizeStmt, columns []string,
-	tableData map[string]interface{},
-	groupByRanges map[string][][]int, variableStr string, dataStr string) ([]*rangedExpression, error) {
+	variableStr string, dataStr string) ([]*rangedExpression, error) {
 	hasAggregationFunc := false
 	for _, token := range tokens {
 		if tryConvertToAggregationFunction(token) != "" {
@@ -703,33 +495,26 @@ func generateObjectiveOrConstraintExpressions(tokens []string, groupBy string, s
 			return nil, fmt.Errorf("GROUP BY %s must be used with aggregation functions", groupBy)
 		}
 
-		rang, ok := groupByRanges[groupBy]
-		if !ok {
-			return nil, fmt.Errorf("cannot find GROUP BY column %s", groupBy)
+		expr, rangeStr, err := generateObjectiveOrAggregatedConstraintExpression(tokens, groupBy, stmt, columns, variableStr, dataStr)
+		if err != nil {
+			return nil, err
 		}
-
-		for _, r := range rang {
-			expr, err := generateObjectiveOrAggregatedConstraintExpression(tokens, stmt, columns, tableData, r, variableStr, dataStr)
-			if err != nil {
-				return nil, err
-			}
-			expressions = append(expressions, &rangedExpression{Expr: expr})
-		}
+		expressions = append(expressions, &rangedExpression{Expr: expr, Range: rangeStr})
 		return expressions, nil
 	}
 
 	if hasAggregationFunc {
-		expr, err := generateObjectiveOrAggregatedConstraintExpression(tokens, stmt, columns, tableData, nil, variableStr, dataStr)
+		expr, rangeStr, err := generateObjectiveOrAggregatedConstraintExpression(tokens, "", stmt, columns, variableStr, dataStr)
 		if err != nil {
 			return nil, err
 		}
-		expressions = append(expressions, &rangedExpression{Expr: expr})
+		expressions = append(expressions, &rangedExpression{Expr: expr, Range: rangeStr})
 	} else {
-		expr, err := generateNonAggregatedConstraintExpression(tokens, stmt, columns, variableStr, dataStr)
+		expr, rangeStr, err := generateNonAggregatedConstraintExpression(tokens, stmt, columns, variableStr, dataStr)
 		if err != nil {
 			return nil, err
 		}
-		expressions = append(expressions, &rangedExpression{Expr: expr, HasRange: true})
+		expressions = append(expressions, &rangedExpression{Expr: expr, Range: rangeStr})
 	}
 	return expressions, nil
 }
@@ -745,31 +530,26 @@ func generateOptFlowObjectiveAndConstraintExpressions(stmt *ir.OptimizeStmt, db 
 		return "", nil, err
 	}
 
-	tableData, groupByRanges, err := getTableDataAndGroupByIndexRanges(stmt, columns, db, tableName)
-	if err != nil {
-		return "", nil, err
-	}
-
 	objectiveExpr, err := generateObjectiveOrConstraintExpressions(stmt.Objective.ExpressionTokens, "",
-		stmt, columns, tableData, groupByRanges, optFlowVariableStr, optFlowDataStr)
+		stmt, columns, optFlowVariableStr, optFlowDataStr)
 	if err != nil {
 		return "", nil, err
 	}
 
-	if len(objectiveExpr) != 1 || objectiveExpr[0].HasRange {
+	if len(objectiveExpr) != 1 || objectiveExpr[0].Range != "" {
 		return "", nil, fmt.Errorf("invalid objective expression")
 	}
 
 	constraintExprs := make([]string, 0)
 	for _, c := range stmt.Constraints {
 		exprs, err := generateObjectiveOrConstraintExpressions(c.ExpressionTokens, c.GroupBy,
-			stmt, columns, tableData, groupByRanges, optFlowVariableStr, optFlowDataStr)
+			stmt, columns, optFlowVariableStr, optFlowDataStr)
 		if err != nil {
 			return "", nil, err
 		}
 		for _, expr := range exprs {
-			if expr.HasRange {
-				exprStr := fmt.Sprintf("for i in %s: %s", optFlowVariableStr, expr.Expr)
+			if expr.Range != "" {
+				exprStr := fmt.Sprintf("%s: %s", expr.Range, expr.Expr)
 				constraintExprs = append(constraintExprs, exprStr)
 			} else {
 				constraintExprs = append(constraintExprs, expr.Expr)

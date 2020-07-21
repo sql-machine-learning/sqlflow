@@ -75,13 +75,13 @@ jobs:
     - name: push server images
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_BRANCH=${{ github.head_ref }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_docker.sh
     - name: release latest linux client binary
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_BRANCH=${{ github.head_ref }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_client.sh
   # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
@@ -98,7 +98,7 @@ jobs:
     - name: relase latest macos client binary
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        export TRAVIS_BRANCH=${GITHUB_REF##*/}
+        export TRAVIS_BRANCH=${{ github.head_ref }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_client.sh
   windows-client:
@@ -115,8 +115,7 @@ jobs:
       env: 
         TRAVIS_OS_NAME: windows
       run: |
-        set TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-        set TRAVIS_BRANCH=${{ github.ref }}
-        set TRAVIS_PULL_REQUEST=${{ github.event.number }}
-        echo branch $TRAVIS_BRANCH
-        bash scripts/travis/deploy_client.sh
+        $TRAVIS_TAG="${{ steps.tagName.outputs.tag }}"
+        $TRAVIS_PULL_REQUEST="${{ github.event.number }}"
+        $TRAVIS_BRANCH="${{ github.head_ref }}"
+        scripts/travis/deploy_client.sh
