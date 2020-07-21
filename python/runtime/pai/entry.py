@@ -15,9 +15,7 @@ import os
 import pickle
 import types
 from inspect import getargspec
-from os import path
 
-import runtime
 from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai import explain, predict
