@@ -73,7 +73,7 @@ jobs:
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
         echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
-    - if: ${{ github.event_name = 'pull_request' }}
+    - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
@@ -99,7 +99,7 @@ jobs:
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
         echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
-    - if: ${{ github.event_name = 'pull_request' }}
+    - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
@@ -119,7 +119,7 @@ jobs:
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
         echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
-    - if: ${{ github.event_name = 'pull_request' }}
+    - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
