@@ -68,7 +68,7 @@ import tensorflow as tf
 from runtime.tensorflow import is_tf_estimator
 from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
 try:
-	from runtime.pai import model
+	from runtime import oss
 	from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 except:
 	pass # PAI is not always needed
@@ -85,11 +85,11 @@ is_estimator = is_tf_estimator(estimator)
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 `
 
 const tfSaveModelTmplText = tfImportsText + `
@@ -105,16 +105,16 @@ if is_estimator:
     if FLAGS.task_index == 0:
         with open("exported_path", "r") as fn:
             saved_model_path = fn.read()
-        model.save_dir("{{.OSSModelDir}}", saved_model_path)
-        model.save_file("{{.OSSModelDir}}", "exported_path")
+        oss.save_dir("{{.OSSModelDir}}", saved_model_path)
+        oss.save_file("{{.OSSModelDir}}", "exported_path")
 else:
     if len(FLAGS.worker_hosts.split(",")) > 1:
         if FLAGS.task_index == 0:
-            model.save_file("{{.OSSModelDir}}", "exported_path")
+            oss.save_file("{{.OSSModelDir}}", "exported_path")
     else:
-        model.save_file("{{.OSSModelDir}}", "model_save")
+        oss.save_file("{{.OSSModelDir}}", "model_save")
 
-model.save_metas("{{.OSSModelDir}}",
+oss.save_metas("{{.OSSModelDir}}",
            {{.NumWorkers}},
            "tensorflow_model_desc",
            "{{.Estimator}}",
@@ -166,7 +166,7 @@ set_oss_environs(FLAGS)
  feature_metas,
  label_meta,
  model_params,
- feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+ feature_columns_code) = oss.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 feature_columns = eval(feature_columns_code)
 
@@ -178,11 +178,11 @@ is_estimator = is_tf_estimator(eval(estimator))
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 
 predict.pred(datasource="{{.DataSource}}",
              estimator_string=estimator,
@@ -227,7 +227,7 @@ feature_column_names_map,
 feature_metas,
 label_meta,
 model_params,
-feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+feature_columns_code) = oss.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
@@ -238,11 +238,11 @@ is_estimator = is_tf_estimator(eval(estimator))
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 
 
 explain.explain(datasource="{{.DataSource}}",
@@ -290,7 +290,7 @@ feature_column_names_map,
 feature_metas,
 label_meta,
 model_params,
-feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+feature_columns_code) = oss.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
@@ -301,11 +301,11 @@ is_estimator = is_tf_estimator(eval(estimator))
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 
 evaluate.evaluate(datasource="{{.DataSource}}",
                   estimator_string=estimator,

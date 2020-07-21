@@ -32,7 +32,6 @@ from tensorflow.estimator import (BoostedTreesClassifier,
                                   LinearClassifier, LinearRegressor)
 
 try:
-    from runtime.pai import model
     from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 except:
     pass  # PAI is not always needed
