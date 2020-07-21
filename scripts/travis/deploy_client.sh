@@ -18,6 +18,15 @@ set -e
 # For more informaiton about deployment with Travis CI, please refer
 # to the file header of deploy_docker.sh
 
+# For github actions build, TRAVIS_PULL_REQUEST is "" when it is not a
+# pull request build, so set it to false when it's empty.
+if [[ "$TRAVIS_PULL_REQUEST" == "" ]]; then
+    TRAVIS_PULL_REQUEST="false"
+fi
+
+echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
+echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
+
 if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
     echo "Skip deployment on pull request"
     exit 0

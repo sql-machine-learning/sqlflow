@@ -44,6 +44,12 @@ import (
 
 var rePyDiagnostics = regexp.MustCompile("runtime.diagnostics.SQLFlowDiagnostic: (.*)")
 
+const (
+	sqlflowToRunContextKeySelect = "SQLFLOW_TO_RUN_SELECT"
+	sqlflowToRunContextKeyInto   = "SQLFLOW_TO_RUN_INTO"
+	sqlflowToRunContextKeyImage  = "SQLFLOW_TO_RUN_IMAGE"
+)
+
 // Figures contains analyzed figures as strings
 type Figures struct {
 	Image string
@@ -413,8 +419,9 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	}
 
 	context := map[string]string{
-		"SQLFLOW_TO_RUN_SELECT": runStmt.Select,
-		"SQLFLOW_TO_RUN_INTO":   runStmt.Into,
+		sqlflowToRunContextKeySelect: runStmt.Select,
+		sqlflowToRunContextKeyInto:   runStmt.Into,
+		sqlflowToRunContextKeyImage:  runStmt.ImageName,
 	}
 
 	// The first parameter is the program name
