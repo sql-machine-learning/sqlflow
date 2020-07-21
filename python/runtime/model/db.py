@@ -45,6 +45,15 @@ def _drop_table_if_exists(conn, table):
 def write_with_generator(datasource, table, gen):
     """Write data into a table, the written data
     comes from the input generator.
+
+    Args:
+        datasource: string
+            The connection string to connectDBMS.
+        table: string
+            The table name written.
+        gen: Generator
+            The generator to generte the data to insert
+            into table.
     """
     conn = connect_with_data_source(datasource)
     _drop_table_if_exists(conn, table)
@@ -64,6 +73,14 @@ def write_with_generator(datasource, table, gen):
 def read_with_generator(datasource, table):
     """Read data from a table, this function returns
     a generator to yield the data.
+
+    Args:
+        datasource: string
+            The connection string to connect DBMS.
+        table: string
+            The table name read.
+    Returns: Generator
+        the generator yield row data of the table.
     """
     conn = connect_with_data_source(datasource)
     sql = "SELECT id, block FROM {0} ORDER BY id".format(table)

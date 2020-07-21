@@ -23,7 +23,7 @@ try:
 except ModuleNotFoundError:
     import pickle
 
-# achieve the current work director into a tarball
+# archive the current work director into a tarball
 tarball = "model.tar.gz"
 
 # serialize the Model object into file
@@ -57,25 +57,24 @@ class Model:
     def __init__(self, typ, meta):
         """
         Args:
-
-        typ: EstimatorType
-            the enum value of EstimatorType.
-
-        meta: JSON
-            the training meta with JSON format.
+            typ: EstimatorType
+                the enum value of EstimatorType.
+            meta: JSON
+                the training meta with JSON format.
         """
         self._typ = typ
         self._meta = meta
         self._dump_file = "sqlflow_model.pkl"
 
     def save(self, datasource, table, cwd="./"):
-        """ save this model object into a table
-        Args:
+        """This save function would archive all the files on work director
+        into a tarball, and saved it into DBMS with the specified table name.
 
-        datasource: string
-            the connection string to DBMS.
-        table: string
-            the saved table name.
+        Args:
+            datasource: string
+                the connection string to DBMS.
+            table: string
+                the saved table name.
         """
         _dump_pkl(self, model_obj_file)
         zip_dir(cwd, tarball)
@@ -96,17 +95,17 @@ class Model:
 
 
 def load(datasource, table, cwd="./"):
-    """Load saved model from DBMS and restructure the Model object.
+    """Load the saved model from DBMS and unzip it on the work director.
+
     Args:
+        datasource: string
+            The connection string to DBMS
 
-    datasource: string
-        the connection string to DBMS
-
-    table: string
-        the table name which saved in DBMS
+        table: string
+            The table name which saved in DBMS
 
     Returns:
-        the Model object
+        Model: a Model object represent the model type and meta information.
     """
     gen = read_with_generator(datasource, table)
     with open(tarball, "wb") as f:
