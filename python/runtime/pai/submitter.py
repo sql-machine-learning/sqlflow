@@ -628,7 +628,7 @@ def create_explain_result_table(datasource, data_table, result_table,
 
     create_stmt = ""
     if model_type == oss.MODEL_TYPE_TF:
-        if estimator.startsWith("BoostedTrees"):
+        if estimator.startswith("BoostedTrees"):
             column_def = ""
             if conn.driver == "mysql":
                 column_def = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
@@ -658,11 +658,9 @@ def create_explain_result_table(datasource, data_table, result_table,
             model_type)
 
     if not db.execute(conn, create_stmt):
-        conn.close()
         raise SQLFlowDiagnostic("Can't create explain result table")
     # (TODO: lhw) conn should be in with context,
     # we have to modify the db interface to support this feature
-    conn.close()
 
 
 def get_explain_random_forests_cmd(datasource, model_name, data_table,
@@ -698,8 +696,7 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
     ) % (model_name, data_table, result_table, label_column, ",".join(fields))
 
 
-def submit_explain(datasource, select, result_table, label_column, model_name,
-                   model_attrs):
+def submit_explain(datasource, select, result_table, model_name, model_attrs):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
 
@@ -707,17 +704,16 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
         datasource: current datasource
         select: sql statement to get explain data set
         result_table: the table name to save result
-        label_column: name of the label column
         model_name: model used to do prediction
         model_params: dict, Params for training, crossponding to WITH clause
     """
-    params = locals()
-    params["entry_type"] = "explain"
+    params = dict(locals())
 
-    cwd = os.getcwd()
+    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
     # "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
+    params["data_table"] = data_table
 
     # format resultTable name to "db.table" to let the codegen form a submitting
     # argument of format "odps://project/tables/table_name"
@@ -728,13 +724,14 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     model_type, estimator = get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
+    params["oss_model_path"] = oss_model_path
 
+    label_column = model_attrs.get("label_col")
+    params["label_column"] = label_column
     create_explain_result_table(datasource, data_table, result_table,
                                 model_type, estimator, label_column)
 
     conf = cluster_conf.get_cluster_config(model_attrs)
-    prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
-                    oss_model_path, params)
 
     if model_type == oss.MODEL_TYPE_PAIML:
         cmd = get_explain_random_forests_cmd(datasource, model_name,
@@ -744,7 +741,12 @@ def submit_explain(datasource, select, result_table, label_column, model_name,
         # (TODO:lhw) add XGB explain cmd
         pass
     else:
-        cmd = get_pai_tf_cmd(conf, JOB_ARCHIVE_FILE, PARAMS_FILE,
+        params["entry_type"] = "explain_tf"
+        prepare_archive(cwd, conf, project, estimator, model_name, data_table,
+                        "", oss_model_path, params)
+        cmd = get_pai_tf_cmd(conf,
+                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                             "file://" + path.join(cwd, PARAMS_FILE),
                              ENTRY_DIR + "entry.py", model_name,
                              oss_model_path, data_table, "", result_table,
                              project)
