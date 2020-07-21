@@ -30,7 +30,6 @@ type predictFiller struct {
 	Select       string
 	ResultTable  string
 	ResultColumn string
-	IsPAI        bool
 	PAITable     string
 	Using        string
 }
@@ -146,7 +145,7 @@ const tfPredictTmplText = tfImportsText + `
 import os
 import types
 import traceback
-from runtime.tensorflow import predict
+from runtime.pai import predict
 
 try:
     import sqlflow_models
@@ -198,7 +197,6 @@ predict.pred(datasource="{{.DataSource}}",
              model_params=model_params,
              save="model_save",
              batch_size=1,
-             is_pai="{{.IsPAI}}" == "true",
              pai_table="{{.PAITable}}")
 `
 
@@ -212,7 +210,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.tensorflow import explain
+from runtime.pai import explain
 
 try:
     tf.enable_eager_execution()
@@ -257,7 +255,6 @@ explain.explain(datasource="{{.DataSource}}",
                 model_params=model_params,
                 save="model_save",
                 result_table="{{.ResultTable}}",
-                is_pai="{{.IsPAI}}" == "true",
                 pai_table="{{.PAITable}}",
                 oss_dest='''{{.ResultOSSDest}}''',
                 oss_ak='''{{.ResultOSSAK}}''',

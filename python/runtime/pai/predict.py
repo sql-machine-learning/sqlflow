@@ -16,10 +16,11 @@ import traceback
 import types
 
 import tensorflow as tf
-from runtime import oss
+from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags
-from runtime.tensorflow import is_tf_estimator, predict
+from runtime.tensorflow import is_tf_estimator
+from runtime.tensorflow.predict import estimator_predict, keras_predict
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -74,18 +75,90 @@ def predict_tf(datasource, select, data_table, result_table, label_column,
     else:
         oss.load_file(oss_model_path, "model_save")
 
-    predict.pred(datasource=datasource,
-                 estimator_string=estimator,
-                 select=select,
-                 result_table=result_table,
-                 feature_columns=feature_columns,
-                 feature_column_names=feature_column_names,
-                 feature_column_names_map=feature_column_names_map,
-                 train_label_name=label_meta["feature_name"],
-                 result_col_name=label_column,
-                 feature_metas=feature_metas,
-                 model_params=model_params,
-                 save="model_save",
-                 batch_size=1,
-                 is_pai=True,
-                 pai_table=data_table)
+    pred(datasource=datasource,
+         estimator_string=estimator,
+         select=select,
+         result_table=result_table,
+         feature_columns=feature_columns,
+         feature_column_names=feature_column_names,
+         feature_column_names_map=feature_column_names_map,
+         train_label_name=label_meta["feature_name"],
+         result_col_name=label_column,
+         feature_metas=feature_metas,
+         model_params=model_params,
+         save="model_save",
+         batch_size=1,
+         pai_table=data_table)
+
+
+def pred(datasource,
+         estimator_string,
+         select,
+         result_table,
+         feature_columns,
+         feature_column_names,
+         feature_column_names_map,
+         train_label_name,
+         result_col_name,
+         feature_metas={},
+         model_params={},
+         save="",
+         batch_size=1,
+         pai_table=""):
+    runtime.import_model_def(estimator_string, globals())
+    estimator = eval(estimator_string)
+    model_params.update(feature_columns)
+    is_estimator = is_tf_estimator(estimator)
+
+    conn = None
+    driver = "pai_maxcompute"
+    pai_table_parts = pai_table.split(".")
+    formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
+                                                   pai_table_parts[1])
+    selected_cols = db.pai_selected_cols(formatted_pai_table)
+    predict_generator = db.pai_maxcompute_db_generator(formatted_pai_table)()
+
+    if not is_estimator:
+        if not issubclass(estimator, tf.keras.Model):
+            # functional model need field_metas parameter
+            model_params["field_metas"] = feature_metas
+        print("Start predicting using keras model...")
+        keras_predict(estimator,
+                      model_params,
+                      save,
+                      result_table,
+                      feature_column_names,
+                      feature_metas,
+                      train_label_name,
+                      result_col_name,
+                      driver,
+                      conn,
+                      predict_generator,
+                      selected_cols,
+                      hdfs_namenode_addr="",
+                      hive_location="",
+                      hdfs_user="",
+                      hdfs_pass="")
+    else:
+        model_params['model_dir'] = save
+        print("Start predicting using estimator model...")
+        estimator_predict(estimator,
+                          model_params,
+                          save,
+                          result_table,
+                          feature_column_names,
+                          feature_column_names_map,
+                          feature_columns,
+                          feature_metas,
+                          train_label_name,
+                          result_col_name,
+                          driver,
+                          conn,
+                          predict_generator,
+                          selected_cols,
+                          hdfs_namenode_addr="",
+                          hive_location="",
+                          hdfs_user="",
+                          hdfs_pass="")
+
+    print("Done predicting. Predict table : %s" % result_table)
