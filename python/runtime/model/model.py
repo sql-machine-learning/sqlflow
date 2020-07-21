@@ -15,7 +15,6 @@
 import os
 from enum import Enum
 
-from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model.db import read_with_generator, write_with_generator
 from runtime.model.tar import unzip_dir, zip_dir
 
@@ -26,6 +25,9 @@ except ModuleNotFoundError:
 
 # achieve the current work director into a tarball
 tarball = "model.tar.gz"
+
+# serialize the Model object into file
+model_obj_file = "sqlflow_model.pkl"
 
 
 class EstimatorType(Enum):
@@ -75,7 +77,7 @@ class Model:
         table: string
             the saved table name.
         """
-        _dump_pkl(self, self._dump_file)
+        _dump_pkl(self, model_obj_file)
         zip_dir(cwd, tarball)
 
         def _bytes_reader(filename, buf_size=8 * 32):
@@ -93,21 +95,37 @@ class Model:
         write_with_generator(datasource, table, _bytes_reader(tarball))
 
 
-def _dump_pkl(obj, to_file):
-    with open(to_file, "wb") as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-
-
-def _load_pkl(filename):
-    with open(filename, "rb") as f:
-        return pickle.load(f)
-
-
 def load(datasource, table, cwd="./"):
+    """Load saved model from DBMS and restructure the Model object.
+    Args:
+
+    datasource: string
+        the connection string to DBMS
+
+    table: string
+        the table name which saved in DBMS
+
+    Returns:
+        the Model object
+    """
     gen = read_with_generator(datasource, table)
     with open(tarball, "wb") as f:
         for data in gen():
             f.write(bytes(data))
 
     unzip_dir(tarball, cwd)
-    return _load_pkl("sqlflow_model.pkl")
+    return _load_pkl(os.path.join(cwd, model_obj_file))
+
+
+def _dump_pkl(obj, to_file):
+    """Dump the Python object to file with Pickle.
+    """
+    with open(to_file, "wb") as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+
+def _load_pkl(filename):
+    """Load the Python object from a file with Pickle.
+    """
+    with open(filename, "rb") as f:
+        return pickle.load(f)

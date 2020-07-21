@@ -14,13 +14,26 @@
 import base64
 
 from runtime.db import buffered_db_writer, connect_with_data_source
+from runtime.diagnostics import SQLFlowDiagnostic
 
 
 def _create_table(conn, table):
-    sql = "CREATE TABLE IF NOT EXISTS {0} (id INT, block TEXT,\
+    if conn.driver == "mysql":
+        stmt = "CREATE TABLE IF NOT EXISTS {0} (id INT, block TEXT,\
         PRIMARY KEY (id))".format(table)
+    elif conn.driver == "hive":
+        stmt = 'CREATE TABLE IF NOT EXISTS {0} (id INT, block STRING) ROW\
+            FORMAT DELIMITED FIELDS TERMINATED BY "\\001" \
+                STORED AS TEXTFILE'.format(table)
+    elif conn.driver == "maxcompute":
+        stmt = "CREATE TABLE IF NOT EXISTS {0} (id INT,\
+            block STRING)".format(table)
+    else:
+        raise SQLFlowDiagnostic("unsupported driver {0} on creating\
+            table.".format(conn.driver))
+
     cursor = conn.cursor()
-    cursor.execute(sql)
+    cursor.execute(stmt)
 
 
 def _drop_table_if_exists(conn, table):
@@ -30,6 +43,9 @@ def _drop_table_if_exists(conn, table):
 
 
 def write_with_generator(datasource, table, gen):
+    """Write data into a table, the written data
+    comes from the input generator.
+    """
     conn = connect_with_data_source(datasource)
     _drop_table_if_exists(conn, table)
     _create_table(conn, table)
@@ -46,6 +62,9 @@ def write_with_generator(datasource, table, gen):
 
 
 def read_with_generator(datasource, table):
+    """Read data from a table, this function returns
+    a generator to yield the data.
+    """
     conn = connect_with_data_source(datasource)
     sql = "SELECT id, block FROM {0} ORDER BY id".format(table)
     cursor = conn.cursor()

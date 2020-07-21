@@ -15,7 +15,6 @@ import os
 import tempfile
 import unittest
 
-from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType, Model, load
 from runtime.testing import get_datasource
 
@@ -33,7 +32,7 @@ class TestModel(unittest.TestCase):
         m = Model(EstimatorType.XGBOOST, meta)
         datasource = get_datasource()
 
-        # save model
+        # save mode
         with tempfile.TemporaryDirectory() as d:
             os.chdir(d)
             m.save(datasource, table)
