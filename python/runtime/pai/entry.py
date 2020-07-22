@@ -18,8 +18,10 @@ from inspect import getargspec
 
 from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.pai import explain, predict, train
+from runtime.pai import explain, predict
+from runtime.pai import train as tf_train
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.xgboost import train as xgb_train
 from runtime.tensorflow import is_tf_estimator
 
 
@@ -61,8 +63,10 @@ def call_fun(func, params):
 def entrypoint():
     with open("train_params.pkl", "rb") as file:
         params = pickle.load(file)
-    if params["entry_type"] == "train":
-        call_fun(train.train, params)
+    if params["entry_type"] == "train_tf":
+        call_fun(tf_train.train, params)
+    elif params["entry_type"] == "train_xgb":
+        call_fun(xgb_train.train, params)
     elif params["entry_type"] == "predict_tf":
         call_fun(predict.predict_tf, params)
     elif params["entry_type"] == "explain_tf":
