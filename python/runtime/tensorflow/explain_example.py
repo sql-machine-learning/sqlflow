@@ -57,7 +57,6 @@ if __name__ == "__main__":
                 "center_bias": True
             },
             save="btmodel",
-            is_pai=False,
             plot_type='bar',
             result_table="")
     shutil.rmtree("btmodel")
@@ -92,7 +91,6 @@ if __name__ == "__main__":
                 "hidden_units": [100, 100],
             },
             save="dnnmodel",
-            is_pai=False,
             plot_type='bar',
             result_table="")
     shutil.rmtree("dnnmodel")
@@ -125,7 +123,6 @@ if __name__ == "__main__":
                 "hidden_units": [100, 100],
             },
             save="dnnmodel",
-            is_pai=False,
             plot_type='bar',
             result_table="")
     shutil.rmtree("dnnmodel")
@@ -154,7 +151,6 @@ if __name__ == "__main__":
             label_meta=label_meta,
             model_params={},
             save="lrmodel",
-            is_pai=False,
             plot_type='bar',
             result_table="")
     shutil.rmtree("lrmodel")

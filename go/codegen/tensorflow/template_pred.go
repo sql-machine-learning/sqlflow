@@ -31,8 +31,6 @@ type predFiller struct {
 	HiveLocation      string
 	HDFSUser          string
 	HDFSPass          string
-	IsPAI             bool
-	PAIPredictTable   string
 }
 
 const tfPredTemplateText = `
@@ -111,7 +109,5 @@ pred(datasource="{{.DataSource}}",
      hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
      hive_location="{{.HiveLocation}}",
      hdfs_user="{{.HDFSUser}}",
-     hdfs_pass="{{.HDFSPass}}",
-     is_pai="{{.IsPAI}}" == "true",
-     pai_table="{{.PAIPredictTable}}")
+     hdfs_pass="{{.HDFSPass}}")
 `

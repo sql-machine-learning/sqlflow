@@ -26,7 +26,6 @@ type explainFiller struct {
 	Y                 *ir.FieldDesc
 	ModelParams       map[string]interface{}
 	Save              string
-	IsPAI             bool
 	ResultTable       string
 	HDFSNameNodeAddr  string
 	HiveLocation      string

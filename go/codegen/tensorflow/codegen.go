@@ -367,11 +367,6 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		MaxID:      trainLabelFM.MaxID,
 	}
 
-	paiPredictTable := ""
-	if IsPAI() && predStmt.TmpPredictTable != "" {
-		paiPredictTable = predStmt.TmpPredictTable
-	}
-
 	filler := predFiller{
 		DataSource:        session.DbConnStr,
 		Select:            predStmt.Select,
@@ -387,8 +382,6 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		HiveLocation:      session.HiveLocation,
 		HDFSUser:          session.HdfsUser,
 		HDFSPass:          session.HdfsPass,
-		IsPAI:             IsPAI(),
-		PAIPredictTable:   paiPredictTable,
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{

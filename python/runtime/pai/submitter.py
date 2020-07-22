@@ -56,7 +56,7 @@ def get_requirement(model_name):
     Returns:
         A string with multilines, each line is a requirement
     """
-    if model_name.lower() == "xgboost":
+    if model_name.lower().startswith("xgboost"):
         return XGB_REQUIREMENT
     else:
         return TF_REQUIREMENT
@@ -407,7 +407,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     del params["train_params"]
     params.update(train_params)
 
-    if estimator_string.lower() == "xgboost":
+    if estimator_string.lower().startswith("xgboost"):
         params["entry_type"] = "train_xgb"
     else:
         params["entry_type"] = "train_tf"

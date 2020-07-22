@@ -80,7 +80,6 @@ def entrypoint():
 
 
 if __name__ == "__main__":
-    #os.chdir("/Users/linhongwu/ws/sqlflow/xx")
     FLAGS = define_tf_flags()
     set_oss_environs(FLAGS)
     entrypoint()

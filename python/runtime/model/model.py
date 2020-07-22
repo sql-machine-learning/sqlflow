@@ -15,7 +15,19 @@
 import os
 from enum import Enum
 
-from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.model.db import read_with_generator, write_with_generator
+from runtime.model.tar import unzip_dir, zip_dir
+
+try:
+    import cPickle as pickle
+except ModuleNotFoundError:
+    import pickle
+
+# archive the current work director into a tarball
+tarball = "model.tar.gz"
+
+# serialize the Model object into file
+model_obj_file = "sqlflow_model.pkl"
 
 
 class EstimatorType(Enum):
@@ -39,57 +51,80 @@ class Model:
         meta = runtime.collect_model_metadata(train_params={...},
                                               model_params={...})
         m = runtime.model.Model(ModelType.XGBOOST, meta)
-        m.save(uri="sqlfs://mydatabase/mytable")
+        m.save(datasource="mysql://", "sqlflow_models.my_model")
 
     """
     def __init__(self, typ, meta):
         """
         Args:
-
-        typ: EstimatorType
-            the enum value of EstimatorType.
-
-        meta: JSON
-            the training meta with JSON format.
+            typ: EstimatorType
+                the enum value of EstimatorType.
+            meta: JSON
+                the training meta with JSON format.
         """
         self._typ = typ
-        self._cwd = os.getcwd()
         self._meta = meta
+        self._dump_file = "sqlflow_model.pkl"
 
-    def save(self, uri, datasource=None):
-        """ save this model object.
+    def save(self, datasource, table, cwd="./"):
+        """This save function would archive all the files on work director
+        into a tarball, and saved it into DBMS with the specified table name.
+
         Args:
-
-        uri: string
-            the URI represents where to save the model, the format
-            is like <driver>://<path>. This save API supports
-            "sqlfs" and "file" driver.
-
-        datasource: string
-            the connection datasource DSN is required if saving with sqlfs.
+            datasource: string
+                the connection string to DBMS.
+            table: string
+                the saved table name.
         """
-        driver, path = parseURI(uri)
-        if driver == "file":
-            # TODO(yancey1989): save model with local file system.
-            raise NotImplementedError
-        elif driver == "sqlfs":
-            # TODO(yancey1989): save model with SQL file system.
-            raise NotImplementedError
-        else:
-            raise SQLFlowDiagnostic("unsupported driven to save model: %s" %
-                                    driver)
+        _dump_pkl(self, model_obj_file)
+        zip_dir(cwd, tarball)
+
+        def _bytes_reader(filename, buf_size=8 * 32):
+            def _gen():
+                with open(filename, "rb") as f:
+                    while True:
+                        data = f.read(buf_size)
+                        if data:
+                            yield data
+                        else:
+                            break
+
+            return _gen
+
+        write_with_generator(datasource, table, _bytes_reader(tarball))
 
 
-def parseURI(uri):
-    """Parse the model URI into two parts: driver and path.
+def load(datasource, table, cwd="./"):
+    """Load the saved model from DBMS and unzip it on the work director.
+
+    Args:
+        datasource: string
+            The connection string to DBMS
+
+        table: string
+            The table name which saved in DBMS
+
+    Returns:
+        Model: a Model object represent the model type and meta information.
     """
-    array = uri.split("://")
-    if len(array) != 2:
-        raise SQLFlowDiagnostic("invalid model saving URI: {0},\
-            which should be <driver>://<path>".format(uri))
-    return array[0], array[1]
+    gen = read_with_generator(datasource, table)
+    with open(tarball, "wb") as f:
+        for data in gen():
+            f.write(bytes(data))
+
+    unzip_dir(tarball, cwd)
+    return _load_pkl(os.path.join(cwd, model_obj_file))
 
 
-def load(uri, datasource=None):
-    # TODO(yancey1989): load model object from model storage with uri.
-    raise NotImplementedError
+def _dump_pkl(obj, to_file):
+    """Dump the Python object to file with Pickle.
+    """
+    with open(to_file, "wb") as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+
+def _load_pkl(filename):
+    """Load the Python object from a file with Pickle.
+    """
+    with open(filename, "rb") as f:
+        return pickle.load(f)
