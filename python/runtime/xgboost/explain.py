@@ -191,7 +191,7 @@ def explain(datasource,
                               hdfs_namenode_addr, hive_location, hdfs_user,
                               hdfs_pass)
         else:
-            conn = connect_with_data_source(datasource)
+            conn = db.connect_with_data_source(datasource)
             write_shap_values(shap_values[0], conn.driver, conn, result_table,
                               feature_column_names, hdfs_namenode_addr,
                               hive_location, hdfs_user, hdfs_pass)

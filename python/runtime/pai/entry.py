@@ -76,7 +76,7 @@ def entrypoint():
     elif params["entry_type"] == "explain_tf":
         call_fun(explain.explain_tf, params)
     elif params["entry_type"] == "explain_xgb":
-        call_fun(explain.explain_tf, params)
+        call_fun(explain_xgb, params)
 
 
 if __name__ == "__main__":

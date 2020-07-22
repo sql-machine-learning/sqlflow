@@ -232,9 +232,9 @@ class SubmitPAITrainTask(TestCase):
     def test_submit_pai_xgb_explain_task(self):
         submitter.submit_explain(
             testing.get_datasource(),
-            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
-            "alifin_jtest_dev.pai_dnn_explain_result", "e2etest_pai_dnn",
-            {"label_col": "class"})
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "alifin_jtest_dev.e2etest_xgb_explain_result",
+            "e2etest_xgb_classify_model", {"label_col": "class"})
 
 
 if __name__ == "__main__":

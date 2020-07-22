@@ -763,11 +763,11 @@ def submit_explain(datasource, select, result_table, model_name, model_attrs):
         cmd = get_explain_random_forests_cmd(datasource, model_name,
                                              data_table, result_table,
                                              label_column)
-    elif model_type == oss.MODEL_TYPE_XGB:
-        # (TODO:lhw) add XGB explain cmd
-        pass
     else:
-        params["entry_type"] = "explain_tf"
+        if model_type == oss.MODEL_TYPE_XGB:
+            params["entry_type"] = "explain_xgb"
+        else:
+            params["entry_type"] = "explain_tf"
         prepare_archive(cwd, conf, project, estimator, model_name, data_table,
                         "", oss_model_path, params)
         cmd = get_pai_tf_cmd(conf,
