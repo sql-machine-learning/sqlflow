@@ -34,6 +34,19 @@ OPTFLOW_HTTP_HEADERS = {
 
 
 def query_optflow_job_status(url, record_id, user_number, token):
+    """
+    Query OptFlow job status.
+
+    Args:
+        url: the URL to query job status.
+        record_id: the job id.
+        user_number: the user id.
+        token: the OptFlow API token.
+
+    Returns:
+        A string that indicates the job status. It may be
+        "success", "fail", "running", etc.
+    """
     url = "{}?userNumber={}&recordId={}&token={}".format(
         url, user_number, record_id, token)
     response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS)
@@ -46,6 +59,20 @@ def query_optflow_job_status(url, record_id, user_number, token):
 
 
 def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
+    """
+    Query OptFlow job log.
+
+    Args:
+        url: the URL to query job log.
+        record_id: the job id.
+        user_number: the user id.
+        token: the OptFlow API token.
+        start_line_num: the start line number of the logs.
+
+    Returns:
+        A tuple of (logs, end_line_num), where logs are the queried results, and
+        end_line_num is the line number of the last queried logs.
+    """
     url = "{}?userNumber={}&recordId={}&token={}".format(
         url, user_number, record_id, token)
     response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS, stream=True)
@@ -68,6 +95,19 @@ def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
 
 def print_job_log_till_finish(status_url, log_url, record_id, user_number,
                               token):
+    """
+    Print the OptFlow job log till the job finishes.
+
+    Args:
+        status_url: the URL to query job status.
+        log_url: the URL to query job log.
+        record_id: the job id.
+        user_number: the user id.
+        token: the OptFlow API token.
+
+    Returns:
+        Bool, whether the job is successful.
+    """
     def call_func_with_retry(func, times):
         for _ in six.moves.range(times - 1):
             try:
@@ -101,6 +141,19 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
 
 def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
                        user_number):
+    """
+    Submit the OptFlow job.
+
+    Args:
+        train_table (str): the source table name.
+        result_table (str): the table name to save the solved results.
+        fsl_file_content (str): the FSL file content to submit.
+        solver (str): the solver used to solve the model.
+        user_number (str): the user id.
+
+    Returns:
+        None
+    """
     project_name = train_table.split(".")[0]
 
     snapshot_id = os.getenv("SQLFLOW_OPTFLOW_SNAPSHOT_ID")
@@ -189,6 +242,26 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
 def run_optimize_on_optflow(train_table, columns, variables, variable_type,
                             result_value_name, objective, direction,
                             constraints, solver, result_table, user_number):
+    """
+    Run the optimize case in the local mode.
+
+    Args:
+        train_table (str): the source table name.
+        columns (list[str]): the column names of the source table.
+        variables (list[str]): the variable names to be optimized.
+        variable_type (str): the variable type.
+        result_value_name (str): the result value name to be optimized.
+        objective (list[str]): the objective string token list.
+        direction (str): "maximize" or "minimize".
+        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        solver (str): the solver used to solve the model.
+        result_table (str): the table name to save the solved results.
+        user_number (str): the user id.
+
+    Returns:
+        None
+    """
+
     if direction.lower() == "maximize":
         direction = "max"
     elif direction.lower() == "minimize":

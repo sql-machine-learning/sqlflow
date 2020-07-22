@@ -20,6 +20,19 @@ __all__ = [
 
 
 def generate_unique_result_value_name(columns, result_value_name, variables):
+    """
+    If result_value_name is inside variables, generate unique result_value_name.
+    If not, return result_value_name directly.
+
+    Args:
+        columns (list[str]): the column names in the source table.
+        result_value_name (str): the original result value name to be optimized.
+        variables (list[str]): the variable names to be optimized.
+
+    Returns:
+        A unique result_value_name that is not duplicated with any name in columns
+        and variables.
+    """
     variables = [v.lower() for v in variables]
     columns_lower = [c.lower() for c in columns]
     for v in variables:
@@ -47,6 +60,23 @@ def generate_unique_result_value_name(columns, result_value_name, variables):
 
 def update_by_column_names(columns, tokens, variables, result_value_name,
                            group_by):
+    """
+    Update tokens, variables, result_value_name and group_by by the columns.
+    If any string inside tokens, variables, result_value_name and group_by
+    is also inside columns (ignoring cases), replace the string with
+    the name inside columns. In this way, we can perform
+    "a == b" instead of "a.lower() == b.lower()" in the future comparison.
+
+    Args:
+        columns (list[str]): the column names in the source table.
+        tokens (list[str]): objective or constraint tokens.
+        variables (list[str]): the variable names to be optimized.
+        result_value_name (str): the original result value name to be optimized.
+        group_by (str): the column name to be grouped.
+
+    Returns:
+        A tuple of (new_tokens, new_variables, new_result_value_name, new_group_by).
+    """
     tokens = list(copy.copy(tokens))
     variables = list(copy.copy(variables))
 
@@ -87,6 +117,17 @@ def update_by_column_names(columns, tokens, variables, result_value_name,
 
 
 def try_convert_to_aggregation_function(token):
+    """
+    This method tries to convert the given token to be an aggregation
+    function name. Return None if failure.
+
+    Args:
+        token (str): the given token to be converted.
+
+    Returns:
+        Return the converted aggregation function name if the conversion
+        succeeds. Otherwise, return None.
+    """
     AGGREGATION_FUNCTIONS = {
         'SUM': 'sum',
     }
@@ -94,6 +135,18 @@ def try_convert_to_aggregation_function(token):
 
 
 def try_convert_comparision_token(token):
+    """
+    This method tries to convert the given token to be a desired
+    comparision token which can be accepted by the Pyomo model or
+    FSL file. Return None if failure.
+
+    Args:
+        token (str): the given token to be converted.
+
+    Returns:
+        Return the converted comparision token if the conversion
+        succeeds. Otherwise, return None.
+    """
     COMPARISION_TOKENS = {
         '=': '==',
     }
@@ -102,6 +155,26 @@ def try_convert_comparision_token(token):
 
 def generate_group_by_range_and_index_str(group_by, data_str, value_str,
                                           index_str):
+    """
+    Generate the range and index string for GROUP BY expression.
+
+    Args:
+        group_by (str): the column name to be grouped.
+        data_str (str): a string that represents the total table data.
+        value_str (str): a string that represents the cell value in the table.
+        index_str (str): a string that represents the row index of the table.
+
+    Returns:
+        If group_by is None or "", return (None, None, None).
+        Otherwise, return (outer_range_str, inner_range_str, iter_vars_str).
+        For example, "SUM(x) <= 10 GROUP BY y" would be translated to be:
+
+        for ${iter_vars_str} in ${outer_range_str}:
+            sum([model.x for i in ${inner_range_str}] <= 10
+    """
+    if not group_by:
+        return None, None, None
+
     numpy_str = '__import__("numpy")'
     group_by_data_str = '%s["%s"]' % (data_str, group_by)
     outer_range_str = 'zip(*%s.unique(%s, return_index=True))' % (
@@ -112,6 +185,17 @@ def generate_group_by_range_and_index_str(group_by, data_str, value_str,
 
 
 def find_prev_non_blank_token(tokens, i):
+    """
+    Find previous non-blank token before index i (including i).
+
+    Args:
+        tokens (list[str]): a string token list.
+        i (int): the position to search.
+
+    Returns:
+        If any token is found, return the found token.
+        Otherwise, return None.
+    """
     if i < 0 or i >= len(tokens):
         return None
 
@@ -125,6 +209,20 @@ def find_prev_non_blank_token(tokens, i):
 
 
 def find_matched_aggregation_function_brackets(tokens, i):
+    """
+    Find the indices of the matched brackets which belong to
+    the aggregation function.
+
+    Args:
+        tokens (list[str]): a string token list.
+        i (int): the position to search.
+
+    Returns:
+        A tuple of (left_bracket_indices, right_bracket_indices, next_idx),
+        where left_bracket_indices and right_bracket_indices are the
+        found left and right bracket index lists respectively, and next_idx
+        is the next position to search.
+    """
     left_bracket_num = 0
     left_bracket_indices = []
     right_bracket_indices = []
@@ -161,6 +259,20 @@ def find_matched_aggregation_function_brackets(tokens, i):
 
 
 def get_bracket_depth(idx, left_bracket_indices, right_bracket_indices):
+    """
+    Get the bracket depth of index idx.
+
+    Args:
+        idx (int): the index.
+        left_bracket_indices (list[int]): the left bracket index list.
+        right_bracket_indices (list[int]): the right bracket index list.
+
+    Returns:
+        An integer which is the bracket depth.
+
+    Raises:
+        ValueError if idx is not inside any bracket.
+    """
     depth = -1
     for i, left_idx in enumerate(left_bracket_indices):
         if idx >= left_idx and idx <= right_bracket_indices[i]:
@@ -175,6 +287,22 @@ def get_bracket_depth(idx, left_bracket_indices, right_bracket_indices):
 def generate_token_in_non_aggregation_expression(token, columns,
                                                  result_value_name, group_by,
                                                  data_str, index_str):
+    """
+    Convert the token which is inside the non aggregation part of an aggregation expression
+    to be a token that can be accepted by the Pyomo model or FSL file.
+
+    Args:
+        token (str): the token to be converted.
+        columns (list[str]): the column names of the source table.
+        result_value_name (str): the result value name to be optimized.
+        group_by (str): the column name to be grouped.
+        data_str (str): a string that represents the total table data.
+        index_str (str): a string that represents the row index of the table.
+
+    Returns:
+        A converted token that can be accepted by the Pyomo model or FSL file.
+    """
+
     if try_convert_to_aggregation_function(token):
         return try_convert_to_aggregation_function(token)
 
@@ -198,6 +326,22 @@ def generate_token_in_non_aggregation_expression(token, columns,
 
 def generate_token_in_aggregation_expression(token, columns, result_value_name,
                                              variable_str, data_str, depth):
+    """
+    Convert the token which is inside the aggregation part of an aggregation expression
+    to be a token that can be accepted by the Pyomo model or FSL file.
+
+    Args:
+        token (str): the token to be converted.
+        columns (list[str]): the column names of the source table.
+        result_value_name (str): the result value name to be optimized.
+        variable_str (str): a string that represents the variables to be optimized.
+        data_str (str): a string that represents the total table data.
+        depth (int): the bracket depth of the aggregation part.
+
+    Returns:
+        A converted token that can be accepted by the Pyomo model or FSL file.
+    """
+
     if try_convert_to_aggregation_function(token):
         return try_convert_to_aggregation_function(token)
 
@@ -217,6 +361,21 @@ def generate_non_aggregation_constraint_expression(tokens, columns,
                                                    result_value_name,
                                                    variable_str, data_str,
                                                    index_str):
+    """
+    Generate the model expression for the non aggregated constraint expression.
+
+    Args:
+        tokens (list[str]): the constraint string token list.
+        columns (list[str]): the column names of the source table.
+        result_value_name (str): the result value name to be optimized.
+        variable_str (str): a string that represents the variables to be optimized.
+        data_str (str): a string that represents the total table data.
+        index_str (str): a string that represents the row index of the table.
+
+    Returns:
+        A tuple of (model_expression, variable_str, [index_str]).
+    """
+
     result_tokens = []
     for token in tokens:
         if try_convert_comparision_token(token):
@@ -239,15 +398,28 @@ def generate_non_aggregation_constraint_expression(tokens, columns,
 def generate_objective_or_aggregated_constraint_expression(
     tokens, group_by, result_value_name, columns, variable_str, data_str,
     value_str, index_str):
-    iter_vars = None
-    outer_range = None
-    inner_range = None
-    if group_by:
-        outer_range, inner_range, iter_vars = generate_group_by_range_and_index_str(
-            group_by=group_by,
-            data_str=data_str,
-            value_str=value_str,
-            index_str=index_str)
+    """
+    Generate the model expression for the objective or aggregated constraint expression.
+
+    Args:
+        tokens (list[str]): the objective or constraint string token list.
+        group_by (str): the column name to be grouped.
+        result_value_name (str): the result value name to be optimized.
+        columns (list[str]): the column names of the source table.
+        variable_str (str): a string that represents the variables to be optimized.
+        data_str (str): a string that represents the total table data.
+        value_str (str): a string that represents the cell value in the table.
+        index_str (str): a string that represents the row index of the table.
+
+    Returns:
+        A tuple of (model_expression, for_range_expression, for_range_iteration_vars).
+    """
+
+    outer_range, inner_range, iter_vars = generate_group_by_range_and_index_str(
+        group_by=group_by,
+        data_str=data_str,
+        value_str=value_str,
+        index_str=index_str)
 
     idx = 0
     result_tokens = []
@@ -324,6 +496,23 @@ def generate_objective_or_constraint_expression(columns, tokens, variables,
                                                 result_value_name, group_by,
                                                 variable_str, data_str,
                                                 value_str, index_str):
+    """
+    Generate the model expression for the objective or constraint expression.
+
+    Args:
+        columns (list[str]): the column names of the source table.
+        tokens (list[str]): the objective or constraint string token list.
+        variables (list[str]): the variable names to be optimized.
+        result_value_name (str): the result value name to be optimized.
+        group_by (str): the column name to be grouped.
+        variable_str (str): a string that represents the variables to be optimized.
+        data_str (str): a string that represents the total table data.
+        value_str (str): a string that represents the cell value in the table.
+        index_str (str): a string that represents the row index of the table.
+
+    Returns:
+        A tuple of (model_expression, for_range_expression, for_range_iteration_vars).
+    """
     tokens, variables, result_value_name, group_by = update_by_column_names(
         columns=columns,
         tokens=tokens,
@@ -373,6 +562,25 @@ def generate_objective_and_constraint_expression(columns,
                                                  data_str,
                                                  value_str="__value",
                                                  index_str="__index"):
+    """
+    Generate the model expressions for the objective and constraint expressions.
+
+    Args:
+        columns (list[str]): the column names of the source table.
+        objective (list[str]): the objective string token list.
+        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        variables (list[str]): the variable names to be optimized.
+        result_value_name (str): the result value name to be optimized.
+        variable_str (str): a string that represents the variables to be optimized.
+        data_str (str): a string that represents the total table data.
+        value_str (str): a string that represents the cell value in the table.
+        index_str (str): a string that represents the row index of the table.
+
+    Returns:
+        A tuple of (objective_expression, constraint_expressions), where
+        constraint_expressions is a list whose each element is a tuple of
+        (model_expression, for_range_expression, for_range_iteration_vars).
+    """
     obj_expr = ""
     constraint_exprs = []
 

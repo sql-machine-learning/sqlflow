@@ -37,6 +37,21 @@ DATA_FRAME_LOCK = threading.Lock()
 def generate_model_with_data_frame(data_frame, variables, variable_type,
                                    result_value_name, objective, direction,
                                    constraints):
+    """
+    Generate a Pymomo ConcreteModel.
+
+    Args:
+        data_frame (pandas.DataFrame): the input table data.
+        variables (list[str]): the variable names to be optimized.
+        variable_type (str): the variable type.
+        result_value_name (str): the result value name to be optimized.
+        objective (list[str]): the objective string token list.
+        direction (str): "maximize" or "minimize".
+        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+
+    Returns:
+        A Pymomo ConcreteModel.
+    """
     direction = direction.lower()
     if direction not in ['maximize', 'minimize']:
         raise ValueError("direction must be one of 'maximize' or 'minimize'")
@@ -89,6 +104,19 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
 
 
 def solve_model(model, solver):
+    """
+    Solve the Pyomo ConcreteModel by the solver.
+
+    Args:
+        model (ConcreteModel): the Pyomo ConcreteModel object.
+        solver (str): the solver used to solve the model.
+
+    Returns:
+        A numpy array which is the solved result of the model.
+
+    Raises:
+        ValueError if the solving process fails.
+    """
     opt = pyomo_env.SolverFactory(solver)
     solved_results = opt.solve(model)
 
@@ -122,6 +150,16 @@ def solve_model(model, solver):
 
 
 def load_db_data_to_data_frame(datasource, select):
+    """
+    Load database data to a pandas.DataFrame.
+
+    Args:
+        datasource (str): the database connection URI.
+        select (str): the select SQL statement.
+
+    Returns:
+        A pandas.DataFrame object which contains all queried data.
+    """
     conn = db.connect_with_data_source(datasource)
     generator = verifier.fetch_samples(conn, select, n=-1)
     names = generator.field_names
@@ -145,6 +183,20 @@ def load_db_data_to_data_frame(datasource, select):
 
 def save_solved_result_in_db(solved_result, data_frame, variables,
                              result_value_name, datasource, result_table):
+    """
+    Save the solved result of the Pyomo model into the database.
+
+    Args:
+        solved_result (numpy.ndarray): a numpy array which indicates the solved result.
+        data_frame (panda.DataFrame): the input table data.
+        variables (list[str]): the variable names to be optimized.
+        result_value_name (str): the result value name to be optimized.
+        datasource (str): the database connection URI.
+        result_table (str): the table name to save the solved results.
+
+    Returns:
+        None
+    """
     column_names = []
     for col in data_frame.columns:
         found = False
@@ -181,6 +233,25 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
 def run_optimize_locally(datasource, select, variables, variable_type,
                          result_value_name, objective, direction, constraints,
                          solver, result_table):
+    """
+    Run the optimize case in the local mode.
+
+    Args:
+        datasource (str): the database connection URI.
+        select (str): the select SQL statement.
+        variables (list[str]): the variable names to be optimized.
+        variable_type (str): the variable type.
+        result_value_name (str): the result value name to be optimized.
+        objective (list[str]): the objective string token list.
+        direction (str): "maximize" or "minimize".
+        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        solver (str): the solver used to solve the model.
+        result_table (str): the table name to save the solved results.
+
+    Returns:
+        None
+    """
+
     data_frame = load_db_data_to_data_frame(datasource=datasource,
                                             select=select)
     model = generate_model_with_data_frame(data_frame=data_frame,
