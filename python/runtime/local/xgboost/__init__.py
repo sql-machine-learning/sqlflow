@@ -11,4 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.local.xgboost.predict import predict
 from runtime.local.xgboost.train import train

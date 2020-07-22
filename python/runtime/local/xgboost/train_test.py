@@ -17,7 +17,7 @@ import unittest
 from unittest import TestCase
 
 import runtime.testing as testing
-from runtime.local.xgboost import train
+from runtime.local.xgboost import predict, train
 from runtime.xgboost.dataset import xgb_dataset
 
 # iris dataset features meta
@@ -66,7 +66,7 @@ label_meta = {
 class TestXGBoostTrain(TestCase):
     @unittest.skipUnless(testing.get_driver() == "mysql",
                          "skip non mysql tests")
-    def test_train(self):
+    def test_train_and_pred(self):
         ds = testing.get_datasource()
         select = "SELECT * FROM iris.train"
         val_select = "SELECT * FROM iris.test"
@@ -78,6 +78,7 @@ class TestXGBoostTrain(TestCase):
         train_params = {"num_boost_round": 20}
         model_params = {"num_classes": 3}
         with tempfile.TemporaryDirectory() as tmp_dir_name:
+            os.chdir(tmp_dir_name)
             train_fn = os.path.join(tmp_dir_name, 'train.txt')
             val_fn = os.path.join(tmp_dir_name, 'val.txt')
             dtrain = xgb_dataset(ds, train_fn, select, feature_metas,
@@ -89,6 +90,32 @@ class TestXGBoostTrain(TestCase):
             eval_result = train(dtrain, train_params, model_params, dval)
             self.assertLess(eval_result['train']['rmse'][-1], 0.01)
             self.assertLess(eval_result['validate']['rmse'][-1], 0.01)
+
+            # save the XGBoost model
+            from runtime.model import Model, EstimatorType
+            meta = {
+                "train_params": train_params,
+                "model_params": model_params,
+                "train_label_name": label_meta["feature_name"]
+            }
+            m = Model(EstimatorType.XGBOOST, meta)
+            m.save(ds, "sqlflow_models.my_xgb_model")
+
+        # prediction XGBoost model
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            os.chdir(tmp_dir_name)
+            import runtime
+            m = runtime.model.load(ds, "sqlflow_models.my_xgb_model")
+            dataset = xgb_dataset(ds, val_fn, val_select, feature_metas,
+                                  feature_column_names, label_meta, is_pai,
+                                  pai_train_table)
+            selected_cols = [k for k in feature_metas]
+            selected_cols.append(label_meta["feature_name"])
+            result_col_name = label_meta["feature_name"]
+            result_table = "iris.predict"
+
+            predict(m, ds, dataset, selected_cols, result_table,
+                    result_col_name)
 
 
 if __name__ == '__main__':
