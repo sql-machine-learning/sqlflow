@@ -75,20 +75,90 @@ func (l *lexer) backup() {
 }
 
 func (l *lexer) peek() rune {
+	if l.pos >= len(l.input) {
+		// do not call l.next() in this case, because it cannot
+		// backup when eof.
+		return eof
+	}
 	r := l.next()
 	l.backup()
 	return r
 }
 
-func (l *lexer) skipSpaces() {
+func (l *lexer) skipSpaces() int {
+	skipNum := 0
 	for r := l.next(); unicode.IsSpace(r); r = l.next() {
+		skipNum++
 	}
 	l.backup()
 	l.start = l.pos
+	return skipNum
+}
+
+func (l *lexer) skipSingleLineComment() int {
+	nextRune := l.peek()
+	if nextRune != '-' {
+		return 0
+	}
+
+	l.next()
+	nextNextRune := l.peek()
+	if nextNextRune != '-' {
+		l.backup()
+		return 0
+	}
+	l.next()
+
+	skipNum := 0
+	for r := l.next(); r != '\n' && r != eof; r = l.next() {
+		skipNum++
+	}
+	l.backup()
+	l.start = l.pos
+	return skipNum
+}
+
+func (l *lexer) skipMultipleLineComment() int {
+	nextRune := l.peek()
+	if nextRune != '/' {
+		return 0
+	}
+
+	l.next()
+	nextNextRune := l.peek()
+	if nextNextRune != '*' {
+		l.backup()
+		return 0
+	}
+
+	skipNum := 0
+	for r := l.next(); r != '*' || l.peek() != '/'; r = l.next() {
+		if r == eof {
+			l.previous = l.start
+			l.err = fmt.Errorf("cannot find the end (*/) of the comment /*...*/")
+			return 0
+		}
+		skipNum++
+	}
+	l.next()
+	l.start = l.pos
+	return skipNum
 }
 
 func (l *lexer) Lex(lval *extendedSyntaxSymType) int {
-	l.skipSpaces()
+	start, pos, width := l.start, l.pos, l.width
+	hasSkipComment := false
+	for {
+		skipSpaceNum := l.skipSpaces()
+		skipCommentNum := l.skipSingleLineComment() + l.skipMultipleLineComment()
+
+		if skipCommentNum != 0 {
+			hasSkipComment = true
+		} else if skipSpaceNum == 0 { // skip 0 space and 0 comment
+			break
+		}
+	}
+
 	r := l.peek()
 	switch {
 	case unicode.IsLetter(r):
@@ -100,6 +170,12 @@ func (l *lexer) Lex(lval *extendedSyntaxSymType) int {
 	case strings.IndexRune("+-*/%<>=()[]{},;!", r) >= 0:
 		return l.lexOperator(lval)
 	case r == eof:
+		// If comment is the end of the statement, make the comment
+		// be the start of the next statement. So that each statement
+		// would be end with ";".
+		if hasSkipComment {
+			l.start, l.pos, l.width = start, pos, width
+		}
 		return 0 // indicate the end of lexing.
 	}
 	// return the position where the error was detected.

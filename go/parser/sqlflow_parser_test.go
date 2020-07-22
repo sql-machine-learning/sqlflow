@@ -308,3 +308,35 @@ func TestParserErrorMessage(t *testing.T) {
 	a.Equal(-1, idx)
 	a.True(strings.Contains(e.Error(), `near or before "select b f`))
 }
+
+func TestRemoveCommentInSQLStatement(t *testing.T) {
+	testFunc := func(inputSQL, expectedOutputSQL string, noError bool) {
+		actualOutputSQL, err := RemoveCommentInSQLStatement(inputSQL)
+		if noError {
+			assert.NoError(t, err)
+			assert.Equal(t, expectedOutputSQL, actualOutputSQL)
+			return
+		}
+		assert.Error(t, err)
+	}
+
+	testFunc(`SELECT * FROM a;`, `SELECT * FROM a;`, true)
+	testFunc(`SELECT * FROM a -- I am a comment`, `SELECT * FROM a `, true)
+	testFunc("SELECT * FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n INTO c",
+		"SELECT * FROM a \n TO TRAIN b WITH \n INTO c", true)
+	testFunc("SELECT '--' FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n INTO c",
+		"SELECT '--' FROM a \n TO TRAIN b WITH \n INTO c", true)
+	testFunc("SELECT \"abc -- FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n\" INTO c",
+		"SELECT \"abc -- FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n\" INTO c", true)
+	testFunc("SELECT \"abc\\\" -- comment\" FROM b", "SELECT \"abc\\\" -- comment\" FROM b", true)
+	testFunc("SELECT \"abc", "", false)
+	testFunc("SELECT 'a\\'bc", "", false)
+
+	testFunc("SELECT a /*bc*/ FROM b", "SELECT a   FROM b", true)
+	testFunc("SELECT a /**/ FROM b", "SELECT a   FROM b", true)
+	testFunc("SELECT a /*/ FROM b", "SELECT a   FROM b", false)
+	testFunc("SELECT \"a /*bc*/\" FROM b", "SELECT \"a /*bc*/\" FROM b", true)
+	testFunc("/*--hehe*/SELECT \"a /*bc*/\" FROM b", " SELECT \"a /*bc*/\" FROM b", true)
+	testFunc("--\n/*--hehe*/SELECT \"a /*bc*/\" FROM b", "\n SELECT \"a /*bc*/\" FROM b", true)
+	testFunc("--/*--hehe*/SELECT \"a /*bc*/\" FROM b", "", true)
+}
