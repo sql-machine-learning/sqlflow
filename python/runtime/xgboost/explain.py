@@ -205,13 +205,13 @@ def explain(datasource,
                                        show=False,
                                        feature_display_range=slice(
                                            None, -40, -1),
-                                       alpha=1), is_pai, oss_dest, oss_ak,
-            oss_sk, oss_endpoint, oss_bucket_name)
+                                       alpha=1), oss_dest, oss_ak, oss_sk,
+            oss_endpoint, oss_bucket_name)
     else:
         explainer.plot_and_save(
             lambda: shap.summary_plot(
-                shap_values, x, show=False, **summary_params), is_pai,
-            oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+                shap_values, x, show=False, **summary_params), oss_dest,
+            oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def write_shap_values(shap_values, driver, conn, result_table,

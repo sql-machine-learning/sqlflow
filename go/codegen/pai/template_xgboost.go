@@ -31,21 +31,21 @@ import json
 import copy
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.predict import pred
-from runtime.pai import model
+from runtime import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
-model.load_file("{{.OSSModelDir}}", "my_model")
+oss.load_file("{{.OSSModelDir}}", "my_model")
 (estimator,
 model_params,
 train_params,
 feature_metas,
 feature_column_names,
 label_meta,
-feature_column_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+feature_column_code) = oss.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
 pred_label_meta = copy.copy(label_meta)
 pred_label_meta["feature_name"] = "{{.ResultColumn}}"
@@ -102,14 +102,14 @@ if os.environ.get('DISPLAY', '') == '':
 
 import json
 from runtime.xgboost.explain import explain
-from runtime.pai import model
+from runtime import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
-model.load_file("{{.OSSModelDir}}", "my_model")
+oss.load_file("{{.OSSModelDir}}", "my_model")
 
 (estimator,
 model_params,
@@ -117,7 +117,7 @@ train_params,
 feature_field_meta,
 feature_column_names,
 label_field_meta,
-feature_column_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+feature_column_code) = oss.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
 feature_column_transformers = eval('[{}]'.format(feature_column_code))
 transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)
@@ -162,21 +162,21 @@ const xgbEvalTemplateText = `
 import json
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.evaluate import evaluate
-from runtime.pai import model
+from runtime import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
 # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
-model.load_file("{{.OSSModelDir}}", "my_model")
+oss.load_file("{{.OSSModelDir}}", "my_model")
 (estimator,
 model_params,
 train_params,
 feature_metas,
 feature_column_names,
 label_meta,
-feature_column_code) = model.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
+feature_column_code) = oss.load_metas("{{.OSSModelDir}}", "xgboost_model_desc")
 
 feature_column_transformers = eval('[{}]'.format(feature_column_code))
 transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_transformers)

@@ -101,7 +101,6 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 		Select:       ir.Select,
 		ResultTable:  ir.ResultTable,
 		ResultColumn: ir.ResultColumn,
-		IsPAI:        tensorflow.IsPAI(),
 		PAITable:     paiPredictTable,
 		Using:        ir.Using,
 	}
