@@ -145,3 +145,147 @@ func thirdPartyParse(dialect, program string) ([]*SQLFlowStmt, int, error) {
 	}
 	return spr, i, nil
 }
+
+// findMatchedQuotationMarks finds the matched "" and '' indices in the
+// SQL statement.
+func findMatchedQuotationMarks(sql string) ([]int, []int, error) {
+	// check whether the quotation mark " or ' is in the form of \" or \'
+	isEscapeRune := func(idx int) bool {
+		cnt := 0
+		for idx--; idx >= 0; idx-- {
+			if sql[idx] != '\\' {
+				break
+			}
+			cnt++
+		}
+		return cnt%2 == 1
+	}
+
+	leftQuotationIndex := make([]int, 0)
+	rightQuotationIndex := make([]int, 0)
+	offset := 0
+	for {
+		leftIdx := strings.IndexAny(sql[offset:], `"'`)
+		if leftIdx < 0 {
+			break
+		}
+
+		target := rune(sql[offset+leftIdx])
+		offset += leftIdx + 1
+		for {
+			rightIdx := strings.IndexRune(sql[offset:], target)
+			if rightIdx < 0 {
+				return nil, nil, fmt.Errorf("unmatched quotation marks")
+			}
+
+			offset += rightIdx + 1
+			if !isEscapeRune(offset - 1) {
+				leftQuotationIndex = append(leftQuotationIndex, leftIdx)
+				rightQuotationIndex = append(rightQuotationIndex, offset-1)
+				break
+			}
+		}
+	}
+	return leftQuotationIndex, rightQuotationIndex, nil
+}
+
+func removeSingleLineComment(sql string) (string, error) {
+	leftQuotationIndices, rightQuotationIndices, err := findMatchedQuotationMarks(sql)
+	if err != nil {
+		return "", err
+	}
+
+	findRightQuotationIndex := func(idx int) int {
+		for i := range leftQuotationIndices {
+			if idx >= leftQuotationIndices[i] && idx <= rightQuotationIndices[i] {
+				return rightQuotationIndices[i]
+			}
+		}
+		return -1
+	}
+
+	resultSQL := ""
+	offset := 0
+	for {
+		leftIdx := strings.Index(sql[offset:], "--")
+		if leftIdx < 0 {
+			resultSQL += sql[offset:]
+			break
+		}
+
+		rightQuotationIdx := findRightQuotationIndex(offset + leftIdx)
+		if rightQuotationIdx >= 0 {
+			resultSQL += sql[offset : rightQuotationIdx+1]
+			offset = rightQuotationIdx + 1
+			continue
+		}
+
+		resultSQL += sql[offset : offset+leftIdx]
+		rightIdx := strings.Index(sql[offset+leftIdx+2:], "\n")
+		if rightIdx < 0 {
+			break
+		}
+		offset += leftIdx + rightIdx + 2
+	}
+	return resultSQL, nil
+}
+
+func removeMultipleLineComment(sql string) (string, error) {
+	leftQuotationIndices, rightQuotationIndices, err := findMatchedQuotationMarks(sql)
+	if err != nil {
+		return "", err
+	}
+
+	findRightQuotationIndex := func(idx int) int {
+		for i := range leftQuotationIndices {
+			if idx >= leftQuotationIndices[i] && idx <= rightQuotationIndices[i] {
+				return rightQuotationIndices[i]
+			}
+		}
+		return -1
+	}
+
+	resultSQL := ""
+	offset := 0
+	for {
+		leftIdx := strings.Index(sql[offset:], "/*")
+		if leftIdx < 0 {
+			resultSQL += sql[offset:]
+			break
+		}
+
+		rightQuotationIdx := findRightQuotationIndex(offset + leftIdx)
+		if rightQuotationIdx >= 0 {
+			resultSQL += sql[offset : rightQuotationIdx+1]
+			offset = rightQuotationIdx + 1
+			continue
+		}
+
+		resultSQL += sql[offset : offset+leftIdx]
+		offset += leftIdx + 2
+		rightIdx := strings.Index(sql[offset:], "*/")
+		if rightIdx < 0 {
+			return "", fmt.Errorf("unmatched comment /*...*/")
+		}
+
+		resultSQL += " "
+		offset += rightIdx + 2
+	}
+	return resultSQL, nil
+}
+
+// RemoveCommentInSQLStatement removes the comments in the
+// SQL statement, including single line comment (--) and multiple
+// line comment (/*...*/)
+func RemoveCommentInSQLStatement(sql string) (string, error) {
+	sql, err := removeMultipleLineComment(sql)
+	if err != nil {
+		return "", err
+	}
+
+	sql, err = removeSingleLineComment(sql)
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
+}
