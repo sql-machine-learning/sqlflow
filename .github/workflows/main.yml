@@ -72,11 +72,11 @@ jobs:
     - if: ${{ github.event_name == 'schedule' }}
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-        echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+        echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
-      run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+      run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - name: push server images
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
@@ -98,11 +98,11 @@ jobs:
     - if: ${{ github.event_name == 'schedule' }}
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-        echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+        echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
-      run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+      run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - name: relase latest macos client binary
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
@@ -118,11 +118,11 @@ jobs:
     - if: ${{ github.event_name == 'schedule' }}
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-        echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+        echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
-      run: echo "::set-env name=TRAVIS_BRANCH::${{ github.ref }}"
+      run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - name: relase latest windows client binary
       env: 
         TRAVIS_OS_NAME: windows
