@@ -19,6 +19,8 @@ import uuid
 import oss2
 import requests
 import six
+from runtime.optimize.model_generation import \
+    generate_objective_and_constraint_expression
 from runtime.oss import get_bucket
 
 __all__ = [
@@ -184,16 +186,34 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
             bucket.delete_object(fsl_file_id)
 
 
-def run_optimize_on_optflow(train_table, variables, variable_type,
-                            result_value_name, objective_expression, direction,
-                            constraint_expressions, solver, result_table,
-                            user_number):
+def run_optimize_on_optflow(train_table, columns, variables, variable_type,
+                            result_value_name, objective, direction,
+                            constraints, solver, result_table, user_number):
     if direction.lower() == "maximize":
         direction = "max"
     elif direction.lower() == "minimize":
         direction = "min"
     else:
         raise ValueError("direction must be maximize or minimize")
+
+    obj_expr, c_exprs = generate_objective_and_constraint_expression(
+        columns=columns,
+        objective=objective,
+        constraints=constraints,
+        variables=variables,
+        result_value_name=result_value_name,
+        variable_str="@X",
+        data_str="@input")
+
+    constraint_expressions = []
+    for expr, for_range, iter_vars in c_exprs:
+        if for_range:
+            c_expr_str = "for %s in %s: %s" % (",".join(iter_vars), for_range,
+                                               expr)
+        else:
+            c_expr_str = expr
+
+        constraint_expressions.append(c_expr_str)
 
     fsl_file_content = '''
 variables: {}
@@ -205,7 +225,7 @@ objective: {}
 
 constraints:
 {}
-'''.format(",".join(variables), variable_type, direction, objective_expression,
+'''.format(",".join(variables), variable_type, direction, obj_expr,
            "\n".join(constraint_expressions))
 
     submit_optflow_job(train_table=train_table,
