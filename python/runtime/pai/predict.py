@@ -15,6 +15,7 @@ import os
 import traceback
 import types
 
+import runtime
 import tensorflow as tf
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
@@ -116,7 +117,7 @@ def pred(datasource,
     formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
                                                    pai_table_parts[1])
     selected_cols = db.pai_selected_cols(formatted_pai_table)
-    predict_generator = db.pai_maxcompute_db_generator(formatted_pai_table)()
+    predict_generator = db.pai_maxcompute_db_generator(formatted_pai_table)
 
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):

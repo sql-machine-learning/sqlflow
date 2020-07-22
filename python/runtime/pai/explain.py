@@ -18,6 +18,7 @@ import types
 
 import matplotlib
 import pandas as pd
+import runtime
 import tensorflow as tf
 from runtime import oss
 from runtime.tensorflow import is_tf_estimator
@@ -128,8 +129,7 @@ def explain(datasource,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
                               result_table, feature_column_names, driver, conn,
-                              hdfs_namenode_addr, hive_location, hdfs_user,
-                              hdfs_pass, oss_dest, oss_ak, oss_sk,
+                              "", "", "", "", oss_dest, oss_ak, oss_sk,
                               oss_endpoint, oss_bucket_name)
     else:
         shap_dataset = pd.DataFrame(columns=feature_column_names)
@@ -138,6 +138,6 @@ def explain(datasource,
                 item.numpy()[0][0] for item in features.values()
             ]
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
-                     result_table, feature_column_names, driver, conn,
-                     hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
-                     oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+                     result_table, feature_column_names, driver, conn, "", "",
+                     "", "", oss_dest, oss_ak, oss_sk, oss_endpoint,
+                     oss_bucket_name)

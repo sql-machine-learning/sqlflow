@@ -159,7 +159,7 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
     shap_values = shap.KernelExplainer(
         predict, shap_dataset_summary).shap_values(shap_dataset, l1_reg="aic")
     if result_table != "":
-        write_shap_values(shap_values, conn.driver, conn, result_table,
+        write_shap_values(shap_values, driver, conn, result_table,
                           feature_column_names, hdfs_namenode_addr,
                           hive_location, hdfs_user, hdfs_pass)
     explainer.plot_and_save(
