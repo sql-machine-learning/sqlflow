@@ -184,7 +184,6 @@ def save_metas(oss_model_dir, num_workers, file_name, *meta):
     oss_path = get_oss_path_from_uri(oss_model_dir, file_name)
     serialized = pickle.dumps(list(meta))
     save_string(oss_path, serialized)
-    print("====Save model meta to: %s" % oss_path)
 
     # write a file "file_name_estimator" to store the estimator name, so we
     # can determine if the estimator is BoostedTrees* when explaining the model.

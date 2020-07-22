@@ -125,7 +125,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
         driver = "pai_maxcompute"
     else:
         driver = conn.driver
-    print("write to: %s" % result_table)
     with db.buffered_db_writer(driver,
                                conn,
                                result_table,
