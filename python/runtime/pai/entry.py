@@ -22,6 +22,8 @@ from runtime.pai import explain, predict
 from runtime.pai import train as tf_train
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.xgboost import train as xgb_train
+from runtime.pai.xgboost.explain import explain as explain_xgb
+from runtime.pai.xgboost.predict import predict as predict_xgb
 from runtime.tensorflow import is_tf_estimator
 
 
@@ -69,11 +71,16 @@ def entrypoint():
         call_fun(xgb_train.train, params)
     elif params["entry_type"] == "predict_tf":
         call_fun(predict.predict_tf, params)
+    elif params["entry_type"] == "predict_xgb":
+        call_fun(predict_xgb, params)
     elif params["entry_type"] == "explain_tf":
+        call_fun(explain.explain_tf, params)
+    elif params["entry_type"] == "explain_xgb":
         call_fun(explain.explain_tf, params)
 
 
 if __name__ == "__main__":
+    #os.chdir("/Users/linhongwu/ws/sqlflow/xx")
     FLAGS = define_tf_flags()
     set_oss_environs(FLAGS)
     entrypoint()

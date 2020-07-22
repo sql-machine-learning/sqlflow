@@ -24,11 +24,11 @@ from runtime.tensorflow import is_tf_estimator
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"
 
 # ModelTypeTF is the mode type that trained by PAI Tensorflow.
-MODEL_TYPE_TF = 1
+MODEL_TYPE_TF = 0
 # ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
-MODEL_TYPE_XGB = 2
+MODEL_TYPE_XGB = 1
 # ModelTypePAIML is the model type that trained by PAI machine learning algorithm toolkit
-MODEL_TYPE_PAIML = 3
+MODEL_TYPE_PAIML = 2
 
 
 def remove_bucket_prefix(oss_uri):
@@ -184,6 +184,7 @@ def save_metas(oss_model_dir, num_workers, file_name, *meta):
     oss_path = get_oss_path_from_uri(oss_model_dir, file_name)
     serialized = pickle.dumps(list(meta))
     save_string(oss_path, serialized)
+    print("====Save model meta to: %s" % oss_path)
 
     # write a file "file_name_estimator" to store the estimator name, so we
     # can determine if the estimator is BoostedTrees* when explaining the model.
