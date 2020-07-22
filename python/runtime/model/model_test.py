@@ -11,21 +11,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
 
-from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.model import EstimatorType, Model
+from runtime.model import EstimatorType, Model, load
+from runtime.testing import get_datasource
 
 
 class TestModel(unittest.TestCase):
-    def test_unsupport_driver(self):
-        uri = "unknown://path"
+    def setUp(self):
+        self.cur_dir = os.getcwd()
+
+    def tearDown(self):
+        os.chdir(self.cur_dir)
+
+    def test_save(self):
+        table = "sqlflow_models.test_model"
         meta = {"train_params": {"n_classes": 3}}
         m = Model(EstimatorType.XGBOOST, meta)
-        with self.assertRaises(SQLFlowDiagnostic) as ctx:
-            m.save(uri)
-        self.assertEqual(ctx.exception.args[0],
-                         "unsupported driven to save model: unknown")
+        datasource = get_datasource()
+
+        # save mode
+        with tempfile.TemporaryDirectory() as d:
+            os.chdir(d)
+            m.save(datasource, table)
+
+        # load model
+        with tempfile.TemporaryDirectory() as d:
+            os.chdir(d)
+            m = load(datasource, table)
+            self.assertEqual(m._meta, meta)
 
 
 if __name__ == '__main__':

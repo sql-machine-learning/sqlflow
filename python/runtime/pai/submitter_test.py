@@ -16,6 +16,7 @@ import unittest
 from unittest import TestCase
 
 import runtime.testing as testing
+import tensorflow as tf
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 
@@ -188,6 +189,16 @@ class SubmitPAITrainTask(TestCase):
             testing.get_datasource(),
             """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
             "alifin_jtest_dev.pai_dnn_predict", "class", "e2etest_pai_dnn", {})
+
+    @unittest.skipUnless(testing.get_driver() == "maxcompute"
+                         and testing.get_submitter() == "pai",
+                         "skip non PAI tests")
+    def test_submit_pai_explain_task(self):
+        submitter.submit_explain(
+            testing.get_datasource(),
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
+            "alifin_jtest_dev.pai_dnn_explain_result", "e2etest_pai_dnn",
+            {"label_col": "class"})
 
 
 if __name__ == "__main__":

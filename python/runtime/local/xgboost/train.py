@@ -33,7 +33,7 @@ def train(train_dataset,
           train_params,
           model_params,
           val_dataset=None,
-          load_xgb_pretrained_model=False):
+          load_pretrained_model=False):
     """ XGBoost local training API
 
     Args:
@@ -51,18 +51,19 @@ def train(train_dataset,
         evaluation result
     """
 
-    bst = init_xgb_booster(load_xgb_pretrained_model)
+    bst = init_xgb_booster(load_pretrained_model)
     eval_result = dict()
-    for per_batch_dmatrix in train_dataset:
-        watchlist = [(per_batch_dmatrix, "train")]
-        if val_dataset:
-            # the `xgboost.train` API accepts the XGBoost DMatrix object
-            # as the training or validation dataste, so we should convert
-            # the generator to DMatrix.
-            if isinstance(val_dataset, types.GeneratorType):
-                val_dataset = list(val_dataset)[0]
-            watchlist.append((val_dataset, "validate"))
+    watchlist = [None]
+    if val_dataset:
+        # The `xgboost.train` API only accepts the XGBoost DMatrix
+        # object as the training or validation dataset, so we should
+        # convert the generator to DMatrix.
+        if isinstance(val_dataset, types.GeneratorType):
+            val_dataset = list(val_dataset)[0]
+        watchlist.append((val_dataset, "validate"))
 
+    for per_batch_dmatrix in train_dataset:
+        watchlist[0] = (per_batch_dmatrix, "train")
         bst = xgb.train(model_params,
                         per_batch_dmatrix,
                         evals=watchlist,
