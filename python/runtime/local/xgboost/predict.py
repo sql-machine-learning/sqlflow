@@ -31,6 +31,8 @@ def format_pred_result(objective, preds):
 
 
 def hdfs_args():
+    """Collective HDFS paramters to upload files.
+    """
     return {
         "hdfs_name_node_addr": os.getenv("SQLFLOW_HDFS_NAME_NODE_ADDR"),
         "hive_location": os.getenv("SQLFLOW_HIVE_LOCATION"),
@@ -40,6 +42,19 @@ def hdfs_args():
 
 
 def write_predict_result(conn, table, column_names, feature_file_idx, gen):
+    """Write prediction result into table.
+    Args:
+        conn: db.connection
+            The connection object to DBMS.
+        table: string
+            The table name to store prediction result.
+        column_names: list
+            The colum names on prediction result table.
+        feature_file_idx: int
+            The idx of feature files, which generate with xgboost.dataset
+        gen: Generator
+            Generates row data to store in the table.
+    """
     with db.buffered_db_writer(conn.driver, conn, table, column_names, 100,
                                **hdfs_args()) as w:
         for row in gen():
@@ -69,6 +84,19 @@ def col_index(cols, target):
 
 def predict(model, datasource, dataset, selected_cols, result_table,
             result_col_name):
+    """XGBoost prediction.
+    Args:
+        model: runtime.model.Model object
+            SQLFlow model object, which saved meta information and model data.
+        datasource: string
+            The connection string to a DBMS.
+        selectetd_cols: list of string
+            The selected column names which specified by SQLFlow SELECT clause.
+        result_table: string
+            The prediction result table.
+        result_col_name: string
+            The prediction result column name, which specified by SQLFlow INTO clause.
+    """
     # reload training parameters from saved model meta
     model_params = model._meta["model_params"]
     train_label_name = model._meta["train_label_name"]
