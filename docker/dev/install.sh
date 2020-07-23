@@ -86,7 +86,12 @@ export PATH="/usr/local/go/bin:$GOPATH/bin:$PATH"
 echo "Install goyacc, protoc-gen-go, linters, etc. ..."
 # Set the env system-wide for later usage, e.g. build source
 go env -w GO111MODULE=on
-go env -w GOPROXY="$(find_fastest_go_proxy)"
+if [ "$FIND_FASTED_MIRROR" == "true" ]; then
+    go env -w GOPROXY="$(find_fastest_go_proxy)"
+else
+    go env -w GOPROXY="https://goproxy.io"
+fi
+
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/lint/golint \
@@ -119,12 +124,13 @@ axel --quiet --output /usr/local/bin/protoc-gen-grpc-java \
      $PROTOC_JAVA_SITE_1 $PROTOC_JAVA_SITE_2
 chmod +x /usr/local/bin/protoc-gen-grpc-java
 
-
-echo "Choose fastest Maven mirror ..."
-# Travis CI occasionally fails on the default Maven central repo.
-# Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
-mkdir -p "$HOME/.m2"
-find_fastest_maven_repo >"$HOME/.m2/settings.xml"
+if [ "$FIND_FASTED_MIRROR" == "true" ]; then
+    echo "Choose fastest Maven mirror ..."
+    # Travis CI occasionally fails on the default Maven central repo.
+    # Ref: https://github.com/sql-machine-learning/sqlflow/issues/1654
+    mkdir -p "$HOME/.m2"
+    find_fastest_maven_repo >"$HOME/.m2/settings.xml"
+fi
 
 
 echo "Install Java linter ..."
