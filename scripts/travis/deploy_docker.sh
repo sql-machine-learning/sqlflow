@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 # TRAVIS_PULL_REQUEST is set to the pull request number if the current
 # job is a pull request build, or false if it’s not.
