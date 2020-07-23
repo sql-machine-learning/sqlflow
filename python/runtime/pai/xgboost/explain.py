@@ -24,6 +24,17 @@ FLAGS = define_tf_flags()
 
 def explain(datasource, select, data_table, result_table, label_column,
             oss_model_path):
+    """Do XGBoost model explanation, this function use selected data to
+    explain the model stored at oss_model_path
+
+    Args:
+        datasource: The datasource to load explain data
+        select: SQL statement to get the data set
+        data_table: tmp table to save the explain data
+        result_table: table to store the explanation result
+        label_column: name of the label column
+        oss_model_path: path to the model to be explained
+    """
     # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
     oss.load_file(oss_model_path, "my_model")
 
