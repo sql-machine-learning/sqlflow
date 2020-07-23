@@ -15,7 +15,7 @@
 
 set -e
 
-if [ "$ON_GITHUB_ACTIONS" != "true" ]; then
+if [ "$FIND_FASTED_MIRROR" == "true" ]; then
     # shellcheck disable=SC1091
     source find_fastest_resources.sh
     echo "Choose the fastest APT source ..."
