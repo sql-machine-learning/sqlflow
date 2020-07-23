@@ -15,12 +15,14 @@
 
 set -e
 
-# shellcheck disable=SC1091
-source find_fastest_resources.sh
-echo "Choose the fastest APT source ..."
-choose_fastest_apt_source
-echo "Choose the fastest PIP source ..."
-choose_fastest_pip_source
+if [ "$ON_GITHUB_ACTIONS" != "true" ]; then
+    # shellcheck disable=SC1091
+    source find_fastest_resources.sh
+    echo "Choose the fastest APT source ..."
+    choose_fastest_apt_source
+    echo "Choose the fastest PIP source ..."
+    choose_fastest_pip_source
+fi
 
 
 echo "Install apt packages ..."
