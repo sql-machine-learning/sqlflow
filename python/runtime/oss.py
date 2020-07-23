@@ -24,11 +24,11 @@ from runtime.tensorflow import is_tf_estimator
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"
 
 # ModelTypeTF is the mode type that trained by PAI Tensorflow.
-MODEL_TYPE_TF = 1
+MODEL_TYPE_TF = 0
 # ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
-MODEL_TYPE_XGB = 2
+MODEL_TYPE_XGB = 1
 # ModelTypePAIML is the model type that trained by PAI machine learning algorithm toolkit
-MODEL_TYPE_PAIML = 3
+MODEL_TYPE_PAIML = 2
 
 
 def remove_bucket_prefix(oss_uri):
