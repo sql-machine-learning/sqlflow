@@ -82,7 +82,7 @@ jobs:
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         export TRAVIS_BUILD_DIR=${{ github.workspace }}
-        export ON_GITHUB_ACTIONS=true
+        export FIND_FASTED_MIRROR=false
         bash scripts/travis/deploy_docker.sh
     - name: release latest linux client binary
       run: |

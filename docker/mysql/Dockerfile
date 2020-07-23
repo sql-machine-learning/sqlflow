@@ -33,9 +33,11 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_energy.sql \
      /datasets/
 
+ARG FIND_FASTED_MIRROR=true
+
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN /bin/sh -c "source find_fastest_resources.sh && \
-    choose_fastest_alpine_source"
+RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh && \
+    choose_fastest_alpine_source; fi'
 
 RUN apk add --no-cache mysql mysql-client >/dev/null
 

@@ -1,15 +1,17 @@
 FROM ubuntu:18.04 as base
 
+ARG FIND_FASTED_MIRROR=true
+
 # This script assume we are at sqlflow root directory and the directory is already built by sqlflow:dev
 # The default source archive.ubuntu.com is busy and slow. We use the following source makes docker build running faster.
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/find_fastest_resources.sh
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN /bin/bash -c 'source find_fastest_resources.sh \
+RUN /bin/bash -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh \
   && echo "Choose the fastest APT source ..." \
   && choose_fastest_apt_source \
   && echo "Choose the fastest PIP source ..." \
-  && choose_fastest_pip_source' && \
+  && choose_fastest_pip_source; fi' && \
   apt-get update && \
   apt-get -qq install -y --no-install-recommends openjdk-8-jre-headless python3 libmysqlclient20 python3-idna libgomp1 python3-setuptools && \
   ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
