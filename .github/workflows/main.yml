@@ -81,6 +81,7 @@ jobs:
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
         bash scripts/travis/deploy_docker.sh
     - name: release latest linux client binary
       run: |
@@ -104,6 +105,8 @@ jobs:
     - if: ${{ github.event_name == 'push' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - name: relase latest macos client binary
+      env: 
+        TRAVIS_OS_NAME: osx
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
