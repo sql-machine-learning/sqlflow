@@ -29,7 +29,7 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 	if _, e := db.Exec(dropStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
-	flds, fts, e := getSQLFieldType(predStmt.Select, db)
+	flds, fts, e := verifier.GetSQLFieldType(predStmt.Select, db)
 	if e != nil {
 		return e
 	}
@@ -85,38 +85,4 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}
 	return nil
-}
-
-// getSQLFieldType is quiet like verify but accept a SQL string as input, and returns
-// an ordered list of the field types.
-func getSQLFieldType(slct string, db *database.DB) ([]string, []string, error) {
-	rows, err := verifier.FetchSamples(db, slct, 1)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		return nil, nil, fmt.Errorf("query %s gives 0 row", slct)
-	}
-
-	if rows.Err() != nil {
-		return nil, nil, err
-	}
-
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ft := []string{}
-	flds := []string{}
-	for _, ct := range columnTypes {
-		_, fld := verifier.Decomp(ct.Name())
-		typeName := ct.DatabaseTypeName()
-		flds = append(flds, fld)
-		ft = append(ft, typeName)
-	}
-
-	return flds, ft, nil
 }

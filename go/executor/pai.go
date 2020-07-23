@@ -23,6 +23,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/go/verifier"
 	"strings"
 
 	"sqlflow.org/sqlflow/go/codegen/optimize"
@@ -630,7 +631,7 @@ func deleteDirRecursive(bucket *oss.Bucket, dir string) error {
 
 func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string, labelCol string) (string, error) {
 	// create table to record shap values for every feature for each sample.
-	flds, _, err := getSQLFieldType(selectStmt, db)
+	flds, _, err := verifier.GetSQLFieldType(selectStmt, db)
 	if err != nil {
 		return "", err
 	}
