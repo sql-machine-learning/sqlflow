@@ -132,7 +132,6 @@ iris_label_meta = {
                      "skip non PAI tests")
 class SubmitPAITrainTask(TestCase):
     def test_submit_pai_train_task(self):
-
         model_params = dict()
         model_params["hidden_units"] = [10, 20]
         model_params["n_classes"] = 3
@@ -187,7 +186,7 @@ class SubmitPAITrainTask(TestCase):
             "alifin_jtest_dev.pai_dnn_predict", "class", "e2etest_pai_dnn", {})
 
     def test_submit_pai_explain_task(self):
-        submitter.submit_explain(
+        submitter.submit_pai_explain(
             testing.get_datasource(),
             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
             "alifin_jtest_dev.pai_dnn_explain_result", "e2etest_pai_dnn",
@@ -230,7 +229,7 @@ class SubmitPAITrainTask(TestCase):
             "e2etest_xgb_classify_model", {})
 
     def test_submit_pai_xgb_explain_task(self):
-        submitter.submit_explain(
+        submitter.submit_pai_explain(
             testing.get_datasource(),
             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
             "alifin_jtest_dev.e2etest_xgb_explain_result",
@@ -238,4 +237,6 @@ class SubmitPAITrainTask(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    task = SubmitPAITrainTask()
+    task.test_submit_pai_train_task()

@@ -10,3 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from runtime.pai.submitter import submit_pai_explain as explain
+from runtime.pai.submitter import submit_pai_predict as predict
+from runtime.pai.submitter import submit_pai_train as train

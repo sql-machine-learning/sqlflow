@@ -378,6 +378,19 @@ def save_model_to_sqlfs(datasource, model_oss_path, model_name):
     pass
 
 
+def get_train_random_forest_pai_cmd(data_table, result_table, model_attrs,
+                                    feature_column_names, label_column):
+    tree_num = 1
+    if "tree_num" in model_attrs:
+        tree_num = model_attrs["tree_num"]
+
+    return (
+        """pai -name randomforests -DinputTableName="%s" -DmodelName="%s" """
+        """-DlabelColName="%s" -DfeatureColNames="%s" -DtreeNum="%d" """) % (
+            data_table, result_table, label_column,
+            ",".join(feature_column_names), tree_num)
+
+
 # (TODO: lhw) adapt this interface after we do feature derivation in Python
 def submit_pai_train(datasource, estimator_string, select, validation_select,
                      model_params, model_name, pre_trained_model,
@@ -722,7 +735,8 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
     ) % (model_name, data_table, result_table, label_column, ",".join(fields))
 
 
-def submit_explain(datasource, select, result_table, model_name, model_attrs):
+def submit_pai_explain(datasource, select, result_table, model_name,
+                       model_attrs):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
 
