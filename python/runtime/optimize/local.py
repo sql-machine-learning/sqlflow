@@ -19,7 +19,7 @@ import pyomo.environ as pyomo_env
 import runtime.db as db
 import runtime.verifier as verifier
 import six
-from pyomo.environ import (Integers, NegativeIntegers, NegativeReals,
+from pyomo.environ import (Binary, Integers, NegativeIntegers, NegativeReals,
                            NonNegativeIntegers, NonNegativeReals,
                            NonPositiveIntegers, NonPositiveReals,
                            PositiveIntegers, PositiveReals, Reals, maximize,
