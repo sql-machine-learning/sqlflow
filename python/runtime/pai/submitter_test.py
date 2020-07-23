@@ -181,7 +181,7 @@ class SubmitPAITrainTask(TestCase):
     INTO e2etest_pai_dnn;''')
 
     def test_submit_pai_predict_task(self):
-        submitter.submit_pai_tf_predict(
+        submitter.submit_pai_predict(
             testing.get_datasource(),
             """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
             "alifin_jtest_dev.pai_dnn_predict", "class", "e2etest_pai_dnn", {})
@@ -213,7 +213,7 @@ class SubmitPAITrainTask(TestCase):
             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
             "select * from alifin_jtest_dev.sqlflow_iris_train",
             model_params,
-            "e2etest_xgb_classi_model",
+            "e2etest_xgb_classify_model",
             None,
             train_params=train_params,
             feature_columns=eval("[%s]" % feature_columns_code),
@@ -221,6 +221,20 @@ class SubmitPAITrainTask(TestCase):
             label_meta=iris_label_meta,
             feature_column_names=iris_feature_column_names,
             feature_columns_code=feature_columns_code)
+
+    def test_submit_pai_xgb_predict_task(self):
+        submitter.submit_pai_predict(
+            testing.get_datasource(),
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
+            "alifin_jtest_dev.pai_xgb_predict", "class",
+            "e2etest_xgb_classify_model", {})
+
+    def test_submit_pai_xgb_explain_task(self):
+        submitter.submit_explain(
+            testing.get_datasource(),
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "alifin_jtest_dev.e2etest_xgb_explain_result",
+            "e2etest_xgb_classify_model", {"label_col": "class"})
 
 
 if __name__ == "__main__":

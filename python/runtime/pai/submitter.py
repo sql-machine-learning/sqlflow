@@ -357,7 +357,7 @@ def prepare_archive(cwd, conf, project, estimator, model_name, train_tbl,
     with open(path.join(cwd, "requirements.txt"), "w") as require:
         require.write(get_requirement(estimator))
 
-    # copy entry.py to top level dir, so the package name `xgboost`
+    # copy entry.py to top level directory, so the package name `xgboost`
     # and `tensorflow` in runtime.pai will not conflict with the global ones
     shutil.copyfile(path.join(path.dirname(__file__), ENTRY_FILE),
                     path.join(cwd, ENTRY_FILE))
@@ -474,7 +474,7 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
     xgb = bucket.object_exists(model_name + "/xgboost_model_desc")
     if xgb:
         modelType = oss.MODEL_TYPE_XGB
-        return modelType, ""
+        return modelType, "xgboost"
 
     return oss.MODEL_TYPE_PAIML, ""
 
@@ -511,10 +511,8 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
-    elif model_type == oss.MODEL_TYPE_XGB:
-        # (TODO:lhw) add cmd for XGB
-        raise SQLFlowDiagnostic("not implemented")
     else:
+        # For TensorFlow and XGBoost, we build a pai-tf cmd to submit the task
         return get_pai_tf_cmd(cluster_conf,
                               "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                               "file://" + path.join(cwd, PARAMS_FILE),
@@ -570,8 +568,8 @@ def setup_predict_entry(params, model_type):
         raise SQLFlowDiagnostic("unsupported model type: %d" % model_type)
 
 
-def submit_pai_tf_predict(datasource, select, result_table, label_column,
-                          model_name, model_attrs):
+def submit_pai_predict(datasource, select, result_table, label_column,
+                       model_name, model_attrs):
     """This function pack needed params and resource to a tarball
     and submit a prediction task to PAI
 
@@ -765,11 +763,11 @@ def submit_explain(datasource, select, result_table, model_name, model_attrs):
         cmd = get_explain_random_forests_cmd(datasource, model_name,
                                              data_table, result_table,
                                              label_column)
-    elif model_type == oss.MODEL_TYPE_XGB:
-        # (TODO:lhw) add XGB explain cmd
-        pass
     else:
-        params["entry_type"] = "explain_tf"
+        if model_type == oss.MODEL_TYPE_XGB:
+            params["entry_type"] = "explain_xgb"
+        else:
+            params["entry_type"] = "explain_tf"
         prepare_archive(cwd, conf, project, estimator, model_name, data_table,
                         "", oss_model_path, params)
         cmd = get_pai_tf_cmd(conf,
