@@ -134,7 +134,7 @@ jobs:
     - if: ${{ github.event_name == 'schedule' }}
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-        $REF=${{ github.ref }}
+        $REF="${{ github.ref }}"
         $TRAVIS_BRANCH_LIST=$REF.split("/")
         $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
         echo TRAVIS_BRANCH $TRAVIS_BRANCH
@@ -142,7 +142,7 @@ jobs:
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
       run: |
-        $REF=${{ github.ref }}
+        $REF="${{ github.ref }}"
         $TRAVIS_BRANCH_LIST=$REF.split("/")
         $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
         echo TRAVIS_BRANCH $TRAVIS_BRANCH
