@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -ex
+set -e
 
 # TRAVIS_PULL_REQUEST is set to the pull request number if the current
 # job is a pull request build, or false if it’s not.
@@ -45,7 +45,7 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
 fi
 
 # Figure out the tag to push sqlflow:ci.
-if [[ "$TRAVIS_BRANCH" == "develop" || "$TRAVIS_BRANCH" == "test_push_stage" ]]; then
+if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
     if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
         DOCKER_TAG="nightly"
     else
