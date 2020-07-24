@@ -91,6 +91,8 @@ jobs:
         export TRAVIS_BUILD_STAGE_NAME=Deploy
         bash scripts/travis/deploy_docker.sh
     - name: release latest linux client binary
+      env:
+        TRAVIS_OS_NAME: linux
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
