@@ -93,8 +93,8 @@ func unifyDatabaseTypeName(typeName string) string {
 	return strings.ToUpper(typeName)
 }
 
-// ScanRowValue returns the decoded row value from sql.Rows.
-func ScanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface{}, error) {
+// scanRowValue returns the decoded row value from sql.Rows.
+func scanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface{}, error) {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
@@ -110,7 +110,7 @@ func ScanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface
 		case "DOUBLE":
 			rowData[idx] = new(float64)
 		default:
-			return nil, fmt.Errorf("ScanRowValue: unsupported database column type: %s", typeName)
+			return nil, fmt.Errorf("scanRowValue: unsupported database column type: %s", typeName)
 		}
 	}
 	if err := rows.Scan(rowData...); err != nil {
@@ -134,7 +134,7 @@ func newDefaultFieldDesc(fieldName string) *FieldDesc {
 // fillCSVFieldDesc will set fieldDescMap[fieldName] = FieldDesc for parsing the CSV data
 func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName string) error {
 	size := 1
-	for s := range fieldDescMap[fieldName].Shape {
+	for _, s := range fieldDescMap[fieldName].Shape {
 		size *= s
 	}
 
@@ -472,7 +472,7 @@ func deriveFeatureColumn(fcMap ColumnMap, columnTargets []string, fdMap FieldDes
 func fillFieldDescs(rows *sql.Rows, columnTypes []*sql.ColumnType, fmMap FieldDescMap, originalSizes map[string]int) error {
 	rowCount := 0
 	for rows.Next() {
-		rowData, err := ScanRowValue(rows, columnTypes)
+		rowData, err := scanRowValue(rows, columnTypes)
 		err = fillFieldDesc(columnTypes, rowData, fmMap, rowCount, originalSizes)
 		if err != nil {
 			return err
