@@ -45,11 +45,11 @@ class FieldDesc(object):
 
     Args:
         name (str): the field name. Default "".
-        dtype (int): the data type of the field. It must be one of INT,
+        dtype (enum): the data type of the field. It must be one of INT,
             FLOAT and STRING. Default INT.
         delimiter (str): the delimiter of the field data. Default "".
-        format (str): the format of the field data. It must be one of
-            CSV, KV, PLAIN. Default PLAIN.
+        format (enum): the data format of the field data. It must be one of
+            PLAIN, CSV, KV. Default PLAIN.
         shape (list[int]): the shape of the field data. Default None.
         is_sparse (bool): whether the field data is sparse. Default False.
         vocabulary (list[str]): the vocabulary used for categorical feature column. Default None.
