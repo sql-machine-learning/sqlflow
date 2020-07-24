@@ -82,14 +82,14 @@ protoc --version
 
 
 echo "Install goyacc and protoc-gen-go ..."
+if [ "$GOPATH" == "" ]; then
+    export GOPATH="/tmp/go"
+fi
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/tools/cmd/goyacc \
    > /dev/null
-echo "using GOPATH: $GOPATH"
 export PATH=$GOPATH/bin:$PATH
-echo "files under GOPATH:" 
-ls -l "$GOPATH/bin"
 
 
 echo "Build cmd/sqlflow into /tmp ..."

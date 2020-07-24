@@ -130,17 +130,23 @@ jobs:
     - if: ${{ github.event_name == 'schedule' }}
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-        echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
+        $REF=${{ github.head_ref }}
+        $TRAVIS_BRANCH_LIST=$REF.split("/")
+        $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
+        echo TRAVIS_BRANCH $TRAVIS_BRANCH
     - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
-      run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
+      run: |
+        $REF=${{ github.head_ref }}
+        $TRAVIS_BRANCH_LIST=$REF.split("/")
+        $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
+        echo TRAVIS_BRANCH $TRAVIS_BRANCH
     - name: relase latest windows client binary
       env: 
         TRAVIS_OS_NAME: windows
       run: |
         $TRAVIS_TAG="${{ steps.tagName.outputs.tag }}"
         $TRAVIS_PULL_REQUEST="${{ github.event.number }}"
-        $TRAVIS_BRANCH="$Env:TRAVIS_BRANCH"
         $TRAVIS_EVENT_TYPE="$Env:TRAVIS_EVENT_TYPE"
         scripts/travis/deploy_client.sh
