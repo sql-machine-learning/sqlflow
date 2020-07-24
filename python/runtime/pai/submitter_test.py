@@ -295,6 +295,4 @@ class SubmitPAITrainTask(TestCase):
 
 
 if __name__ == "__main__":
-    # unittest.main()
-    task = SubmitPAITrainTask()
-    task.test_submit_pai_train_task()
+    unittest.main()

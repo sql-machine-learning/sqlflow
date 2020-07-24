@@ -80,7 +80,7 @@ func (stmt *TrainStmt) GetModelKind() int {
 	if strings.HasPrefix(estimator, "XGB") {
 		return XGBoost
 	}
-	if strings.HasPrefix(estimator, "KMEANS") {
+	if strings.HasPrefix(estimator, "KMeans") {
 		return KMeans
 	}
 	return TensorFlow
