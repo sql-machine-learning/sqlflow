@@ -137,7 +137,7 @@ jobs:
         $REF="${{ github.ref }}"
         $TRAVIS_BRANCH_LIST=$REF.split("/")
         $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
-        echo TRAVIS_BRANCH $TRAVIS_BRANCH
+        echo "::set-env name=TRAVIS_BRANCH::$TRAVIS_BRANCH"
     - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
@@ -145,7 +145,7 @@ jobs:
         $REF="${{ github.ref }}"
         $TRAVIS_BRANCH_LIST=$REF.split("/")
         $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
-        echo TRAVIS_BRANCH $TRAVIS_BRANCH
+        echo "::set-env name=TRAVIS_BRANCH::$TRAVIS_BRANCH"
     - name: relase latest windows client binary
       env:
         TRAVIS_OS_NAME: windows
@@ -155,6 +155,7 @@ jobs:
         $TRAVIS_TAG="${{ steps.tagName.outputs.tag }}"
         $TRAVIS_PULL_REQUEST="${{ github.event.number }}"
         $TRAVIS_EVENT_TYPE="$Env:TRAVIS_EVENT_TYPE"
+        $TRAVIS_BRANCH="$Env:TRAVIS_BRANCH"
         $QINIU_AK="$Env:QINIU_AK"
         $QINIU_SK="$Env:QINIU_SK"
         scripts/travis/deploy_client.sh
