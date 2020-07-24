@@ -11,65 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-
 import six
-
-INT = 0
-FLOAT = 1
-STRING = 2
-
-
-class FieldDesc(object):
-    """
-    FieldDesc describes a field used as the input to a feature column.
-
-    Args:
-        name (str): the field name. Default "".
-        dtype (int): the data type of the field. It must be one of INT,
-            FLOAT and STRING. Default INT.
-        delimiter (str): the delimiter of the field data. Default "".
-        format (str): the format of the field data. Default "".
-        shape (list[int]): the shape of the field data. Default None.
-        is_sparse (bool): whether the field data is sparse. Default False.
-        vocabulary (list[str]): the vocabulary used for categorical feature column. Default None.
-        max_id (int): the maximum id number of the field data. Used in CategoryIDColumn. Default 0.
-    """
-    def __init__(self,
-                 name="",
-                 dtype=INT,
-                 delimiter="",
-                 format="",
-                 shape=None,
-                 is_sparse=False,
-                 vocabulary=None,
-                 max_id=0):
-        self.name = name
-        self.dtype = dtype
-        self.delimiter = delimiter
-        self.format = format
-        self.shape = shape
-        self.is_sparse = is_sparse
-        self.vocabulary = vocabulary
-        self.max_id = max_id
-
-    def to_json(self):
-        """
-        Convert the FieldDesc object to a json string.
-
-        Returns:
-            A string which represents the json value of the FieldDesc object.
-        """
-        return json.dumps({
-            "name": self.name,
-            "dtype": self.dtype,
-            "delimiter": self.delimiter,
-            "format": self.format,
-            "shape": self.shape,
-            "is_sparse": self.is_sparse,
-            "vocabulary": self.vocabulary,
-            "max_id": self.max_id,
-        })
+from runtime.feature_derivation.field_desc import DataType, FieldDesc
 
 
 class FeatureColumn(object):
@@ -87,7 +30,7 @@ class FeatureColumn(object):
         """
         raise NotImplementedError()
 
-    def apply_to(self, field_desc):
+    def new_feature_column_from(self, field_desc):
         """
         Create a new feature column object of the same type
         that holds the given FieldDesc object.
@@ -130,27 +73,9 @@ class NumericColumn(FeatureColumn):
         self.field_desc = field_desc
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the NumericColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects, whose length is 1.
-        """
         return [self.field_desc]
 
-    def apply_to(self, field_desc):
-        """
-        Create a new NumericColumn object that holds the given
-        FieldDesc object.
-
-        Args:
-            field_desc (FieldDesc): the given FieldDesc object.
-
-        Returns:
-            A new NumericColumn object which holds the given
-            FieldDesc object.
-        """
+    def new_feature_column_from(self, field_desc):
         return NumericColumn(field_desc)
 
 
@@ -170,37 +95,13 @@ class BucketColumn(CategoryColumn):
         self.boundaries = boundaries
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the BucketColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects, whose length is 1.
-        """
         return self.source_column.get_field_desc()
 
-    def apply_to(self, field_desc):
-        """
-        Create a new BucketColumn object that holds the given
-        FieldDesc object.
-
-        Args:
-            field_desc (FieldDesc): the given FieldDesc object.
-
-        Returns:
-            A new BucketColumn object which holds the given
-            FieldDesc object.
-        """
-        source_column = self.source_column.apply_to(field_desc)
+    def new_feature_column_from(self, field_desc):
+        source_column = self.source_column.new_feature_column_from(field_desc)
         return BucketColumn(source_column, self.boundaries)
 
     def num_class(self):
-        """
-        Get the class number of the BucketColumn object.
-
-        Returns:
-            An integer which is equal to len(boundaries) + 1.
-        """
         return len(self.boundaries) + 1
 
 
@@ -218,36 +119,12 @@ class CategoryIDColumn(CategoryColumn):
         self.bucket_size = bucket_size
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the CategoryIDColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects, whose length is 1.
-        """
         return [self.field_desc]
 
-    def apply_to(self, field_desc):
-        """
-        Create a new CategoryIDColumn object that holds the given
-        FieldDesc object.
-
-        Args:
-            field_desc (FieldDesc): the given FieldDesc object.
-
-        Returns:
-            A new CategoryIDColumn object which holds the given
-            FieldDesc object.
-        """
+    def new_feature_column_from(self, field_desc):
         return CategoryIDColumn(field_desc, self.bucket_size)
 
     def num_class(self):
-        """
-        Get the class number of the CategoryIDColumn object.
-
-        Returns:
-            An integer which is equal to bucket_size.
-        """
         return self.bucket_size
 
 
@@ -265,36 +142,12 @@ class CategoryHashColumn(CategoryIDColumn):
         self.bucket_size = bucket_size
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the CategoryHashColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects, whose length is 1.
-        """
         return [self.field_desc]
 
-    def apply_to(self, field_desc):
-        """
-        Create a new CategoryHashColumn object that holds the given
-        FieldDesc object.
-
-        Args:
-            field_desc (FieldDesc): the given FieldDesc object.
-
-        Returns:
-            A new CategoryHashColumn object which holds the given
-            FieldDesc object.
-        """
+    def new_feature_column_from(self, field_desc):
         return CategoryHashColumn(field_desc, self.bucket_size)
 
     def num_class(self):
-        """
-        Get the class number of the CategoryHashColumn object.
-
-        Returns:
-            An integer which is equal to bucket_size.
-        """
         return self.bucket_size
 
 
@@ -312,36 +165,12 @@ class SeqCategoryIDColumn(CategoryIDColumn):
         self.bucket_size = bucket_size
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the SeqCategoryIDColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects, whose length is 1.
-        """
         return [self.field_desc]
 
-    def apply_to(self, field_desc):
-        """
-        Create a new SeqCategoryIDColumn object that holds the given
-        FieldDesc object.
-
-        Args:
-            field_desc (FieldDesc): the given FieldDesc object.
-
-        Returns:
-            A new SeqCategoryIDColumn object which holds the given
-            FieldDesc object.
-        """
+    def new_feature_column_from(self, field_desc):
         return SeqCategoryIDColumn(field_desc, self.bucket_size)
 
     def num_class(self):
-        """
-        Get the class number of the SeqCategoryIDColumn object.
-
-        Returns:
-            An integer which is equal to bucket_size.
-        """
         return self.bucket_size
 
 
@@ -362,17 +191,11 @@ class CrossColumn(CategoryColumn):
         self.hash_bucket_size = hash_bucket_size
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the CrossColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects.
-        """
         descs = []
         for k in self.keys:
             if isinstance(k, six.string_types):
-                descs.append(FieldDesc(name=k, dtype=STRING, shape=[1]))
+                descs.append(
+                    FieldDesc(name=k, dtype=DataType.STRING, shape=[1]))
             elif isinstance(k, NumericColumn):
                 descs.extend(k.get_field_desc())
             else:
@@ -380,19 +203,10 @@ class CrossColumn(CategoryColumn):
 
         return descs
 
-    def apply_to(self, field_desc):
-        """
-        This method is not supported for the CrossColumn object.
-        """
+    def new_feature_column_from(self, field_desc):
         raise NotImplementedError("CROSS does not support apply_to method")
 
     def num_class(self):
-        """
-        Get the class number of the CrossColumn object.
-
-        Returns:
-            An integer which is equal to hash_bucket_size.
-        """
         return self.hash_bucket_size
 
 
@@ -426,32 +240,15 @@ class EmbeddingColumn(FeatureColumn):
         self.name = name
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the EmbeddingColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects.
-        """
         if self.category_column is None:
             return [FieldDesc()]
 
         return self.category_column.get_field_desc()
 
-    def apply_to(self, field_desc):
-        """
-        Create a new EmbeddingColumn object that holds the given
-        FieldDesc object.
-
-        Args:
-            field_desc (FieldDesc): the given FieldDesc object.
-
-        Returns:
-            A new EmbeddingColumn object which holds the given
-            FieldDesc object.
-        """
+    def new_feature_column_from(self, field_desc):
         if self.category_column is not None:
-            category_column = self.category_column.apply_to(field_desc)
+            category_column = self.category_column.new_feature_column_from(
+                field_desc)
         else:
             category_column = None
 
@@ -480,32 +277,15 @@ class IndicatorColumn(FeatureColumn):
         self.name = name
 
     def get_field_desc(self):
-        """
-        Get the underlying FieldDesc object list that the IndicatorColumn
-        object holds.
-
-        Returns:
-            A list of the FieldDesc objects.
-        """
         if self.category_column is None:
             return [FieldDesc()]
 
         return self.category_column.get_field_desc()
 
-    def apply_to(self, field_desc):
-        """
-        Create a new IndicatorColumn object that holds the given
-        FieldDesc object.
-
-        Args:
-            field_desc (FieldDesc): the given FieldDesc object.
-
-        Returns:
-            A new IndicatorColumn object which holds the given
-            FieldDesc object.
-        """
+    def new_feature_column_from(self, field_desc):
         if self.category_column is not None:
-            category_column = self.category_column.apply_to(field_desc)
+            category_column = self.category_column.new_feature_column_from(
+                field_desc)
         else:
             category_column = None
 

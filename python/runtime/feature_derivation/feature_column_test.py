@@ -15,14 +15,15 @@ import json
 import unittest
 
 import runtime.feature_derivation.feature_column as fc
+import runtime.feature_derivation.field_desc as fd
 
 
 class TestFeatureColumn(unittest.TestCase):
     def new_field_desc(self):
         desc = fc.FieldDesc(name="my_feature",
-                            dtype=fc.FLOAT,
+                            dtype=fd.DataType.FLOAT,
                             delimiter=",",
-                            format="csv",
+                            format=fd.DataFormat.CSV,
                             shape=[10],
                             is_sparse=True,
                             vocabulary=["a", "b", "c"])
@@ -56,7 +57,7 @@ class TestFeatureColumn(unittest.TestCase):
         desc2 = self.new_field_desc()
 
         nc1 = fc.NumericColumn(desc1)
-        nc2 = nc1.apply_to(desc2)
+        nc2 = nc1.new_feature_column_from(desc2)
         self.assertTrue(isinstance(nc2, fc.NumericColumn))
         self.assertEqual(len(nc1.get_field_desc()), 1)
         self.assertEqual(len(nc2.get_field_desc()), 1)
@@ -74,7 +75,7 @@ class TestFeatureColumn(unittest.TestCase):
         self.assertEqual(len(bc.get_field_desc()), 1)
         self.assertEqual(bc.get_field_desc()[0].to_json(), desc.to_json())
 
-        bc = bc.apply_to(desc)
+        bc = bc.new_feature_column_from(desc)
         self.assertTrue(isinstance(bc, fc.BucketColumn))
         self.assertEqual(bc.boundaries, boundaries)
         self.assertEqual(bc.num_class(), len(boundaries) + 1)
@@ -94,7 +95,7 @@ class TestFeatureColumn(unittest.TestCase):
             self.assertEqual(len(cc.get_field_desc()), 1)
             self.assertEqual(cc.get_field_desc()[0].to_json(), desc.to_json())
 
-            cc = cc.apply_to(desc)
+            cc = cc.new_feature_column_from(desc)
             self.assertTrue(isinstance(cc, fc_class))
             self.assertEqual(cc.num_class(), bucket_size)
             self.assertEqual(len(cc.get_field_desc()), 1)
@@ -119,7 +120,7 @@ class TestFeatureColumn(unittest.TestCase):
             fc1_descs = fc1.get_field_desc()
             self.assertEqual(len(fc1_descs), 1)
             self.assertEqual(fc1_descs[0].to_json(), desc.to_json())
-            fc1 = fc1.apply_to(desc)
+            fc1 = fc1.new_feature_column_from(desc)
             self.assertTrue(isinstance(fc1, fc_class))
             fc1_descs = fc1.get_field_desc()
             self.assertEqual(len(fc1_descs), 1)
@@ -128,7 +129,7 @@ class TestFeatureColumn(unittest.TestCase):
             fc2 = fc_class(category_column=None, name="my_category_column")
             fc2_descs = fc2.get_field_desc()
             self.assertEqual(len(fc2_descs), 1)
-            fc2 = fc2.apply_to(desc)
+            fc2 = fc2.new_feature_column_from(desc)
             self.assertTrue(isinstance(fc2, fc_class))
             fc2_descs = fc2.get_field_desc()
             self.assertEqual(len(fc2_descs), 1)
