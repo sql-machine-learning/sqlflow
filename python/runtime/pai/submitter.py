@@ -722,7 +722,8 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
     ) % (model_name, data_table, result_table, label_column, ",".join(fields))
 
 
-def submit_explain(datasource, select, result_table, model_name, model_attrs):
+def submit_pai_explain(datasource, select, result_table, model_name,
+                       model_attrs):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
 

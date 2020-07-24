@@ -35,8 +35,8 @@ except Exception as e:
     traceback.print_exc()
 
 
-def predict_tf(datasource, select, data_table, result_table, label_column,
-               oss_model_path):
+def predict(datasource, select, data_table, result_table, label_column,
+            oss_model_path):
     """PAI Tensorflow prediction wrapper
     This function do some preparation for the local prediction, say, download the
     model from OSS, extract metadata and so on.
@@ -76,36 +76,36 @@ def predict_tf(datasource, select, data_table, result_table, label_column,
     else:
         oss.load_file(oss_model_path, "model_save")
 
-    pred(datasource=datasource,
-         estimator_string=estimator,
-         select=select,
-         result_table=result_table,
-         feature_columns=feature_columns,
-         feature_column_names=feature_column_names,
-         feature_column_names_map=feature_column_names_map,
-         train_label_name=label_meta["feature_name"],
-         result_col_name=label_column,
-         feature_metas=feature_metas,
-         model_params=model_params,
-         save="model_save",
-         batch_size=1,
-         pai_table=data_table)
+    _predict(datasource=datasource,
+             estimator_string=estimator,
+             select=select,
+             result_table=result_table,
+             feature_columns=feature_columns,
+             feature_column_names=feature_column_names,
+             feature_column_names_map=feature_column_names_map,
+             train_label_name=label_meta["feature_name"],
+             result_col_name=label_column,
+             feature_metas=feature_metas,
+             model_params=model_params,
+             save="model_save",
+             batch_size=1,
+             pai_table=data_table)
 
 
-def pred(datasource,
-         estimator_string,
-         select,
-         result_table,
-         feature_columns,
-         feature_column_names,
-         feature_column_names_map,
-         train_label_name,
-         result_col_name,
-         feature_metas={},
-         model_params={},
-         save="",
-         batch_size=1,
-         pai_table=""):
+def _predict(datasource,
+             estimator_string,
+             select,
+             result_table,
+             feature_columns,
+             feature_column_names,
+             feature_column_names_map,
+             train_label_name,
+             result_col_name,
+             feature_metas={},
+             model_params={},
+             save="",
+             batch_size=1,
+             pai_table=""):
     runtime.import_model_def(estimator_string, globals())
     estimator = eval(estimator_string)
     model_params.update(feature_columns)

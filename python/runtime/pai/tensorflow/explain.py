@@ -42,8 +42,8 @@ if os.environ.get('DISPLAY', '') == '':
     matplotlib.use('Agg')
 
 
-def explain_tf(datasource, select, data_table, result_table, label_column,
-               oss_model_path):
+def explain(datasource, select, data_table, result_table, label_column,
+            oss_model_path):
     try:
         tf.enable_eager_execution()
     except Exception as e:
@@ -71,41 +71,41 @@ def explain_tf(datasource, select, data_table, result_table, label_column,
         oss.load_file(oss_model_path, "model_save")
 
     #(TODO: lhw) use oss to store result image
-    explain(datasource=datasource,
-            estimator_string=estimator,
-            select=select,
-            feature_columns=feature_columns,
-            feature_column_names=feature_column_names,
-            feature_metas=feature_metas,
-            label_meta=label_meta,
-            model_params=model_params,
-            save="model_save",
-            result_table=result_table,
-            pai_table=data_table,
-            oss_dest=None,
-            oss_ak=None,
-            oss_sk=None,
-            oss_endpoint=None,
-            oss_bucket_name=None)
+    _explain(datasource=datasource,
+             estimator_string=estimator,
+             select=select,
+             feature_columns=feature_columns,
+             feature_column_names=feature_column_names,
+             feature_metas=feature_metas,
+             label_meta=label_meta,
+             model_params=model_params,
+             save="model_save",
+             result_table=result_table,
+             pai_table=data_table,
+             oss_dest=None,
+             oss_ak=None,
+             oss_sk=None,
+             oss_endpoint=None,
+             oss_bucket_name=None)
 
 
-def explain(datasource,
-            estimator_string,
-            select,
-            feature_columns,
-            feature_column_names,
-            feature_metas={},
-            label_meta={},
-            model_params={},
-            save="",
-            pai_table="",
-            plot_type='bar',
-            result_table="",
-            oss_dest=None,
-            oss_ak=None,
-            oss_sk=None,
-            oss_endpoint=None,
-            oss_bucket_name=None):
+def _explain(datasource,
+             estimator_string,
+             select,
+             feature_columns,
+             feature_column_names,
+             feature_metas={},
+             label_meta={},
+             model_params={},
+             save="",
+             pai_table="",
+             plot_type='bar',
+             result_table="",
+             oss_dest=None,
+             oss_ak=None,
+             oss_sk=None,
+             oss_endpoint=None,
+             oss_bucket_name=None):
     runtime.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
     FLAGS = tf.app.flags.FLAGS
