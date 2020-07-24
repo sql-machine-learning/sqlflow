@@ -69,7 +69,13 @@ case "$TRAVIS_OS_NAME" in
         axel --quiet $PROTOC_SITE"download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
         sudo unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
         ;;
-    osx) export HOMEBREW_NO_AUTO_UPDATE=true && brew install protoc ;;
+    osx)
+        PROTOC_ZIP="protoc-3.7.1-osx-x86_64.zip"
+        curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/$PROTOC_ZIP
+        sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+        sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+        rm -f $PROTOC_ZIP
+        ;;
     windows) choco install protoc ;;
 esac
 protoc --version

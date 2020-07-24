@@ -78,6 +78,11 @@ jobs:
     - if: ${{ github.event_name == 'push' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - name: push server images
+      env:
+        DOCKER_USERNAME: "typhoon1986"
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        ALIYUN_DOCKER_USERNAME: "sqlflow@prod.trusteeship.aliyunid.com"
+        ALIYUN_DOCKER_PASSWORD: ${{ secrets.ALIYUN_DOCKER_PASSWORD }}
       run: |
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
