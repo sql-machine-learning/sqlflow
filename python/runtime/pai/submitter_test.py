@@ -201,10 +201,14 @@ class SubmitPAITrainTask(TestCase):
         }
         train_params = {"num_boost_round": 10}
         feature_columns_code = """
-            xgboost_extended.feature_column.numeric_column("sepal_length", shape=[1]),
-            xgboost_extended.feature_column.numeric_column("sepal_width", shape=[1]),
-            xgboost_extended.feature_column.numeric_column("petal_length", shape=[1]),
-            xgboost_extended.feature_column.numeric_column("petal_width", shape=[1])
+            xgboost_extended.feature_column.numeric_column(
+                "sepal_length", shape=[1]),
+            xgboost_extended.feature_column.numeric_column(
+                "sepal_width", shape=[1]),
+            xgboost_extended.feature_column.numeric_column(
+                "petal_length", shape=[1]),
+            xgboost_extended.feature_column.numeric_column(
+                "petal_width", shape=[1])
         """
         submitter.submit_pai_train(
             testing.get_datasource(),
@@ -234,6 +238,46 @@ class SubmitPAITrainTask(TestCase):
             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
             "alifin_jtest_dev.e2etest_xgb_explain_result",
             "e2etest_xgb_classify_model", {"label_col": "class"})
+
+    def test_submit_pai_kmeans_train_task(self):
+        submitter.submit_pai_train(
+            testing.get_datasource(),
+            "KMeans",
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "", {
+                "excluded_columns": "class",
+                "idx_table_name": "alifin_jtest_dev.e2e_test_kmeans_output_idx"
+            },
+            "e2e_test_kmeans",
+            "",
+            feature_column_names=[*iris_feature_column_names, "class"])
+
+    def test_submit_pai_random_forest_train_task(self):
+        submitter.submit_pai_train(
+            testing.get_datasource(),
+            "RandomForests",
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "", {
+                "tree_num": 3,
+            },
+            "e2e_test_random_forest",
+            "",
+            feature_column_names=iris_feature_column_names,
+            label_meta=iris_label_meta)
+
+    def test_submit_pai_random_forest_predict_task(self):
+        submitter.submit_pai_predict(
+            testing.get_datasource(),
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
+            "alifin_jtest_dev.pai_rf_predict", "class",
+            "e2e_test_random_forest", {})
+
+    def test_submit_pai_random_forest_explain_task(self):
+        submitter.submit_pai_explain(
+            testing.get_datasource(),
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "alifin_jtest_dev.e2etest_random_forest_explain_result",
+            "e2e_test_random_forest", {"label_col": "class"})
 
 
 if __name__ == "__main__":

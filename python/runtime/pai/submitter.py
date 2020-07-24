@@ -23,6 +23,8 @@ from os import path
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai import cluster_conf
+from runtime.pai.kmeans import get_train_kmeans_pai_cmd
+from runtime.pai.random_forest import get_train_random_forest_pai_cmd
 
 LIFECYCLE_ON_TMP_TABLE = 7
 JOB_ARCHIVE_FILE = "job.tar.gz"
@@ -125,6 +127,23 @@ def get_oss_model_url(model_full_path):
         The OSS url of the model
     """
     return "oss://%s/%s" % (oss.SQLFLOW_MODELS_BUCKET, model_full_path)
+
+
+def drop_pai_model(datasource, model_name):
+    """Drop PAI model
+
+    Args:
+        datasource: current datasource
+        model_name: name of the model to drop
+    """
+    dsn = get_datasource_dsn(datasource)
+    user, passwd, address, database = db.parseMaxComputeDSN(dsn)
+    cmd = "drop offlinemodel if exists %s" % model_name
+    subprocess.run([
+        "odpscmd", "-u", user, "-p", passwd, "--project", database,
+        "--endpoint", address, "-e", cmd
+    ],
+                   check=True)
 
 
 def create_pai_hyper_param_file(cwd, filename, model_path):
@@ -433,10 +452,21 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
                     train_table, val_table, path_to_save, params)
 
     # submit pai task to execute the training
-    cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                         "file://" + path.join(cwd, PARAMS_FILE), ENTRY_FILE,
-                         model_name, path_to_save, train_table, val_table, "",
-                         project)
+    if estimator_string.lower().startswith("randomforests"):
+        cmd = get_train_random_forest_pai_cmd(
+            model_name, train_table, model_params,
+            train_params["feature_column_names"],
+            train_params["label_meta"]["feature_name"])
+    elif estimator_string.lower().startswith("kmeans"):
+        cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
+                                       model_params,
+                                       train_params["feature_column_names"])
+    else:
+        cmd = get_pai_tf_cmd(conf,
+                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                             "file://" + path.join(cwd, PARAMS_FILE),
+                             ENTRY_FILE, model_name, path_to_save, train_table,
+                             val_table, "", project)
     submit_pai_task(cmd, datasource)
 
     # save trained model to sqlfs
@@ -502,16 +532,17 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
     # since the model saving is fully done by PAI. We directly use the columns in SELECT
     # statement for prediction, error will be reported by PAI job if the columns not match.
     conn = db.connect_with_data_source(datasource)
-    schema = db.get_table_schema(conn, result_table)
-    result_fields = [col[0] for col in schema]
-
     if model_type == oss.MODEL_TYPE_PAIML:
+        schema = db.get_table_schema(conn, predict_table)
+        result_fields = [col[0] for col in schema]
         return ('''pai -name prediction -DmodelName="%s"  '''
-                '''-DinputTableName="%s"  DoutputTableName="%s"  '''
+                '''-DinputTableName="%s"  -DoutputTableName="%s"  '''
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
     else:
+        schema = db.get_table_schema(conn, result_table)
+        result_fields = [col[0] for col in schema]
         # For TensorFlow and XGBoost, we build a pai-tf cmd to submit the task
         return get_pai_tf_cmd(cluster_conf,
                               "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
@@ -521,7 +552,7 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
 
 
 def create_predict_result_table(datasource, select, result_table, label_column,
-                                train_label_column):
+                                train_label_column, model_type):
     """Create predict result table with given name and label column
 
     Args:
@@ -531,9 +562,14 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         label_column: name of the label column, if not exist in select
             result, we will add a int column in the result table
         train_label_column: name of the label column when training
+        model_type: type of model defined in runtime.oss
     """
     conn = db.connect_with_data_source(datasource)
     db.execute(conn, "DROP TABLE IF EXISTS %s" % result_table)
+    # PAI ml will create result table itself
+    if model_type == oss.MODEL_TYPE_PAIML:
+        return
+
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
     db.execute(conn, create_table_sql)
@@ -595,15 +631,15 @@ def submit_pai_predict(datasource, select, result_table, label_column,
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
 
-    # (TODO:lhw) get train label column from model meta
-    create_predict_result_table(datasource, data_table, result_table,
-                                label_column, None)
-
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     params["oss_model_path"] = oss_model_path
     model_type, estimator = get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
     setup_predict_entry(params, model_type)
+
+    # (TODO:lhw) get train label column from model meta
+    create_predict_result_table(datasource, data_table, result_table,
+                                label_column, None, model_type)
 
     conf = cluster_conf.get_cluster_config(model_attrs)
     prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
@@ -653,7 +689,9 @@ def create_explain_result_table(datasource, data_table, result_table,
     db.execute(conn, drop_stmt)
 
     create_stmt = ""
-    if model_type == oss.MODEL_TYPE_TF:
+    if model_type == oss.MODEL_TYPE_PAIML:
+        return
+    elif model_type == oss.MODEL_TYPE_TF:
         if estimator.startswith("BoostedTrees"):
             column_def = ""
             if conn.driver == "mysql":
@@ -685,8 +723,6 @@ def create_explain_result_table(datasource, data_table, result_table,
 
     if not db.execute(conn, create_stmt):
         raise SQLFlowDiagnostic("Can't create explain result table")
-    # (TODO: lhw) conn should be in with context,
-    # we have to modify the db interface to support this feature
 
 
 def get_explain_random_forests_cmd(datasource, model_name, data_table,
