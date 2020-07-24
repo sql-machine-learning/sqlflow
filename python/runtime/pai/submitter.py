@@ -22,6 +22,7 @@ from os import path
 
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.model import EstimatorType
 from runtime.pai import cluster_conf
 from runtime.pai.kmeans import get_train_kmeans_pai_cmd
 from runtime.pai.random_forest import get_train_random_forest_pai_cmd
@@ -452,12 +453,12 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
                     train_table, val_table, path_to_save, params)
 
     # submit pai task to execute the training
-    if estimator_string.lower().startswith("randomforests"):
+    if estimator_string.lower() == "randomforests":
         cmd = get_train_random_forest_pai_cmd(
             model_name, train_table, model_params,
             train_params["feature_column_names"],
             train_params["label_meta"]["feature_name"])
-    elif estimator_string.lower().startswith("kmeans"):
+    elif estimator_string.lower() == "kmeans":
         cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
                                        model_params,
                                        train_params["feature_column_names"])
@@ -493,7 +494,7 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
     bucket = oss.get_models_bucket()
     tf = bucket.object_exists(model_name + "/tensorflow_model_desc")
     if tf:
-        modelType = oss.MODEL_TYPE_TF
+        modelType = EstimatorType.TENSORFLOW
         bucket.get_object_to_file(
             model_name + "/tensorflow_model_desc_estimator",
             "tmp_estimator_name")
@@ -503,10 +504,10 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
 
     xgb = bucket.object_exists(model_name + "/xgboost_model_desc")
     if xgb:
-        modelType = oss.MODEL_TYPE_XGB
+        modelType = EstimatorType.XGBOOST
         return modelType, "xgboost"
 
-    return oss.MODEL_TYPE_PAIML, ""
+    return EstimatorType.PAIML, ""
 
 
 def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
@@ -532,7 +533,7 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
     # since the model saving is fully done by PAI. We directly use the columns in SELECT
     # statement for prediction, error will be reported by PAI job if the columns not match.
     conn = db.connect_with_data_source(datasource)
-    if model_type == oss.MODEL_TYPE_PAIML:
+    if model_type == EstimatorType.PAIML:
         schema = db.get_table_schema(conn, predict_table)
         result_fields = [col[0] for col in schema]
         return ('''pai -name prediction -DmodelName="%s"  '''
@@ -567,7 +568,7 @@ def create_predict_result_table(datasource, select, result_table, label_column,
     conn = db.connect_with_data_source(datasource)
     db.execute(conn, "DROP TABLE IF EXISTS %s" % result_table)
     # PAI ml will create result table itself
-    if model_type == oss.MODEL_TYPE_PAIML:
+    if model_type == EstimatorType.PAIML:
         return
 
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
@@ -594,11 +595,11 @@ def create_predict_result_table(datasource, select, result_table, label_column,
 
 def setup_predict_entry(params, model_type):
     """Setup PAI prediction entry function according to model type"""
-    if model_type == oss.MODEL_TYPE_TF:
+    if model_type == EstimatorType.TENSORFLOW:
         params["entry_type"] = "predict_tf"
-    elif model_type == oss.MODEL_TYPE_PAIML:
+    elif model_type == EstimatorType.PAIML:
         params["entry_type"] = "predict_paiml"
-    elif model_type == oss.MODEL_TYPE_XGB:
+    elif model_type == EstimatorType.XGBOOST:
         params["entry_type"] = "predict_xgb"
     else:
         raise SQLFlowDiagnostic("unsupported model type: %d" % model_type)
@@ -689,9 +690,9 @@ def create_explain_result_table(datasource, data_table, result_table,
     db.execute(conn, drop_stmt)
 
     create_stmt = ""
-    if model_type == oss.MODEL_TYPE_PAIML:
+    if model_type == EstimatorType.PAIML:
         return
-    elif model_type == oss.MODEL_TYPE_TF:
+    elif model_type == EstimatorType.TENSORFLOW:
         if estimator.startswith("BoostedTrees"):
             column_def = ""
             if conn.driver == "mysql":
@@ -709,7 +710,7 @@ def create_explain_result_table(datasource, data_table, result_table,
             create_stmt = get_create_shap_result_sql(conn, data_table,
                                                      result_table,
                                                      label_column)
-    elif model_type == oss.MODEL_TYPE_XGB:
+    elif model_type == EstimatorType.XGBOOST:
         if not label_column:
             raise SQLFlowDiagnostic(
                 "need to specify WITH label_col=lable_col_name "
@@ -796,12 +797,12 @@ def submit_pai_explain(datasource, select, result_table, model_name,
 
     conf = cluster_conf.get_cluster_config(model_attrs)
 
-    if model_type == oss.MODEL_TYPE_PAIML:
+    if model_type == EstimatorType.PAIML:
         cmd = get_explain_random_forests_cmd(datasource, model_name,
                                              data_table, result_table,
                                              label_column)
     else:
-        if model_type == oss.MODEL_TYPE_XGB:
+        if model_type == EstimatorType.XGBOOST:
             params["entry_type"] = "explain_xgb"
         else:
             params["entry_type"] = "explain_tf"

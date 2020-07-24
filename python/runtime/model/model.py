@@ -33,8 +33,11 @@ model_obj_file = "sqlflow_model.pkl"
 class EstimatorType(Enum):
     """The enum type for various SQLFlow estimator.
     """
-    TENSORFLOW = 1
-    XGBOOST = 2
+    # To stay compitable with old models, we start at 0
+    TENSORFLOW = 0
+    XGBOOST = 1
+    # PAIML is the model type that trained by PAI machine learning algorithm toolkit
+    PAIML = 2
 
 
 class Model:
