@@ -23,13 +23,6 @@ from runtime.tensorflow import is_tf_estimator
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to save models trained.
 SQLFLOW_MODELS_BUCKET = "sqlflow-models"
 
-# ModelTypeTF is the mode type that trained by PAI Tensorflow.
-MODEL_TYPE_TF = 0
-# ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
-MODEL_TYPE_XGB = 1
-# ModelTypePAIML is the model type that trained by PAI machine learning algorithm toolkit
-MODEL_TYPE_PAIML = 2
-
 
 def remove_bucket_prefix(oss_uri):
     return oss_uri.replace("oss://%s/" % SQLFLOW_MODELS_BUCKET, "")
