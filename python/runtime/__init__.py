@@ -11,4 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .import_custom_models import import_model_def
+from runtime.import_custom_models import import_model_def

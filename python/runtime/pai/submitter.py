@@ -98,13 +98,13 @@ def create_tmp_table_from_select(select, datasource):
     return "%s.%s" % (project, tmp_tb_name)
 
 
-def drop_tmp_tables(tables, datasource):
+def drop_tables(tables, datasource):
     """Drop given tables in datasource"""
     conn = db.connect_with_data_source(datasource)
     try:
         for table in tables:
             if table != "":
-                drop_sql = "DROP TABLE %s" % table
+                drop_sql = "DROP TABLE IF EXISTS %s" % table
                 db.execute(conn, drop_sql)
     except:
         # odps will clear table itself, so even fail here, we do
@@ -472,7 +472,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
 
     # save trained model to sqlfs
     save_model_to_sqlfs(datasource, path_to_save, model_name)
-    drop_tmp_tables([train_table, val_table], datasource)
+    drop_tables([train_table, val_table], datasource)
 
 
 def get_oss_saved_model_type_and_estimator(model_name, project):
@@ -650,7 +650,7 @@ def submit_pai_predict(datasource, select, result_table, label_column,
                               model_name, data_table, result_table, model_type,
                               cwd)
     submit_pai_task(cmd, datasource)
-    drop_tmp_tables([data_table], datasource)
+    drop_tables([data_table], datasource)
 
 
 def get_create_shap_result_sql(conn, data_table, result_table, label_column):
@@ -660,7 +660,7 @@ def get_create_shap_result_sql(conn, data_table, result_table, label_column):
         conn: a database connection
         data_table: table name to read data from
         result_table: result table name
-        label_column: column name of label 
+        label_column: column name of label
 
     Returns:
         a sql statement to create SHAP result table
@@ -814,4 +814,98 @@ def submit_pai_explain(datasource, select, result_table, model_name,
                              ENTRY_FILE, model_name, oss_model_path,
                              data_table, "", result_table, project)
     submit_pai_task(cmd, datasource)
-    drop_tmp_tables([data_table], datasource)
+    drop_tables([data_table], datasource)
+
+
+def get_evaluate_metrics(model_type, model_attrs):
+    """Get evaluate metrics from model attributes or return default
+
+    Args:
+        mode_type: type of the model, see runtime.model.EstimatorType
+        model_attrs: model attributs passed by WITH clause
+
+    Returns:
+        An array of metrics names
+    """
+    metrics = []
+    if model_type == EstimatorType.XGBOOST:
+        metrics.append("accuracy_score")
+    elif model_type == EstimatorType.TENSORFLOW:
+        metrics.append("Accuracy")
+
+    met_conf = model_attrs.get("validation.metrics") or model_attrs.get(
+        "validationMetrics")
+    if met_conf:
+        [
+            metrics.append(m) for m in met_conf.split(",")
+            if m and m not in metrics
+        ]
+    return metrics
+
+
+def create_evaluate_result_table(datasource, result_table, metrics):
+    """Create a table to hold the evaluation result
+
+    Args:
+        datasource: current datasource
+        result_table: the table name to save result
+        metrics: array of evaluation metrics names
+    """
+    drop_tables([result_table], datasource)
+    # Always add loss
+    ext_metrics = ["loss"]
+    ext_metrics.extend(metrics)
+    fields = ["%s STRING" % m for m in ext_metrics]
+    sql = "CREATE TABLE IF NOT EXISTS %s (%s);" % (result_table,
+                                                   ",".join(fields))
+    conn = db.connect_with_data_source(datasource)
+    db.execute(conn, sql)
+
+
+def submit_pai_evaluate(datasource, model_name, select, result_table,
+                        model_attrs):
+    """Submit a PAI evaluation task
+
+    Args:
+        datasource: current datasource
+        model_name: model used to do evaluation
+        select: sql statement to get evaluate data set
+        result_table: the table name to save result
+        model_params: dict, Params for training, crossponding to WITH claus
+    """
+
+    params = dict(locals())
+    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
+
+    project = get_project(datasource)
+    if result_table.count(".") == 0:
+        result_table = "%s.%s" % (project, result_table)
+    oss_model_path = get_oss_model_save_path(datasource, model_name)
+    params["oss_model_path"] = oss_model_path
+
+    model_type, estimator = get_oss_saved_model_type_and_estimator(
+        oss_model_path, project)
+    if model_type == EstimatorType.PAIML:
+        raise SQLFlowDiagnostic("PAI model evaluation is not supported yet.")
+
+    data_table = create_tmp_table_from_select(select, datasource)
+    params["data_table"] = data_table
+
+    metrics = get_evaluate_metrics(model_type, model_attrs)
+    params["metrics"] = metrics
+    create_evaluate_result_table(datasource, result_table, metrics)
+
+    conf = cluster_conf.get_cluster_config(model_attrs)
+
+    if model_type == EstimatorType.XGBOOST:
+        params["entry_type"] = "evaluate_xgb"
+    else:
+        params["entry_type"] = "evaluate_tf"
+    prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
+                    oss_model_path, params)
+    cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                         "file://" + path.join(cwd, PARAMS_FILE), ENTRY_FILE,
+                         model_name, oss_model_path, data_table, "",
+                         result_table, project)
+    submit_pai_task(cmd, datasource)
+    drop_tables([data_table], datasource)

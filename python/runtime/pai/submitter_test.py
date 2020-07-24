@@ -279,6 +279,20 @@ class SubmitPAITrainTask(TestCase):
             "alifin_jtest_dev.e2etest_random_forest_explain_result",
             "e2e_test_random_forest", {"label_col": "class"})
 
+    def test_submit_pai_tf_evaluate_task(self):
+        submitter.submit_pai_evaluate(
+            testing.get_datasource(), "e2etest_pai_dnn",
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "alifin_jtest_dev.e2etest_pai_dnn_evaluate_result",
+            {"validation.metrics": "Accuracy,Recall"})
+
+    def test_submit_pai_xgb_evaluate_task(self):
+        submitter.submit_pai_evaluate(
+            testing.get_datasource(), "e2etest_xgb_classify_model",
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+            "alifin_jtest_dev.e2etest_pai_xgb_evaluate_result",
+            {"validation.metrics": "accuracy_score"})
+
 
 if __name__ == "__main__":
     # unittest.main()
