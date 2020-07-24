@@ -19,7 +19,7 @@ import pyomo.environ as pyomo_env
 import runtime.db as db
 import runtime.verifier as verifier
 import six
-from pyomo.environ import (Integers, NegativeIntegers, NegativeReals,
+from pyomo.environ import (Binary, Integers, NegativeIntegers, NegativeReals,
                            NonNegativeIntegers, NonNegativeReals,
                            NonPositiveIntegers, NonPositiveReals,
                            PositiveIntegers, PositiveReals, Reals, maximize,
@@ -38,7 +38,7 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
                                    result_value_name, objective, direction,
                                    constraints):
     """
-    Generate a Pymomo ConcreteModel.
+    Generate a Pyomo ConcreteModel.
 
     Args:
         data_frame (pandas.DataFrame): the input table data.
@@ -50,7 +50,7 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
         constraints (dict): the constraint expression containing the token list and GROUP BY column name.
 
     Returns:
-        A Pymomo ConcreteModel.
+        A Pyomo ConcreteModel.
     """
     direction = direction.lower()
     if direction not in ['maximize', 'minimize']:
