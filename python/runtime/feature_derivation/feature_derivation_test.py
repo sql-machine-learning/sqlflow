@@ -83,11 +83,10 @@ class TestGetMaxIndexOfKeyValueString(unittest.TestCase):
         self.assertEqual(self.infer_index("1:7"), 2)
 
 
-@unittest.skipUnless(testing.get_driver() == "mysql"
-                     or testing.get_driver() == "hive",
+@unittest.skipUnless(testing.get_driver() in ["mysql", "hive"],
                      "skip non MySQL and Hive tests")
 class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
-    def _test_without_cross(self):
+    def test_without_cross(self):
         features = {
             'feature_columns': [
                 EmbeddingColumn(dimension=256, combiner="mean", name="c3"),
@@ -203,7 +202,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [])
 
-    def _test_with_cross(self):
+    def test_with_cross(self):
         c1 = NumericColumn(FieldDesc(name='c1', dtype=DataType.INT, shape=[1]))
         c2 = NumericColumn(FieldDesc(name='c2', dtype=DataType.INT, shape=[1]))
         c4 = NumericColumn(FieldDesc(name='c4', dtype=DataType.INT, shape=[1]))
