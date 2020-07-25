@@ -145,7 +145,7 @@ const tfPredictTmplText = tfImportsText + `
 import os
 import types
 import traceback
-from runtime.pai import predict
+from runtime.pai.tensorflow import predict
 
 try:
     import sqlflow_models
@@ -184,7 +184,7 @@ if is_estimator:
 else:
     oss.load_file("{{.OSSModelDir}}", "model_save")
 
-predict.pred(datasource="{{.DataSource}}",
+predict._predict(datasource="{{.DataSource}}",
              estimator_string=estimator,
              select="""{{.Select}}""",
              result_table="{{.ResultTable}}",
@@ -210,7 +210,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.pai import explain
+from runtime.pai.tensorflow import explain
 
 try:
     tf.enable_eager_execution()
@@ -245,7 +245,7 @@ else:
     oss.load_file("{{.OSSModelDir}}", "model_save")
 
 
-explain.explain(datasource="{{.DataSource}}",
+explain._explain(datasource="{{.DataSource}}",
                 estimator_string=estimator,
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,
