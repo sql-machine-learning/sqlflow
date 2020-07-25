@@ -2,12 +2,14 @@
 # NOTE: To build the release image, SQLFlow must be built into ./build
 FROM ubuntu:18.04
 
+ARG FIND_FASTED_MIRROR=true
+
 # Choose faster mirrors for apt-get and pip
 # Install docker.io to release model defininiation
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN bash -c 'source find_fastest_resources.sh && \
+RUN bash -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh && \
              echo "Choose the fastest APT source ..." && \
-             choose_fastest_apt_source' && \
+             choose_fastest_apt_source; fi' && \
     apt-get -qq update && \
     apt-get -qq install -y axel sudo docker.io
 

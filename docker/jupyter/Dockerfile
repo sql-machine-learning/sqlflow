@@ -3,10 +3,12 @@
 
 FROM alpine:3.12
 
+ARG FIND_FASTED_MIRROR=true
+
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN /bin/sh -c "source find_fastest_resources.sh && \
+RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh && \
     choose_fastest_alpine_source && \
-    choose_fastest_pip_source"
+    choose_fastest_pip_source; fi'
 
 RUN apk add --no-cache python3 py3-pip py3-pyzmq py3-grpcio
 
