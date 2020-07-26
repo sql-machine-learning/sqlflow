@@ -13,15 +13,12 @@
 
 import unittest
 
-import runtime.feature_derivation.feature_derivation as fd
+import runtime.feature.derivation as fd
 import runtime.testing as testing
-from runtime.feature_derivation.feature_column import (CategoryIDColumn,
-                                                       CrossColumn,
-                                                       EmbeddingColumn,
-                                                       IndicatorColumn,
-                                                       NumericColumn)
-from runtime.feature_derivation.field_desc import (DataFormat, DataType,
-                                                   FieldDesc)
+from runtime.feature.column import (CategoryIDColumn, CrossColumn,
+                                    EmbeddingColumn, IndicatorColumn,
+                                    NumericColumn)
+from runtime.feature.field_desc import DataFormat, DataType, FieldDesc
 
 
 class TestCSVRegex(unittest.TestCase):

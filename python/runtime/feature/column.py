@@ -12,7 +12,7 @@
 # limitations under the License.
 
 import six
-from runtime.feature_derivation.field_desc import DataType, FieldDesc
+from runtime.feature.field_desc import DataType, FieldDesc
 
 
 class FeatureColumn(object):
