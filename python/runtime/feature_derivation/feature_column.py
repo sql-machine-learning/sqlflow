@@ -241,7 +241,7 @@ class EmbeddingColumn(FeatureColumn):
 
     def get_field_desc(self):
         if self.category_column is None:
-            return [FieldDesc()]
+            return []
 
         return self.category_column.get_field_desc()
 
@@ -278,7 +278,7 @@ class IndicatorColumn(FeatureColumn):
 
     def get_field_desc(self):
         if self.category_column is None:
-            return [FieldDesc()]
+            return []
 
         return self.category_column.get_field_desc()
 

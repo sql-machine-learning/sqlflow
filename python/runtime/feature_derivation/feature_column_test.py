@@ -128,11 +128,11 @@ class TestFeatureColumn(unittest.TestCase):
 
             fc2 = fc_class(category_column=None, name="my_category_column")
             fc2_descs = fc2.get_field_desc()
-            self.assertEqual(len(fc2_descs), 1)
+            self.assertEqual(len(fc2_descs), 0)
             fc2 = fc2.new_feature_column_from(desc)
             self.assertTrue(isinstance(fc2, fc_class))
             fc2_descs = fc2.get_field_desc()
-            self.assertEqual(len(fc2_descs), 1)
+            self.assertEqual(len(fc2_descs), 0)
 
 
 if __name__ == '__main__':

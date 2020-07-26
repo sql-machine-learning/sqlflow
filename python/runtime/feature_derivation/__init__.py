@@ -11,5 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# NOTE(sneaxiy): Python 2 requires __init__.py,
-# Otherwise, "import runtime.feature_derivation" would fail.
+from runtime.feature_derivation.feature_derivation import infer_feature_columns
