@@ -828,11 +828,6 @@ def get_evaluate_metrics(model_type, model_attrs):
         An array of metrics names
     """
     metrics = []
-    if model_type == EstimatorType.XGBOOST:
-        metrics.append("accuracy_score")
-    elif model_type == EstimatorType.TENSORFLOW:
-        metrics.append("Accuracy")
-
     met_conf = model_attrs.get("validation.metrics") or model_attrs.get(
         "validationMetrics")
     if met_conf:
@@ -840,6 +835,14 @@ def get_evaluate_metrics(model_type, model_attrs):
             metrics.append(m) for m in met_conf.split(",")
             if m and m not in metrics
         ]
+    # add default if no extra metrics is provided
+    if len(metrics) == 0:
+        if model_type == EstimatorType.XGBOOST:
+            metrics.append("accuracy_score")
+        elif model_type == EstimatorType.TENSORFLOW:
+            metrics.append("Accuracy")
+        else:
+            raise SQLFlowDiagnostic("No metrics is provided.")
     return metrics
 
 
@@ -849,12 +852,13 @@ def create_evaluate_result_table(datasource, result_table, metrics):
     Args:
         datasource: current datasource
         result_table: the table name to save result
-        metrics: array of evaluation metrics names
+        metrics: list of evaluation metrics names
     """
     drop_tables([result_table], datasource)
     # Always add loss
     ext_metrics = ["loss"]
-    ext_metrics.extend(metrics)
+    if isinstance(metrics, list):
+        ext_metrics.extend(metrics)
     fields = ["%s STRING" % m for m in ext_metrics]
     sql = "CREATE TABLE IF NOT EXISTS %s (%s);" % (result_table,
                                                    ",".join(fields))
