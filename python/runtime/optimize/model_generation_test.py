@@ -18,8 +18,19 @@ import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
 from runtime.optimize.local import generate_model_with_data_frame, solve_model
-from runtime.optimize.model_generation import \
-    generate_objective_and_constraint_expression
+from runtime.optimize.model_generation import (
+    generate_objective_and_constraint_expression, is_identifier)
+
+
+class TestIsIdentifier(unittest.TestCase):
+    def test_main(self):
+        tokens = ['a', '_', 'a123', '__', '_123']
+        for t in tokens:
+            self.assertTrue(is_identifier(t))
+
+        tokens = ['1', '123_', '3def']
+        for t in tokens:
+            self.assertFalse(is_identifier(t))
 
 
 class TestModelGenerationBase(unittest.TestCase):

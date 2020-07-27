@@ -12,11 +12,59 @@
 # limitations under the License.
 
 import copy
+import re
 
 __all__ = [
     'generate_unique_result_value_name',
     'generate_objective_and_constraint_expression',
 ]
+
+IDENTIFIER = re.compile("[_a-zA-Z]\w*")
+
+
+def is_identifier(token):
+    return IDENTIFIER.fullmatch(token) is not None
+
+
+def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
+    """
+    Check whether the tokens are valid. If the token is inside
+    columns or result_value_name, or the token is a function-call
+    identifier, it is valid. Otherwise, raise AssertionError.
+
+    Args:
+        columns (list[str]): the column names of the source table.
+        tokens (list[str]): the token list.
+        result_value_name (str): the result value name to be optimized.
+        group_by (str): the column name to be grouped.
+
+    Returns:
+        None
+
+    Raises:
+        AssertionError if any token is invalid.
+    """
+    valid_columns = [c.lower() for c in columns]
+
+    if group_by and group_by.lower() not in valid_columns:
+        raise ValueError("GROUP BY column %s not found" % group_by)
+
+    if not tokens:
+        return
+
+    valid_columns.append(result_value_name.lower())
+
+    for i, token in enumerate(tokens):
+        if token.lower() in valid_columns:
+            continue
+
+        # If a token is not a function call identifier and not inside
+        # valid_columns, raise error
+        if not is_identifier(token):
+            continue
+
+        if find_next_non_blank_token(tokens, i + 1) != "(":
+            raise AssertionError("invalid token %s" % token)
 
 
 def generate_unique_result_value_name(columns, result_value_name, variables):
@@ -182,6 +230,30 @@ def generate_group_by_range_and_index_str(group_by, data_str, value_str,
     inner_range_str = '%s.where(%s == %s)[0]' % (numpy_str, group_by_data_str,
                                                  value_str)
     return outer_range_str, inner_range_str, [value_str, index_str]
+
+
+def find_next_non_blank_token(tokens, i):
+    """
+    Find next non-blank token after index i (including i).
+
+    Args:
+        tokens (list[str]): a string token list.
+        i (int): the position to search.
+
+    Returns:
+        If any token is found, return the found token.
+        Otherwise, return None.
+    """
+    if i < 0:
+        return None
+
+    while i < len(tokens):
+        if tokens[i].strip():
+            return tokens[i]
+
+        i += 1
+
+    return None
 
 
 def find_prev_non_blank_token(tokens, i):
@@ -585,6 +657,9 @@ def generate_objective_and_constraint_expression(columns,
     constraint_exprs = []
 
     if objective:
+        assert_are_valid_tokens(columns=columns,
+                                tokens=objective,
+                                result_value_name=result_value_name)
         obj_expr, for_range, iter_vars = generate_objective_or_constraint_expression(
             columns=columns,
             tokens=objective,
@@ -603,6 +678,10 @@ def generate_objective_and_constraint_expression(columns,
             tokens = c.get("tokens")
             group_by = c.get("group_by")
 
+            assert_are_valid_tokens(columns=columns,
+                                    tokens=objective,
+                                    result_value_name=result_value_name,
+                                    group_by=group_by)
             expr, for_range, iter_vars = generate_objective_or_constraint_expression(
                 columns=columns,
                 tokens=tokens,
