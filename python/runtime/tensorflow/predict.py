@@ -23,15 +23,17 @@ import runtime
 import tensorflow as tf
 from runtime import db
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.input_fn import (get_dtype,
+                                         parse_sparse_feature_predict,
+                                         tf_generator)
+from runtime.tensorflow.keras_with_feature_column_input import \
+    init_model_with_feature_column
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
                                   DNNLinearCombinedRegressor, DNNRegressor,
                                   LinearClassifier, LinearRegressor)
-
-from .get_tf_version import tf_is_version2
-from .input_fn import get_dtype, parse_sparse_feature_predict, tf_generator
-from .keras_with_feature_column_input import init_model_with_feature_column
 
 try:
     import sqlflow_models
