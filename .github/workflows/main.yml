@@ -147,15 +147,16 @@ jobs:
         $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
         echo "::set-env name=TRAVIS_BRANCH::$TRAVIS_BRANCH"
     - name: relase latest windows client binary
+      shell: bash
       env:
         TRAVIS_OS_NAME: windows
         QINIU_AK: ${{ secrets.QINIU_AK }}
         QINIU_SK: ${{ secrets.QINIU_SK }}
       run: |
-        $TRAVIS_TAG="${{ steps.tagName.outputs.tag }}"
-        $TRAVIS_PULL_REQUEST="${{ github.event.number }}"
-        $TRAVIS_EVENT_TYPE="$Env:TRAVIS_EVENT_TYPE"
-        $TRAVIS_BRANCH="$Env:TRAVIS_BRANCH"
-        $QINIU_AK="$Env:QINIU_AK"
-        $QINIU_SK="$Env:QINIU_SK"
+        export TRAVIS_TAG="${{ steps.tagName.outputs.tag }}"
+        export TRAVIS_PULL_REQUEST="${{ github.event.number }}"
+        export TRAVIS_EVENT_TYPE="$TRAVIS_EVENT_TYPE"
+        export TRAVIS_BRANCH="$TRAVIS_BRANCH"
+        export QINIU_AK="$QINIU_AK"
+        export QINIU_SK="$QINIU_SK"
         scripts/travis/deploy_client.sh
