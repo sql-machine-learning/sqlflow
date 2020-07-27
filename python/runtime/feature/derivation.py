@@ -19,13 +19,10 @@ import re
 
 import numpy as np
 import six
-from runtime.feature_derivation.feature_column import (CategoryIDColumn,
-                                                       EmbeddingColumn,
-                                                       FeatureColumn,
-                                                       IndicatorColumn,
-                                                       NumericColumn)
-from runtime.feature_derivation.field_desc import (DataFormat, DataType,
-                                                   FieldDesc)
+from runtime.feature.column import (CategoryIDColumn, EmbeddingColumn,
+                                    FeatureColumn, IndicatorColumn,
+                                    NumericColumn)
+from runtime.feature.field_desc import DataFormat, DataType, FieldDesc
 from runtime.verifier import fetch_samples
 
 

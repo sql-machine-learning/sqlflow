@@ -14,13 +14,13 @@
 import json
 import unittest
 
-import runtime.feature_derivation.feature_column as fc
-import runtime.feature_derivation.field_desc as fd
+import runtime.feature.column as fc
+import runtime.feature.field_desc as fd
 
 
 class TestFeatureColumn(unittest.TestCase):
     def new_field_desc(self):
-        desc = fc.FieldDesc(name="my_feature",
+        desc = fd.FieldDesc(name="my_feature",
                             dtype=fd.DataType.FLOAT,
                             delimiter=",",
                             format=fd.DataFormat.CSV,
