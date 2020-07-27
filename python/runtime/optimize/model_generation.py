@@ -19,11 +19,7 @@ __all__ = [
     'generate_objective_and_constraint_expression',
 ]
 
-IDENTIFIER = re.compile("[_a-zA-Z]\w*")
-
-
-def is_identifier(token):
-    return IDENTIFIER.fullmatch(token) is not None
+IDENTIFIER_REGEX = re.compile("[_a-zA-Z]\w*")
 
 
 def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
@@ -60,7 +56,7 @@ def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
 
         # If a token is not a function call identifier and not inside
         # valid_columns, raise error
-        if not is_identifier(token):
+        if IDENTIFIER_REGEX.fullmatch(token) is None:
             continue
 
         if find_next_non_blank_token(tokens, i + 1) != "(":
