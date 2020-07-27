@@ -11,14 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from odps import ODPS, tunnel
 from runtime.db_writer.base import BufferedDBWriter
 
 
 class MaxComputeDBWriter(BufferedDBWriter):
     def __init__(self, conn, table_name, table_schema, buff_size):
-        return super(MaxComputeDBWriter,
-                     self).__init__(conn, table_name, table_schema, buff_size)
+        super(MaxComputeDBWriter, self).__init__(conn, table_name,
+                                                 table_schema, buff_size)
+
+        # NOTE: import odps here instead in the front of this file,
+        # so that we need not the odps package installed in the Docker
+        # image if we do not use MaxComputeDBWriter.
+        from odps import tunnel
+        self.compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
 
     def flush(self):
         compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB

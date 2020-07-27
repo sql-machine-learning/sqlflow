@@ -17,7 +17,6 @@ import re
 import numpy as np
 import runtime.db_writer as db_writer
 import six
-from odps import ODPS, tunnel
 
 
 def parseMySQLDSN(dsn):
