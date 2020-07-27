@@ -80,14 +80,13 @@ func hasExportedLocal(code string) bool {
 }
 
 func hasUnknownParameters(code string, list []string) bool {
-	r := regexp.MustCompile(`(?s)((?:\bpred\(|\btrain\().*)`)
+	r := regexp.MustCompile(`(?s)((?:\b_predict\(|\bpred\(|\btrain\().*)`)
 	c := r.FindStringSubmatch(code)[1]
 	r = regexp.MustCompile(`[(\s,](\w+)=.*,`)
 	for _, v := range r.FindStringSubmatch(c)[1:] {
 		if !contains(list, v) {
 			return true
 		}
-
 	}
 	return false
 }

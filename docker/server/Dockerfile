@@ -2,13 +2,15 @@
 # NOTE: To build the release image, SQLFlow must be built into ./build
 FROM alpine:3.12
 
+ARG FIND_FASTED_MIRROR=true
+
 # Choose faster mirrors for apt-get and pip
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN /bin/sh -c 'source find_fastest_resources.sh && \
+RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh && \
     echo "Choose the fastest Alpine source ..." && \
     choose_fastest_alpine_source && \
     echo "Choose the fastest PIP source ..." && \
-    choose_fastest_pip_source'
+    choose_fastest_pip_source; fi'
 
 # Install Python and JRE.  SQLFlow server requires Couler/Fluid to generate YAML
 # files, and Couler/Fluid depends on Python.  The external parsers are in Java.
