@@ -58,11 +58,8 @@ def evaluate(datasource,
              pai_table=""):
     runtime.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
-
     is_estimator = is_tf_estimator(estimator_cls)
-
     set_log_level(verbose, is_estimator)
-
     eval_dataset = get_dataset_fn(select, datasource, feature_column_names,
                                   feature_metas, label_meta, is_pai, pai_table,
                                   batch_size)
