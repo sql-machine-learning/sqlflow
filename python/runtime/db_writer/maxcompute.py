@@ -19,8 +19,8 @@ class MaxComputeDBWriter(BufferedDBWriter):
         super(MaxComputeDBWriter, self).__init__(conn, table_name,
                                                  table_schema, buff_size)
 
-        # NOTE: import odps here instead in the front of this file,
-        # so that we need not the odps package installed in the Docker
+        # NOTE: import odps here instead of in the front of this file,
+        # so that we do not need the odps package installed in the Docker
         # image if we do not use MaxComputeDBWriter.
         from odps import tunnel
         self.compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
