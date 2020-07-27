@@ -15,6 +15,8 @@ Usage:
     sqlflow [options] release model [--force] <model> <version>
     sqlflow [options] delete repo <name_version>
     sqlflow [options] delete model <model> <version>
+    sqlflow [options] list repo
+    sqlflow [options] list model
 
 Options:
     -v, --version                   print the version and exit
@@ -23,6 +25,8 @@ Options:
     --env-file=<file>               config file in KEY=VAL format
     -s, --sqlflow-server=<addr>     SQLFlow server address and port
     -m, --model-zoo-server=<addr>   Model Zoo server address and port
+    -u, --user=<user>               Model Zoo user account
+    -p, --password=<password>       Model Zoo user password
 
 Run Options:
     -d, --data-source=<data_source>   data source to operate
@@ -40,6 +44,9 @@ As the command-line is written in `docopt`, it can be parsed by existing parsers
 
 ### Model Uploading
 For model definitions, we can simply tar the whole directory and upload them through the [gRPC interface](https://github.com/sql-machine-learning/sqlflow/blob/14d6a28be13418bec8a17091a0db22b5c76a1fc2/pkg/proto/modelzooserver.proto#L91). For models, there already exists [some code](https://github.com/sql-machine-learning/sqlflow/blob/14d6a28be13418bec8a17091a0db22b5c76a1fc2/pkg/model/model.go#L77) to export the model from database to file system. We can upload them after the exporting.
+
+## Model and Repo Listing
+SQLFlow command-line tool support listing released repos/models.  By default, users can only list the repos/models released by himself.  So, we need to add authentication info in the listing requests.  We added `--user` and the `--password` options to handle this.  As there may be a lot of models and repos, the implementation will pull the list for multiple times, each time for just a small number of results.
 
 ## Action Plan
 We will implement the core logic of the command-line, which is the uploading and deleting of objects in the `Model Zoo`.
