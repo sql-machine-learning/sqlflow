@@ -43,7 +43,7 @@ def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
     valid_columns = [c.lower() for c in columns]
 
     if group_by and group_by.lower() not in valid_columns:
-        raise ValueError("GROUP BY column %s not found" % group_by)
+        raise AssertionError("GROUP BY column %s not found" % group_by)
 
     if not tokens:
         return
