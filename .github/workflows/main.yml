@@ -81,7 +81,7 @@ jobs:
         # bash scripts/travis/upload_codecov.sh
   push:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test-mysql, test-hive-java, test-workflow]
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2
@@ -119,7 +119,7 @@ jobs:
   # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
   macos-client:
     runs-on: macos-latest
-    needs: test
+    needs: [test-mysql, test-hive-java, test-workflow]
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2
@@ -143,7 +143,7 @@ jobs:
         bash scripts/travis/deploy_client.sh
   windows-client:
     runs-on: windows-latest
-    needs: test
+    needs: [test-mysql, test-hive-java, test-workflow]
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2
