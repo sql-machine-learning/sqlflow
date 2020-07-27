@@ -31,6 +31,7 @@ COPY doc/datasets/popularize_churn.sql \
      doc/datasets/popularize_imdb.sql \
      doc/datasets/create_model_db.sql \
      doc/datasets/popularize_energy.sql \
+     doc/datasets/popularize_cora.sql \
      /datasets/
 
 ARG FIND_FASTED_MIRROR=true
