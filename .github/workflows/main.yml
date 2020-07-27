@@ -4,7 +4,7 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ develop, fix_actions_windows_upload ]
+    branches: [ develop ]
   pull_request:
     branches: [ develop ]
 
