@@ -42,11 +42,11 @@ def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
     """
     valid_columns = [c.lower() for c in columns]
 
-    if group_by and group_by.lower() not in valid_columns:
-        raise AssertionError("GROUP BY column %s not found" % group_by)
+    if group_by:
+        assert group_by.lower(
+        ) in valid_columns, "GROUP BY column %s not found" % group_by
 
-    if not tokens:
-        return
+    assert tokens, "tokens should not be empty"
 
     valid_columns.append(result_value_name.lower())
 
@@ -59,8 +59,8 @@ def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
         if IDENTIFIER_REGEX.fullmatch(token) is None:
             continue
 
-        if find_next_non_blank_token(tokens, i + 1) != "(":
-            raise AssertionError("invalid token %s" % token)
+        assert find_next_non_blank_token(tokens, i + 1) == "(", \
+                "invalid token %s" % token
 
 
 def generate_unique_result_value_name(columns, result_value_name, variables):
