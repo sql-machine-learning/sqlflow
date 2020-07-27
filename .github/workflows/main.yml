@@ -134,18 +134,11 @@ jobs:
     - if: ${{ github.event_name == 'schedule' }}
       run: |
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
-        $REF="${{ github.ref }}"
-        $TRAVIS_BRANCH_LIST=$REF.split("/")
-        $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
-        echo "::set-env name=TRAVIS_BRANCH::$TRAVIS_BRANCH"
+        run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - if: ${{ github.event_name == 'pull_request' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
-      run: |
-        $REF="${{ github.ref }}"
-        $TRAVIS_BRANCH_LIST=$REF.split("/")
-        $TRAVIS_BRANCH=$TRAVIS_BRANCH_LIST[$TRAVIS_BRANCH_LIST.Length-1]
-        echo "::set-env name=TRAVIS_BRANCH::$TRAVIS_BRANCH"
+      run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - name: relase latest windows client binary
       shell: bash
       env:
@@ -155,8 +148,4 @@ jobs:
       run: |
         export TRAVIS_TAG="${{ steps.tagName.outputs.tag }}"
         export TRAVIS_PULL_REQUEST="${{ github.event.number }}"
-        export TRAVIS_EVENT_TYPE="$TRAVIS_EVENT_TYPE"
-        export TRAVIS_BRANCH="$TRAVIS_BRANCH"
-        export QINIU_AK="$QINIU_AK"
-        export QINIU_SK="$QINIU_SK"
         scripts/travis/deploy_client.sh
