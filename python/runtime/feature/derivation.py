@@ -263,6 +263,7 @@ def fill_plain_field_desc(cell, field_desc):
         field_desc.shape = [1]
         if field_desc.vocabulary is None:
             field_desc.vocabulary = set()
+        # Build vocabulary from the sample data
         field_desc.vocabulary.add(cell)
     else:
         field_desc.dtype = DataType.FLOAT
@@ -399,8 +400,8 @@ def new_feature_column(field_desc):
         return embedding
 
 
-def derive_feature_column(targets, fc_map, fd_map, selected_field_names,
-                          label_name):
+def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
+                           label_name):
     """
     Derive the FeatureColumn.
 
@@ -478,15 +479,18 @@ def derive_feature_column(targets, fc_map, fd_map, selected_field_names,
         fc_target_map.update(new_fc_target_map)
 
 
-def transform_derived_feature_column_map_to_ir_feature_column_map(
+def update_ir_feature_column_map_by_derived_feature_column_map(
     features, fc_map, selected_field_names, label_name):
     """
-    Transform the derived FeatureColumn map to the FeatureColumn
-    map which IR accepts.
+    Update the IR FeatureColumn map `features` by the derived FeatureColumn map
+    `fc_map` . If any FeatureColumn inside `fc_map` does not exist in `features`,
+    it would be added to `features` . Notice that `features` is not updated
+    in-place, and we would return a new updated IR FeatureColumn map in
+    this method.
 
     Args:
-        features (dict[str -> list[FeatureColumn]]): the input feature
-            columns. The key of the dict is the target name, e.g.
+        features (dict[str -> list[FeatureColumn]]): the input IR FeatureColumn
+            map to be updated. The key of the dict is the target name, e.g.
             "feature_columns".
         fc_map (dict[str -> dict[str -> list[FeatureColumn]]]): a derived
             FeatureColumn map, where the key of the outer dict is the target
@@ -497,7 +501,8 @@ def transform_derived_feature_column_map_to_ir_feature_column_map(
             statement.
 
     Returns:
-        A map of dict[str -> list[FeatureColumn]], which IR would accepts.
+        A new IR FeatureColumn map of dict[str -> list[FeatureColumn]], which
+        is updated from the inputs `features` and `fc_map` .
     """
     new_ir_feature_columns = {}
     for target, target_fc_map in fc_map.items():
@@ -619,9 +624,9 @@ def infer_feature_columns(conn, select, features, label, n=1000):
     if not targets:
         targets.append("feature_columns")
 
-    derive_feature_column(targets, fc_map, fd_map, selected_field_names,
-                          label_name)
-    features = transform_derived_feature_column_map_to_ir_feature_column_map(
+    derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
+                           label_name)
+    features = update_ir_feature_column_map_by_derived_feature_column_map(
         features, fc_map, selected_field_names, label_name)
     label = derive_label(label, fd_map)
     return features, label
