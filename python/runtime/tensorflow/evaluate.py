@@ -53,25 +53,23 @@ def evaluate(datasource,
              hdfs_namenode_addr="",
              hive_location="",
              hdfs_user="",
-             hdfs_pass="",
-             is_pai=False,
-             pai_table=""):
+             hdfs_pass=""):
     runtime.import_model_def(estimator_string, globals())
     estimator_cls = eval(estimator_string)
     is_estimator = is_tf_estimator(estimator_cls)
     set_log_level(verbose, is_estimator)
-    eval_dataset = get_dataset_fn(select, datasource, feature_column_names,
-                                  feature_metas, label_meta, is_pai, pai_table,
-                                  batch_size)
+    eval_dataset = get_dataset_fn(select,
+                                  datasource,
+                                  feature_column_names,
+                                  feature_metas,
+                                  label_meta,
+                                  is_pai=False,
+                                  pai_table="",
+                                  batch_size=batch_size)
 
     model_params.update(feature_columns)
     if is_estimator:
-        if is_pai:
-            FLAGS = tf.app.flags.FLAGS
-            model_params["model_dir"] = FLAGS.checkpointDir
-        else:
-            model_params["model_dir"] = save
-        # tf estimator always have feature_column argument
+        model_params["model_dir"] = save
         estimator = estimator_cls(**model_params)
         result_metrics = estimator_evaluate(estimator, eval_dataset,
                                             validation_metrics)
@@ -82,13 +80,8 @@ def evaluate(datasource,
                                         keras_model_pkg, validation_metrics)
 
     # write result metrics to a table
-    if is_pai:
-        driver = "pai_maxcompute"
-        conn = None
-    else:
-        conn = connect_with_data_source(datasource)
-        driver = conn.driver
-
+    conn = connect_with_data_source(datasource)
+    driver = conn.driver
     if result_table:
         metric_name_list = ["loss"] + validation_metrics
         write_result_metrics(result_metrics,
