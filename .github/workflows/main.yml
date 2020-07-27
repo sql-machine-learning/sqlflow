@@ -137,7 +137,7 @@ jobs:
         echo "::set-env name=TRAVIS_EVENT_TYPE::cron"
         echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
     - if: ${{ github.event_name == 'pull_request' }}
-    shell: bash
+      shell: bash
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
       shell: bash
