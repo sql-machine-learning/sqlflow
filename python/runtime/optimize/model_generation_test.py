@@ -83,12 +83,17 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
 
     def replace_constraint_token(self, constraint, old, new):
         def replace_one_constraint(c):
-            c = copy.copy(c)
-            for i, token in enumerate(c["tokens"]):
+            ret = {
+                'tokens': [],
+                'group_by': c.get("group_by"),
+            }
+            for token in c["tokens"]:
                 if token == old:
-                    c["tokens"][i] = new
+                    ret["tokens"].append(new)
+                else:
+                    ret["tokens"].append(token)
 
-            return c
+            return ret
 
         if isinstance(constraint, (list, tuple)):
             return [replace_one_constraint(c) for c in constraint]

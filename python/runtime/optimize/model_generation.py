@@ -679,7 +679,7 @@ def generate_objective_and_constraint_expression(columns,
             group_by = c.get("group_by")
 
             assert_are_valid_tokens(columns=columns,
-                                    tokens=objective,
+                                    tokens=tokens,
                                     result_value_name=result_value_name,
                                     group_by=group_by)
             expr, for_range, iter_vars = generate_objective_or_constraint_expression(
