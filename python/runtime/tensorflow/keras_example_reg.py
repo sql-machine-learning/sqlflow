@@ -12,14 +12,13 @@
 # limitations under the License.
 
 import os
-# NOTE: this file is used by train_predict_test.py, do **NOT** delete!
-import shutil
 
-import sqlflow_models
 import tensorflow as tf
 from runtime.tensorflow.estimator_example import datasource
 from runtime.tensorflow.predict import pred
 from runtime.tensorflow.train import train
+
+# NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 
 select = "select * from housing.train"
 validation_select = "select * from housing.test"
@@ -67,13 +66,6 @@ feature_metas = {
     },
     "f5": {
         "feature_name": "f5",
-        "dtype": "float32",
-        "delimiter": "",
-        "shape": [1],
-        "is_sparse": "false" == "true"
-    },
-    "f6": {
-        "feature_name": "f6",
         "dtype": "float32",
         "delimiter": "",
         "shape": [1],

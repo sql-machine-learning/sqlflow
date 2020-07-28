@@ -26,10 +26,10 @@ from tensorflow.estimator import LinearClassifier  # noqa: F401
 from tensorflow.estimator import LinearRegressor  # noqa: F401
 
 
-def import_model_module(model, namespace):
+def import_model_package(model, namespace):
     """
-    Import the model module into namespace. For example,
-    If model = "my_model_module.my_model", "my_model_module"
+    Import the model package into namespace. For example,
+    If model = "my_model_package.my_model", "my_model_package"
     would be imported into namespace.
 
     Args:
@@ -43,12 +43,12 @@ def import_model_module(model, namespace):
     # format: my_model_package.MyModel
     model_name_parts = model.split(".")
     if len(model_name_parts) == 2:
-        module = model_name_parts[0]
-        if module and module.lower() not in ['xgboost', 'sqlflow_models']:
+        package = model_name_parts[0]
+        if package and package.lower() not in ['xgboost', 'sqlflow_models']:
             try:
-                namespace[module] = __import__(module)
+                namespace[package] = __import__(package)
             except Exception as e:
-                print("failed to import %s: %s" % (module, e))
+                print("failed to import %s: %s" % (package, e))
 
 
 def import_model(model):
@@ -61,5 +61,5 @@ def import_model(model):
     Returns:
         An imported model class or function.
     """
-    import_model_module(model, globals())
+    import_model_package(model, globals())
     return eval(model)

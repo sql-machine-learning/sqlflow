@@ -11,5 +11,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.verifier.verifier import (fetch_samples,
-                                       verify_column_name_and_type)
+from runtime.verifier.verifier import fetch_samples  # noqa: F401
+from runtime.verifier.verifier import verify_column_name_and_type  # noqa: F401

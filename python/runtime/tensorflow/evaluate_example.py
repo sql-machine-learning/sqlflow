@@ -11,14 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import shutil
-
-import runtime
-import sqlflow_models
-import tensorflow as tf
 from estimator_example import (datasource, feature_column_names,
-                               feature_columns, feature_metas, label_meta,
-                               select_binary, validate_select_binary)
+                               feature_columns, feature_metas, label_meta)
 from runtime.tensorflow.evaluate import evaluate
 from runtime.tensorflow.train import train
 

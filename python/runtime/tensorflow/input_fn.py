@@ -152,8 +152,8 @@ def parse_pai_dataset(feature_column_names, label_meta, feature_metas, *row):
         features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else f
     label = row[-1] if label_meta["feature_name"] else -1
     if label_meta and label_meta["delimiter"] != "":
-        # FIXME(typhoonzero): the label in the yielded row may not be the last item, should get
-        # label index.
+        # FIXME(typhoonzero): the label in the yielded row may not be the last
+        # item, should get label index.
         tmp = tf.strings.split(label,
                                sep=label_meta["delimiter"],
                                result_type='RaggedTensor')
@@ -171,7 +171,6 @@ def pai_dataset(table,
                 feature_metas,
                 slice_id=0,
                 slice_count=1):
-    record_defaults = []
     selected_cols = copy.copy(feature_column_names)
     dtypes = [
         "string"
