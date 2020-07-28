@@ -22,6 +22,7 @@ import numpy as np
 import runtime
 import tensorflow as tf
 from runtime import db
+from runtime.import_model import import_model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import (get_dtype,
@@ -29,11 +30,6 @@ from runtime.tensorflow.input_fn import (get_dtype,
                                          tf_generator)
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from tensorflow.estimator import (BoostedTreesClassifier,
-                                  BoostedTreesRegressor, DNNClassifier,
-                                  DNNLinearCombinedClassifier,
-                                  DNNLinearCombinedRegressor, DNNRegressor,
-                                  LinearClassifier, LinearRegressor)
 
 try:
     import sqlflow_models
@@ -266,8 +262,7 @@ def pred(datasource,
          hive_location="",
          hdfs_user="",
          hdfs_pass=""):
-    runtime.import_model_def(estimator_string, globals())
-    estimator = eval(estimator_string)
+    estimator = import_model(estimator_string)
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 

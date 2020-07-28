@@ -25,6 +25,7 @@ import tensorflow as tf
 from runtime import oss
 from runtime.db import (connect_with_data_source, db_generator,
                         parseMaxComputeDSN)
+from runtime.import_model import import_model
 from runtime.model_metadata import collect_model_metadata
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.tensorflow.train_estimator import estimator_train_and_save
@@ -33,11 +34,6 @@ from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
-from tensorflow.estimator import (BoostedTreesClassifier,
-                                  BoostedTreesRegressor, DNNClassifier,
-                                  DNNLinearCombinedClassifier,
-                                  DNNLinearCombinedRegressor, DNNRegressor,
-                                  LinearClassifier, LinearRegressor)
 
 try:
     import sqlflow_models
@@ -81,8 +77,7 @@ def train(datasource,
                                         model_params, feature_columns_code,
                                         feature_metas, label_meta, None,
                                         model_repo_image)
-    runtime.import_model_def(estimator_string, globals())
-    estimator = eval(estimator_string)
+    estimator = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator)
 
     if verbose < 1:  # always use verbose == 1 when using PAI to get more logs

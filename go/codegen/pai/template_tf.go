@@ -66,7 +66,7 @@ type requirementsFiller struct {
 const tfImportsText = `
 import tensorflow as tf
 from runtime.tensorflow import is_tf_estimator
-from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
+from runtime.import_model import import_model
 try:
 	from runtime import oss
 	from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
@@ -79,7 +79,7 @@ const tfLoadModelTmplText = tfImportsText + `
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
-estimator = {{.Estimator}}
+estimator = import_model('''{{.Estimator}}''')
 is_estimator = is_tf_estimator(estimator)
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
@@ -95,7 +95,7 @@ else:
 const tfSaveModelTmplText = tfImportsText + `
 import types
 
-estimator = {{.Estimator}}
+estimator = import_model('''{{.Estimator}}''')
 is_estimator = is_tf_estimator(estimator)
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
@@ -173,7 +173,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(eval(estimator))
+is_estimator = is_tf_estimator(import_model(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
@@ -233,7 +233,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(eval(estimator))
+is_estimator = is_tf_estimator(import_model(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
@@ -296,7 +296,7 @@ feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(eval(estimator))
+is_estimator = is_tf_estimator(import_model(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
