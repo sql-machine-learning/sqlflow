@@ -62,6 +62,8 @@ Usage:
     sqlflow [options] release model [--force] [--local] [--desc=<desc>] <model_name> <version>
     sqlflow [options] delete repo <repo_name> <version>
     sqlflow [options] delete model <model_name> <version>
+    sqlflow [options] list repo
+    sqlflow [options] list model
 
 Options:
     -v, --version                   	print the version and exit
@@ -70,7 +72,9 @@ Options:
         --env-file=<file>           	config file in KEY=VAL format
     -s, --sqlflow-server=<addr>     	SQLFlow server address and port, e.g localhost:50051
     -m, --model-zoo-server=<addr>   	Model Zoo server address and port
-    -d, --data-source=<data_source>     data source to use when run or release model
+    -d, --data-source=<data_source>   data source to use when run or release model
+    -u, --user=<user>               	Model Zoo user account
+    -p, --password=<password>       	Model Zoo user password
 
 Run Options:
     -e, --execute=<program>           execute given program
@@ -98,6 +102,9 @@ type options struct {
 	ModelName         string `docopt:"<model_name>"`
 	Version           string `docopt:"<version>"`
 	Description       string `docopt:"--desc"`
+	List              bool
+	User              string
+	Password          string
 }
 
 func isSpace(c byte) bool {
@@ -449,6 +456,10 @@ func processOptions(opts *options) {
 		err = deleteModel(opts)
 	case opts.Delete && opts.Repo:
 		err = deleteRepo(opts)
+	case opts.List && opts.Model:
+		err = listModels(opts)
+	case opts.List && opts.Repo:
+		err = listRepos(opts)
 	default:
 		err = runSQLFlowClient(opts)
 	}
