@@ -66,7 +66,7 @@ type requirementsFiller struct {
 const tfImportsText = `
 import tensorflow as tf
 from runtime.tensorflow import is_tf_estimator
-from runtime.tensorflow.import_model import import_model
+from runtime.import_model import import_model
 try:
 	from runtime import oss
 	from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
