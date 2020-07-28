@@ -4,9 +4,9 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ develop, fix_actions_push_linux_binary ]
-  # pull_request:
-  #   branches: [ develop ]
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
 
 jobs:
   test-mysql:
