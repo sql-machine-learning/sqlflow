@@ -11,4 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.model.model import EstimatorType, Model, load
+from runtime.model.model import EstimatorType, Model, load  # noqa: F401
