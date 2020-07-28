@@ -45,7 +45,7 @@ if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
 fi
 
 # Figure out the tag to push sqlflow:ci.
-if [[ "$TRAVIS_BRANCH" == "develop" || "$TRAVIS_BRANCH" == "fix_actions_push_linux_binary" ]]; then
+if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
     if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
         DOCKER_TAG="nightly"
     else
