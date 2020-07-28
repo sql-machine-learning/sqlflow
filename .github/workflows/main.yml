@@ -4,9 +4,9 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ develop ]
-  pull_request:
-    branches: [ develop ]
+    branches: [ develop, fix_actions_push_linux_binary ]
+  # pull_request:
+  #   branches: [ develop ]
 
 jobs:
   test-mysql:
@@ -113,6 +113,7 @@ jobs:
         QINIU_AK: ${{ secrets.QINIU_AK }}
         QINIU_SK: ${{ secrets.QINIU_SK }}
       run: |
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_client.sh
@@ -138,6 +139,7 @@ jobs:
         QINIU_AK: ${{ secrets.QINIU_AK }}
         QINIU_SK: ${{ secrets.QINIU_SK }}
       run: |
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_client.sh
@@ -166,6 +168,7 @@ jobs:
         QINIU_AK: ${{ secrets.QINIU_AK }}
         QINIU_SK: ${{ secrets.QINIU_SK }}
       run: |
+        export TRAVIS_BUILD_DIR="${{ github.workspace }}"
         export TRAVIS_TAG="${{ steps.tagName.outputs.tag }}"
         export TRAVIS_PULL_REQUEST="${{ github.event.number }}"
         scripts/travis/deploy_client.sh
