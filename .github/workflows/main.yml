@@ -95,19 +95,6 @@ jobs:
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
-    # - name: push server images
-    #   env:
-    #     DOCKER_USERNAME: "typhoon1986"
-    #     DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-    #     ALIYUN_DOCKER_USERNAME: "sqlflow@prod.trusteeship.aliyunid.com"
-    #     ALIYUN_DOCKER_PASSWORD: ${{ secrets.ALIYUN_DOCKER_PASSWORD }}
-    #   run: |
-    #     export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
-    #     export TRAVIS_PULL_REQUEST=${{ github.event.number }}
-    #     export TRAVIS_BUILD_DIR=${{ github.workspace }}
-    #     export FIND_FASTED_MIRROR=false
-    #     export TRAVIS_BUILD_STAGE_NAME=Deploy
-    #     bash scripts/travis/deploy_docker.sh
     - name: release latest linux client binary
       env:
         TRAVIS_OS_NAME: linux
@@ -118,6 +105,19 @@ jobs:
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_client.sh
+    - name: push server images
+      env:
+        DOCKER_USERNAME: "typhoon1986"
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        ALIYUN_DOCKER_USERNAME: "sqlflow@prod.trusteeship.aliyunid.com"
+        ALIYUN_DOCKER_PASSWORD: ${{ secrets.ALIYUN_DOCKER_PASSWORD }}
+      run: |
+        export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
+        export TRAVIS_PULL_REQUEST=${{ github.event.number }}
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
+        export FIND_FASTED_MIRROR=false
+        export TRAVIS_BUILD_STAGE_NAME=Deploy
+        bash scripts/travis/deploy_docker.sh
   # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
   macos-client:
     runs-on: macos-latest
