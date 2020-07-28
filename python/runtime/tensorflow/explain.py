@@ -24,14 +24,10 @@ import tensorflow as tf
 from runtime import explainer
 from runtime.db import buffered_db_writer, connect_with_data_source
 from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.import_model import import_tf_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from tensorflow.estimator import (BoostedTreesClassifier,
-                                  BoostedTreesRegressor, DNNClassifier,
-                                  DNNLinearCombinedClassifier,
-                                  DNNLinearCombinedRegressor, DNNRegressor,
-                                  LinearClassifier, LinearRegressor)
 
 sns_colors = sns.color_palette('colorblind')
 # Disable Tensorflow INFO and WARNING logs
@@ -74,7 +70,7 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
     runtime.import_model_def(estimator_string, globals())
-    estimator_cls = eval(estimator_string)
+    estimator_cls = import_tf_model(estimator_string)
     model_params['model_dir'] = save
     model_params.update(feature_columns)
 

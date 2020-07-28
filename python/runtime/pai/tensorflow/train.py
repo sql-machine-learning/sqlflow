@@ -31,13 +31,9 @@ from runtime.pai.tensorflow.train_estimator import estimator_train_and_save
 from runtime.pai.tensorflow.train_keras import keras_train_and_save
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.import_model import import_tf_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
-from tensorflow.estimator import (BoostedTreesClassifier,
-                                  BoostedTreesRegressor, DNNClassifier,
-                                  DNNLinearCombinedClassifier,
-                                  DNNLinearCombinedRegressor, DNNRegressor,
-                                  LinearClassifier, LinearRegressor)
 
 try:
     import sqlflow_models
@@ -82,7 +78,7 @@ def train(datasource,
                                         feature_metas, label_meta, None,
                                         model_repo_image)
     runtime.import_model_def(estimator_string, globals())
-    estimator = eval(estimator_string)
+    estimator = import_tf_model(estimator_string)
     is_estimator = is_tf_estimator(estimator)
 
     if verbose < 1:  # always use verbose == 1 when using PAI to get more logs

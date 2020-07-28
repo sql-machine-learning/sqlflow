@@ -24,16 +24,12 @@ import tensorflow as tf
 from runtime import db
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.import_model import import_tf_model
 from runtime.tensorflow.input_fn import (get_dtype,
                                          parse_sparse_feature_predict,
                                          tf_generator)
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from tensorflow.estimator import (BoostedTreesClassifier,
-                                  BoostedTreesRegressor, DNNClassifier,
-                                  DNNLinearCombinedClassifier,
-                                  DNNLinearCombinedRegressor, DNNRegressor,
-                                  LinearClassifier, LinearRegressor)
 
 try:
     import sqlflow_models
@@ -267,7 +263,7 @@ def pred(datasource,
          hdfs_user="",
          hdfs_pass=""):
     runtime.import_model_def(estimator_string, globals())
-    estimator = eval(estimator_string)
+    estimator = import_tf_model(estimator_string)
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
