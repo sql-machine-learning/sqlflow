@@ -21,9 +21,9 @@ import pandas as pd
 import runtime
 import tensorflow as tf
 from runtime import oss
+from runtime.import_model import import_model
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.explain import explain_boosted_trees, explain_dnns
-from runtime.tensorflow.import_model import import_tf_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
@@ -55,7 +55,7 @@ def explain(datasource, select, data_table, result_table, label_column,
     # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
     # because predicting do not need these parameters.
 
-    is_estimator = is_tf_estimator(import_tf_model(estimator))
+    is_estimator = is_tf_estimator(import_model(estimator))
 
     # Keras single node is using h5 format to save the model, no need to deal with export model format.
     # Keras distributed mode will use estimator, so this is also needed.
@@ -102,8 +102,7 @@ def _explain(datasource,
              oss_sk=None,
              oss_endpoint=None,
              oss_bucket_name=None):
-    runtime.import_model_def(estimator_string, globals())
-    estimator_cls = import_tf_model(estimator_string)
+    estimator_cls = import_model(estimator_string)
     FLAGS = tf.app.flags.FLAGS
     model_params["model_dir"] = FLAGS.checkpointDir
     model_params.update(feature_columns)

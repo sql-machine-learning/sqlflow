@@ -26,7 +26,21 @@ from tensorflow.estimator import LinearClassifier  # noqa: F401
 from tensorflow.estimator import LinearRegressor  # noqa: F401
 
 
-def import_tf_model(model):
+def import_model_module(estimator_name, namespace):
+    # try import the custom model's python package, if the estimator is of format: my_model_package.MyModel
+    model_name_parts = estimator_name.split(".")
+    if len(model_name_parts) == 2:
+        if model_name_parts[0].lower(
+        ) != "xgboost" and model_name_parts[0].lower() != "sqlflow_models":
+            if model_name_parts[0]:
+                try:
+                    namespace[model_name_parts[0]] = __import__(
+                        model_name_parts[0])
+                except Exception as e:
+                    print("failed to import %s: %s" % (model_name_parts[0], e))
+
+
+def import_model(model):
     """
     Import TensorFlow estimator or Keras model from
     the given model name.
@@ -37,4 +51,5 @@ def import_tf_model(model):
     Returns:
         A imported TensorFlow estimator or Keras model.
     """
+    import_model_module(model, globals())
     return eval(model)

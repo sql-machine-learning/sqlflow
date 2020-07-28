@@ -19,9 +19,9 @@ import runtime
 import tensorflow as tf
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.import_model import import_model
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.tensorflow import is_tf_estimator
-from runtime.tensorflow.import_model import import_tf_model
 from runtime.tensorflow.predict import estimator_predict, keras_predict
 
 try:
@@ -61,7 +61,7 @@ def predict(datasource, select, data_table, result_table, label_column,
     # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
     # because predicting do not need these parameters.
 
-    is_estimator = is_tf_estimator(import_tf_model(estimator))
+    is_estimator = is_tf_estimator(import_model(estimator))
 
     # Keras single node is using h5 format to save the model, no need to deal with export model format.
     # Keras distributed mode will use estimator, so this is also needed.
@@ -102,8 +102,7 @@ def _predict(datasource,
              save="",
              batch_size=1,
              pai_table=""):
-    runtime.import_model_def(estimator_string, globals())
-    estimator = import_tf_model(estimator_string)
+    estimator = import_model(estimator_string)
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
