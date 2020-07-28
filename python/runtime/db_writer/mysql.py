@@ -15,6 +15,16 @@ from .base import BufferedDBWriter
 
 
 class MySQLDBWriter(BufferedDBWriter):
+    """
+    MySQLDBWriter is used to write the Python row data into
+    the MySQL table.
+
+    Args:
+        conn: the database connection object.
+        table_name (str): the MySQL table name.
+        table_schema (list[str]): the column names of the MySQL table.
+        buff_size (int): the buffer size to be flushed.
+    """
     def __init__(self, conn, table_name, table_schema, buff_size):
         super().__init__(conn, table_name, table_schema, buff_size)
         self.statement = '''insert into {} ({}) values({})'''.format(
@@ -22,6 +32,12 @@ class MySQLDBWriter(BufferedDBWriter):
             ", ".join(["%s"] * len(self.table_schema)))
 
     def flush(self):
+        """
+        Flush the row data into the MySQL table.
+
+        Returns:
+            None
+        """
         cursor = self.conn.cursor()
         try:
             cursor.executemany(self.statement, self.rows)

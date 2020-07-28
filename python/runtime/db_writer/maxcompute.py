@@ -15,6 +15,16 @@ from runtime.db_writer.base import BufferedDBWriter
 
 
 class MaxComputeDBWriter(BufferedDBWriter):
+    """
+    MaxComputeDBWriter is used to write the Python row data into
+    the MaxCompute table.
+
+    Args:
+        conn: the database connection object.
+        table_name (str): the MaxCompute table name.
+        table_schema (list[str]): the column names of the MaxCompute table.
+        buff_size (int): the buffer size to be flushed.
+    """
     def __init__(self, conn, table_name, table_schema, buff_size):
         super(MaxComputeDBWriter, self).__init__(conn, table_name,
                                                  table_schema, buff_size)
@@ -26,8 +36,13 @@ class MaxComputeDBWriter(BufferedDBWriter):
         self.compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
 
     def flush(self):
-        compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+        """
+        Flush the row data into the MaxCompute table.
+
+        Returns:
+            None
+        """
         self.conn.write_table(self.table_name,
                               self.rows,
-                              compress_option=compress)
+                              compress_option=self.compress)
         self.rows = []
