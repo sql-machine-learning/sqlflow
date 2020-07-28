@@ -273,7 +273,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.tensorflow import evaluate
+from runtime.pai.tensorflow import evaluate
 
 try:
     tf.enable_eager_execution()
@@ -307,7 +307,7 @@ if is_estimator:
 else:
     oss.load_file("{{.OSSModelDir}}", "model_save")
 
-evaluate.evaluate(datasource="{{.DataSource}}",
+evaluate._evaluate(datasource="{{.DataSource}}",
                   estimator_string=estimator,
                   select="""{{.Select}}""",
                   result_table="{{.ResultTable}}",
@@ -321,6 +321,5 @@ evaluate.evaluate(datasource="{{.DataSource}}",
                   batch_size=1,
                   validation_steps=None,
                   verbose=0,
-                  is_pai="{{.IsPAI}}" == "true",
                   pai_table="{{.PAITable}}")
 `

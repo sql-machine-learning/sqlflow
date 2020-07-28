@@ -21,7 +21,12 @@ import tensorflow as tf
 from runtime import oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.tensorflow import is_tf_estimator
-from runtime.tensorflow.evaluate import evaluate as _evaluate
+from runtime.tensorflow.evaluate import (estimator_evaluate, keras_evaluate,
+                                         write_result_metrics)
+from runtime.tensorflow.input_fn import get_dataset_fn
+from runtime.tensorflow.keras_with_feature_column_input import \
+    init_model_with_feature_column
+from runtime.tensorflow.set_log_level import set_log_level
 from tensorflow.estimator import (BoostedTreesClassifier,
                                   BoostedTreesRegressor, DNNClassifier,
                                   DNNLinearCombinedClassifier,
@@ -88,3 +93,57 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
               verbose=0,
               is_pai=True,
               pai_table=data_table)
+
+
+def _evaluate(datasource,
+              estimator_string,
+              select,
+              result_table,
+              feature_columns,
+              feature_column_names,
+              feature_metas={},
+              label_meta={},
+              model_params={},
+              validation_metrics=["Accuracy"],
+              save="",
+              batch_size=1,
+              validation_steps=None,
+              verbose=0,
+              pai_table=""):
+    runtime.import_model_def(estimator_string, globals())
+    estimator_cls = eval(estimator_string)
+    is_estimator = is_tf_estimator(estimator_cls)
+    set_log_level(verbose, is_estimator)
+    eval_dataset = get_dataset_fn(select,
+                                  datasource,
+                                  feature_column_names,
+                                  feature_metas,
+                                  label_meta,
+                                  is_pai=True,
+                                  pai_table=pai_table,
+                                  batch_size=batch_size)
+
+    model_params.update(feature_columns)
+    if is_estimator:
+        FLAGS = tf.app.flags.FLAGS
+        model_params["model_dir"] = FLAGS.checkpointDir
+        estimator = estimator_cls(**model_params)
+        result_metrics = estimator_evaluate(estimator, eval_dataset,
+                                            validation_metrics)
+    else:
+        keras_model = init_model_with_feature_column(estimator, model_params)
+        keras_model_pkg = sys.modules[estimator_cls.__module__]
+        result_metrics = keras_evaluate(keras_model, eval_dataset, save,
+                                        keras_model_pkg, validation_metrics)
+
+    if result_table:
+        metric_name_list = ["loss"] + validation_metrics
+        write_result_metrics(result_metrics,
+                             metric_name_list,
+                             result_table,
+                             "pai_maxcompute",
+                             None,
+                             hdfs_namenode_addr="",
+                             hive_location="",
+                             hdfs_user="",
+                             hdfs_pass="")
