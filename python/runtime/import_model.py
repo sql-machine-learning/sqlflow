@@ -26,18 +26,29 @@ from tensorflow.estimator import LinearClassifier  # noqa: F401
 from tensorflow.estimator import LinearRegressor  # noqa: F401
 
 
-def import_model_module(estimator_name, namespace):
-    # try import the custom model's python package, if the estimator is of format: my_model_package.MyModel
-    model_name_parts = estimator_name.split(".")
+def import_model_module(model, namespace):
+    """
+    Import the model module into namespace. For example,
+    If model = "my_model_module.my_model", "my_model_module"
+    would be imported into namespace.
+
+    Args:
+        model (str): the estimator name.
+        namespace (dict): the namespace to be imported into.
+
+    Returns:
+        None.
+    """
+    # try import the custom model's python package, if the estimator is of
+    # format: my_model_package.MyModel
+    model_name_parts = model.split(".")
     if len(model_name_parts) == 2:
-        if model_name_parts[0].lower(
-        ) != "xgboost" and model_name_parts[0].lower() != "sqlflow_models":
-            if model_name_parts[0]:
-                try:
-                    namespace[model_name_parts[0]] = __import__(
-                        model_name_parts[0])
-                except Exception as e:
-                    print("failed to import %s: %s" % (model_name_parts[0], e))
+        module = model_name_parts[0]
+        if module and module.lower() not in ['xgboost', 'sqlflow_models']:
+            try:
+                namespace[module] = __import__(module)
+            except Exception as e:
+                print("failed to import %s: %s" % (module, e))
 
 
 def import_model(model):
@@ -46,7 +57,7 @@ def import_model(model):
     the given model name.
 
     Args:
-        model: the model name.
+        model (str): the model name.
 
     Returns:
         A imported TensorFlow estimator or Keras model.
