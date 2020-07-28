@@ -72,6 +72,7 @@ func caseShowDatabases(t *testing.T) {
 		"sqlflow_model_zoo":           "",
 		"sqlflow_public_models":       "",
 		"xgboost_sparse_data_test_db": "",
+		"cora":                        "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])

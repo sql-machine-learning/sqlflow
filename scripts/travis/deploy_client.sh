@@ -69,12 +69,22 @@ case "$TRAVIS_OS_NAME" in
         axel --quiet $PROTOC_SITE"download/v3.7.1/protoc-3.7.1-linux-x86_64.zip"
         sudo unzip -qq protoc-3.7.1-linux-x86_64.zip -d /usr/local
         ;;
+    osx)
+        PROTOC_ZIP="protoc-3.7.1-osx-x86_64.zip"
+        curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/$PROTOC_ZIP
+        sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+        sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+        rm -f $PROTOC_ZIP
+        ;;
     windows) choco install protoc ;;
 esac
 protoc --version
 
 
 echo "Install goyacc and protoc-gen-go ..."
+if [ "$GOPATH" == "" ]; then
+    export GOPATH="/tmp/go"
+fi
 go get \
    github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
    golang.org/x/tools/cmd/goyacc \

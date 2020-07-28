@@ -18,8 +18,68 @@ import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
 from runtime.optimize.local import generate_model_with_data_frame, solve_model
-from runtime.optimize.model_generation import \
-    generate_objective_and_constraint_expression
+from runtime.optimize.model_generation import (
+    IDENTIFIER_REGEX, assert_are_valid_tokens,
+    generate_objective_and_constraint_expression)
+
+
+class TestAssertValidTokens(unittest.TestCase):
+    def is_identifier(self, token):
+        return IDENTIFIER_REGEX.fullmatch(token) is not None
+
+    def test_is_identifier(self):
+        tokens = ['a', '_', 'a123', '__', '_123']
+        for t in tokens:
+            self.assertTrue(self.is_identifier(t))
+
+        tokens = ['1', '123_', '3def']
+        for t in tokens:
+            self.assertFalse(self.is_identifier(t))
+
+    def test_assert_valid_tokens(self):
+        tokens = ['SUM', '(', 'finishing', '*', 'product', ')', '<=', '100']
+
+        # valid expression
+        assert_are_valid_tokens(columns=['finishing', 'product'],
+                                tokens=tokens,
+                                result_value_name='product')
+
+        # invalid group_by
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=tokens,
+                                    result_value_name='product',
+                                    group_by='invalid_group_by')
+
+        # tokens = None
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=None,
+                                    result_value_name='product')
+
+        # tokens = []
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=[],
+                                    result_value_name='product')
+
+        # tokens not inside columns
+        tokens = [
+            'SUM', '(', 'finishing', '*', 'invalid_token', ')', '<=', '100'
+        ]
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=tokens,
+                                    result_value_name='product')
+
+        # tokens not inside columns but equal to result_value_name
+        # ignore cases
+        tokens = [
+            'SUM', '(', 'FinisHing', '*', 'pRoducT_VaLue', ')', '<=', '100'
+        ]
+        assert_are_valid_tokens(columns=['finishing', 'product'],
+                                tokens=tokens,
+                                result_value_name='product_value')
 
 
 class TestModelGenerationBase(unittest.TestCase):
@@ -72,7 +132,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
 
     def replace_constraint_token(self, constraint, old, new):
         def replace_one_constraint(c):
-            c = copy.copy(c)
+            c = copy.deepcopy(c)
             for i, token in enumerate(c["tokens"]):
                 if token == old:
                     c["tokens"][i] = new

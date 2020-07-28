@@ -19,6 +19,7 @@ from inspect import getargspec
 from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.tensorflow.evaluate import evaluate as evaluate_tf
 from runtime.pai.tensorflow.explain import explain as explain_tf
 from runtime.pai.tensorflow.predict import predict as predict_tf
 from runtime.pai.tensorflow.train import train as train_tf
@@ -30,6 +31,7 @@ try:
     from runtime.pai.xgboost.predict import predict as predict_xgb
     from runtime.pai.xgboost.train import train as train_xgb
     from runtime.pai.xgboost.explain import explain as explain_xgb
+    from runtime.pai.xgboost.evaluate import evaluate as evaluate_xgb
 except:
     pass
 
@@ -84,6 +86,10 @@ def entrypoint():
         call_fun(explain_tf, params)
     elif params["entry_type"] == "explain_xgb":
         call_fun(explain_xgb, params)
+    elif params["entry_type"] == "evaluate_tf":
+        call_fun(evaluate_tf, params)
+    elif params["entry_type"] == "evaluate_xgb":
+        call_fun(evaluate_xgb, params)
 
 
 if __name__ == "__main__":

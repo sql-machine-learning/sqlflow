@@ -24,9 +24,10 @@ if [[ "$(docker images -q sqlflow:dev 2> /dev/null)" == "" ]]; then
     echo "  using sqlflow/sqlflow:dev as the cache image"
     docker pull sqlflow/sqlflow:dev
     docker build --cache-from sqlflow/sqlflow:dev -t sqlflow:dev \
+           --build-arg FIND_FASTED_MIRROR="$FIND_FASTED_MIRROR" \
            -f docker/dev/Dockerfile "$TRAVIS_BUILD_DIR"
 else
-    docker build -t sqlflow:dev \
+    docker build -t sqlflow:dev --build-arg FIND_FASTED_MIRROR="$FIND_FASTED_MIRROR" \
            -f docker/dev/Dockerfile "$TRAVIS_BUILD_DIR"
 fi
 
@@ -49,9 +50,11 @@ function build_sqlflow_image() {
     if docker pull sqlflow/sqlflow:"${1}" 2> /dev/null; then
        echo " using sqlflow/sqlflow:${1} as the cache image"
        docker build --cache-from sqlflow/sqlflow:"${1}" -t sqlflow:"${1}" \
+              --build-arg FIND_FASTED_MIRROR="$FIND_FASTED_MIRROR" \
               -f docker/"${1}"/Dockerfile "${TRAVIS_BUILD_DIR}"
     else
        docker build -t sqlflow:"${1}" \
+           --build-arg FIND_FASTED_MIRROR="$FIND_FASTED_MIRROR" \
            -f docker/"${1}"/Dockerfile "$TRAVIS_BUILD_DIR"
     fi
 }
