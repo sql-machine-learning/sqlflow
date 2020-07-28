@@ -33,7 +33,7 @@ def import_model_module(model, namespace):
     would be imported into namespace.
 
     Args:
-        model (str): the estimator name.
+        model (str): the model name.
         namespace (dict): the namespace to be imported into.
 
     Returns:
@@ -53,14 +53,13 @@ def import_model_module(model, namespace):
 
 def import_model(model):
     """
-    Import TensorFlow estimator or Keras model from
-    the given model name.
+    Import the model class or function from the given model name.
 
     Args:
         model (str): the model name.
 
     Returns:
-        A imported TensorFlow estimator or Keras model.
+        An imported model class or function.
     """
     import_model_module(model, globals())
     return eval(model)
