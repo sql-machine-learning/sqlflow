@@ -81,14 +81,17 @@ def keras_predict(estimator, model_params, save, result_table,
             dataset = dataset.cache()
         return dataset
 
-    # NOTE: always use batch_size=1 when predicting to get the pairs of
-    #       features and predict results to insert into result table.
-    pred_dataset = eval_input_fn(1)
-    one_batch = next(iter(pred_dataset))
-    # NOTE: must run predict one batch to initialize parameters
-    # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
-    classifier.predict_on_batch(one_batch)
-    classifier.load_weights(save)
+    if not hasattr(classifier, 'sqlflow_predict_one'):
+        # NOTE: load_weights should be called by keras models only.
+        # NOTE: always use batch_size=1 when predicting to get the pairs of
+        #       features and predict results to insert into result table.
+        pred_dataset = eval_input_fn(1)
+        one_batch = next(iter(pred_dataset))
+        # NOTE: must run predict one batch to initialize parameters
+        # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
+        classifier.predict_on_batch(one_batch)
+        classifier.load_weights(save)
+
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
 
     column_names = selected_cols[:]
@@ -104,7 +107,10 @@ def keras_predict(estimator, model_params, save, result_table,
                                hdfs_namenode_addr, hive_location, hdfs_user,
                                hdfs_pass) as w:
         for features in pred_dataset:
-            result = classifier.predict_on_batch(features)
+            if hasattr(classifier, 'sqlflow_predict_one'):
+                result = classifier.sqlflow_predict_one(features)
+            else:
+                result = classifier.predict_on_batch(features)
             # FIXME(typhoonzero): determine the predict result is classification by
             # adding the prediction result together to see if it is close to 1.0.
             if len(result[0]) == 1:  # regression result
