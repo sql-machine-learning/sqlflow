@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -ex
+set -e
 
 # For more informaiton about deployment with Travis CI, please refer
 # to the file header of deploy_docker.sh
