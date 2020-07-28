@@ -19,7 +19,19 @@ from odps import ODPS, tunnel
 # Here we use the sdk to operate the database
 class MaxCompute:
     @staticmethod
-    def connect(database, user, password, host, auth=""):
+    def connect(database, user, password, host):
+        """
+        Create a MaxCompute database connection object.
+
+        Args:
+            database: the MaxCompute project name.
+            user: the MaxCompute AK.
+            password: the MaxCompute SK.
+            host: the MaxCompute endpoint address.
+
+        Returns:
+            A MaxCompute database connection object.
+        """
         return ODPS(user, password, project=database, endpoint=host)
 
     @staticmethod
