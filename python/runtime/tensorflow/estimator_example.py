@@ -82,7 +82,7 @@ label_meta = {
 if __name__ == "__main__":
     # tf.python.training.basic_session_run_hooks.LoggingTensorHook = runtime.tensorflow.train.PrintTensorsHook
     train(datasource=datasource,
-          estimator_string="tf.estimator.DNNClassifier",
+          estimator_string="DNNClassifier",
           select=select,
           validation_select=validate_select,
           feature_columns=feature_columns,
@@ -98,7 +98,7 @@ if __name__ == "__main__":
           epoch=3,
           verbose=0)
     train(datasource=datasource,
-          estimator_string="tf.estimator.DNNClassifier",
+          estimator_string="DNNClassifier",
           select=select_binary,
           validation_select=validate_select_binary,
           feature_columns=feature_columns,
@@ -114,7 +114,7 @@ if __name__ == "__main__":
           epoch=3,
           verbose=1)
     pred(datasource=datasource,
-         estimator_string="tf.estimator.DNNClassifier",
+         estimator_string="DNNClassifier",
          select=select,
          result_table="iris.predict",
          feature_columns=feature_columns,
