@@ -98,6 +98,7 @@ func StartModelZooServer(port int, dbConnStr string) {
 
 	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
+	logger.Infof("SQLFlow Model Zoo started at: %d", port)
 	grpcServer.Serve(lis)
 }
 
