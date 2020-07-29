@@ -13,11 +13,8 @@
 
 import argparse
 import io
-import os
-import platform
 import re
 import subprocess
-import sys
 
 COPYRIGHT = '''
 Copyright 2020 The SQLFlow Authors. All rights reserved.
@@ -42,7 +39,7 @@ COPYRIGHT_HEADER = None
 
 NEW_LINE_MARK = '\n'
 COPYRIGHT_HEADER = COPYRIGHT.split(NEW_LINE_MARK)[1]
-p = re.search('(\d{4})', COPYRIGHT_HEADER).group(0)
+p = re.search('(\d{4})', COPYRIGHT_HEADER).group(0)  # noqa: W605
 process = subprocess.Popen(["date", "+%Y"], stdout=subprocess.PIPE)
 date, err = process.communicate()
 date = date.decode("utf-8").rstrip("\n")
@@ -59,7 +56,8 @@ def generate_copyright(template, lang='go'):
     BLANK = " "
     ans = LANG_COMMENT_MARK + BLANK + COPYRIGHT_HEADER + NEW_LINE_MARK
     for lino, line in enumerate(lines):
-        if lino == 0 or lino == 1 or lino == len(lines) - 1: continue
+        if lino == 0 or lino == 1 or lino == len(lines) - 1:
+            continue
         if len(line) == 0:
             BLANK = ""
         else:
@@ -99,16 +97,19 @@ def main(argv=None):
         second_line = fd.readline()
         third_line = fd.readline()
         # check for 3 head lines
-        if "COPYRIGHT " in first_line.upper(): continue
-        if "COPYRIGHT " in second_line.upper(): continue
-        if "COPYRIGHT " in third_line.upper(): continue
+        if "COPYRIGHT " in first_line.upper():
+            continue
+        if "COPYRIGHT " in second_line.upper():
+            continue
+        if "COPYRIGHT " in third_line.upper():
+            continue
         skip_one = False
         skip_two = False
         if first_line.startswith("#!"):
             skip_one = True
-        if PYTHON_ENCODE.match(second_line) != None:
+        if PYTHON_ENCODE.match(second_line) is not None:
             skip_two = True
-        if PYTHON_ENCODE.match(first_line) != None:
+        if PYTHON_ENCODE.match(first_line) is not None:
             skip_one = True
 
         original_content_lines = io.open(filename,

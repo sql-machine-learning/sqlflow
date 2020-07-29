@@ -12,7 +12,7 @@
 # limitations under the License.
 
 import tensorflow as tf
-from MySQLdb import connect
+from MySQLdb import connect as mysql_connect
 
 
 def connect(user, passwd, host, port):
@@ -23,10 +23,11 @@ def connect(user, passwd, host, port):
         user: Specifies the MySQL user name.
         passwd : Specify the MySQL password.
         host : The host name or IP address.
-        port : Specifies the port number that attempts to connect to the MySQL server.
+        port : Specifies the port number that attempts to connect
+            to the MySQL server.
 
     """
-    return connect(user=user, passwd=passwd, host=host, port=port)
+    return mysql_connect(user=user, passwd=passwd, host=host, port=port)
 
 
 def load(db, slct, label, features):
@@ -49,10 +50,10 @@ the label field name to the label data column.
     f = [i[0] for i in cursor.description]  # get field names.
     c = list(zip(*cursor.fetchall()))  # transpose rows into columns.
     d = dict(zip(f, c))  # dict from field names to columns.
-    l = d.pop(label)
-    if features != None:
+    label = d.pop(label)
+    if features is not None:
         d = dict((k, d[k]) for k in features)
-    return d, l
+    return d, label
 
 
 def feature_columns(features):
