@@ -12,10 +12,7 @@
 # limitations under the License.
 
 import os
-# NOTE: this file is used by train_predict_test.py, do **NOT** delete!
-import shutil
 
-import sqlflow_models
 # TODO(yancey1989): this import line would conflict with isort pre-commit stage
 # yapf: disable
 from runtime.tensorflow.estimator_example import (datasource,
@@ -26,6 +23,9 @@ from runtime.tensorflow.estimator_example import (datasource,
                                                   select, validate_select)
 from runtime.tensorflow.predict import pred
 from runtime.tensorflow.train import train
+
+# NOTE: this file is used by train_predict_test.py, do **NOT** delete!
+
 
 if __name__ == "__main__":
     train(datasource=datasource,

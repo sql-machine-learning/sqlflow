@@ -11,12 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
-import types
 
-import runtime
-import tensorflow as tf
 from runtime.db import buffered_db_writer, connect_with_data_source
 from runtime.import_model import import_model
 from runtime.tensorflow import metrics
@@ -25,11 +21,6 @@ from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
 from runtime.tensorflow.set_log_level import set_log_level
-
-try:
-    import sqlflow_models
-except:
-    pass
 
 
 def evaluate(datasource,
@@ -100,11 +91,12 @@ def estimator_evaluate(estimator, eval_dataset, validation_metrics):
         if val:
             result_metrics[m] = val
         else:
-            # NOTE: estimator automatically append metrics for the current evaluation job,
-            # if user specified metrics not appear in estimator's result dict, fill None.
+            # NOTE: estimator automatically append metrics for the current
+            # evaluation job, if user specified metrics not appear in
+            # estimator's result dict, fill None.
             print(
-                "specified metric %s not calculated by estimator, fill empty value."
-                % m)
+                "specified metric %s not calculated by estimator, fill empty "
+                "value." % m)
             result_metrics[m] = None
 
     return result_metrics
@@ -128,7 +120,8 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
             # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
 
-    # compile the model with default arguments only for evaluation (run forward only).
+    # compile the model with default arguments only for evaluation (run forward
+    # only).
     keras_model.compile(loss=keras_model_pkg.loss, metrics=keras_metrics)
 
     eval_dataset = eval_dataset_fn()
@@ -136,15 +129,11 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
     def get_features(sample, label):
         return sample
 
-    def get_label(sample, label):
-        return label
-
     eval_dataset_x = eval_dataset.map(get_features)
-    eval_dataset_y = eval_dataset.map(get_label)
 
     one_batch = next(iter(eval_dataset_x))
     # NOTE: must run predict one batch to initialize parameters
-    # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
+    # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models # noqa: E501
     keras_model.predict_on_batch(one_batch)
     keras_model.load_weights(save)
     result = keras_model.evaluate(eval_dataset)

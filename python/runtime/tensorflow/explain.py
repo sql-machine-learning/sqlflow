@@ -13,11 +13,9 @@
 
 import os
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import runtime
 import seaborn as sns
 import shap
 import tensorflow as tf
@@ -34,11 +32,6 @@ sns_colors = sns.color_palette('colorblind')
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # Use non-interactive background
 plt.switch_backend('agg')
-
-try:
-    import sqlflow_models
-except:
-    pass
 
 # Disable Tensorflow INFO and WARNING logs
 if tf_is_version2():

@@ -14,18 +14,14 @@
 import inspect
 import sys
 import warnings
-from os import path
 
 import six
 import tensorflow as tf
 from runtime.model_metadata import save_model_metadata
-from runtime.seeding import get_tf_random_seed
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_version import tf_is_version2
-from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from runtime.tensorflow.train_estimator import estimator_train_compiled
 
 
 def keras_compile(estimator, model_params, save, metric_names):
@@ -58,7 +54,8 @@ def keras_compile(estimator, model_params, save, metric_names):
     # setting optimizer
     has_none_optimizer = False
     if optimizer is None:
-        # use keras model default optimizer if optimizer is not specified in WITH clause.
+        # use keras model default optimizer if optimizer is not specified in
+        # WITH clause.
         members = inspect.getmembers(classifier_pkg)
         # default optimizer
         optimizer = tf.keras.optimizers.Adagrad(lr=0.001)
@@ -71,7 +68,8 @@ def keras_compile(estimator, model_params, save, metric_names):
 
     if loss is None:
         members = inspect.getmembers(classifier_pkg)
-        # FIXME(typhoonzero): default loss may cause error if model's output shape does not fit.
+        # FIXME(typhoonzero): default loss may cause error if model's output
+        # shape does not fit.
         loss = "sparse_categorical_crossentropy"
         for m, func in members:
             if m == "loss":
@@ -80,9 +78,10 @@ def keras_compile(estimator, model_params, save, metric_names):
     classifier = init_model_with_feature_column(
         estimator, model_params, has_none_optimizer=has_none_optimizer)
 
-    # FIXME(sneaxiy): some models defined by other framework (not TensorFlow or XGBoost)
-    # may return None optimizer.
-    # For example: https://github.com/sql-machine-learning/models/blob/ce970d14a524e20de10a645c99b6bf8724be17d9/sqlflow_models/arima_with_stl_decomposition.py#L123
+    # FIXME(sneaxiy): some models defined by other framework (not TensorFlow or
+    # XGBoost) may return None optimizer.
+    # For example:
+    # https://github.com/sql-machine-learning/models/blob/ce970d14a524e20de10a645c99b6bf8724be17d9/sqlflow_models/arima_with_stl_decomposition.py#L123  # noqa: E501
     if has_none_optimizer:
         assert hasattr(
             classifier,
@@ -104,7 +103,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai,
                                                    save, metric_names)
 
     train_dataset = train_dataset_fn()
-    if val_dataset_fn != None:
+    if val_dataset_fn is not None:
         validate_dataset = val_dataset_fn()
     else:
         validate_dataset = None
@@ -114,8 +113,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai,
         inputs, targets = next(iter(train_dataset.take(1)))
         classifier.evaluate(inputs, targets)
 
-        # NOTE(sneaxiy): should we save/load optimizer info for incremental training, or
-        # let users to write the same WITH statements in SQL?
+        # NOTE(sneaxiy): should we save/load optimizer info for incremental
+        # training, or let users to write the same WITH statements in SQL?
         classifier.load_weights(save)
 
     keras_train_compiled(classifier, save, train_dataset, validate_dataset,
@@ -130,12 +129,13 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
         classifier.sqlflow_train_loop(train_dataset)
     else:
         if label_meta["feature_name"] != "":
-            # FIXME(typhoonzero): this is why need to set validation_steps: https://github.com/tensorflow/tensorflow/issues/29743#issuecomment-502028891
+            # FIXME(typhoonzero): this is why need to set validation_steps:
+            #  https://github.com/tensorflow/tensorflow/issues/29743#issuecomment-502028891
             # remove this argument when PAI fixes this.
             if tf_is_version2():
                 validation_steps = None
             else:
-                if validate_dataset == None:
+                if validate_dataset is None:
                     validation_steps = None
             history = classifier.fit(train_dataset,
                                      validation_steps=validation_steps,
@@ -168,7 +168,7 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
         classifier.save_weights(save, save_format="h5")
         # write model metadata to model_meta.json
         save_model_metadata("model_meta.json", model_meta)
-    except:
+    except:  # noqa: E722
         if has_none_optimizer:
             warnings.warn("Saving model with None optimizer fails")
         else:
