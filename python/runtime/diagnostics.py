@@ -28,7 +28,8 @@ def load_pretrained_model_estimator(estimator,
         estimator_func = estimator.__init__ if inspect.isclass(
             estimator) else estimator
         estimator_spec = inspect.getargspec(estimator_func)
-        # The constructor of Estimator contains named parameter "warm_start_from"
+        # The constructor of Estimator contains named parameter
+        # "warm_start_from"
         warm_start_from_key = "warm_start_from"
         if warm_start_from_key in estimator_spec.args:
             warm_start_from = os.path.abspath(warm_start_from)

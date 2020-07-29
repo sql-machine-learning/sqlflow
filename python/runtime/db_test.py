@@ -17,7 +17,7 @@ from unittest import TestCase
 
 import numpy as np
 import runtime.testing as testing
-from odps import ODPS, tunnel
+from odps import tunnel
 from runtime.db import (MYSQL_FIELD_TYPE_DICT, buffered_db_writer, connect,
                         connect_with_data_source, db_generator,
                         get_table_schema, limit_select, parseHiveDSN,
@@ -53,7 +53,7 @@ def execute(driver, conn, statement):
     try:
         rows = cursor.fetchall()
         field_columns = list(map(list, zip(*rows))) if len(rows) > 0 else None
-    except:
+    except:  # noqa: E722
         field_columns = None
 
     return field_names, field_columns
@@ -62,7 +62,9 @@ def execute(driver, conn, statement):
 class TestDB(TestCase):
 
     create_statement = "create table test_db (features text, label int)"
-    hive_create_statement = 'create table test_db (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'
+    hive_create_statement = 'create table test_db (features string, ' \
+                            'label int) ROW FORMAT DELIMITED FIELDS ' \
+                            'TERMINATED BY "\001"'
     select_statement = "select * from test_db"
     drop_statement = "drop table if exists test_db"
 
@@ -114,7 +116,8 @@ class TestDB(TestCase):
                                    hdfs_namenode_addr="",
                                    hive_location=""):
         create_db = '''create database if not exists test_db'''
-        create_tbl = '''create table test_db.tbl (features string, label int) ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'''
+        create_tbl = '''create table test_db.tbl (features string, label int)
+                        ROW FORMAT DELIMITED FIELDS TERMINATED BY "\001"'''
         drop_tbl = '''drop table if exists test_db.tbl'''
         select_tbl = '''select * from test_db.tbl'''
         table_schema = ["label", "features"]
@@ -173,9 +176,11 @@ class TestDB(TestCase):
 
 
 class TestGenerator(TestCase):
-    create_statement = "create table test_table_float_fea (features float, label int)"
+    create_statement = "create table test_table_float_fea " \
+                       "(features float, label int)"
     drop_statement = "drop table if exists test_table_float_fea"
-    insert_statement = "insert into test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)"
+    insert_statement = "insert into test_table_float_fea (features,label)" \
+                       " values(1.0, 0), (2.0, 1)"
 
     @unittest.skipUnless(testing.get_driver() == "mysql",
                          "skip non mysql tests")
@@ -241,16 +246,14 @@ class TestConnectWithDataSource(TestCase):
             ("usr", "pswd", "hiveserver", "1000", "mydb", "PLAIN", {
                 "mapreduce_job_quenename": "mr"
             }),
-            parseHiveDSN(
-                "usr:pswd@hiveserver:1000/mydb?auth=PLAIN&session.mapreduce_job_quenename=mr"
-            ))
+            parseHiveDSN("usr:pswd@hiveserver:1000/mydb?auth=PLAIN&"
+                         "session.mapreduce_job_quenename=mr"))
         self.assertEqual(
             ("usr", "pswd", "hiveserver", "1000", "my_db", "PLAIN", {
                 "mapreduce_job_quenename": "mr"
             }),
-            parseHiveDSN(
-                "usr:pswd@hiveserver:1000/my_db?auth=PLAIN&session.mapreduce_job_quenename=mr"
-            ))
+            parseHiveDSN("usr:pswd@hiveserver:1000/my_db?auth=PLAIN&"
+                         "session.mapreduce_job_quenename=mr"))
         self.assertEqual(
             ("root", "root", "127.0.0.1", None, "mnist", "PLAIN", {}),
             parseHiveDSN("root:root@127.0.0.1/mnist?auth=PLAIN"))
@@ -258,12 +261,11 @@ class TestConnectWithDataSource(TestCase):
                          parseHiveDSN("root:root@127.0.0.1"))
 
     def test_parse_maxcompute_dsn(self):
-        self.assertEqual(
-            ("access_id", "access_key", "http://maxcompute-service.com/api",
-             "test_ci"),
-            parseMaxComputeDSN(
-                "access_id:access_key@maxcompute-service.com/api?curr_project=test_ci&scheme=http"
-            ))
+        self.assertEqual(("access_id", "access_key",
+                          "http://maxcompute-service.com/api", "test_ci"),
+                         parseMaxComputeDSN(
+                             "access_id:access_key@maxcompute-service.com/api?"
+                             "curr_project=test_ci&scheme=http"))
 
     def test_kv_feature_column(self):
         feature_spec = {
@@ -300,8 +302,8 @@ class TestGetTableSchema(TestCase):
 
             schema = selected_columns_and_types(
                 conn,
-                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM iris.train"
-            )
+                "SELECT sepal_length, petal_width * 2.3 new_petal_width, "
+                "class FROM iris.train")
             expect = [
                 ("sepal_length", "FLOAT"),
                 ("new_petal_width", "DOUBLE"),
@@ -321,8 +323,8 @@ class TestGetTableSchema(TestCase):
 
             schema = selected_columns_and_types(
                 conn,
-                "SELECT sepal_length, petal_width * 2.3 AS new_petal_width, class FROM iris.train"
-            )
+                "SELECT sepal_length, petal_width * 2.3 AS new_petal_width, "
+                "class FROM iris.train")
             expect = [
                 ("sepal_length", "FLOAT"),
                 ("new_petal_width", "FLOAT"),
@@ -344,8 +346,8 @@ class TestGetTableSchema(TestCase):
 
             schema = selected_columns_and_types(
                 conn,
-                "SELECT sepal_length, petal_width * 2.3 new_petal_width, class FROM %s"
-                % table)
+                "SELECT sepal_length, petal_width * 2.3 new_petal_width, "
+                "class FROM %s" % table)
             expect = [
                 ("sepal_length", "DOUBLE"),
                 ("new_petal_width", "DOUBLE"),
@@ -367,7 +369,8 @@ class TestMySQLFieldType(TestCase):
 
         table_name = "iris.test_mysql_field_type_table"
         drop_table_sql = "DROP TABLE IF EXISTS %s" % table_name
-        create_table_sql = "CREATE TABLE IF NOT EXISTS " + table_name + "(a %s)"
+        create_table_sql = "CREATE TABLE IF NOT EXISTS " + \
+                           table_name + "(a %s)"
         select_sql = "SELECT * FROM %s" % table_name
 
         for int_type, str_type in MYSQL_FIELD_TYPE_DICT.items():
