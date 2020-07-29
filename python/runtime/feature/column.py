@@ -128,7 +128,7 @@ class CategoryIDColumn(CategoryColumn):
         return self.bucket_size
 
 
-class CategoryHashColumn(CategoryIDColumn):
+class CategoryHashColumn(CategoryColumn):
     """
     CategoryHashColumn represents a categorical hash feature column.
 
@@ -151,7 +151,7 @@ class CategoryHashColumn(CategoryIDColumn):
         return self.bucket_size
 
 
-class SeqCategoryIDColumn(CategoryIDColumn):
+class SeqCategoryIDColumn(CategoryColumn):
     """
     SeqCategoryIDColumn represents a sequential categorical id feature column.
 
