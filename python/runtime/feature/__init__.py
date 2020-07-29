@@ -11,4 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.feature.derivation import infer_feature_columns
+from runtime.feature.derivation import infer_feature_columns  # noqa: F401

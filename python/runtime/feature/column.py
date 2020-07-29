@@ -179,12 +179,13 @@ class CrossColumn(CategoryColumn):
     CrossColumn represents a crossed feature column.
 
     Args:
-        keys (str|NumericColumn): the underlying feature column name or NumericColumn object.
+        keys (str|NumericColumn): the underlying feature column name or
+            NumericColumn object.
         hash_bucket_size (int): the bucket size for hashing.
     """
     def __init__(self, keys, hash_bucket_size):
         for k in keys:
-            assert isinstance(k, six.string_types) or isinstance(k, NumericColumn), \
+            assert isinstance(k, (six.string_types, NumericColumn)), \
                 "keys of CROSS must be of either string or numeric type"
 
         self.keys = keys
@@ -217,12 +218,12 @@ class EmbeddingColumn(FeatureColumn):
     Args:
         category_column (CategoryColumn): the underlying CategoryColumn object.
         dimension (int): the dimension of the embedding.
-        combiner (str): how to reduce if there are multiple entries in a single row.
-            Currently 'mean', 'sqrtn' and 'sum' are supported.
+        combiner (str): how to reduce if there are multiple entries in a single
+            row. Currently 'mean', 'sqrtn' and 'sum' are supported.
         initializer (str): the initializer of the embedding table.
         name (str): only used when category_column=None. In this case, the
-            category_column would be filled automaticaly in the feature derivation
-            stage.
+            category_column would be filled automaticaly in the feature
+            derivation stage.
     """
     def __init__(self,
                  category_column=None,
@@ -266,8 +267,8 @@ class IndicatorColumn(FeatureColumn):
     Args:
         category_column (CategoryColumn): the underlying CategoryColumn object.
         name (str): only used when category_column=None. In this case, the
-            category_column would be filled automaticaly in the feature derivation
-            stage.
+            category_column would be filled automaticaly in the feature
+            derivation stage.
     """
     def __init__(self, category_column=None, name=""):
         if category_column is not None:
