@@ -11,15 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import path
-
 import tensorflow as tf
 from runtime.diagnostics import init_model, load_pretrained_model_estimator
-from runtime.model_metadata import save_model_metadata
 from runtime.pai.pai_distributed import make_estimator_distributed_runconfig
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_version import tf_is_version2
-from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.train_estimator import (estimator_save,
                                                 estimator_train_compiled)
 
@@ -47,9 +43,10 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
         load_pretrained_model_estimator(estimator, model_params)
     classifier = init_model(estimator, model_params)
 
-    # do not add default Accuracy metric when using estimator to train, it will fail
-    # when the estimator is a regressor, and the estimator will automatically add
-    # metrics. Only add additional metrics when user specified with `WITH`.
+    # do not add default Accuracy metric when using estimator to train,
+    # it will fail when the estimator is a regressor, and the estimator
+    # will automatically add metrics. Only add additional metrics when
+    # user specified with `WITH`.
     if tf_is_version2() and metric_names != ["Accuracy"]:
         classifier = tf.estimator.add_metrics(
             classifier, metrics.get_tf_metrics(metric_names))

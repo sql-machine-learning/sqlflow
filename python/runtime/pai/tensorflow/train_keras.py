@@ -11,23 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
-import sys
-import warnings
-from os import path
-
-import six
 import tensorflow as tf
 from runtime import oss
 from runtime.model_metadata import save_model_metadata
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
-from runtime.tensorflow import metrics
-from runtime.tensorflow.get_tf_version import tf_is_version2
-from runtime.tensorflow.input_fn import input_fn
-from runtime.tensorflow.keras_with_feature_column_input import \
-    init_model_with_feature_column
 from runtime.tensorflow.train_estimator import estimator_train_compiled
 from runtime.tensorflow.train_keras import keras_compile, keras_train_compiled
 
@@ -40,7 +29,7 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
     classifier, has_none_optimizer = keras_compile(estimator, model_params,
                                                    save, metric_names)
     train_dataset = train_dataset_fn()
-    if val_dataset_fn != None:
+    if val_dataset_fn is not None:
         validate_dataset = val_dataset_fn()
     else:
         validate_dataset = None
@@ -100,17 +89,19 @@ def keras_train_distributed(classifier,
         None,
         60,
         120)
-    # FIXME(typhoonzero): predict keras distributed model should also call model_to_estimator.
+    # FIXME(typhoonzero): predict keras distributed model should
+    # also call model_to_estimator.
     # export saved model for prediction
     if "feature_columns" in model_params:
         all_feature_columns = model_params["feature_columns"]
-    elif "linear_feature_columns" in model_params and "dnn_feature_columns" in model_params:
+    elif "linear_feature_columns" in model_params \
+            and "dnn_feature_columns" in model_params:
         import copy
         all_feature_columns = copy.copy(model_params["linear_feature_columns"])
         all_feature_columns.extend(model_params["dnn_feature_columns"])
     else:
         raise Exception("No expected feature columns in model params")
-    serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+    serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(  # noqa: E501
         tf.feature_column.make_parse_example_spec(all_feature_columns))
     export_path = keras_estimator.export_saved_model(save, serving_input_fn)
 
