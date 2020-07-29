@@ -81,13 +81,13 @@ spec:
       privileged: true
     command: [ "/bin/bash", "-c" ]
     args:
-      - |
-        while ! nc -z -w 1 ${MYSQL_ADDR/:/ }; do
-          sleep 3
-          echo "Waiting for mysql..."
-        done
-        echo "Starting SQLFlow Model Zoo server ..."
-        modelzooserver --mysql-addr="mysql://root:root@tcp(${MYSQL_ADDR})/"
+    - |
+      while ! nc -z -w 1 ${MYSQL_ADDR/:/ }; do
+        sleep 3
+        echo "Waiting for mysql..."
+      done 
+      echo "Starting SQLFlow Model Zoo server ..."
+      modelzooserver --mysql-addr="mysql://root:root@tcp(${MYSQL_ADDR})/"
   volumes:
   - name: docker-socket-volume
     hostPath:
