@@ -24,7 +24,7 @@ def collect_model_metadata(original_sql, select, validate_select, class_name,
     for (k, v) in attr_copy.items():
         try:
             json.dumps(v)
-        except:
+        except:  # noqa: E722
             attr_copy[k] = str(v)
     metadata['attributes'] = attr_copy
     return metadata
