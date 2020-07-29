@@ -18,7 +18,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 from runtime.oss import copyfileobj
 
-# TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
+# TODO(shendiaomo): extract common code from tensorflow/explain.py
+# and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later
 
 

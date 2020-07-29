@@ -139,9 +139,9 @@ class CategoricalColumnWithIdentityTransformer(CategoricalColumnTransformer):
                 if self.default_value is not None:
                     return self.default_value
                 else:
-                    raise ValueError(
-                        'The categorical value of column {} out of range [0, {})'
-                        .format(self.key, self.num_buckets))
+                    raise ValueError('The categorical value of column {} '
+                                     'out of range [0, {})'.format(
+                                         self.key, self.num_buckets))
 
             if isinstance(slot_value, np.ndarray):
                 output = elementwise_transform(
@@ -174,7 +174,7 @@ class CategoricalColumnWithVocabularyList(CategoricalColumnTransformer):
         return len(self.vocabulary_list)
 
     def __call__(self, inputs):
-        fn = lambda x: self.vocabulary_list.index(x)
+        fn = lambda x: self.vocabulary_list.index(x)  # noqa: E731
 
         def transform_fn(slot_value):
             if isinstance(slot_value, np.ndarray):
@@ -208,7 +208,7 @@ class CategoricalColumnWithHashBucketTransformer(CategoricalColumnTransformer):
         return self.hash_bucket_size
 
     def __call__(self, inputs):
-        fn = lambda x: hashing(x) % self.hash_bucket_size
+        fn = lambda x: hashing(x) % self.hash_bucket_size  # noqa: E731
 
         def transform_fn(slot_value):
             if isinstance(slot_value, np.ndarray):
@@ -230,7 +230,9 @@ def categorical_column_with_hash_bucket(key, hash_bucket_size, dtype='string'):
 class IndicatorColumnTransformer(BaseColumnTransformer):
     def __init__(self, categorical_column):
         assert isinstance(categorical_column, CategoricalColumnTransformer), \
-            "categorical_column must be type of CategoricalColumnTransformer but got {}".format(type(categorical_column))
+            "categorical_column must be type of " \
+            "CategoricalColumnTransformer but got {}".format(
+                type(categorical_column))
         self.categorical_column = categorical_column
 
     def _set_feature_column_names(self, names):

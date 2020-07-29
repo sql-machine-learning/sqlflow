@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.xgboost import feature_column
+from runtime.xgboost import feature_column  # noqa: F401
 
 
 class DataTypeCollection(object):

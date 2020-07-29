@@ -16,8 +16,7 @@ import unittest
 from unittest import TestCase
 
 import runtime.testing as testing
-import runtime.xgboost as xgboost_extended
-import tensorflow as tf
+import runtime.xgboost as xgboost_extended  # noqa: F401
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 
@@ -28,8 +27,10 @@ class SubmitterTestCase(TestCase):
         self.assertEqual("oss://sqlflow-models/user_a/model", url)
 
     def test_get_datasource_dsn(self):
-        ds = "odps://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http"
-        expected_dsn = "access_id:access_key@service.com/api?curr_project=test_ci&scheme=http"
+        ds = "odps://access_id:access_key@service.com/api?" \
+             "curr_project=test_ci&scheme=http"
+        expected_dsn = "access_id:access_key@service.com/api?" \
+                       "curr_project=test_ci&scheme=http"
         dsn = submitter.get_datasource_dsn(ds)
         self.assertEqual(expected_dsn, dsn)
         project = "test_ci"
@@ -38,17 +39,22 @@ class SubmitterTestCase(TestCase):
     def test_get_pai_tf_cmd(self):
         conf = get_cluster_config({})
         os.environ[
-            "SQLFLOW_OSS_CHECKPOINT_CONFIG"] = '''{"arn":"arn", "host":"host"}'''
+            "SQLFLOW_OSS_CHECKPOINT_CONFIG"] = '{"arn":"arn", "host":"host"}'
         cmd = submitter.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",
             "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
-            "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
-            "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
-            "-Dtables=odps://test_project/tables/input_table,odps://test_project/tables/val_table "
-            "-Doutputs=odps://test_project/tables/res_table -DhyperParameters='params.txt' "
-            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?role_arn=arn/pai2osstestproject&host=host' "
+            "pai -name tensorflow1150 -project algo_public_dev "
+            "-DmaxHungTimeBeforeGCInSeconds=0 "
+            "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz "
+            "-DentryFile=entry.py "
+            "-Dtables=odps://test_project/tables/input_table,"
+            "odps://test_project/tables/val_table "
+            "-Doutputs=odps://test_project/tables/res_table "
+            "-DhyperParameters='params.txt' "
+            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?"
+            "role_arn=arn/pai2osstestproject&host=host' "
             "-DgpuRequired='0'")
         self.assertEqual(expected, cmd)
 
@@ -58,13 +64,18 @@ class SubmitterTestCase(TestCase):
             "user1/my_dnn_model", "test_project.input_table",
             "test_project.val_table", "test_project.res_table", "test_project")
         expected = (
-            "pai -name tensorflow1150 -project algo_public_dev -DmaxHungTimeBeforeGCInSeconds=0 "
-            "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz -DentryFile=entry.py "
-            "-Dtables=odps://test_project/tables/input_table,odps://test_project/tables/val_table "
-            "-Doutputs=odps://test_project/tables/res_table -DhyperParameters='params.txt' "
-            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?role_arn=arn/pai2osstestproject&host=host' "
-            r'''-Dcluster="{\"ps\": {\"count\": 1, \"cpu\": 200, \"gpu\": 0}, \"worker\": {\"count\": 5, \"cpu\": 400, \"gpu\": 0}}"'''
-        )
+            "pai -name tensorflow1150 -project algo_public_dev "
+            "-DmaxHungTimeBeforeGCInSeconds=0 "
+            "-DjobName=sqlflow_my_dnn_model -Dtags=dnn -Dscript=job.tar.gz "
+            "-DentryFile=entry.py "
+            "-Dtables=odps://test_project/tables/input_table,"
+            "odps://test_project/tables/val_table "
+            "-Doutputs=odps://test_project/tables/res_table "
+            "-DhyperParameters='params.txt' "
+            "-DcheckpointDir='oss://sqlflow-models/user1/my_dnn_model/?"
+            "role_arn=arn/pai2osstestproject&host=host' "
+            r'''-Dcluster="{\"ps\": {\"count\": 1, \"cpu\": 200, \"gpu\": 0}'''
+            r''', \"worker\": {\"count\": 5, \"cpu\": 400, \"gpu\": 0}}"''')
         self.assertEqual(expected, cmd)
         del os.environ["SQLFLOW_OSS_CHECKPOINT_CONFIG"]
 
@@ -136,12 +147,14 @@ class SubmitPAITrainTask(TestCase):
         model_params["hidden_units"] = [10, 20]
         model_params["n_classes"] = 3
 
-        # feature_columns_code will be used to save the training informations together
-        # with the saved model.
-        feature_columns_code = """{"feature_columns": [tf.feature_column.numeric_column("sepal_length", shape=[1]),
-        tf.feature_column.numeric_column("sepal_width", shape=[1]),
-        tf.feature_column.numeric_column("petal_length", shape=[1]),
-        tf.feature_column.numeric_column("petal_width", shape=[1])]}"""
+        # feature_columns_code will be used to save the training information
+        # together with the saved model.
+        feature_columns_code = """{"feature_columns": [
+            tf.feature_column.numeric_column("sepal_length", shape=[1]),
+            tf.feature_column.numeric_column("sepal_width", shape=[1]),
+            tf.feature_column.numeric_column("petal_length", shape=[1]),
+            tf.feature_column.numeric_column("petal_width", shape=[1]),
+        ]}"""
         feature_columns = eval(feature_columns_code)
 
         submitter.submit_pai_train(
@@ -172,12 +185,12 @@ class SubmitPAITrainTask(TestCase):
             is_pai=True,
             feature_columns_code=feature_columns_code,
             model_repo_image="",
-            original_sql=
-            '''SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
-    TO TRAIN DNNClassifier
-    WITH model.n_classes = 3, model.hidden_units = [10, 20]
-    LABEL class
-    INTO e2etest_pai_dnn;''')
+            original_sql='''
+SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO e2etest_pai_dnn;''')
 
     def test_submit_pai_predict_task(self):
         submitter.submit_pai_predict(

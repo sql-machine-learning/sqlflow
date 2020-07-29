@@ -11,9 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-from io import StringIO
 
 from IPython import get_ipython
 
@@ -23,16 +21,16 @@ ipython = get_ipython()
 class TestSQLFlowMagic(unittest.TestCase):
     import random
     random.seed()
-    temp_database = "e2e_{}".format(random.randint(0, 1 << 32))
+    tmp_db = "e2e_{}".format(random.randint(0, 1 << 32))
     # the standard SQL statement
     create_database_statement = "create database if not exists {}".format(
-        temp_database)
-    create_statement = "create table {}.test_table_float_fea (features float, label int)".format(
-        temp_database)
-    insert_statement = "insert into {}.test_table_float_fea (features,label) values(1.0, 0), (2.0, 1)".format(
-        temp_database)
+        tmp_db)
+    create_statement = "create table {}.test_table_float_fea " \
+                       "(features float, label int)".format(tmp_db)
+    insert_statement = "insert into {}.test_table_float_fea (features,label)" \
+                       " values(1.0, 0), (2.0, 1)".format(tmp_db)
     select_statement = "select * from {}.test_table_float_fea limit 1;".format(
-        temp_database)
+        tmp_db)
 
     def setUp(self):
         ipython.run_cell_magic("sqlflow", "", self.create_database_statement)

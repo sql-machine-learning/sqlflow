@@ -199,8 +199,9 @@ def save_model_to_local_file(booster, model_params, meta, filename):
     from sklearn2pmml import PMMLPipeline, sklearn2pmml
     try:
         from xgboost.compat import XGBoostLabelEncoder
-    except:
-        # xgboost==0.82.0 does not have XGBoostLabelEncoder in xgboost.compat.py
+    except:  # noqa: E722
+        # xgboost==0.82.0 does not have XGBoostLabelEncoder
+        # in xgboost.compat.py
         from xgboost.sklearn import XGBLabelEncoder as XGBoostLabelEncoder
 
     objective = model_params.get("objective")
@@ -211,10 +212,11 @@ def save_model_to_local_file(booster, model_params, meta, filename):
             num_class = 2
         else:
             num_class = model_params.get("num_class")
-            assert num_class is not None and num_class > 0, "num_class should not be None"
+            assert num_class is not None and num_class > 0, \
+                "num_class should not be None"
 
-        # To fake a trained XGBClassifier, there must be "_le", "classes_", inside
-        # XGBClassifier. See here:
+        # To fake a trained XGBClassifier, there must be "_le", "classes_",
+        # inside XGBClassifier. See here:
         # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
         model = xgb.XGBClassifier()
         label_encoder = XGBoostLabelEncoder()

@@ -11,34 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import functools
-import glob
-import json
 import os
-import sys
 import types
 
-import numpy as np
-import runtime
-import tensorflow as tf
 from runtime import oss
-from runtime.db import (connect_with_data_source, db_generator,
-                        parseMaxComputeDSN)
 from runtime.import_model import import_model
 from runtime.model_metadata import collect_model_metadata
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.tensorflow.train_estimator import estimator_train_and_save
 from runtime.pai.tensorflow.train_keras import keras_train_and_save
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
-from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
-
-try:
-    import sqlflow_models
-except:
-    pass
 
 # Disable Tensorflow INFO and WARNING logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"

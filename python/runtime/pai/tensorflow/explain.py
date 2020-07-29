@@ -11,14 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import json
 import os
 import sys
-import types
 
 import matplotlib
 import pandas as pd
-import runtime
 import tensorflow as tf
 from runtime import oss
 from runtime.import_model import import_model
@@ -27,11 +24,6 @@ from runtime.tensorflow.explain import explain_boosted_trees, explain_dnns
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-
-try:
-    from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
-except:
-    pass  # PAI is not always needed
 
 if os.environ.get('DISPLAY', '') == '':
     print('no display found. Using non-interactive Agg backend')
@@ -52,21 +44,23 @@ def explain(datasource, select, data_table, result_table, label_column,
                                             "tensorflow_model_desc")
 
     feature_columns = eval(feature_columns_code)
-    # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
-    # because predicting do not need these parameters.
+    # NOTE(typhoonzero): No need to eval model_params["optimizer"] and
+    # model_params["loss"] because predicting do not need these parameters.
 
     is_estimator = is_tf_estimator(import_model(estimator))
 
-    # Keras single node is using h5 format to save the model, no need to deal with export model format.
-    # Keras distributed mode will use estimator, so this is also needed.
+    # Keras single node is using h5 format to save the model, no need to deal
+    # with export model format. Keras distributed mode will use estimator, so
+    # this is also needed.
     if is_estimator:
         oss.load_file(oss_model_path, "exported_path")
-        # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+        # NOTE(typhoonzero): directory "model_save" is hardcoded in
+        # codegen/tensorflow/codegen.go
         oss.load_dir("%s/model_save" % oss_model_path)
     else:
         oss.load_file(oss_model_path, "model_save")
 
-    #(TODO: lhw) use oss to store result image
+    # (TODO: lhw) use oss to store result image
     _explain(datasource=datasource,
              estimator_string=estimator,
              select=select,

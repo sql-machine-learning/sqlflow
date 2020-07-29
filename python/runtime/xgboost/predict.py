@@ -86,8 +86,10 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                              hdfs_user, hdfs_pass):
     preds = bst.predict(dpred)
 
-    # TODO(yancey1989): should save train_params and model_params not only on PAI submitter
-    # TODO(yancey1989): output the original result for various objective function.
+    # TODO(yancey1989): should save train_params and model_params
+    # not only on PAI submitter
+    # TODO(yancey1989): output the original result for various
+    # objective function.
     if model_params:
         obj = model_params["objective"]
         if obj.startswith("binary:"):
@@ -98,8 +100,9 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             # using the original prediction result of predict API by default
             pass
     else:
-        # prediction output with multi-class job has two dimensions, this is a temporary
-        # way, can remove this else branch when we can load the model meta not only on PAI submitter.
+        # prediction output with multi-class job has two dimensions, this
+        # is a temporary way, can remove this else branch when we can load
+        # the model meta not only on PAI submitter.
         if len(preds.shape) == 2:
             preds = np.argmax(np.array(preds), axis=1)
 
@@ -138,7 +141,8 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             line = feature_file_read.readline()
             if not line:
                 break
-            # FIXME(typhoonzero): how to output columns that are not used as features, like ids?
+            # FIXME(typhoonzero): how to output columns that are not used
+            # as features, like ids?
             row = [
                 item for i, item in enumerate(line.strip().split("/"))
                 if i != train_label_index

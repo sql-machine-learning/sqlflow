@@ -11,11 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-
-import runtime.xgboost.feature_column
 from runtime import oss
-from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.feature_column import ComposedColumnTransformer
 from runtime.xgboost.train import dist_train
 from runtime.xgboost.train import train as local_train
@@ -61,8 +58,9 @@ def train(datasource,
     if load_pretrained_model:
         oss.load_file(oss_model_dir_to_load, "my_model")
 
-    # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause.
-    # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
+    # NOTE: in the current implementation, we are generating a transform_fn
+    # from COLUMN clause. The transform_fn is executed during the process of
+    # dumping the original data into DMatrix SVM file.
     transform_fn = ComposedColumnTransformer(feature_column_names,
                                              *feature_columns)
 

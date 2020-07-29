@@ -48,15 +48,17 @@ def get_explain_random_forest_pai_cmd(datasource, model_name, data_table,
         datasource: current datasoruce
         model_name: model name on PAI
         data_table: input data table name
-        result_table: name of the result table, PAI will automatically create this table
+        result_table: name of the result table, PAI will automatically
+            create this table
         label_column: name of the label column
-    
+
     Returns:
         A string which is a PAI cmd
     """
-    # NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
-    # since the model saving is fully done by PAI. We directly use the columns in SELECT
-    # statement for prediction, error will be reported by PAI job if the columns not match.
+    # NOTE(typhoonzero): for PAI random forests predicting, we can not load
+    # the TrainStmt since the model saving is fully done by PAI. We directly
+    # use the columns in SELECT statement for prediction, error will be
+    # reported by PAI job if the columns not match.
     if not label_column:
         return ("must specify WITH label_column when using "
                 "pai random forest to explain models")

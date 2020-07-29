@@ -60,7 +60,8 @@ def evaluate(datasource,
         result_metrics = estimator_evaluate(estimator, eval_dataset,
                                             validation_metrics)
     else:
-        keras_model = init_model_with_feature_column(estimator, model_params)
+        keras_model = init_model_with_feature_column(estimator_cls,
+                                                     model_params)
         keras_model_pkg = sys.modules[estimator_cls.__module__]
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)
@@ -119,10 +120,12 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
         else:
             # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
+    has_custom_evaluate_func = hasattr(keras_model, 'sqlflow_evaluate_loop')
 
-    # compile the model with default arguments only for evaluation (run forward
-    # only).
-    keras_model.compile(loss=keras_model_pkg.loss, metrics=keras_metrics)
+    if not has_custom_evaluate_func:
+        # compile the model with default arguments only for evaluation
+        # (run forward only).
+        keras_model.compile(loss=keras_model_pkg.loss, metrics=keras_metrics)
 
     eval_dataset = eval_dataset_fn()
 
@@ -131,12 +134,17 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
 
     eval_dataset_x = eval_dataset.map(get_features)
 
-    one_batch = next(iter(eval_dataset_x))
-    # NOTE: must run predict one batch to initialize parameters
-    # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models # noqa: E501
-    keras_model.predict_on_batch(one_batch)
-    keras_model.load_weights(save)
-    result = keras_model.evaluate(eval_dataset)
+    if has_custom_evaluate_func:
+        result = keras_model.sqlflow_evaluate_loop(eval_dataset,
+                                                   validation_metrics)
+    else:
+        one_batch = next(iter(eval_dataset_x))
+        # NOTE: must run predict one batch to initialize parameters
+        # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models # noqa: E501
+        keras_model.predict_on_batch(one_batch)
+        keras_model.load_weights(save)
+        result = keras_model.evaluate(eval_dataset)
+
     assert (len(result) == len(validation_metrics) + 1)
     result_metrics = dict()
     for idx, m in enumerate(["loss"] + validation_metrics):
