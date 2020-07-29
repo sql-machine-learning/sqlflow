@@ -14,6 +14,7 @@
 import atexit
 import copy
 import types
+import uuid
 from collections import OrderedDict
 
 import couler.pyfunc as pyfunc
