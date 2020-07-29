@@ -26,35 +26,12 @@ from runtime.alps.train import train
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
         feature_columns = []
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="deep_id_0", num_buckets=15033),
-                dimension=512,
-                combiner="mean",
-                initializer=None))
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="user_space_stat_0", num_buckets=310),
-                dimension=64,
-                combiner="mean",
-                initializer=None))
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="user_behavior_stat_0", num_buckets=511),
-                dimension=64,
-                combiner="mean",
-                initializer=None))
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="space_stat_0", num_buckets=418),
-                dimension=64,
-                combiner="mean",
-                initializer=None))
-        return tf.estimator.DNNClassifier(n_classes=2,
+
+        for col_name in [
+                "sepal_length", "sepal_width", "petal_length", "petal_width"
+        ]:
+            feature_columns.append(tf.feature_column.numeric_column(col_name))
+        return tf.estimator.DNNClassifier(n_classes=3,
                                           hidden_units=[10, 20],
                                           config=run_config,
                                           feature_columns=feature_columns)
@@ -68,22 +45,24 @@ if __name__ == "__main__":
         # endpoint should looks like: "https://service.cn.maxcompute.aliyun.com/api"
         endpoint=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT"),
         project=odps_project)
-    features = [
-        SparseColumn(name="deep_id", shape=[15033], dtype="int"),
-        SparseColumn(name="user_space_stat", shape=[310], dtype="int"),
-        SparseColumn(name="user_behavior_stat", shape=[511], dtype="int"),
-        SparseColumn(name="space_stat", shape=[418], dtype="int")
-    ]
-    labels = DenseColumn(name="l", shape=[1], dtype="int", separator=",")
+
+    features = []
+    for col_name in [
+            "sepal_length", "sepal_width", "petal_length", "petal_width"
+    ]:
+        features.append(DenseColumn(name=col_name, shape=[1], dtype="float32"))
+    labels = DenseColumn(name="class", shape=[1], dtype="int", separator=",")
+
     try:
         os.mkdir("scratch")
     except FileExistsError:
         pass
+
     train(SQLFlowEstimatorBuilder(),
           odps_conf=odps_conf,
           project=odps_project,
-          train_table="gomaxcompute_driver_w7u.sparse_column_test",
-          eval_table="gomaxcompute_driver_w7u.sparse_column_test",
+          train_table="gomaxcompute_driver_w7u.sqlflow_test_iris_train",
+          eval_table="gomaxcompute_driver_w7u.sqlflow_test_iris_test",
           features=features,
           labels=labels,
           feature_map_table="",
