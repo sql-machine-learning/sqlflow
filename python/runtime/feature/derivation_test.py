@@ -16,8 +16,7 @@ import unittest
 import runtime.feature.derivation as fd
 import runtime.testing as testing
 from runtime.feature.column import (CategoryIDColumn, CrossColumn,
-                                    EmbeddingColumn, IndicatorColumn,
-                                    NumericColumn)
+                                    EmbeddingColumn, NumericColumn)
 from runtime.feature.field_desc import DataFormat, DataType, FieldDesc
 
 
@@ -103,7 +102,8 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         label = NumericColumn(
             FieldDesc(name="class", dtype=DataType.INT, shape=[1]))
 
-        select = "select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train"
+        select = "select c1, c2, c3, c4, c5, c6, class " \
+                 "from feature_derivation_case.train"
         conn = testing.get_singleton_db_connection()
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
@@ -218,7 +218,8 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
 
         label = NumericColumn(
             FieldDesc(name='class', dtype=DataType.INT, shape=[1]))
-        select = "select c1, c2, c3, c4, c5, class from feature_derivation_case.train"
+        select = "select c1, c2, c3, c4, c5, class " \
+                 "from feature_derivation_case.train"
 
         conn = testing.get_singleton_db_connection()
         features, label = fd.infer_feature_columns(conn, select, features,

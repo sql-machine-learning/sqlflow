@@ -11,17 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import functools
-import inspect
-import json
 import os
-import sys
 
 import numpy as np
-import runtime
 import tensorflow as tf
 from runtime import db
+from runtime.import_model import import_model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.input_fn import (get_dtype,
@@ -29,16 +25,6 @@ from runtime.tensorflow.input_fn import (get_dtype,
                                          tf_generator)
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from tensorflow.estimator import (BoostedTreesClassifier,
-                                  BoostedTreesRegressor, DNNClassifier,
-                                  DNNLinearCombinedClassifier,
-                                  DNNLinearCombinedRegressor, DNNRegressor,
-                                  LinearClassifier, LinearRegressor)
-
-try:
-    import sqlflow_models
-except:
-    pass
 
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -58,7 +44,6 @@ def keras_predict(estimator, model_params, save, result_table,
                   hdfs_pass):
 
     classifier = init_model_with_feature_column(estimator, model_params)
-    classifier_pkg = sys.modules[estimator.__module__]
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
@@ -87,17 +72,16 @@ def keras_predict(estimator, model_params, save, result_table,
         #       features and predict results to insert into result table.
         pred_dataset = eval_input_fn(1)
         one_batch = next(iter(pred_dataset))
-        # NOTE: must run predict one batch to initialize parameters
-        # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
+        # NOTE: must run predict one batch to initialize parameters. See:
+        # https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models  # noqa: E501
         classifier.predict_on_batch(one_batch)
         classifier.load_weights(save)
-
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
 
     column_names = selected_cols[:]
     try:
         train_label_index = selected_cols.index(train_label_name)
-    except:
+    except:  # noqa: E722
         train_label_index = -1
     if train_label_index != -1:
         del column_names[train_label_index]
@@ -111,8 +95,9 @@ def keras_predict(estimator, model_params, save, result_table,
                 result = classifier.sqlflow_predict_one(features)
             else:
                 result = classifier.predict_on_batch(features)
-            # FIXME(typhoonzero): determine the predict result is classification by
-            # adding the prediction result together to see if it is close to 1.0.
+            # FIXME(typhoonzero): determine the predict result is
+            # classification by adding the prediction result together
+            # to see if it is close to 1.0.
             if len(result[0]) == 1:  # regression result
                 result = result[0][0]
             else:
@@ -129,8 +114,9 @@ def keras_predict(estimator, model_params, save, result_table,
                 row.append(str(val))
             if isinstance(result, np.ndarray):
                 if len(result) > 1:
-                    # NOTE(typhoonzero): if the output dimension > 1, format output tensor
-                    # using a comma separated string. Only available for keras models.
+                    # NOTE(typhoonzero): if the output dimension > 1, format
+                    # output tensor using a comma separated string. Only
+                    # available for keras models.
                     row.append(",".join([str(i) for i in result]))
                 else:
                     row.append(str(result[0]))
@@ -181,7 +167,8 @@ def estimator_predict(estimator, model_params, save, result_table,
         dtype_str = feature_metas[feature_name]["dtype"]
         if feature_metas[feature_name]["delimiter"] != "":
             if feature_metas[feature_name]["is_sparse"]:
-                # NOTE(typhoonzero): sparse feature will get (indices,values,shape) here, use indices only
+                # NOTE(typhoonzero): sparse feature will get
+                # (indices,values,shape) here, use indices only
                 values = x[0][i][0].flatten()
             else:
                 values = x[0][i].flatten()
@@ -196,18 +183,19 @@ def estimator_predict(estimator, model_params, save, result_table,
                 idx = feature_column_names.index(feature_name)
                 fc = feature_columns["feature_columns"][idx]
             else:
-                # DNNLinearCombinedXXX have dnn_feature_columns and linear_feature_columns param.
+                # DNNLinearCombinedXXX have dnn_feature_columns and
+                # linear_feature_columns param.
                 idx = -1
                 try:
                     idx = feature_column_names_map[
                         "dnn_feature_columns"].index(feature_name)
                     fc = feature_columns["dnn_feature_columns"][idx]
-                except:
+                except:  # noqa: E722
                     try:
                         idx = feature_column_names_map[
                             "linear_feature_columns"].index(feature_name)
                         fc = feature_columns["linear_feature_columns"][idx]
-                    except:
+                    except:  # noqa: E722
                         pass
                 if idx == -1:
                     raise ValueError(
@@ -272,8 +260,7 @@ def pred(datasource,
          hive_location="",
          hdfs_user="",
          hdfs_pass=""):
-    runtime.import_model_def(estimator_string, globals())
-    estimator = eval(estimator_string)
+    estimator = import_model(estimator_string)
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 

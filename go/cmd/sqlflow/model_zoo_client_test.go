@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/modelzooserver"
+	"sqlflow.org/sqlflow/go/step"
 )
 
 const modelZooServerPort = 50055
@@ -130,6 +131,26 @@ func CaseDeleteModel(t *testing.T) {
 	a.NoError(deleteModel(opts))
 }
 
+func caseListModels(t *testing.T) {
+	a := assert.New(t)
+	cmd := fmt.Sprintf("--model-zoo-server=localhost:%d list model", modelZooServerPort)
+	opts, err := getOptions(cmd)
+	a.NoError(err)
+	out, err := step.GetStdout(func() error { listModels(opts); return nil })
+	a.NoError(err)
+	a.Contains(out, "iris.my_model")
+}
+
+func caseListRepos(t *testing.T) {
+	a := assert.New(t)
+	cmd := fmt.Sprintf("--model-zoo-server=localhost:%d list repo", modelZooServerPort)
+	opts, err := getOptions(cmd)
+	a.NoError(err)
+	out, err := step.GetStdout(func() error { listRepos(opts); return nil })
+	a.NoError(err)
+	a.Contains(out, "DNNClassifier")
+}
+
 func TestModelZooOperation(t *testing.T) {
 	a := assert.New(t)
 	startTestModelZooServer()
@@ -142,6 +163,8 @@ func TestModelZooOperation(t *testing.T) {
 	t.Run("caseTrainModel", caseTrainModel)
 	t.Run("caseReleaseModel", caseReleaseModel)
 	t.Run("caseReleaseModelLocal", caseReleaseModelLocal)
+	t.Run("caseListModels", caseListModels)
+	t.Run("caseListRepos", caseListRepos)
 	t.Run("caseDeleteModel", CaseDeleteModel)
 	t.Run("caseDeleteRepo", caseDeleteRepo)
 }

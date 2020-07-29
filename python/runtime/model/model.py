@@ -36,7 +36,8 @@ class EstimatorType(Enum):
     # To stay compitable with old models, we start at 0
     TENSORFLOW = 0
     XGBOOST = 1
-    # PAIML is the model type that trained by PAI machine learning algorithm toolkit
+    # PAIML is the model type that trained by PAI machine learning algorithm
+    # toolkit
     PAIML = 2
 
 

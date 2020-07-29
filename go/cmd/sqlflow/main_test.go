@@ -1115,6 +1115,16 @@ func TestParseArgument(t *testing.T) {
 	a.Equal("my_model", opts.ModelName)
 	a.Equal("v1.0", opts.Version)
 
+	opts, err = getOptions("list model")
+	a.NoError(err)
+	a.True(opts.List && opts.Model)
+	a.False(opts.Run || opts.Release || opts.Delete)
+
+	opts, err = getOptions("list repo")
+	a.NoError(err)
+	a.True(opts.List && opts.Repo)
+	a.False(opts.Run || opts.Release || opts.Delete)
+
 	// invalid args
 	opts, err = getOptions("kill model my_model")
 	a.Error(err)

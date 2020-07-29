@@ -52,8 +52,10 @@ class FieldDesc(object):
             PLAIN, CSV, KV. Default PLAIN.
         shape (list[int]): the shape of the field data. Default None.
         is_sparse (bool): whether the field data is sparse. Default False.
-        vocabulary (list[str]): the vocabulary used for categorical feature column. Default None.
-        max_id (int): the maximum id number of the field data. Used in CategoryIDColumn. Default 0.
+        vocabulary (list[str]): the vocabulary used for categorical
+            feature column. Default None.
+        max_id (int): the maximum id number of the field data. Used in
+            CategoryIDColumn. Default 0.
     """
     def __init__(self,
                  name="",
