@@ -11,12 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import json
-import os
 import sys
-import types
 
-import runtime
 import tensorflow as tf
 from runtime import oss
 from runtime.import_model import import_model
@@ -41,8 +37,8 @@ FLAGS = define_tf_flags()
 def evaluate(datasource, select, data_table, result_table, oss_model_path,
              metrics):
     """PAI Tensorflow evaluate wrapper
-    This function do some preparation for the local evaluation, say, download the
-    model from OSS, extract metadata and so on.
+    This function do some preparation for the local evaluation, say,
+    download the model from OSS, extract metadata and so on.
 
     Args:
         datasource: the datasource from which to get data
@@ -59,16 +55,18 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
                                             "tensorflow_model_desc")
 
     feature_columns = eval(feature_columns_code)
-    # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
-    # because predicting do not need these parameters.
+    # NOTE(typhoonzero): No need to eval model_params["optimizer"] and
+    # model_params["loss"] because predicting do not need these parameters.
 
     is_estimator = is_tf_estimator(import_model(estimator))
 
-    # Keras single node is using h5 format to save the model, no need to deal with export model format.
-    # Keras distributed mode will use estimator, so this is also needed.
+    # Keras single node is using h5 format to save the model, no need to deal
+    # with export model format. Keras distributed mode will use estimator, so
+    # this is also needed.
     if is_estimator:
         oss.load_file(oss_model_path, "exported_path")
-        # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+        # NOTE(typhoonzero): directory "model_save" is hardcoded in
+        # codegen/tensorflow/codegen.go
         oss.load_dir("%s/model_save" % oss_model_path)
     else:
         oss.load_file(oss_model_path, "model_save")

@@ -11,34 +11,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import pickle
-import types
 from inspect import getargspec
 
-from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.tensorflow.evaluate import evaluate as evaluate_tf
 from runtime.pai.tensorflow.explain import explain as explain_tf
 from runtime.pai.tensorflow.predict import predict as predict_tf
 from runtime.pai.tensorflow.train import train as train_tf
-from runtime.tensorflow import is_tf_estimator
 
 try:
-    #(TODO: lhw) split entry.py into multiple files,
+    # (TODO: lhw) split entry.py into multiple files,
     # so, we can only import needed packages
     from runtime.pai.xgboost.predict import predict as predict_xgb
     from runtime.pai.xgboost.train import train as train_xgb
     from runtime.pai.xgboost.explain import explain as explain_xgb
     from runtime.pai.xgboost.evaluate import evaluate as evaluate_xgb
-except:
+except:  # noqa: E722
     pass
 
 
 def call_fun(func, params):
     """Call a function with given params, entries in params will be treated
-    as func' param if the key matches some argument name. Do not support 
+    as func' param if the key matches some argument name. Do not support
     var-args in func.
 
     Arags:

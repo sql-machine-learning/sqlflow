@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.pai.submitter import submit_pai_evaluate as evaluate
-from runtime.pai.submitter import submit_pai_explain as explain
-from runtime.pai.submitter import submit_pai_predict as predict
-from runtime.pai.submitter import submit_pai_train as train
+from runtime.pai.submitter import submit_pai_evaluate as evaluate  # noqa: F401
+from runtime.pai.submitter import submit_pai_explain as explain  # noqa: F401
+from runtime.pai.submitter import submit_pai_predict as predict  # noqa: F401
+from runtime.pai.submitter import submit_pai_train as train  # noqa: F401
