@@ -24,7 +24,8 @@ Implements the tracker control protocol
  - help nodes to establish links with each other
 Tianqi Chen
 """
-# pylint: disable=invalid-name, missing-docstring, too-many-arguments, too-many-locals
+# pylint: disable=invalid-name, missing-docstring
+# pylint: disable=too-many-arguments, too-many-locals
 # pylint: disable=too-many-branches, too-many-statements
 from __future__ import absolute_import
 
@@ -436,9 +437,8 @@ def get_host_ip(hostIP=None):
         try:
             hostIP = socket.gethostbyname(socket.getfqdn())
         except gaierror:
-            logging.warn(
-                'gethostbyname(socket.getfqdn()) failed... trying on hostname()'
-            )
+            logging.warn('gethostbyname(socket.getfqdn()) failed... '
+                         'trying on hostname()')
             hostIP = socket.gethostbyname(socket.gethostname())
         if hostIP.startswith("127."):
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
