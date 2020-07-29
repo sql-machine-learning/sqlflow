@@ -86,8 +86,8 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                              hdfs_user, hdfs_pass):
     preds = bst.predict(dpred)
 
-    #TODO(yancey1989): should save train_params and model_params not only on PAI submitter
-    #TODO(yancey1989): output the original result for various objective function.
+    # TODO(yancey1989): should save train_params and model_params not only on PAI submitter
+    # TODO(yancey1989): output the original result for various objective function.
     if model_params:
         obj = model_params["objective"]
         if obj.startswith("binary:"):
@@ -134,7 +134,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                                hive_location=hive_location,
                                hdfs_user=hdfs_user,
                                hdfs_pass=hdfs_pass) as w:
-        import sys
         while True:
             line = feature_file_read.readline()
             if not line:

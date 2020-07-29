@@ -32,7 +32,7 @@ __all__ = [
 if six.PY2:
 
     def hashing(x):
-        return long(hashlib.sha1(x).hexdigest(), 16)
+        return long(hashlib.sha1(x).hexdigest(), 16)  # noqa: F821
 else:
 
     def hashing(x):

@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import json
-import os
 import sys
 
 import runtime.pai.pai_distributed as pai_dist

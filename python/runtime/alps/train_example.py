@@ -15,9 +15,7 @@ import os
 import shutil
 
 import tensorflow as tf
-from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
-                                          SparseColumn)
-from alps.framework.engine import LocalEngine
+from alps.framework.column.column import DenseColumn, SparseColumn
 from alps.framework.experiment import EstimatorBuilder
 from alps.io.base import OdpsConf
 from runtime.alps.train import train
@@ -65,7 +63,8 @@ if __name__ == "__main__":
     odps_conf = OdpsConf(
         accessid=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK"),
         accesskey=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK"),
-        # endpoint should looks like: "https://service.cn.maxcompute.aliyun.com/api"
+        # endpoint should looks like:
+        # "https://service.cn.maxcompute.aliyun.com/api"
         endpoint=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT"),
         project=odps_project)
     features = [
