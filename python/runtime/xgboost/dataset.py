@@ -165,8 +165,8 @@ def dump_dmatrix(filename,
 
             f.write("\t".join(row_data) + "\n")
             row_id += 1
-            # batch_size == None meas use all data in generator
-            if batch_size == None:
+            # batch_size == None means use all data in generator
+            if batch_size is None:
                 continue
             if row_id >= batch_size:
                 break
@@ -224,8 +224,9 @@ def get_pai_table_slice_count(table, nworkers, batch_size):
 
     row_cnt = db.get_pai_table_row_num(table)
 
-    assert row_cnt >= nworkers, "Data number {} should not less than worker number {}".format(
-        row_cnt, nworkers)
+    assert row_cnt >= nworkers, "Data number {} should not " \
+                                "less than worker number {}"\
+        .format(row_cnt, nworkers)
 
     slice_num_per_worker = max(int(row_cnt / (nworkers * batch_size)), 1)
     slice_count = slice_num_per_worker * nworkers
@@ -279,7 +280,8 @@ def pai_dataset(filename,
                 raw_data_dir
             ]))
 
-        assert p.returncode == 0, "The subprocess raises error when reading data"
+        assert p.returncode == 0, \
+            "The subprocess raises error when reading data"
         complete_queue.put(slice_id)
 
     slice_id = rank
