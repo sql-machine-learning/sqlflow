@@ -51,12 +51,12 @@ def to_package_dtype(dtype, package):
     raise ValueError("unsupported data type {}".format(dtype))
 
 
-def compile_feature_column(fc_ir, model_type, package):
+def compile_feature_column(ir_fc, model_type, package):
     """
     Compile an IR FeatureColumn object to a runtime feature column object.
 
     Args:
-        fc_ir (FeatureColumn): the IR FeatureColumn object.
+        ir_fc (FeatureColumn): the IR FeatureColumn object.
         model_type (EstimatorType): one of TENSORFLOW and XGBOOST.
         package (module): the Python package corresponding to the model_type.
 
@@ -65,43 +65,43 @@ def compile_feature_column(fc_ir, model_type, package):
     """
     fc_package = package.feature_column
 
-    if isinstance(fc_ir, NumericColumn):
-        fd = fc_ir.get_field_desc()[0]
+    if isinstance(ir_fc, NumericColumn):
+        fd = ir_fc.get_field_desc()[0]
         return fc_package.numeric_column(fd.name, shape=fd.shape)
 
-    if isinstance(fc_ir, BucketColumn):
-        source_fc = compile_feature_column(fc_ir.source_column, model_type,
+    if isinstance(ir_fc, BucketColumn):
+        source_fc = compile_feature_column(ir_fc.source_column, model_type,
                                            package)
         return fc_package.bucketized_column(source_fc,
-                                            boundaries=fc_ir.boundaries)
+                                            boundaries=ir_fc.boundaries)
 
-    if isinstance(fc_ir, CategoryIDColumn):
-        fd = fc_ir.get_field_desc()[0]
+    if isinstance(ir_fc, CategoryIDColumn):
+        fd = ir_fc.get_field_desc()[0]
         if fd.vocabulary:
             return fc_package.categorical_column_with_vocabulary_list(
                 key=fd.name, vocabulary_list=list(fd.vocabulary))
         else:
             return fc_package.categorical_column_with_identity(
-                key=fd.name, num_buckets=fc_ir.bucket_size)
+                key=fd.name, num_buckets=ir_fc.bucket_size)
 
-    if isinstance(fc_ir, SeqCategoryIDColumn):
+    if isinstance(ir_fc, SeqCategoryIDColumn):
         assert model_type != EstimatorType.XGBOOST, \
             "SEQ_CATEGORY_ID is not supported in XGBoost models"
-        fd = fc_ir.get_field_desc()[0]
+        fd = ir_fc.get_field_desc()[0]
         return fc_package.sequence_categorical_column_with_identity(
-            key=fd.name, num_buckets=fc_ir.bucket_size)
+            key=fd.name, num_buckets=ir_fc.bucket_size)
 
-    if isinstance(fc_ir, CategoryHashColumn):
-        fd = fc_ir.get_field_desc()[0]
+    if isinstance(ir_fc, CategoryHashColumn):
+        fd = ir_fc.get_field_desc()[0]
         dtype = to_package_dtype(fd.dtype, package)
         return fc_package.categorical_column_with_hash_bucket(
-            key=fd.name, hash_bucket_size=fc_ir.bucket_size, dtype=dtype)
+            key=fd.name, hash_bucket_size=ir_fc.bucket_size, dtype=dtype)
 
-    if isinstance(fc_ir, CrossColumn):
+    if isinstance(ir_fc, CrossColumn):
         assert model_type != EstimatorType.XGBOOST, \
             "CROSS is not supported in XGBoost models"
         key_strs = []
-        for key in fc_ir.keys:
+        for key in ir_fc.keys:
             if isinstance(key, six.string_types):
                 key_strs.append(key)
             elif isinstance(key, NumericColumn):
@@ -114,23 +114,23 @@ def compile_feature_column(fc_ir, model_type, package):
                     "field in CROSS must be of FeatureColumn or string type")
 
         return fc_package.crossed_column(
-            key_strs, hash_bucket_size=fc_ir.hash_bucket_size)
+            key_strs, hash_bucket_size=ir_fc.hash_bucket_size)
 
-    if isinstance(fc_ir, EmbeddingColumn):
+    if isinstance(ir_fc, EmbeddingColumn):
         assert model_type != EstimatorType.XGBOOST, \
             "EMBEDDING is not supported in XGBoost models"
-        category_column = compile_feature_column(fc_ir.category_column,
+        category_column = compile_feature_column(ir_fc.category_column,
                                                  model_type, package)
         return fc_package.embedding_column(category_column,
-                                           dimension=fc_ir.dimension,
-                                           combiner=fc_ir.combiner)
+                                           dimension=ir_fc.dimension,
+                                           combiner=ir_fc.combiner)
 
-    if isinstance(fc_ir, IndicatorColumn):
-        category_column = compile_feature_column(fc_ir.category_column,
+    if isinstance(ir_fc, IndicatorColumn):
+        category_column = compile_feature_column(ir_fc.category_column,
                                                  model_type, package)
         return fc_package.indicator_column(category_column)
 
-    raise ValueError("unsupport FeatureColumn %s" % type(fc_ir))
+    raise ValueError("unsupport FeatureColumn %s" % type(ir_fc))
 
 
 def compile_ir_feature_columns(ir_features, model_type):
