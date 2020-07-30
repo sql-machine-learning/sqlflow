@@ -480,8 +480,6 @@ constraints:
 '''.format(",".join(variables), variable_type, direction, obj_expr,
            "\n".join(constraint_expressions))
 
-    print(fsl_file_content)
-
     submit_optflow_job(train_table=train_table,
                        result_table=result_table,
                        fsl_file_content=fsl_file_content,
