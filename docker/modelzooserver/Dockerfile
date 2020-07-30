@@ -5,6 +5,7 @@ FROM alpine:3.12
 ARG FIND_FASTED_MIRROR=true
 
 # Choose faster mirrors for alpine and pip
+# Install docker.io to release model defininiation
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
 RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh && \
     echo "Choose the fastest Alpine source ..." && \
