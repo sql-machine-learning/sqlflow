@@ -42,7 +42,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
-transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
+feature_column_list = [{{.FeatureColumnCode}}]
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_list)
 
 explain(
     datasource='''{{.DataSource}}''',
