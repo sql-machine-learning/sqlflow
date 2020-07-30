@@ -14,22 +14,16 @@
 import os
 
 from alps.client.base import run_experiment, submit_experiment
-from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
-                                          SparseColumn)
 from alps.framework.engine import (KubemakerEngine, LocalEngine, ResourceConf,
                                    YarnEngine)
-from alps.framework.experiment import (EstimatorBuilder, EvalConf, Experiment,
-                                       RuntimeConf, TrainConf)
+from alps.framework.experiment import (EvalConf, Experiment, RuntimeConf,
+                                       TrainConf)
 from alps.framework.exporter import ExportStrategy
 from alps.framework.exporter.arks_exporter import ArksExporter
 from alps.framework.exporter.base import Goal, MetricComparator
-from alps.framework.train.training import build_run_config
 from alps.io import DatasetX
-from alps.io.base import FeatureMap, OdpsConf
+from alps.io.base import FeatureMap
 from alps.io.reader.odps_reader import OdpsReader
-from alps.util.remote_module import RemoteModule
-from tensorflow.python.saved_model.signature_constants import \
-    DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
 # for debug usage.
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -104,7 +98,7 @@ def train(model_builder,
     else:
         runtime_conf = None
 
-    if max_steps == None:
+    if max_steps is None:
         keep_checkpoint_max = 100
     else:
         keep_checkpoint_max = int(max_steps / 100)

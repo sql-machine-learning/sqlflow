@@ -228,7 +228,7 @@ func deriveFeatureColumnCodeAndFieldDescs(fcs []ir.FeatureColumn, labelFc ir.Fea
 		}
 	}
 
-	featureColumnsCode = strings.Join(fcCodes, ",")
+	featureColumnsCode = strings.Join(fcCodes, ",\n")
 
 	switch c := labelFc.(type) {
 	case *ir.NumericColumn:
