@@ -89,8 +89,9 @@ def numeric_column(key, shape=(1, )):
 
 class BucketizedColumnTransformer(CategoricalColumnTransformer):
     def __init__(self, source_column, boundaries):
-        assert boundaries == sorted(
-            boundaries), "Boundaries must be sorted in ascending order"
+        for i in six.moves.range(len(boundaries) - 1):
+            assert boundaries[i] < boundaries[i+1], \
+                "Boundaries must be sorted in ascending order"
         self.source_column = source_column
         self.boundaries = boundaries
 

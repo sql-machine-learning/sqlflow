@@ -20,7 +20,7 @@ import oss2
 import requests
 import six
 from runtime.optimize.model_generation import \
-    generate_objective_and_constraint_expression
+    generate_objective_and_constraint_expr
 from runtime.oss import get_bucket
 
 __all__ = [
@@ -70,8 +70,8 @@ def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
         start_line_num: the start line number of the logs.
 
     Returns:
-        A tuple of (logs, end_line_num), where logs are the queried results, and
-        end_line_num is the line number of the last queried logs.
+        A tuple of (logs, end_line_num), where logs are the queried results,
+        and end_line_num is the line number of the last queried logs.
     """
     url = "{}?userNumber={}&recordId={}&token={}".format(
         url, user_number, record_id, token)
@@ -112,7 +112,7 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
         for _ in six.moves.range(times - 1):
             try:
                 return func()
-            except:
+            except:  # noqa: E722
                 pass
 
         return func()
@@ -120,10 +120,15 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
     status = None
     line_num = 0
     while True:
-        query_status = lambda: query_optflow_job_status(
-            status_url, record_id, user_number, token)
-        query_log = lambda: query_optflow_job_log(log_url, record_id,
-                                                  user_number, token, line_num)
+
+        def query_status():
+            return query_optflow_job_status(status_url, record_id, user_number,
+                                            token)
+
+        def query_log():
+            return query_optflow_job_log(log_url, record_id, user_number,
+                                         token, line_num)
+
         status = call_func_with_retry(query_status, 3)
         logs, line_num = call_func_with_retry(query_log, 3)
 
@@ -228,7 +233,7 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
                     result_table))
             else:
                 print("Job fails.")
-        except:
+        except:  # noqa: E722
             # FIXME(sneaxiy): we should not delete object if there is any
             # network error when querying job status and logs. But when
             # should we clean the object?
@@ -253,7 +258,8 @@ def run_optimize_on_optflow(train_table, columns, variables, variable_type,
         result_value_name (str): the result value name to be optimized.
         objective (list[str]): the objective string token list.
         direction (str): "maximize" or "minimize".
-        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        constraints (dict): the constraint expression containing the token list
+            and GROUP BY column name.
         solver (str): the solver used to solve the model.
         result_table (str): the table name to save the solved results.
         user_number (str): the user id.
@@ -269,7 +275,7 @@ def run_optimize_on_optflow(train_table, columns, variables, variable_type,
     else:
         raise ValueError("direction must be maximize or minimize")
 
-    obj_expr, c_exprs = generate_objective_and_constraint_expression(
+    obj_expr, c_exprs = generate_objective_and_constraint_expr(
         columns=columns,
         objective=objective,
         constraints=constraints,

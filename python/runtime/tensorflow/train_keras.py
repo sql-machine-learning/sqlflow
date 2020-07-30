@@ -105,8 +105,8 @@ def keras_train_and_save(estimator, model_params, save, is_pai,
     except Exception as e:
         if hasattr(estimator, "sqlflow_train_loop"):
             sys.stderr.write(
-                "compile keras model failed, ignoring this error since the model seems to defined sqlflow_train_loop."
-            )
+                "compile keras model failed, ignoring this error "
+                "since the model seems to defined sqlflow_train_loop.")
             classifier = init_model_with_feature_column(
                 estimator, model_params, has_none_optimizer=True)
             has_none_optimizer = True
@@ -178,8 +178,9 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
     try:
         # write model metadata to model_meta.json
         save_model_metadata("model_meta.json", model_meta)
-        # NOTE: classifier.save_weights may fail if the model has sqlflow_train_loop
-        # and does not have Keras layers defined. So save metadata before calling save_weights.
+        # NOTE: classifier.save_weights may fail if the model has
+        # sqlflow_train_loop and does not have Keras layers defined.
+        # So save metadata before calling save_weights.
         classifier.save_weights(save, save_format="h5")
     except:  # noqa: E722
         if has_none_optimizer:

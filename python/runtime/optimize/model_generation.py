@@ -16,10 +16,10 @@ import re
 
 __all__ = [
     'generate_unique_result_value_name',
-    'generate_objective_and_constraint_expression',
+    'generate_objective_and_constraint_expr',
 ]
 
-IDENTIFIER_REGEX = re.compile("[_a-zA-Z]\w*")
+IDENTIFIER_REGEX = re.compile("[_a-zA-Z]\w*")  # noqa: W605
 
 
 def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
@@ -60,22 +60,23 @@ def assert_are_valid_tokens(columns, tokens, result_value_name, group_by=None):
             continue
 
         assert find_next_non_blank_token(tokens, i + 1) == "(", \
-                "invalid token %s" % token
+            "invalid token %s" % token
 
 
 def generate_unique_result_value_name(columns, result_value_name, variables):
     """
-    If result_value_name is inside variables, generate unique result_value_name.
-    If not, return result_value_name directly.
+    If result_value_name is inside variables, generate unique
+    result_value_name. If not, return result_value_name directly.
 
     Args:
         columns (list[str]): the column names in the source table.
-        result_value_name (str): the original result value name to be optimized.
+        result_value_name (str): the original result value name to be
+            optimized.
         variables (list[str]): the variable names to be optimized.
 
     Returns:
-        A unique result_value_name that is not duplicated with any name in columns
-        and variables.
+        A unique result_value_name that is not duplicated with any name in
+        columns and variables.
     """
     variables = [v.lower() for v in variables]
     columns_lower = [c.lower() for c in columns]
@@ -115,11 +116,13 @@ def update_by_column_names(columns, tokens, variables, result_value_name,
         columns (list[str]): the column names in the source table.
         tokens (list[str]): objective or constraint tokens.
         variables (list[str]): the variable names to be optimized.
-        result_value_name (str): the original result value name to be optimized.
+        result_value_name (str): the original result value name to be
+            optimized.
         group_by (str): the column name to be grouped.
 
     Returns:
-        A tuple of (new_tokens, new_variables, new_result_value_name, new_group_by).
+        A tuple of (new_tokens, new_variables, new_result_value_name,
+        new_group_by).
     """
     tokens = list(copy.copy(tokens))
     variables = list(copy.copy(variables))
@@ -356,8 +359,9 @@ def generate_token_in_non_aggregation_expression(token, columns,
                                                  result_value_name, group_by,
                                                  data_str, index_str):
     """
-    Convert the token which is inside the non aggregation part of an aggregation expression
-    to be a token that can be accepted by the Pyomo model or FSL file.
+    Convert the token which is inside the non aggregation part of an
+    aggregation expression to be a token that can be accepted by the
+    Pyomo model or FSL file.
 
     Args:
         token (str): the token to be converted.
@@ -379,14 +383,16 @@ def generate_token_in_non_aggregation_expression(token, columns,
 
     if token == result_value_name:
         raise ValueError(
-            "invalid expression: result variable %s should not occur in the non-aggregation part of objective or constraint",
+            "invalid expression: result variable %s should not occur in the "
+            "non-aggregation part of objective or constraint",
             result_value_name)
 
     if token in columns:
         if not group_by:
             raise ValueError(
-                "invalid expression: column %s should not occur in the non-aggregation part of objective or constraint without GROUP BY",
-                token)
+                "invalid expression: column %s should not occur in the "
+                "non-aggregation part of objective or constraint without "
+                "GROUP BY", token)
         return '%s["%s"][%s]' % (data_str, token, index_str)
 
     return token
@@ -395,14 +401,16 @@ def generate_token_in_non_aggregation_expression(token, columns,
 def generate_token_in_aggregation_expression(token, columns, result_value_name,
                                              variable_str, data_str, depth):
     """
-    Convert the token which is inside the aggregation part of an aggregation expression
-    to be a token that can be accepted by the Pyomo model or FSL file.
+    Convert the token which is inside the aggregation part of an aggregation
+    expression to be a token that can be accepted by the Pyomo model or FSL
+    file.
 
     Args:
         token (str): the token to be converted.
         columns (list[str]): the column names of the source table.
         result_value_name (str): the result value name to be optimized.
-        variable_str (str): a string that represents the variables to be optimized.
+        variable_str (str): a string that represents the variables to be
+            optimized.
         data_str (str): a string that represents the total table data.
         depth (int): the bracket depth of the aggregation part.
 
@@ -425,10 +433,9 @@ def generate_token_in_aggregation_expression(token, columns, result_value_name,
     return token
 
 
-def generate_non_aggregation_constraint_expression(tokens, columns,
-                                                   result_value_name,
-                                                   variable_str, data_str,
-                                                   index_str):
+def generate_non_aggregation_constraint_expr(tokens, columns,
+                                             result_value_name, variable_str,
+                                             data_str, index_str):
     """
     Generate the model expression for the non aggregated constraint expression.
 
@@ -436,7 +443,8 @@ def generate_non_aggregation_constraint_expression(tokens, columns,
         tokens (list[str]): the constraint string token list.
         columns (list[str]): the column names of the source table.
         result_value_name (str): the result value name to be optimized.
-        variable_str (str): a string that represents the variables to be optimized.
+        variable_str (str): a string that represents the variables to be
+            optimized.
         data_str (str): a string that represents the total table data.
         index_str (str): a string that represents the row index of the table.
 
@@ -463,27 +471,32 @@ def generate_non_aggregation_constraint_expression(tokens, columns,
     return "".join(result_tokens), variable_str, [index_str]
 
 
-def generate_objective_or_aggregated_constraint_expression(
-    tokens, group_by, result_value_name, columns, variable_str, data_str,
-    value_str, index_str):
+def generate_objective_or_aggregated_constraint_expr(tokens, group_by,
+                                                     result_value_name,
+                                                     columns, variable_str,
+                                                     data_str, value_str,
+                                                     index_str):
     """
-    Generate the model expression for the objective or aggregated constraint expression.
+    Generate the model expression for the objective or aggregated constraint
+    expression.
 
     Args:
         tokens (list[str]): the objective or constraint string token list.
         group_by (str): the column name to be grouped.
         result_value_name (str): the result value name to be optimized.
         columns (list[str]): the column names of the source table.
-        variable_str (str): a string that represents the variables to be optimized.
+        variable_str (str): a string that represents the variables to be
+            optimized.
         data_str (str): a string that represents the total table data.
         value_str (str): a string that represents the cell value in the table.
         index_str (str): a string that represents the row index of the table.
 
     Returns:
-        A tuple of (model_expression, for_range_expression, for_range_iteration_vars).
+        A tuple of (model_expression, for_range_expression,
+        for_range_iteration_vars).
     """
 
-    outer_range, inner_range, iter_vars = generate_group_by_range_and_index_str(
+    outer_range, inner_range, vars = generate_group_by_range_and_index_str(
         group_by=group_by,
         data_str=data_str,
         value_str=value_str,
@@ -492,8 +505,8 @@ def generate_objective_or_aggregated_constraint_expression(
     idx = 0
     result_tokens = []
     while idx < len(tokens):
-        left_bracket_indices, right_bracket_indices, next_idx = find_matched_aggregation_function_brackets(
-            tokens, idx)
+        left_bracket_indices, right_bracket_indices, next_idx = \
+            find_matched_aggregation_function_brackets(tokens, idx)
         if left_bracket_indices:
             left_bracket_idx = left_bracket_indices[0]
             right_bracket_idx = right_bracket_indices[0]
@@ -557,13 +570,13 @@ def generate_objective_or_aggregated_constraint_expression(
             result_tokens.append(token)
             idx += 1
 
-    return "".join(result_tokens), outer_range, iter_vars
+    return "".join(result_tokens), outer_range, vars
 
 
-def generate_objective_or_constraint_expression(columns, tokens, variables,
-                                                result_value_name, group_by,
-                                                variable_str, data_str,
-                                                value_str, index_str):
+def generate_objective_or_constraint_expr(columns, tokens, variables,
+                                          result_value_name, group_by,
+                                          variable_str, data_str, value_str,
+                                          index_str):
     """
     Generate the model expression for the objective or constraint expression.
 
@@ -573,13 +586,15 @@ def generate_objective_or_constraint_expression(columns, tokens, variables,
         variables (list[str]): the variable names to be optimized.
         result_value_name (str): the result value name to be optimized.
         group_by (str): the column name to be grouped.
-        variable_str (str): a string that represents the variables to be optimized.
+        variable_str (str): a string that represents the variables to be
+            optimized.
         data_str (str): a string that represents the total table data.
         value_str (str): a string that represents the cell value in the table.
         index_str (str): a string that represents the row index of the table.
 
     Returns:
-        A tuple of (model_expression, for_range_expression, for_range_iteration_vars).
+        A tuple of (model_expression, for_range_expression,
+        for_range_iteration_vars).
     """
     tokens, variables, result_value_name, group_by = update_by_column_names(
         columns=columns,
@@ -595,7 +610,7 @@ def generate_objective_or_constraint_expression(columns, tokens, variables,
             break
 
     if has_aggregation_func:
-        expr, for_range, iter_vars = generate_objective_or_aggregated_constraint_expression(
+        expr, rang, vars = generate_objective_or_aggregated_constraint_expr(
             tokens=tokens,
             group_by=group_by,
             result_value_name=result_value_name,
@@ -606,11 +621,10 @@ def generate_objective_or_constraint_expression(columns, tokens, variables,
             index_str=index_str)
     else:
         if group_by:
-            raise ValueError(
-                "GROUP BY must be used with aggregation function like SUM together"
-            )
+            raise ValueError("GROUP BY must be used with aggregation function "
+                             "like SUM together")
 
-        expr, for_range, iter_vars = generate_non_aggregation_constraint_expression(
+        expr, rang, vars = generate_non_aggregation_constraint_expr(
             tokens=tokens,
             columns=columns,
             result_value_name=result_value_name,
@@ -618,28 +632,31 @@ def generate_objective_or_constraint_expression(columns, tokens, variables,
             data_str=data_str,
             index_str=index_str)
 
-    return expr, for_range, iter_vars
+    return expr, rang, vars
 
 
-def generate_objective_and_constraint_expression(columns,
-                                                 objective,
-                                                 constraints,
-                                                 variables,
-                                                 result_value_name,
-                                                 variable_str,
-                                                 data_str,
-                                                 value_str="__value",
-                                                 index_str="__index"):
+def generate_objective_and_constraint_expr(columns,
+                                           objective,
+                                           constraints,
+                                           variables,
+                                           result_value_name,
+                                           variable_str,
+                                           data_str,
+                                           value_str="__value",
+                                           index_str="__index"):
     """
-    Generate the model expressions for the objective and constraint expressions.
+    Generate the model expressions for the objective and constraint
+    expressions.
 
     Args:
         columns (list[str]): the column names of the source table.
         objective (list[str]): the objective string token list.
-        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        constraints (dict): the constraint expression containing the token list
+            and GROUP BY column name.
         variables (list[str]): the variable names to be optimized.
         result_value_name (str): the result value name to be optimized.
-        variable_str (str): a string that represents the variables to be optimized.
+        variable_str (str): a string that represents the variables to be
+            optimized.
         data_str (str): a string that represents the total table data.
         value_str (str): a string that represents the cell value in the table.
         index_str (str): a string that represents the row index of the table.
@@ -656,7 +673,7 @@ def generate_objective_and_constraint_expression(columns,
         assert_are_valid_tokens(columns=columns,
                                 tokens=objective,
                                 result_value_name=result_value_name)
-        obj_expr, for_range, iter_vars = generate_objective_or_constraint_expression(
+        obj_expr, for_range, iter_vars = generate_objective_or_constraint_expr(
             columns=columns,
             tokens=objective,
             variables=variables,
@@ -678,7 +695,7 @@ def generate_objective_and_constraint_expression(columns,
                                     tokens=tokens,
                                     result_value_name=result_value_name,
                                     group_by=group_by)
-            expr, for_range, iter_vars = generate_objective_or_constraint_expression(
+            expr, for_range, iter_vars = generate_objective_or_constraint_expr(
                 columns=columns,
                 tokens=tokens,
                 variables=variables,
@@ -692,7 +709,8 @@ def generate_objective_and_constraint_expression(columns,
             if iter_vars:
                 assert for_range, "both for_range and iter_vars must be None"
             else:
-                assert not for_range, "both for_range and iter_vars must be not None"
+                assert not for_range, "both for_range and iter_vars must be " \
+                                      "not None"
 
             constraint_exprs.append((expr, for_range, iter_vars))
 
