@@ -68,7 +68,8 @@ var distributedTrainingAttributes = attribute.Dictionary{}.
 	Int("train.evaluator_cpu", 200, "", nil).
 	Int("train.evaluator_gpu", 0, "", nil)
 
-func attrToPythonValue(attr interface{}) string {
+// AttrToPythonValue format the WITH attributes to corresponding Python code.
+func AttrToPythonValue(attr interface{}) string {
 	switch attr.(type) {
 	case bool:
 		return strings.Title(fmt.Sprintf("%v", attr.(bool)))
@@ -257,7 +258,8 @@ func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	return attrValidator.Validate(trainStmt.Attributes)
 }
 
-func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams, modelParams map[string]interface{}) {
+// CategorizeAttributes returns attributes like train.*, validation.* and model.*  to separated maps.
+func CategorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams, modelParams map[string]interface{}) {
 	trainParams = make(map[string]interface{})
 	validateParams = make(map[string]interface{})
 	modelParams = make(map[string]interface{})
@@ -276,7 +278,8 @@ func categorizeAttributes(trainStmt *ir.TrainStmt) (trainParams, validateParams,
 	return trainParams, validateParams, modelParams
 }
 
-func deriveFeatureColumnCodeAndFieldDescs(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
+// DeriveFeatureColumnCodeAndFieldDescs generates tensorflow feature column code and field descs from IR.
+func DeriveFeatureColumnCodeAndFieldDescs(trainStmt *ir.TrainStmt) (featureColumnsCode []string, fieldDescs map[string][]*ir.FieldDesc, err error) {
 	fieldDescs = make(map[string][]*ir.FieldDesc)
 	for target, fcList := range trainStmt.Features {
 		perTargetFeatureColumnsCode := []string{}
@@ -304,8 +307,8 @@ func deriveFeatureColumnCodeAndFieldDescs(trainStmt *ir.TrainStmt) (featureColum
 
 // Train generates a Python program for train a TensorFlow model.
 func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	trainParams, validateParams, modelParams := categorizeAttributes(trainStmt)
-	featureColumnsCode, fieldDescs, err := deriveFeatureColumnCodeAndFieldDescs(trainStmt)
+	trainParams, validateParams, modelParams := CategorizeAttributes(trainStmt)
+	featureColumnsCode, fieldDescs, err := DeriveFeatureColumnCodeAndFieldDescs(trainStmt)
 	if err != nil {
 		return "", err
 	}
@@ -340,7 +343,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    attrToPythonValue,
+		"attrToPythonValue":    AttrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfTrainTemplateText))
 	if err := trainTemplate.Execute(&program, filler); err != nil {
@@ -386,7 +389,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    attrToPythonValue,
+		"attrToPythonValue":    AttrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfPredTemplateText))
 	if err := predTemplate.Execute(&program, filler); err != nil {
@@ -430,7 +433,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    attrToPythonValue,
+		"attrToPythonValue":    AttrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
@@ -471,7 +474,7 @@ func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    attrToPythonValue,
+		"attrToPythonValue":    AttrToPythonValue,
 		"DTypeToString":        DTypeToString,
 	}).Parse(tfEvaluateTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
@@ -489,7 +492,7 @@ func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featu
 			modelParams[strings.Replace(attrKey, "model.", "", 1)] = attr
 		}
 	}
-	featureColumnsCode, fieldDescs, err = deriveFeatureColumnCodeAndFieldDescs(stmt)
+	featureColumnsCode, fieldDescs, err = DeriveFeatureColumnCodeAndFieldDescs(stmt)
 	return
 }
 
