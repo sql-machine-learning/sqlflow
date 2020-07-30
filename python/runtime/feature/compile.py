@@ -27,14 +27,17 @@ __all__ = [
 
 def to_package_dtype(dtype, package):
     """
-    Convert dtype to the data type accepted by package.
+    Convert dtype to the data type accepted by the feature column
+    implementation packages including TensorFlow and XGBoost.
 
     Args:
         dtype (DataType): one of INT, FLOAT and STRING.
-        package (module): the Python package.
+        package (module): the Python package, including TensorFlow
+            and XGBoost feature column packages.
 
     Returns:
-        The data type accepted by the package.
+        The data type accepted by the feature column implementation
+        packages including TensorFlow and XGBoost.
     """
     if dtype == DataType.INT:
         return package.dtypes.int64
@@ -48,12 +51,12 @@ def to_package_dtype(dtype, package):
     raise ValueError("unsupported data type {}".format(dtype))
 
 
-def compile_feature_column(fc, model_type, package):
+def compile_feature_column(fc_ir, model_type, package):
     """
-    Compile a IR FeatureColumn object to a runtime feature column object.
+    Compile an IR FeatureColumn object to a runtime feature column object.
 
     Args:
-        fc (FeatureColumn): the IR FeatureColumn object.
+        fc_ir (FeatureColumn): the IR FeatureColumn object.
         model_type (EstimatorType): one of TENSORFLOW and XGBOOST.
         package (module): the Python package corresponding to the model_type.
 
@@ -62,44 +65,43 @@ def compile_feature_column(fc, model_type, package):
     """
     fc_package = package.feature_column
 
-    if isinstance(fc, NumericColumn):
-        fd = fc.get_field_desc()[0]
-        nc = fc_package.numeric_column(fd.name, shape=fd.shape)
-        return nc
+    if isinstance(fc_ir, NumericColumn):
+        fd = fc_ir.get_field_desc()[0]
+        return fc_package.numeric_column(fd.name, shape=fd.shape)
 
-    if isinstance(fc, BucketColumn):
-        source_fc = compile_feature_column(fc.source_column, model_type,
+    if isinstance(fc_ir, BucketColumn):
+        source_fc = compile_feature_column(fc_ir.source_column, model_type,
                                            package)
-        bc = fc_package.bucketized_column(source_fc, boundaries=fc.boundaries)
-        return bc
+        return fc_package.bucketized_column(source_fc,
+                                            boundaries=fc_ir.boundaries)
 
-    if isinstance(fc, CategoryIDColumn):
-        fd = fc.get_field_desc()[0]
+    if isinstance(fc_ir, CategoryIDColumn):
+        fd = fc_ir.get_field_desc()[0]
         if fd.vocabulary:
             return fc_package.categorical_column_with_vocabulary_list(
                 key=fd.name, vocabulary_list=list(fd.vocabulary))
         else:
             return fc_package.categorical_column_with_identity(
-                key=fd.name, num_buckets=fc.bucket_size)
+                key=fd.name, num_buckets=fc_ir.bucket_size)
 
-    if isinstance(fc, SeqCategoryIDColumn):
+    if isinstance(fc_ir, SeqCategoryIDColumn):
         assert model_type != EstimatorType.XGBOOST, \
             "SEQ_CATEGORY_ID is not supported in XGBoost models"
-        fd = fc.get_field_desc()[0]
+        fd = fc_ir.get_field_desc()[0]
         return fc_package.sequence_categorical_column_with_identity(
-            key=fd.name, num_buckets=fc.bucket_size)
+            key=fd.name, num_buckets=fc_ir.bucket_size)
 
-    if isinstance(fc, CategoryHashColumn):
-        fd = fc.get_field_desc()[0]
+    if isinstance(fc_ir, CategoryHashColumn):
+        fd = fc_ir.get_field_desc()[0]
         dtype = to_package_dtype(fd.dtype, package)
         return fc_package.categorical_column_with_hash_bucket(
-            key=fd.name, hash_bucket_size=fc.bucket_size, dtype=dtype)
+            key=fd.name, hash_bucket_size=fc_ir.bucket_size, dtype=dtype)
 
-    if isinstance(fc, CrossColumn):
+    if isinstance(fc_ir, CrossColumn):
         assert model_type != EstimatorType.XGBOOST, \
             "CROSS is not supported in XGBoost models"
         key_strs = []
-        for key in fc.keys:
+        for key in fc_ir.keys:
             if isinstance(key, six.string_types):
                 key_strs.append(key)
             elif isinstance(key, NumericColumn):
@@ -111,32 +113,34 @@ def compile_feature_column(fc, model_type, package):
                 raise ValueError(
                     "field in CROSS must be of FeatureColumn or string type")
 
-        return fc_package.crossed_column(key_strs,
-                                         hash_bucket_size=fc.hash_bucket_size)
+        return fc_package.crossed_column(
+            key_strs, hash_bucket_size=fc_ir.hash_bucket_size)
 
-    if isinstance(fc, EmbeddingColumn):
+    if isinstance(fc_ir, EmbeddingColumn):
         assert model_type != EstimatorType.XGBOOST, \
             "EMBEDDING is not supported in XGBoost models"
-        cc = compile_feature_column(fc.category_column, model_type, package)
-        return fc_package.embedding_column(cc,
-                                           dimension=fc.dimension,
-                                           combiner=fc.combiner)
+        category_column = compile_feature_column(fc_ir.category_column,
+                                                 model_type, package)
+        return fc_package.embedding_column(category_column,
+                                           dimension=fc_ir.dimension,
+                                           combiner=fc_ir.combiner)
 
-    if isinstance(fc, IndicatorColumn):
-        cc = compile_feature_column(fc.category_column, model_type, package)
-        return fc_package.indicator_column(cc)
+    if isinstance(fc_ir, IndicatorColumn):
+        category_column = compile_feature_column(fc_ir.category_column,
+                                                 model_type, package)
+        return fc_package.indicator_column(category_column)
 
-    raise ValueError("unsupport FeatureColumn %s" % type(fc))
+    raise ValueError("unsupport FeatureColumn %s" % type(fc_ir))
 
 
-def compile_ir_feature_columns(features, model_type):
+def compile_ir_feature_columns(ir_features, model_type):
     """
-    Compile a IR FeatureColumn map to a runtime feature column map.
+    Compile an IR FeatureColumn map to a runtime feature column map.
 
     Args:
-        features (dict[str -> list[FeatureColumn]]): the IR FeatureColumn map,
-            where the key is the target name, e.g. "feature_columns", and the
-            element inside the list is the IR FeatureColumn object.
+        ir_features (dict[str -> list[FeatureColumn]]): the IR FeatureColumn
+            map, where the key is the target name, e.g. "feature_columns",
+            and the element inside the list is the IR FeatureColumn object.
         model_type (EstimatorType): one of TENSORFLOW and XGBOOST.
 
     Returns:
@@ -149,13 +153,13 @@ def compile_ir_feature_columns(features, model_type):
     elif model_type == EstimatorType.XGBOOST:
         import runtime.xgboost
         package = runtime.xgboost
-        assert len(features) == 1 and "feature_columns" in features, \
+        assert len(ir_features) == 1 and "feature_columns" in ir_features, \
             "XGBoost only supports 'feature_columns' as the feature target"
     else:
         raise ValueError("only support TensorFlow and XGBoost model")
 
     all_fcs = dict()
-    for target, fc_list in features.items():
+    for target, fc_list in ir_features.items():
         fcs = [
             compile_feature_column(fc, model_type, package) for fc in fc_list
         ]
