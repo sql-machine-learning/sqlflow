@@ -15,6 +15,7 @@ package alps
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -38,12 +39,14 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		ValidationSelect:  trainStmt.ValidationSelect,
 		Estimator:         trainStmt.Estimator,
 		FieldDescs:        fieldDescs,
-		FeatureColumnCode: strings.Join(featureColumnsCode, ","),
+		FeatureColumnCode: fmt.Sprintf("{%s}", strings.Join(featureColumnsCode, ",\n")),
 		Y:                 trainStmt.Label.GetFieldDesc()[0],
 		ModelParams:       modelParams,
 		TrainParams:       trainParams,
 		ValidationParams:  validateParams,
 		Save:              trainStmt.Into,
+		TmpTrainTable:     trainStmt.TmpTrainTable,
+		TmpValidateTable:  trainStmt.TmpValidateTable,
 	}
 
 	var program bytes.Buffer

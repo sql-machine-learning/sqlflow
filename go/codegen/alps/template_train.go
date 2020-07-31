@@ -27,9 +27,11 @@ type trainFiller struct {
 	TrainParams       map[string]interface{}
 	ValidationParams  map[string]interface{}
 	Save              string
+	TmpTrainTable     string
+	TmpValidateTable  string
 }
 
-var templateTrain = `
+var templateTrain = `import copy
 import os
 import shutil
 
@@ -39,6 +41,7 @@ from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
 from alps.framework.engine import LocalEngine
 from alps.framework.experiment import EstimatorBuilder
 from alps.io.base import OdpsConf
+from runtime import db
 from runtime.alps.train import train
 from runtime.tensorflow.get_tf_version import tf_is_version2
 
@@ -86,18 +89,22 @@ if "loss" in model_params_constructed:
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
-        feature_columns = [{{.FeatureColumnCode}}]
-		feature_columns.append(tf.feature_column.numeric_column(col_name))
-		model_params_constructed["feature_columns"] = feature_columns
-		return tf.estimator.{{.Estimator}}(config=run_config,
-		                                   **model_params_constructed)
+        feature_columns_map = {{.FeatureColumnCode}}
+        if feature_columns_map.get("feature_columns"):
+            feature_columns = feature_columns_map["feature_columns"]
+        else:
+            raise ValueError("Not supported feature column map")
+        model_params_constructed["feature_columns"] = feature_columns
+        return tf.estimator.{{.Estimator}}(config=run_config,
+                                           **model_params_constructed)
 
 
 if __name__ == "__main__":
     if tf_is_version2():
-		raise ValueError("ALPS must run with Tensorflow == 1.15.x")
+        raise ValueError("ALPS must run with Tensorflow == 1.15.x")
 
-	user, passwd, endpoint, odps_project = db.parseMaxComputeDSN("{{.DataSource}}")
+    driver, dsn = "{{.DataSource}}".split("://")
+    user, passwd, endpoint, odps_project = db.parseMaxComputeDSN(dsn)
     odps_conf = OdpsConf(
         accessid=user,
         accesskey=passwd,
@@ -107,36 +114,36 @@ if __name__ == "__main__":
 
     features = []
     for col_name in feature_column_names:
-		# NOTE: add sparse columns like: SparseColumn(name="deep_id", shape=[15033], dtype="int")
-		if feature_metas[col_name]["is_sparse"]:
-			features.append(SparseColumn(name=feature_metas[col_name]["feature_name"],
-										 shape=feature_metas[col_name]["shape"],
-										 dtype=feature_metas[col_name]["dtype"],
-										 separator=feature_metas[col_name]["separator"]))
+        # NOTE: add sparse columns like: SparseColumn(name="deep_id", shape=[15033], dtype="int")
+        if feature_metas[col_name]["is_sparse"]:
+            features.append(SparseColumn(name=feature_metas[col_name]["feature_name"],
+                                         shape=feature_metas[col_name]["shape"],
+                                         dtype=feature_metas[col_name]["dtype"],
+                                         separator=feature_metas[col_name]["separator"]))
         else:
-			features.append(DenseColumn(name=feature_metas[col_name]["feature_name"],
-										shape=feature_metas[col_name]["shape"],
-										dtype=feature_metas[col_name]["dtype"]))
-	labels = DenseColumn(name=label_meta["feature_name"],
-						 shape=label_meta["shape"],
-						 dtype=label_meta["dtype"])
+            features.append(DenseColumn(name=feature_metas[col_name]["feature_name"],
+                                        shape=feature_metas[col_name]["shape"],
+                                        dtype=feature_metas[col_name]["dtype"]))
+    labels = DenseColumn(name=label_meta["feature_name"],
+                         shape=label_meta["shape"],
+                         dtype=label_meta["dtype"])
 
     try:
         os.mkdir("scratch")
     except FileExistsError:
-		pass
+        pass
 
-	train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
-	train_max_steps = None if train_max_steps == 0 else train_max_steps
-		
-	# TODO(typhoonzero): support pass feature_map_table from WITH attributes.
-	# TODO(typhoonzero): pass actual use_id.
-	# TODO(typhoonzero): pass engine config to submit jobs to the cluster.
+    train_max_steps = {{index .TrainParams "max_steps" | attrToPythonValue}}
+    train_max_steps = None if train_max_steps == 0 else train_max_steps
+
+    # TODO(typhoonzero): support pass feature_map_table from WITH attributes.
+    # TODO(typhoonzero): pass actual use_id.
+    # TODO(typhoonzero): pass engine config to submit jobs to the cluster.
     train(SQLFlowEstimatorBuilder(),
           odps_conf=odps_conf,
           project=odps_project,
-          train_table="%s.sqlflow_test_iris_train" % odps_project,
-          eval_table="%s.sqlflow_test_iris_test" % odps_project,
+          train_table="{{.TmpTrainTable}}",
+          eval_table="{{.TmpValidateTable}}",
           features=features,
           labels=labels,
           feature_map_table="",

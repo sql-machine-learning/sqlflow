@@ -82,7 +82,9 @@ func New(executor string) Executor {
 		return &paiExecutor{&pythonExecutor{}}
 	case "alisa":
 		return &alisaExecutor{&pythonExecutor{}}
-	// TODO(typhoonzero): add executor like alps, elasticdl
+	case "alps":
+		return &alpsExecutor{&pythonExecutor{}}
+	// TODO(typhoonzero): add executor for elasticdl
 	default:
 		return &pythonExecutor{}
 	}
