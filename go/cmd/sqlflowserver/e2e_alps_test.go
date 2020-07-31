@@ -49,47 +49,28 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	if caseDB == "" {
 		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
 	}
-	err = prepareTestData(dbConnStr)
-	if err != nil {
-		t.Fatalf("prepare test dataset failed: %v", err)
-	}
 
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)
-	t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
-	t.Run("CaseTrainALPSRemoteModel", CaseTrainALPSRemoteModel)
+	// TODO(typhoonzero): add this back later
+	// t.Run("CaseTrainALPSFeatureMap", CaseTrainALPSFeatureMap)
+	// t.Run("CaseTrainALPSRemoteModel", CaseTrainALPSRemoteModel)
 }
 
 // CaseTrainALPS is a case for training models using ALPS with out feature_map table
 func CaseTrainALPS(t *testing.T) {
 	a := assert.New(t)
-	trainSQL := fmt.Sprintf(`
-	SELECT deep_id, user_space_stat, user_behavior_stat, space_stat, l
-	FROM %s.sparse_column_test
-	LIMIT 100
-	TO TRAIN DNNClassifier
-	WITH
-	    model.n_classes = 2,
-	    model.hidden_units = [10, 20],
-	    train.batch_size = 10,
-	    engine.ps_num = 0,
-	    engine.worker_num = 0,
-	    engine.type = local,
-	    validation.table = "%s.sparse_column_test"
-	COLUMN
-	    SPARSE(deep_id,15033,COMMA,int),
-	    SPARSE(user_space_stat,310,COMMA,int),
-	    SPARSE(user_behavior_stat,511,COMMA,int),
-	    SPARSE(space_stat,418,COMMA,int),
-	    EMBEDDING(CATEGORY_ID(deep_id,15033,COMMA),512,mean),
-	    EMBEDDING(CATEGORY_ID(user_space_stat,310,COMMA),64,mean),
-	    EMBEDDING(CATEGORY_ID(user_behavior_stat,511,COMMA),64,mean),
-	    EMBEDDING(CATEGORY_ID(space_stat,418,COMMA),64,mean)
-	LABEL l
-	INTO model_table;
-	`, caseDB, caseDB)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s.sqlflow_test_iris_train
+TO TRAIN DNNClassifier
+WITH
+	model.n_classes = 3,
+	model.hidden_units = [10, 20],
+	train.batch_size = 10,
+	validation.select = "SELECT * FROM %s.sqlflow_test_iris_test"
+LABEL class
+INTO model_table;`, caseDB, caseDB)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	if err != nil {
 		a.Fail("run trainSQL error: %v", err)
