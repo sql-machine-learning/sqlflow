@@ -23,7 +23,10 @@ import (
 
 func downloadModelFromDB(opts *options) (string, error) {
 	if opts.DataSource == "" {
-		return "", fmt.Errorf("You should specify a datasource with -d")
+		opts.DataSource = os.Getenv("SQLFLOW_DATASOURCE")
+		if opts.DataSource == "" {
+			return "", fmt.Errorf("You should specify a datasource with -d or set env SQLFLOW_DATASOURCE")
+		}
 	}
 	db, err := database.OpenDB(opts.DataSource)
 	if err != nil {

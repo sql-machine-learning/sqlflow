@@ -470,9 +470,11 @@ func processOptions(opts *options) {
 	}
 	if err != nil {
 		log.Printf("Failed due to %v", err)
-	}
-	if opts.Get && opts.Model {
-		fmt.Printf("model \"%s\" downloaded successfully at %s", opts.ModelName, filename)
+	} else {
+		// output downloaded model path if no error.
+		if opts.Get && opts.Model {
+			fmt.Printf("model \"%s\" downloaded successfully at %s\n", opts.ModelName, filename)
+		}
 	}
 }
 
