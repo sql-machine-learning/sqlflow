@@ -419,7 +419,7 @@ class TestQuery(TestCase):
         rows = [row for row in gen()]
         self.assertEqual(1, len(rows))
 
-        query(conn, "delete from A")
+        query(conn, "truncate table A")
         gen = query(conn, "select * from A;")
         rows = [row for row in gen()]
         self.assertEqual(0, len(rows))
