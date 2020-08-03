@@ -132,6 +132,11 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 }
 
 func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
+	sqlProgram, err := parser.RemoveCommentInSQLStatement(sqlProgram)
+	if err != nil {
+		return err
+	}
+
 	stmts, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err

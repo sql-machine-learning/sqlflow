@@ -11,11 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 import tensorflow as tf
-
-from .get_tf_version import tf_is_version2
+from runtime.tensorflow.get_tf_version import tf_is_version2
 
 
 def set_log_level(verbose, is_estimator):

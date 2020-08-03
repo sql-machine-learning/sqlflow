@@ -11,21 +11,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import pickle
-import types
 from inspect import getargspec
 
-from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.pai import explain, predict, train
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
-from runtime.tensorflow import is_tf_estimator
+from runtime.pai.tensorflow.evaluate import evaluate as evaluate_tf
+from runtime.pai.tensorflow.explain import explain as explain_tf
+from runtime.pai.tensorflow.predict import predict as predict_tf
+from runtime.pai.tensorflow.train import train as train_tf
+
+try:
+    # (TODO: lhw) split entry.py into multiple files,
+    # so, we can only import needed packages
+    from runtime.pai.xgboost.predict import predict as predict_xgb
+    from runtime.pai.xgboost.train import train as train_xgb
+    from runtime.pai.xgboost.explain import explain as explain_xgb
+    from runtime.pai.xgboost.evaluate import evaluate as evaluate_xgb
+except:  # noqa: E722
+    pass
 
 
 def call_fun(func, params):
     """Call a function with given params, entries in params will be treated
-    as func' param if the key matches some argument name. Do not support 
+    as func' param if the key matches some argument name. Do not support
     var-args in func.
 
     Arags:
@@ -61,12 +70,22 @@ def call_fun(func, params):
 def entrypoint():
     with open("train_params.pkl", "rb") as file:
         params = pickle.load(file)
-    if params["entry_type"] == "train":
-        call_fun(train.train, params)
+    if params["entry_type"] == "train_tf":
+        call_fun(train_tf, params)
+    elif params["entry_type"] == "train_xgb":
+        call_fun(train_xgb, params)
     elif params["entry_type"] == "predict_tf":
-        call_fun(predict.predict_tf, params)
+        call_fun(predict_tf, params)
+    elif params["entry_type"] == "predict_xgb":
+        call_fun(predict_xgb, params)
     elif params["entry_type"] == "explain_tf":
-        call_fun(explain.explain_tf, params)
+        call_fun(explain_tf, params)
+    elif params["entry_type"] == "explain_xgb":
+        call_fun(explain_xgb, params)
+    elif params["entry_type"] == "evaluate_tf":
+        call_fun(evaluate_tf, params)
+    elif params["entry_type"] == "evaluate_xgb":
+        call_fun(evaluate_xgb, params)
 
 
 if __name__ == "__main__":

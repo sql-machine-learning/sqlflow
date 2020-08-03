@@ -17,4 +17,4 @@ if [[ "$changed_py_files" == "" ]]; then
     exit 0
 fi
 pylint "$changed_py_files"
-flake8 "changed_py_files"
+flake8 "$changed_py_files"

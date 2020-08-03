@@ -18,12 +18,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 from runtime.oss import copyfileobj
 
-# TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
+# TODO(shendiaomo): extract common code from tensorflow/explain.py
+# and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later
 
 
 def plot_and_save(plotfunc,
-                  is_pai=False,
                   oss_dest=None,
                   oss_ak=None,
                   oss_sk=None,
@@ -46,10 +46,8 @@ def plot_and_save(plotfunc,
 
     plotfunc()
     plt.savefig(filename, bbox_inches='tight')
-    if is_pai:
-        if not oss_dest:
-            print("Skip save file to OSS because oss_dest is not given")
-            return
+
+    if oss_dest:
         copyfileobj(filename + '.png', oss_dest, oss_ak, oss_sk, oss_endpoint,
                     oss_bucket_name)
     else:

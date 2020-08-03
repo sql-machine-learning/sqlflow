@@ -21,7 +21,8 @@ def fetch_samples(conn, query, n=1):
     Args:
         conn: the connection object.
         query (str): the select SQL statement.
-        n (int): the maximum sample number to query. Query all samples if n < 0.
+        n (int): the maximum sample number to query. Query all samples
+            if n < 0.
 
     Returns:
         A generator which yields each row of the data.

@@ -82,7 +82,9 @@ func New(executor string) Executor {
 		return &paiExecutor{&pythonExecutor{}}
 	case "alisa":
 		return &alisaExecutor{&pythonExecutor{}}
-	// TODO(typhoonzero): add executor like alps, elasticdl
+	case "alps":
+		return &alpsExecutor{&pythonExecutor{}}
+	// TODO(typhoonzero): add executor for elasticdl
 	default:
 		return &pythonExecutor{}
 	}
@@ -384,9 +386,13 @@ func (s *pythonExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
 		resultColumnName += "_value"
 	}
 
-	resultColumnType := "FLOAT"
-	if strings.HasSuffix(stmt.VariableType, "Integers") {
+	resultColumnType := ""
+	if stmt.VariableType == "Binary" || strings.HasSuffix(stmt.VariableType, "Integers") {
 		resultColumnType = "BIGINT"
+	} else if strings.HasSuffix(stmt.VariableType, "Reals") {
+		resultColumnType = "FLOAT"
+	} else {
+		return fmt.Errorf("unsupported variable_type = %s", stmt.VariableType)
 	}
 
 	resultColumnType, err = fieldType(driver, resultColumnType)

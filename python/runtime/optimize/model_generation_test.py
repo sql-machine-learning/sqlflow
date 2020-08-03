@@ -11,41 +11,100 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import unittest
 
 import numpy as np
 import pandas as pd
 import pyomo.environ as pyomo_env
-from runtime.optimize.optimize import (
-    generate_model_with_data_frame,
-    generate_objective_or_constraint_expressions, solve_model)
+from runtime.optimize.local import generate_model_with_data_frame, solve_model
+from runtime.optimize.model_generation import (
+    IDENTIFIER_REGEX, assert_are_valid_tokens,
+    generate_objective_and_constraint_expr)
+
+
+class TestAssertValidTokens(unittest.TestCase):
+    def is_identifier(self, token):
+        return IDENTIFIER_REGEX.fullmatch(token) is not None
+
+    def test_is_identifier(self):
+        tokens = ['a', '_', 'a123', '__', '_123']
+        for t in tokens:
+            self.assertTrue(self.is_identifier(t))
+
+        tokens = ['1', '123_', '3def']
+        for t in tokens:
+            self.assertFalse(self.is_identifier(t))
+
+    def test_assert_valid_tokens(self):
+        tokens = ['SUM', '(', 'finishing', '*', 'product', ')', '<=', '100']
+
+        # valid expression
+        assert_are_valid_tokens(columns=['finishing', 'product'],
+                                tokens=tokens,
+                                result_value_name='product')
+
+        # invalid group_by
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=tokens,
+                                    result_value_name='product',
+                                    group_by='invalid_group_by')
+
+        # tokens = None
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=None,
+                                    result_value_name='product')
+
+        # tokens = []
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=[],
+                                    result_value_name='product')
+
+        # tokens not inside columns
+        tokens = [
+            'SUM', '(', 'finishing', '*', 'invalid_token', ')', '<=', '100'
+        ]
+        with self.assertRaises(AssertionError):
+            assert_are_valid_tokens(columns=['finishing', 'product'],
+                                    tokens=tokens,
+                                    result_value_name='product')
+
+        # tokens not inside columns but equal to result_value_name
+        # ignore cases
+        tokens = [
+            'SUM', '(', 'FinisHing', '*', 'pRoducT_VaLue', ')', '<=', '100'
+        ]
+        assert_are_valid_tokens(columns=['finishing', 'product'],
+                                tokens=tokens,
+                                result_value_name='product_value')
 
 
 class TestModelGenerationBase(unittest.TestCase):
-    def generate_objective(self,
-                           tokens,
-                           result_value_name,
-                           variable_str="model.x",
-                           data_frame_str="DATA_FRAME"):
-        expressions = generate_objective_or_constraint_expressions(
-            tokens=tokens,
-            data_frame=self.data_frame,
+    def generate_objective(self, tokens, result_value_name):
+        obj_expr, _ = generate_objective_and_constraint_expr(
+            columns=self.data_frame.columns,
+            objective=tokens,
+            constraints=None,
             variables=self.variables,
             result_value_name=result_value_name,
-            variable_str=variable_str,
-            data_frame_str=data_frame_str)
-        self.assertEqual(len(expressions), 1)
-        self.assertEqual(len(expressions[0]), 1)
-        return expressions[0][0]
+            variable_str="model.x",
+            data_str="DATA_FRAME")
+        return obj_expr
 
     def generate_constraints(self, constraint, result_value_name):
-        expressions = generate_objective_or_constraint_expressions(
-            tokens=constraint.get("tokens"),
-            data_frame=self.data_frame,
+        _, c_expr = generate_objective_and_constraint_expr(
+            columns=self.data_frame.columns,
+            objective=None,
+            constraints=[constraint],
             variables=self.variables,
             result_value_name=result_value_name,
-            group_by=constraint.get("group_by"))
-        return expressions
+            variable_str="model.x",
+            data_str="DATA_FRAME")
+        assert len(c_expr) == 1, "invalid constraint expression"
+        return c_expr[0]
 
 
 class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
@@ -63,6 +122,28 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
 
         self.variables = ["product"]
 
+    def replace_objective_token(self, objective, old, new):
+        o = copy.copy(objective)
+        for i, token in enumerate(o):
+            if token == old:
+                o[i] = new
+
+        return o
+
+    def replace_constraint_token(self, constraint, old, new):
+        def replace_one_constraint(c):
+            c = copy.deepcopy(c)
+            for i, token in enumerate(c["tokens"]):
+                if token == old:
+                    c["tokens"][i] = new
+
+            return c
+
+        if isinstance(constraint, (list, tuple)):
+            return [replace_one_constraint(c) for c in constraint]
+        else:
+            return replace_one_constraint(constraint)
+
     def test_multiple_brackets(self):
         constraint = {
             "tokens": [
@@ -70,19 +151,25 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
                 'product', ')', ')', '<=', '100'
             ]
         }
-        c0 = self.generate_constraints(constraint, result_value_name='product')
-        c1 = self.generate_constraints(constraint,
-                                       result_value_name="product_value")
-        self.assertEqual(len(c0), 1)
-        self.assertEqual(len(c0[0]), 1)
-        self.assertEqual(len(c1), 1)
-        self.assertEqual(len(c1[0]), 1)
-        self.assertEqual(c0[0][0], c1[0][0])
+        c0, range0, vars0 = self.generate_constraints(
+            constraint, result_value_name='product')
+
+        result_value_name = "product_value"
+        c1, range1, vars1 = self.generate_constraints(
+            self.replace_constraint_token(constraint, "product",
+                                          result_value_name),
+            result_value_name)
+
+        self.assertEqual(c0, c1)
+        self.assertEqual(range0, range1)
+        self.assertEqual(vars0, vars1)
+        self.assertTrue(vars0 is None)
+        self.assertTrue(range0 is None)
 
         self.assertEqual(
-            c0[0][0],
-            'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0]+sum([model.x[i_1] for i_1 in model.x]) for i_0 in model.x])<=100'
-        )
+            c0,
+            'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0]+sum([model.x[i_1] '
+            'for i_1 in model.x]) for i_0 in model.x])<=100')
 
     def test_model_generation(self):
         objective = [
@@ -103,49 +190,62 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
             },
         ]
 
-        obj_str1 = self.generate_objective(objective, "product_value")
+        result_value_name = "product_value"
+        obj_str1 = self.generate_objective(
+            self.replace_objective_token(objective, "product",
+                                         result_value_name), result_value_name)
         obj_str2 = self.generate_objective(objective, "product")
         self.assertEqual(obj_str1, obj_str2)
         self.assertEqual(
             obj_str1,
-            'sum([(DATA_FRAME["price"][i_0]-DATA_FRAME["materials_cost"][i_0]-DATA_FRAME["other_cost"][i_0])*model.x[i_0] for i_0 in model.x])'
-        )
+            'sum([(DATA_FRAME["price"][i_0]-DATA_FRAME["materials_cost"][i_0]-'
+            'DATA_FRAME["other_cost"][i_0])*model.x[i_0] for i_0 in model.x])')
 
-        const_01 = self.generate_constraints(constraints[0], "product_value")
-        const_02 = self.generate_constraints(constraints[0], "product")
-        self.assertEqual(len(const_01), 1)
-        self.assertEqual(len(const_01[0]), 1)
-        self.assertEqual(len(const_02), 1)
-        self.assertEqual(len(const_02[0]), 1)
-        self.assertEqual(const_01[0][0], const_02[0][0])
+        const_01, range_01, vars_01 = self.generate_constraints(
+            self.replace_constraint_token(constraints[0], "product",
+                                          result_value_name),
+            result_value_name)
+        const_02, range_02, vars_02 = self.generate_constraints(
+            constraints[0], "product")
+        self.assertEqual(const_01, const_02)
+        self.assertEqual(range_01, range_02)
+        self.assertEqual(vars_01, vars_02)
+        self.assertTrue(range_01 is None)
+        self.assertTrue(vars_01 is None)
+
         self.assertEqual(
-            const_01[0][0],
-            'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0] for i_0 in model.x])<=100'
-        )
+            const_01, 'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0] '
+            'for i_0 in model.x])<=100')
 
-        const_11 = self.generate_constraints(constraints[1], "product_value")
-        const_12 = self.generate_constraints(constraints[1], "product")
-        self.assertEqual(len(const_11), 1)
-        self.assertEqual(len(const_11[0]), 1)
-        self.assertEqual(len(const_12), 1)
-        self.assertEqual(len(const_12[0]), 1)
-        self.assertEqual(const_11[0][0], const_12[0][0])
+        const_11, range_11, vars_11 = self.generate_constraints(
+            self.replace_constraint_token(constraints[1], "product",
+                                          result_value_name),
+            result_value_name)
+        const_12, range_12, vars_12 = self.generate_constraints(
+            constraints[1], "product")
+        self.assertEqual(const_11, const_12)
+        self.assertEqual(range_11, range_12)
+        self.assertEqual(vars_11, vars_12)
+        self.assertTrue(range_11 is None)
+        self.assertTrue(vars_11 is None)
+
         self.assertEqual(
-            const_11[0][0],
-            'sum([DATA_FRAME["carpentry"][i_0]*model.x[i_0] for i_0 in model.x])<=80'
-        )
+            const_11, 'sum([DATA_FRAME["carpentry"][i_0]*model.x[i_0] '
+            'for i_0 in model.x])<=80')
 
-        const_21 = self.generate_constraints(constraints[2], "product_value")
-        const_22 = self.generate_constraints(constraints[2], "product")
-        self.assertEqual(len(const_21), 1)
-        self.assertEqual(len(const_21[0]), 2)
-        self.assertTrue(const_21[0][1] is None)
-        self.assertEqual(len(const_22), 1)
-        self.assertEqual(len(const_22[0]), 2)
-        self.assertTrue(const_22[0][1] is None)
-        self.assertEqual(const_21[0][0], const_22[0][0])
-        self.assertEqual(const_21[0][0],
-                         'model.x[i]<=DATA_FRAME["max_num"][i]')
+        const_21, range_21, vars_21 = self.generate_constraints(
+            self.replace_constraint_token(constraints[2], "product",
+                                          result_value_name),
+            result_value_name)
+        const_22, range_22, vars_22 = self.generate_constraints(
+            constraints[2], "product")
+        self.assertEqual(const_21, const_22)
+        self.assertEqual(range_21, range_22)
+        self.assertEqual(vars_21, vars_22)
+        self.assertEqual(range_21, "model.x")
+        self.assertEqual(vars_21, ["__index"])
+        self.assertEqual(const_21,
+                         'model.x[__index]<=DATA_FRAME["max_num"][__index]')
 
         # TODO(sneaxiy): need to add more tests to generated models
         model1 = generate_model_with_data_frame(data_frame=self.data_frame,
@@ -164,10 +264,12 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
             data_frame=self.data_frame,
             variables=self.variables,
             variable_type="Reals",
-            result_value_name="product_value",
-            objective=objective,
+            result_value_name=result_value_name,
+            objective=self.replace_objective_token(objective, "product",
+                                                   result_value_name),
             direction="minimize",
-            constraints=constraints)
+            constraints=self.replace_constraint_token(constraints, "product",
+                                                      result_value_name))
         self.assertTrue(isinstance(model2, pyomo_env.ConcreteModel))
 
         with self.assertRaises(ValueError):
@@ -210,38 +312,38 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
 
         obj_func = self.generate_objective(objective, self.result_value_name)
         self.assertEqual(
-            obj_func,
-            'sum([DATA_FRAME["distance"][i_0]*model.x[i_0]*90/1000 for i_0 in model.x])'
-        )
+            obj_func, 'sum([DATA_FRAME["distance"][i_0]*model.x[i_0]*90/1000 '
+            'for i_0 in model.x])')
 
-        const_0 = self.generate_constraints(constraints[0],
-                                            self.result_value_name)
-        self.assertEqual(len(const_0), 2)
-        self.assertEqual(len(const_0[0]), 1)
-        self.assertEqual(len(const_0[1]), 1)
+        const_0, range_0, vars_0 = self.generate_constraints(
+            constraints[0], self.result_value_name)
+        self.assertEqual(
+            const_0, 'sum([model.x[i_0] for i_0 in __import__("numpy")'
+            '.where(DATA_FRAME["plants"] == __value)[0]])'
+            '<=DATA_FRAME["capacity"][__index]')
+        self.assertEqual(
+            range_0, 'zip(*__import__("numpy").unique(DATA_FRAME["plants"], '
+            'return_index=True))')
+        self.assertEqual(vars_0, ["__value", "__index"])
 
-        self.assertEqual(const_0[0][0],
-                         "sum([model.x[i_0] for i_0 in [0, 1]])<=100")
-        self.assertEqual(const_0[1][0],
-                         "sum([model.x[i_0] for i_0 in [2, 3]])<=90")
+        const_1, range_1, vars_1 = self.generate_constraints(
+            constraints[1], self.result_value_name)
 
-        const_1 = self.generate_constraints(constraints[1],
-                                            self.result_value_name)
-        self.assertEqual(len(const_1), 2)
-        self.assertEqual(len(const_1[0]), 1)
-        self.assertEqual(len(const_1[1]), 1)
-        self.assertEqual(const_1[0][0],
-                         "sum([model.x[i_0] for i_0 in [0, 2]])>=130")
-        self.assertEqual(const_1[1][0],
-                         "sum([model.x[i_0] for i_0 in [1, 3]])>=60")
+        self.assertEqual(
+            const_1, 'sum([model.x[i_0] for i_0 in __import__("numpy").'
+            'where(DATA_FRAME["markets"] == __value)[0]])>='
+            'DATA_FRAME["demand"][__index]')
+        self.assertEqual(
+            range_1, 'zip(*__import__("numpy").unique(DATA_FRAME["markets"], '
+            'return_index=True))')
+        self.assertEqual(vars_1, ["__value", "__index"])
 
-        const_2 = self.generate_constraints(constraints[2],
-                                            self.result_value_name)
-        self.assertEqual(len(const_2), 1)
-        self.assertEqual(len(const_2[0]), 2)
-        self.assertEqual(const_2[0][0],
-                         'model.x[i]*100>=DATA_FRAME["demand"][i]')
-        self.assertTrue(const_2[0][1] is None)
+        const_2, range_2, vars_2 = self.generate_constraints(
+            constraints[2], self.result_value_name)
+        self.assertEqual(
+            const_2, 'model.x[__index]*100>=DATA_FRAME["demand"][__index]')
+        self.assertEqual(range_2, 'model.x')
+        self.assertEqual(vars_2, ["__index"])
 
         model = generate_model_with_data_frame(
             data_frame=self.data_frame,

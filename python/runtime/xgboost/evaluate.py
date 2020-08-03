@@ -12,21 +12,33 @@
 # limitations under the License.
 
 import numpy as np
-import sklearn
+import sklearn.metrics
 import xgboost as xgb
 from runtime import db
 from runtime.xgboost.dataset import xgb_dataset
-# yapf: disable
-from sklearn.metrics import (accuracy_score, average_precision_score,
-                             balanced_accuracy_score, brier_score_loss,
-                             cohen_kappa_score, explained_variance_score,
-                             f1_score, fbeta_score, hamming_loss, hinge_loss,
-                             log_loss, mean_absolute_error, mean_squared_error,
-                             mean_squared_log_error, median_absolute_error,
-                             precision_score, r2_score, recall_score,
-                             roc_auc_score, zero_one_loss)
 
-# yapf: enable
+SKLEARN_METRICS = [
+    'accuracy_score',
+    'average_precision_score',
+    'balanced_accuracy_score',
+    'brier_score_loss',
+    'cohen_kappa_score',
+    'explained_variance_score',
+    'f1_score',
+    'fbeta_score',
+    'hamming_loss',
+    'hinge_loss',
+    'log_loss',
+    'mean_absolute_error',
+    'mean_squared_error',
+    'mean_squared_log_error',
+    'median_absolute_error',
+    'precision_score',
+    'r2_score',
+    'recall_score',
+    'roc_auc_score',
+    'zero_one_loss',
+]
 
 DEFAULT_PREDICT_BATCH_SIZE = 10000
 
@@ -95,8 +107,9 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
             # using the original prediction result of predict API by default
             pass
     else:
-        # prediction output with multi-class job has two dimensions, this is a temporary
-        # way, can remove this else branch when we can load the model meta not only on PAI submitter.
+        # prediction output with multi-class job has two dimensions, this
+        # is a temporary way, can remove this else branch when we can load
+        # the model meta not only on PAI submitter.
         if len(preds.shape) == 2:
             preds = np.argmax(np.array(preds), axis=1)
 
@@ -121,7 +134,9 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
 
     evaluate_results = dict()
     for metric_name in validation_metrics:
-        metric_func = eval(metric_name)
+        if metric_name not in SKLEARN_METRICS:
+            raise ValueError("unsupported metric: %s" % metric_name)
+        metric_func = getattr(sklearn.metrics, metric_name)
         metric_value = metric_func(y_test, preds)
         evaluate_results[metric_name] = metric_value
 

@@ -22,13 +22,16 @@ from os import path
 
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.model import EstimatorType
 from runtime.pai import cluster_conf
+from runtime.pai.kmeans import get_train_kmeans_pai_cmd
+from runtime.pai.random_forest import get_train_random_forest_pai_cmd
 
 LIFECYCLE_ON_TMP_TABLE = 7
 JOB_ARCHIVE_FILE = "job.tar.gz"
 PARAMS_FILE = "params.txt"
 TRAIN_PARAMS_FILE = "train_params.pkl"
-ENTRY_DIR = "runtime/pai/"
+ENTRY_FILE = "entry.py"
 
 TF_REQUIREMENT = """
 adanet==0.8.0
@@ -40,6 +43,26 @@ shap==0.28.5
 scikit-learn==0.20.4
 tensorflow-datasets==3.0.0
 """
+
+XGB_REQUIREMENT = TF_REQUIREMENT + """
+xgboost==0.82
+sklearn2pmml==0.56.0
+"""
+
+
+def get_requirement(model_name):
+    """Get required python package according to estimator name
+
+    Args:
+        estimator: name of the model
+
+    Returns:
+        A string with multilines, each line is a requirement
+    """
+    if model_name.lower().startswith("xgboost"):
+        return XGB_REQUIREMENT
+    else:
+        return TF_REQUIREMENT
 
 
 def gen_rand_string(slen=16):
@@ -75,15 +98,15 @@ def create_tmp_table_from_select(select, datasource):
     return "%s.%s" % (project, tmp_tb_name)
 
 
-def drop_tmp_tables(tables, datasource):
+def drop_tables(tables, datasource):
     """Drop given tables in datasource"""
     conn = db.connect_with_data_source(datasource)
     try:
         for table in tables:
             if table != "":
-                drop_sql = "DROP TABLE %s" % table
+                drop_sql = "DROP TABLE IF EXISTS %s" % table
                 db.execute(conn, drop_sql)
-    except:
+    except:  # noqa: E722
         # odps will clear table itself, so even fail here, we do
         # not need to raise error
         print("Encounter error on drop tmp table")
@@ -105,6 +128,23 @@ def get_oss_model_url(model_full_path):
         The OSS url of the model
     """
     return "oss://%s/%s" % (oss.SQLFLOW_MODELS_BUCKET, model_full_path)
+
+
+def drop_pai_model(datasource, model_name):
+    """Drop PAI model
+
+    Args:
+        datasource: current datasource
+        model_name: name of the model to drop
+    """
+    dsn = get_datasource_dsn(datasource)
+    user, passwd, address, database = db.parseMaxComputeDSN(dsn)
+    cmd = "drop offlinemodel if exists %s" % model_name
+    subprocess.run([
+        "odpscmd", "-u", user, "-p", passwd, "--project", database,
+        "--endpoint", address, "-e", cmd
+    ],
+                   check=True)
 
 
 def create_pai_hyper_param_file(cwd, filename, model_path):
@@ -271,7 +311,8 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     job_name = "_".join(["sqlflow", model_name]).replace(".", "_")
     cf_quote = json.dumps(cluster_config).replace("\"", "\\\"")
 
-    # submit table should format as: odps://<project>/tables/<table >,odps://<project>/tables/<table > ...
+    # submit table should format as: odps://<project>/tables/<table >,
+    # odps://<project>/tables/<table > ...
     submit_tables = max_compute_table_url(train_table)
     if train_table != val_table and val_table:
         val_table = max_compute_table_url(val_table)
@@ -281,7 +322,8 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
         table = max_compute_table_url(res_table)
         output_tables = "-Doutputs=%s" % table
 
-    # NOTE(typhoonzero): use - DhyperParameters to define flags passing OSS credentials.
+    # NOTE(typhoonzero): use - DhyperParameters to define flags passing
+    # OSS credentials.
     # TODO(typhoonzero): need to find a more secure way to pass credentials.
     cmd = ("pai -name tensorflow1150 -project algo_public_dev "
            "-DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn "
@@ -293,8 +335,8 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     oss_checkpoint_configs = os.getenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
     if not oss_checkpoint_configs:
         raise SQLFlowDiagnostic(
-            "need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when submitting to PAI"
-        )
+            "need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when "
+            "submitting to PAI")
     ckpt_conf = json.loads(oss_checkpoint_configs)
     model_url = get_oss_model_url(oss_model_path)
     role_name = get_project_role_name(project)
@@ -335,14 +377,19 @@ def prepare_archive(cwd, conf, project, estimator, model_name, train_tbl,
         pickle.dump(train_params, param_file, protocol=2)
 
     with open(path.join(cwd, "requirements.txt"), "w") as require:
-        require.write(TF_REQUIREMENT)
+        require.write(get_requirement(estimator))
+
+    # copy entry.py to top level directory, so the package name `xgboost`
+    # and `tensorflow` in runtime.pai will not conflict with the global ones
+    shutil.copyfile(path.join(path.dirname(__file__), ENTRY_FILE),
+                    path.join(cwd, ENTRY_FILE))
     copy_python_package("runtime", cwd)
     copy_python_package("sqlflow_models", cwd)
     copy_custom_package(estimator, cwd)
 
     args = [
-        "tar", "czf", JOB_ARCHIVE_FILE, "runtime", "sqlflow_models",
-        "requirements.txt", TRAIN_PARAMS_FILE
+        "tar", "czf", JOB_ARCHIVE_FILE, ENTRY_FILE, "runtime",
+        "sqlflow_models", "requirements.txt", TRAIN_PARAMS_FILE
     ]
     if subprocess.call(args, cwd=cwd) != 0:
         raise SQLFlowDiagnostic("Can't zip resource")
@@ -354,16 +401,17 @@ def save_model_to_sqlfs(datasource, model_oss_path, model_name):
 
 
 # (TODO: lhw) adapt this interface after we do feature derivation in Python
-def submit_pai_tf_train(datasource, estimator_string, select,
-                        validation_select, model_params, model_name,
-                        pre_trained_model, **train_params):
+def submit_pai_train(datasource, estimator_string, select, validation_select,
+                     model_params, model_name, pre_trained_model,
+                     **train_params):
     """This function submit PAI-TF train task to PAI platform
 
     Args:
         datasource: string
-            Like: odps://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
+            Like: odps://access_id:access_key@service.com/api?
+                         curr_project=test_ci&scheme=http
         estimator_string: string
-            The name of tensorflow estimator
+            Tensorflow estimator name, Keras class name, or XGBoost
         select: string
             The SQL statement for selecting data for train
         validation_select: string
@@ -381,7 +429,11 @@ def submit_pai_tf_train(datasource, estimator_string, select,
     params = dict(locals())
     del params["train_params"]
     params.update(train_params)
-    params["entry_type"] = "train"
+
+    if estimator_string.lower().startswith("xgboost"):
+        params["entry_type"] = "train_xgb"
+    else:
+        params["entry_type"] = "train_tf"
 
     cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
     conf = cluster_conf.get_cluster_config(model_params)
@@ -404,15 +456,26 @@ def submit_pai_tf_train(datasource, estimator_string, select,
                     train_table, val_table, path_to_save, params)
 
     # submit pai task to execute the training
-    cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                         "file://" + path.join(cwd, PARAMS_FILE),
-                         ENTRY_DIR + "entry.py", model_name, path_to_save,
-                         train_table, val_table, "", project)
+    if estimator_string.lower() == "randomforests":
+        cmd = get_train_random_forest_pai_cmd(
+            model_name, train_table, model_params,
+            train_params["feature_column_names"],
+            train_params["label_meta"]["feature_name"])
+    elif estimator_string.lower() == "kmeans":
+        cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
+                                       model_params,
+                                       train_params["feature_column_names"])
+    else:
+        cmd = get_pai_tf_cmd(conf,
+                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                             "file://" + path.join(cwd, PARAMS_FILE),
+                             ENTRY_FILE, model_name, path_to_save, train_table,
+                             val_table, "", project)
     submit_pai_task(cmd, datasource)
 
     # save trained model to sqlfs
     save_model_to_sqlfs(datasource, path_to_save, model_name)
-    drop_tmp_tables([train_table, val_table], datasource)
+    drop_tables([train_table, val_table], datasource)
 
 
 def get_oss_saved_model_type_and_estimator(model_name, project):
@@ -429,12 +492,13 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
         If model is TensorFlow model, return type and estimator name
         If model is XGBoost, or other PAI model, just return model type
     """
-    # FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
-    # should use a general method to fetch the model and see the model type.
+    # FIXME(typhoonzero): if the model not exist on OSS, assume it's a random
+    # forest model should use a general method to fetch the model and see the
+    # model type.
     bucket = oss.get_models_bucket()
     tf = bucket.object_exists(model_name + "/tensorflow_model_desc")
     if tf:
-        modelType = oss.MODEL_TYPE_TF
+        modelType = EstimatorType.TENSORFLOW
         bucket.get_object_to_file(
             model_name + "/tensorflow_model_desc_estimator",
             "tmp_estimator_name")
@@ -444,10 +508,10 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
 
     xgb = bucket.object_exists(model_name + "/xgboost_model_desc")
     if xgb:
-        modelType = oss.MODEL_TYPE_XGB
-        return modelType, ""
+        modelType = EstimatorType.XGBOOST
+        return modelType, "xgboost"
 
-    return oss.MODEL_TYPE_PAIML, ""
+    return EstimatorType.PAIML, ""
 
 
 def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
@@ -469,33 +533,32 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
     Returns:
         The command to submit PAI prediction task
     """
-    # NOTE(typhoonzero): for PAI machine learning toolkit predicting, we can not load the TrainStmt
-    # since the model saving is fully done by PAI. We directly use the columns in SELECT
-    # statement for prediction, error will be reported by PAI job if the columns not match.
+    # NOTE(typhoonzero): for PAI machine learning toolkit predicting, we can
+    # not load the TrainStmt since the model saving is fully done by PAI.
+    # We directly use the columns in SELECT statement for prediction, error
+    # will be reported by PAI job if the columns not match.
     conn = db.connect_with_data_source(datasource)
-    schema = db.get_table_schema(conn, result_table)
-    result_fields = [col[0] for col in schema]
-
-    if model_type == oss.MODEL_TYPE_PAIML:
+    if model_type == EstimatorType.PAIML:
+        schema = db.get_table_schema(conn, predict_table)
+        result_fields = [col[0] for col in schema]
         return ('''pai -name prediction -DmodelName="%s"  '''
-                '''-DinputTableName="%s"  DoutputTableName="%s"  '''
+                '''-DinputTableName="%s"  -DoutputTableName="%s"  '''
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
-    elif model_type == oss.MODEL_TYPE_XGB:
-        # (TODO:lhw) add cmd for XGB
-        raise SQLFlowDiagnostic("not implemented")
     else:
+        schema = db.get_table_schema(conn, result_table)
+        result_fields = [col[0] for col in schema]
+        # For TensorFlow and XGBoost, we build a pai-tf cmd to submit the task
         return get_pai_tf_cmd(cluster_conf,
                               "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                               "file://" + path.join(cwd, PARAMS_FILE),
-                              ENTRY_DIR + "entry.py", model_name,
-                              oss_model_path, predict_table, "", result_table,
-                              project)
+                              ENTRY_FILE, model_name, oss_model_path,
+                              predict_table, "", result_table, project)
 
 
 def create_predict_result_table(datasource, select, result_table, label_column,
-                                train_label_column):
+                                train_label_column, model_type):
     """Create predict result table with given name and label column
 
     Args:
@@ -505,9 +568,14 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         label_column: name of the label column, if not exist in select
             result, we will add a int column in the result table
         train_label_column: name of the label column when training
+        model_type: type of model defined in runtime.oss
     """
     conn = db.connect_with_data_source(datasource)
     db.execute(conn, "DROP TABLE IF EXISTS %s" % result_table)
+    # PAI ml will create result table itself
+    if model_type == EstimatorType.PAIML:
+        return
+
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
     db.execute(conn, create_table_sql)
@@ -532,18 +600,18 @@ def create_predict_result_table(datasource, select, result_table, label_column,
 
 def setup_predict_entry(params, model_type):
     """Setup PAI prediction entry function according to model type"""
-    if model_type == oss.MODEL_TYPE_TF:
+    if model_type == EstimatorType.TENSORFLOW:
         params["entry_type"] = "predict_tf"
-    elif model_type == oss.MODEL_TYPE_PAIML:
+    elif model_type == EstimatorType.PAIML:
         params["entry_type"] = "predict_paiml"
-    elif model_type == oss.MODEL_TYPE_XGB:
+    elif model_type == EstimatorType.XGBOOST:
         params["entry_type"] = "predict_xgb"
     else:
         raise SQLFlowDiagnostic("unsupported model type: %d" % model_type)
 
 
-def submit_pai_tf_predict(datasource, select, result_table, label_column,
-                          model_name, model_attrs):
+def submit_pai_predict(datasource, select, result_table, label_column,
+                       model_name, model_attrs):
     """This function pack needed params and resource to a tarball
     and submit a prediction task to PAI
 
@@ -558,26 +626,26 @@ def submit_pai_tf_predict(datasource, select, result_table, label_column,
     params = dict(locals())
 
     cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
-    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-    # "SELECT fields,... FROM table"
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
+    # is like: "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a submitting
-    # argument of format "odps://project/tables/table_name"
+    # format resultTable name to "db.table" to let the codegen form a
+    # submitting argument of format "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
-
-    # (TODO:lhw) get train label column from model meta
-    create_predict_result_table(datasource, data_table, result_table,
-                                label_column, None)
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     params["oss_model_path"] = oss_model_path
     model_type, estimator = get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
     setup_predict_entry(params, model_type)
+
+    # (TODO:lhw) get train label column from model meta
+    create_predict_result_table(datasource, data_table, result_table,
+                                label_column, None, model_type)
 
     conf = cluster_conf.get_cluster_config(model_attrs)
     prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
@@ -587,7 +655,7 @@ def submit_pai_tf_predict(datasource, select, result_table, label_column,
                               model_name, data_table, result_table, model_type,
                               cwd)
     submit_pai_task(cmd, datasource)
-    drop_tmp_tables([data_table], datasource)
+    drop_tables([data_table], datasource)
 
 
 def get_create_shap_result_sql(conn, data_table, result_table, label_column):
@@ -597,7 +665,7 @@ def get_create_shap_result_sql(conn, data_table, result_table, label_column):
         conn: a database connection
         data_table: table name to read data from
         result_table: result table name
-        label_column: column name of label 
+        label_column: column name of label
 
     Returns:
         a sql statement to create SHAP result table
@@ -627,7 +695,9 @@ def create_explain_result_table(datasource, data_table, result_table,
     db.execute(conn, drop_stmt)
 
     create_stmt = ""
-    if model_type == oss.MODEL_TYPE_TF:
+    if model_type == EstimatorType.PAIML:
+        return
+    elif model_type == EstimatorType.TENSORFLOW:
         if estimator.startswith("BoostedTrees"):
             column_def = ""
             if conn.driver == "mysql":
@@ -645,7 +715,7 @@ def create_explain_result_table(datasource, data_table, result_table,
             create_stmt = get_create_shap_result_sql(conn, data_table,
                                                      result_table,
                                                      label_column)
-    elif model_type == oss.MODEL_TYPE_XGB:
+    elif model_type == EstimatorType.XGBOOST:
         if not label_column:
             raise SQLFlowDiagnostic(
                 "need to specify WITH label_col=lable_col_name "
@@ -659,8 +729,6 @@ def create_explain_result_table(datasource, data_table, result_table,
 
     if not db.execute(conn, create_stmt):
         raise SQLFlowDiagnostic("Can't create explain result table")
-    # (TODO: lhw) conn should be in with context,
-    # we have to modify the db interface to support this feature
 
 
 def get_explain_random_forests_cmd(datasource, model_name, data_table,
@@ -677,9 +745,10 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
     Returns:
         a PAI cmd to explain the data using given model
     """
-    # NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
-    # since the model saving is fully done by PAI. We directly use the columns in SELECT
-    # statement for prediction, error will be reported by PAI job if the columns not match.
+    # NOTE(typhoonzero): for PAI random forests predicting, we can not load
+    # the TrainStmt since the model saving is fully done by PAI. We directly
+    # use the columns in SELECT statement for prediction, error will be
+    # reported by PAI job if the columns not match.
     if not label_column:
         raise SQLFlowDiagnostic("must specify WITH label_column when using "
                                 "pai random forest to explain models")
@@ -689,14 +758,16 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
     db.execute(conn, "DROP TABLE IF EXISTS %s;" % result_table)
     schema = db.get_table_schema(conn, data_table)
     fields = [f[0] for f in schema if f[0] != label_column]
-    return (
-        '''pai -name feature_importance -project algo_public '''
-        '''-DmodelName="%s" -DinputTableName="%s"  '''
-        '''-DoutputTableName="%s" -DlabelColName="%s" -DfeatureColNames="%s" '''
-    ) % (model_name, data_table, result_table, label_column, ",".join(fields))
+    return ('''pai -name feature_importance -project algo_public '''
+            '''-DmodelName="%s" -DinputTableName="%s"  '''
+            '''-DoutputTableName="%s" -DlabelColName="%s" '''
+            '''-DfeatureColNames="%s" ''') % (model_name, data_table,
+                                              result_table, label_column,
+                                              ",".join(fields))
 
 
-def submit_explain(datasource, select, result_table, model_name, model_attrs):
+def submit_pai_explain(datasource, select, result_table, model_name,
+                       model_attrs):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
 
@@ -710,13 +781,13 @@ def submit_explain(datasource, select, result_table, model_name, model_attrs):
     params = dict(locals())
 
     cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
-    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-    # "SELECT fields,... FROM table"
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
+    # is like: "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a submitting
-    # argument of format "odps://project/tables/table_name"
+    # format resultTable name to "db.table" to let the codegen form a
+    # submitting argument of format "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
@@ -733,22 +804,119 @@ def submit_explain(datasource, select, result_table, model_name, model_attrs):
 
     conf = cluster_conf.get_cluster_config(model_attrs)
 
-    if model_type == oss.MODEL_TYPE_PAIML:
+    if model_type == EstimatorType.PAIML:
         cmd = get_explain_random_forests_cmd(datasource, model_name,
                                              data_table, result_table,
                                              label_column)
-    elif model_type == oss.MODEL_TYPE_XGB:
-        # (TODO:lhw) add XGB explain cmd
-        pass
     else:
-        params["entry_type"] = "explain_tf"
+        if model_type == EstimatorType.XGBOOST:
+            params["entry_type"] = "explain_xgb"
+        else:
+            params["entry_type"] = "explain_tf"
         prepare_archive(cwd, conf, project, estimator, model_name, data_table,
                         "", oss_model_path, params)
         cmd = get_pai_tf_cmd(conf,
                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                              "file://" + path.join(cwd, PARAMS_FILE),
-                             ENTRY_DIR + "entry.py", model_name,
-                             oss_model_path, data_table, "", result_table,
-                             project)
+                             ENTRY_FILE, model_name, oss_model_path,
+                             data_table, "", result_table, project)
     submit_pai_task(cmd, datasource)
-    drop_tmp_tables([data_table], datasource)
+    drop_tables([data_table], datasource)
+
+
+def get_evaluate_metrics(model_type, model_attrs):
+    """Get evaluate metrics from model attributes or return default
+
+    Args:
+        mode_type: type of the model, see runtime.model.EstimatorType
+        model_attrs: model attributs passed by WITH clause
+
+    Returns:
+        An array of metrics names
+    """
+    metrics = []
+    met_conf = model_attrs.get("validation.metrics") or model_attrs.get(
+        "validationMetrics")
+    if met_conf:
+        [
+            metrics.append(m) for m in met_conf.split(",")
+            if m and m not in metrics
+        ]
+    # add default if no extra metrics is provided
+    if len(metrics) == 0:
+        if model_type == EstimatorType.XGBOOST:
+            metrics.append("accuracy_score")
+        elif model_type == EstimatorType.TENSORFLOW:
+            metrics.append("Accuracy")
+        else:
+            raise SQLFlowDiagnostic("No metrics is provided.")
+    return metrics
+
+
+def create_evaluate_result_table(datasource, result_table, metrics):
+    """Create a table to hold the evaluation result
+
+    Args:
+        datasource: current datasource
+        result_table: the table name to save result
+        metrics: list of evaluation metrics names
+    """
+    drop_tables([result_table], datasource)
+    # Always add loss
+    ext_metrics = ["loss"]
+    if isinstance(metrics, list):
+        ext_metrics.extend(metrics)
+    fields = ["%s STRING" % m for m in ext_metrics]
+    sql = "CREATE TABLE IF NOT EXISTS %s (%s);" % (result_table,
+                                                   ",".join(fields))
+    conn = db.connect_with_data_source(datasource)
+    db.execute(conn, sql)
+
+
+def submit_pai_evaluate(datasource, model_name, select, result_table,
+                        model_attrs):
+    """Submit a PAI evaluation task
+
+    Args:
+        datasource: current datasource
+        model_name: model used to do evaluation
+        select: sql statement to get evaluate data set
+        result_table: the table name to save result
+        model_params: dict, Params for training, crossponding to WITH claus
+    """
+
+    params = dict(locals())
+    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
+
+    project = get_project(datasource)
+    if result_table.count(".") == 0:
+        result_table = "%s.%s" % (project, result_table)
+    oss_model_path = get_oss_model_save_path(datasource, model_name)
+    params["oss_model_path"] = oss_model_path
+
+    model_type, estimator = get_oss_saved_model_type_and_estimator(
+        oss_model_path, project)
+    if model_type == EstimatorType.PAIML:
+        raise SQLFlowDiagnostic("PAI model evaluation is not supported yet.")
+
+    data_table = create_tmp_table_from_select(select, datasource)
+    params["data_table"] = data_table
+
+    metrics = get_evaluate_metrics(model_type, model_attrs)
+    params["metrics"] = metrics
+    create_evaluate_result_table(datasource, result_table, metrics)
+
+    conf = cluster_conf.get_cluster_config(model_attrs)
+
+    if model_type == EstimatorType.XGBOOST:
+        params["entry_type"] = "evaluate_xgb"
+    else:
+        params["entry_type"] = "evaluate_tf"
+    prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
+                    oss_model_path, params)
+    cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                         "file://" + path.join(cwd, PARAMS_FILE), ENTRY_FILE,
+                         model_name, oss_model_path, data_table, "",
+                         result_table, project)
+    submit_pai_task(cmd, datasource)
+    drop_tables([data_table], datasource)

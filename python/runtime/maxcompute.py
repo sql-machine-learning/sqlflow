@@ -19,7 +19,19 @@ from odps import ODPS, tunnel
 # Here we use the sdk to operate the database
 class MaxCompute:
     @staticmethod
-    def connect(database, user, password, host, auth=""):
+    def connect(database, user, password, host):
+        """
+        Create a MaxCompute database connection object.
+
+        Args:
+            database: the MaxCompute project name.
+            user: the MaxCompute AK.
+            password: the MaxCompute SK.
+            host: the MaxCompute endpoint address.
+
+        Returns:
+            A MaxCompute database connection object.
+        """
         return ODPS(user, password, project=database, endpoint=host)
 
     @staticmethod
@@ -53,17 +65,23 @@ class MaxCompute:
                     label_idx = reader.field_names.index(
                         label_meta["feature_name"])
                 except ValueError:
-                    # NOTE(typhoonzero): For clustering model, label_column_name may not in reader.field_names when predicting.
+                    # NOTE(typhoonzero): For clustering model,
+                    # label_column_name may not in reader.field_names
+                    # when predicting.
                     label_idx = None
             else:
                 label_idx = None
 
             i = 0
             while i < r.count:
-                expected = r.count - i if r.count - i < fetch_size else fetch_size
+                if r.count - i < fetch_size:
+                    expected = r.count - i
+                else:
+                    expected = fetch_size
                 for row in [[v[1] for v in rec] for rec in r[i:i + expected]]:
-                    # NOTE: If there is no label clause in the extended SQL, the default label value would
-                    # be -1, the Model implementation can determine use it or not.
+                    # NOTE: If there is no label clause in the extended SQL,
+                    # the default label value would be -1, the Model
+                    # implementation can determine use it or not.
                     label = row[label_idx] if label_idx is not None else None
                     if label_meta and label_meta["delimiter"] != "":
                         if label_meta["dtype"] == "float32":

@@ -10,7 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import inspect
 import os
 import re
@@ -29,7 +28,8 @@ def load_pretrained_model_estimator(estimator,
         estimator_func = estimator.__init__ if inspect.isclass(
             estimator) else estimator
         estimator_spec = inspect.getargspec(estimator_func)
-        # The constructor of Estimator contains named parameter "warm_start_from"
+        # The constructor of Estimator contains named parameter
+        # "warm_start_from"
         warm_start_from_key = "warm_start_from"
         if warm_start_from_key in estimator_spec.args:
             warm_start_from = os.path.abspath(warm_start_from)

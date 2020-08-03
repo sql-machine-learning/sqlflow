@@ -26,6 +26,7 @@ import (
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/model"
 	pb "sqlflow.org/sqlflow/go/proto"
+	"sqlflow.org/sqlflow/go/step/tablewriter"
 	"sqlflow.org/sqlflow/go/tar"
 )
 
@@ -265,5 +266,95 @@ func deleteRepo(opts *options) error {
 	if !resp.Success {
 		return fmt.Errorf(resp.Message)
 	}
+	return nil
+}
+
+func listModels(opts *options) error {
+	if err := checkModelZooParam(opts); err != nil {
+		return err
+	}
+	conn, err := getModelZooServerConn(opts)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	writer, err := tablewriter.Create("ascii", 1024, os.Stdout)
+	if err != nil {
+		return err
+	}
+	writer.SetHeader(map[string]interface{}{
+		"columnNames": []string{
+			"Name", "Tag", "ModelStoreUrl", "ImageUrl", "Description", "Metric"},
+	})
+
+	start := int64(0)
+	client := pb.NewModelZooServerClient(conn)
+	for {
+		req := &pb.ListModelRequest{
+			// (TODO: lhw) add authentication information in request
+			Start: start,
+			Size:  100,
+		}
+		resp, err := client.ListModels(context.Background(), req)
+		if err != nil {
+			return err
+		}
+		if resp.Size <= 0 {
+			break
+		}
+		for _, m := range resp.ModelList {
+			writer.AppendRow([]interface{}{
+				m.Name, m.Tag, m.ModelStoreUrl, m.ImageUrl, m.Description, m.Metric,
+			})
+		}
+		start += resp.Size
+	}
+	writer.Flush()
+	return nil
+}
+
+func listRepos(opts *options) error {
+	if err := checkModelZooParam(opts); err != nil {
+		return err
+	}
+	conn, err := getModelZooServerConn(opts)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	writer, err := tablewriter.Create("ascii", 1024, os.Stdout)
+	if err != nil {
+		return err
+	}
+	writer.SetHeader(map[string]interface{}{
+		"columnNames": []string{
+			"ClassName", "ImageUrl", "Tag", "ArgDescs"},
+	})
+
+	start := int64(0)
+	client := pb.NewModelZooServerClient(conn)
+	for {
+		req := &pb.ListModelRequest{
+			// (TODO: lhw) add authentication information in request
+			Start: start,
+			Size:  100,
+		}
+		resp, err := client.ListModelRepos(context.Background(), req)
+		if err != nil {
+			return err
+		}
+		if resp.Size <= 0 {
+			break
+		}
+		for _, r := range resp.ModelDefList {
+			writer.AppendRow([]interface{}{
+				r.ClassName, r.ImageUrl, r.Tag, r.ArgDescs,
+			})
+		}
+		start += int64(resp.Size)
+	}
+	writer.Flush()
 	return nil
 }

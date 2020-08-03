@@ -11,11 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime.optimize.optflow_submit import run_optimize_on_optflow
+from runtime.optimize.optflow import run_optimize_on_optflow  # noqa: F401
 
 # Step images which submit job to OptFlow may not require pyomo module
 try:
-    from runtime.optimize.optimize import (generate_model_with_data_frame,
-                                           run_optimize_locally)
-except:
+    from runtime.optimize.local import generate_model_with_data_frame  # noqa: F401, E501
+    from runtime.optimize.local import run_optimize_locally  # noqa: F401, E501
+except:  # noqa: E722
     pass

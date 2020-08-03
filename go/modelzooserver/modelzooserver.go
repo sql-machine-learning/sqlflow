@@ -98,6 +98,7 @@ func StartModelZooServer(port int, dbConnStr string) {
 
 	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
+	logger.Infof("SQLFlow Model Zoo started at: %d", port)
 	grpcServer.Serve(lis)
 }
 
@@ -140,6 +141,7 @@ func (s *modelZooServer) ListModelRepos(ctx context.Context, req *pb.ListModelRe
 			responseList.ModelDefList,
 			perResp,
 		)
+		responseList.Size++
 	}
 	return responseList, nil
 }
@@ -187,6 +189,7 @@ LEFT JOIN %s AS c ON b.model_coll_id=c.id LIMIT %d OFFSET %d;`,
 			trainedModelList.ModelList,
 			perResp,
 		)
+		trainedModelList.Size++
 	}
 
 	return trainedModelList, nil

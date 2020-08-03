@@ -68,11 +68,11 @@ cp target/*.jar $SQLFLOW_BIN
 echo "Build model zoo ..."
 cd $SQLFLOW_BIN
 if [[ ! -d models ]]; then
-    git clone https://github.com/sql-machine-learning/models
+    git clone https://github.com/sql-machine-learning/models.git
 fi
 cd models
 git fetch origin # The residual local repo might not be on a branch.
-git checkout v0.0.5 -b v0.0.5
+git checkout v0.0.6 -b v0.0.6
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."

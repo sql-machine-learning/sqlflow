@@ -11,18 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import paiio
-except:
-    pass
-import tensorflow as tf
-from odps import ODPS, tunnel
-
 from .base import BufferedDBWriter
 
 
 class PAIMaxComputeDBWriter(BufferedDBWriter):
     def __init__(self, table_name, table_schema, buff_size):
+        import paiio
         super(PAIMaxComputeDBWriter, self).__init__(None, table_name,
                                                     table_schema, buff_size)
         table_name_parts = table_name.split(".")

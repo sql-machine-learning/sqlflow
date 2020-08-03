@@ -17,13 +17,13 @@ import re
 import numpy as np
 import runtime.db_writer as db_writer
 import six
-from odps import ODPS, tunnel
 
 
 def parseMySQLDSN(dsn):
     # [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
-    user, passwd, host, port, database, config_str = re.findall(
-        "^(\w*):(\w*)@tcp\(([.a-zA-Z0-9\-]*):([0-9]*)\)/(\w*)(\?.*)?$", dsn)[0]
+    pattern = "^(\w*):(\w*)@tcp\(([.a-zA-Z0-9\-]*):([0-9]*)\)/(\w*)(\?.*)?$"  # noqa: W605, E501
+    found_result = re.findall(pattern, dsn)
+    user, passwd, host, port, database, config_str = found_result[0]
     config = {}
     if len(config_str) > 1:
         for c in config_str[1:].split("&"):
@@ -35,7 +35,7 @@ def parseMySQLDSN(dsn):
 def parseHiveDSN(dsn):
     # usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_queuename=mr
     user_passwd, address_database, config_str = re.findall(
-        "^(.*)@([.a-zA-Z0-9/:_]*)(\?.*)?", dsn)[0]
+        "^(.*)@([.a-zA-Z0-9/:_]*)(\?.*)?", dsn)[0]  # noqa: W605
     user, passwd = user_passwd.split(":")
     if len(address_database.split("/")) > 1:
         address, database = address_database.split("/")
@@ -61,7 +61,7 @@ def parseHiveDSN(dsn):
 def parseMaxComputeDSN(dsn):
     # access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
     user_passwd, address, config_str = re.findall(
-        "^(.*)@([-.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]
+        "^(.*)@([-.a-zA-Z0-9/]*)(\?.*)?", dsn)[0]  # noqa: W605
     user, passwd = user_passwd.split(":")
     config = {}
     if len(config_str) > 1:
@@ -147,6 +147,9 @@ def connect(driver,
     return conn
 
 
+INT64_TYPE = long if six.PY2 else int  # noqa: F821
+
+
 def read_feature(raw_val, feature_spec, feature_name):
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["is_sparse"]:
@@ -182,7 +185,7 @@ def read_feature(raw_val, feature_spec, feature_name):
     elif feature_spec["dtype"] == "float32":
         return float(raw_val),
     elif feature_spec["dtype"] == "int64":
-        int_raw_val = long(raw_val) if six.PY2 else int(raw_val)
+        int_raw_val = INT64_TYPE(raw_val)
         return int_raw_val,
     elif feature_spec["dtype"] == "string":
         return str(raw_val),
@@ -203,8 +206,8 @@ def limit_select(select, n):
         n (int): the limited row number to query.
 
     Returns:
-        If n >= 0, return a new SQL statement which would query n row(s) at most.
-        If n < 0, return the original SQL statement.
+        If n >= 0, return a new SQL statement which would query n row(s)
+        at most. If n < 0, return the original SQL statement.
     """
     if n < 0:
         return select
@@ -225,7 +228,8 @@ def limit_select(select, n):
 
 try:
     import MySQLdb.constants.FIELD_TYPE as MYSQL_FIELD_TYPE
-    # Refer to http://mysql-python.sourceforge.net/MySQLdb-1.2.2/public/MySQLdb.constants.FIELD_TYPE-module.html
+    # Refer to
+    # http://mysql-python.sourceforge.net/MySQLdb-1.2.2/public/MySQLdb.constants.FIELD_TYPE-module.html # noqa: E501
     MYSQL_FIELD_TYPE_DICT = {
         MYSQL_FIELD_TYPE.TINY: "TINYINT",  # 1
         MYSQL_FIELD_TYPE.LONG: "INT",  # 3
@@ -237,7 +241,7 @@ try:
         MYSQL_FIELD_TYPE.VAR_STRING: "VARCHAR",  # 253
         MYSQL_FIELD_TYPE.STRING: "CHAR",  # 254
     }
-except:
+except:  # noqa: E722
     MYSQL_FIELD_TYPE_DICT = {}
 
 
@@ -370,7 +374,8 @@ def db_generator(conn, statement, label_meta=None, fetch_size=128):
                 label_idx = reader.field_names.index(
                     label_meta["feature_name"])
             except ValueError:
-                # NOTE(typhoonzero): For clustering model, label_column_name may not in reader.field_names when predicting.
+                # NOTE(typhoonzero): For clustering model, label_column_name
+                # may not in reader.field_names when predicting.
                 label_idx = None
         else:
             label_idx = None
@@ -379,12 +384,14 @@ def db_generator(conn, statement, label_meta=None, fetch_size=128):
             rows = cursor.fetchmany(size=fetch_size)
             if not rows:
                 break
-            # NOTE: keep the connection while training or connection will lost if no activities appear.
+            # NOTE: keep the connection while training or connection will lost
+            # if no activities appear.
             if driver == "mysql":
                 conn.ping(True)
             for row in rows:
-                # NOTE: If there is no label clause in the extended SQL, the default label value would
-                # be -1, the Model implementation can determine use it or not.
+                # NOTE: If there is no label clause in the extended SQL, the
+                # default label value would be -1, the Model implementation
+                # can determine use it or not.
                 label = row[label_idx] if label_idx is not None else -1
                 if label_meta and label_meta["delimiter"] != "":
                     if label_meta["dtype"] == "float32":
@@ -429,7 +436,7 @@ def pai_maxcompute_db_generator(table,
         while True:
             try:
                 row = pai_reader.read(num_records=1)[0]
-            except:
+            except:  # noqa: E722
                 pai_reader.close()
                 break
 
@@ -510,7 +517,7 @@ def execute(conn, sql_stmt):
     Args:
         conn: a database connection, this function will leave it open
         sql_stmt: the sql statement to execute
-    
+
     Returns:
         True on success and False on failure
     """
@@ -523,7 +530,7 @@ def execute(conn, sql_stmt):
             cur.execute(sql_stmt)
             conn.commit()
             return True
-        except:
+        except:  # noqa: E722
             return False
         finally:
             cur.close()

@@ -30,60 +30,62 @@ type pyomoNativeOptimizeFiller struct {
 }
 
 type optFlowOptimizeFiller struct {
-	UserID                string
-	Variables             []string
-	ResultValueName       string
-	VariableType          string
-	ObjectiveExpression   string
-	Direction             string
-	ConstraintExpressions []string
-	Solver                string
-	AttributeJSON         string
-	TrainTable            string
-	ResultTable           string
+	UserID          string
+	ColumnNames     []string
+	Variables       []string
+	ResultValueName string
+	VariableType    string
+	Objective       ir.OptimizeExpr
+	Direction       string
+	Constraints     []*ir.OptimizeExpr
+	Solver          string
+	AttributeJSON   string
+	TrainTable      string
+	ResultTable     string
 }
 
-const pyomoNativeOptimizeText = `
-from runtime.optimize import run_optimize_locally
+const optimizeVarObjectiveAndConstraintText = `
+variables = [{{range .Variables}}'''{{.}}''',{{end}}]
 
-variables = [{{range .Variables}}"{{.}}",{{end}}]
-
-objective = [{{range .Objective.ExpressionTokens}}"{{.}}",{{end}}]
+objective = [{{range .Objective.ExpressionTokens}}'''{{.}}''',{{end}}]
 
 constraints = [{{range .Constraints}}
     {
-        "tokens": [{{range .ExpressionTokens}}"{{.}}",{{end}}],
-        "group_by": "{{.GroupBy}}",
+        "tokens": [{{range .ExpressionTokens}}'''{{.}}''',{{end}}],
+        "group_by": '''{{.GroupBy}}''',
     },
 {{end}}]
-
-run_optimize_locally(datasource="{{.DataSource}}", 
-                     select='''{{.Select}}''',
-                     variables=variables, 
-                     variable_type="{{.VariableType}}",
-                     result_value_name="{{.ResultValueName}}",
-                     objective=objective,
-                     direction="{{.Direction}}",
-                     constraints=constraints,
-                     solver="{{.Solver}}",
-                     result_table="{{.ResultTable}}")
 `
 
-const optFlowOptimizeText = `
+const pyomoNativeOptimizeText = optimizeVarObjectiveAndConstraintText + `
+from runtime.optimize import run_optimize_locally
+
+run_optimize_locally(datasource='''{{.DataSource}}''', 
+                     select='''{{.Select}}''',
+                     variables=variables, 
+                     variable_type='''{{.VariableType}}''',
+                     result_value_name='''{{.ResultValueName}}''',
+                     objective=objective,
+                     direction='''{{.Direction}}''',
+                     constraints=constraints,
+                     solver='''{{.Solver}}''',
+                     result_table='''{{.ResultTable}}''')
+`
+
+const optFlowOptimizeText = optimizeVarObjectiveAndConstraintText + `
 from runtime.optimize import run_optimize_on_optflow
 
-variables = [{{range .Variables}}"{{.}}",{{end}}]
+columns = [{{range .ColumnNames}}'''{{.}}''',{{end}}]
 
-constraint_expressions = [{{range .ConstraintExpressions}}'''{{.}}''',{{end}}]
-
-run_optimize_on_optflow(train_table="{{.TrainTable}}",
+run_optimize_on_optflow(train_table='''{{.TrainTable}}''',
+                        columns=columns,
                         variables=variables,
-                        variable_type="{{.VariableType}}",
-                        result_value_name="{{.ResultValueName}}",
-                        objective_expression='''{{.ObjectiveExpression}}''',
-                        direction="{{.Direction}}",
-                        constraint_expressions=constraint_expressions,
-                        solver="{{.Solver}}",
-                        result_table="{{.ResultTable}}",
-                        user_number="{{.UserID}}")
+                        variable_type='''{{.VariableType}}''',
+                        result_value_name='''{{.ResultValueName}}''',
+                        objective=objective,
+                        direction='''{{.Direction}}''',
+                        constraints=constraints,
+                        solver='''{{.Solver}}''',
+                        result_table='''{{.ResultTable}}''',
+                        user_number='''{{.UserID}}''')
 `

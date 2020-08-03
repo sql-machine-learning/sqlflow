@@ -104,7 +104,5 @@ evaluate(datasource="{{.DataSource}}",
          hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
          hive_location="{{.HiveLocation}}",
          hdfs_user="{{.HDFSUser}}",
-         hdfs_pass="{{.HDFSPass}}",
-         is_pai="{{.IsPAI}}" == "true",
-         pai_table="{{.PAIEvaluateTable}}")
+         hdfs_pass="{{.HDFSPass}}")
 `

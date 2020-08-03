@@ -34,8 +34,8 @@ def init_model_with_feature_column(estimator,
     """Check if estimator have argument "feature_column" and initialize the model
        by wrapping the keras model if no "feature_column" argument detected.
 
-       NOTE: initalize estimator model can also use this function since estimators all have
-       "feature_column" argument.
+       NOTE: initalize estimator model can also use this function since
+       estimators all have "feature_column" argument.
     """
     if inspect.isclass(estimator):
         argspec = inspect.getargspec(estimator.__init__)

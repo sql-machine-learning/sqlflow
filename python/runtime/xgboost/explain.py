@@ -184,14 +184,16 @@ def explain(datasource,
 
     if result_table != "":
         if is_pai:
-            # TODO(typhoonzero): the shape of shap_values is (3, num_samples, num_features)
-            # use the first dimension here, should find out how to use the other two.
+            # TODO(typhoonzero): the shape of shap_values is
+            # (3, num_samples, num_features), use the first
+            # dimension here, should find out how to use
+            # the other two.
             write_shap_values(shap_values[0], "pai_maxcompute", None,
                               result_table, feature_column_names,
                               hdfs_namenode_addr, hive_location, hdfs_user,
                               hdfs_pass)
         else:
-            conn = connect_with_data_source(datasource)
+            conn = db.connect_with_data_source(datasource)
             write_shap_values(shap_values[0], conn.driver, conn, result_table,
                               feature_column_names, hdfs_namenode_addr,
                               hive_location, hdfs_user, hdfs_pass)
@@ -205,13 +207,13 @@ def explain(datasource,
                                        show=False,
                                        feature_display_range=slice(
                                            None, -40, -1),
-                                       alpha=1), is_pai, oss_dest, oss_ak,
-            oss_sk, oss_endpoint, oss_bucket_name)
+                                       alpha=1), oss_dest, oss_ak, oss_sk,
+            oss_endpoint, oss_bucket_name)
     else:
         explainer.plot_and_save(
             lambda: shap.summary_plot(
-                shap_values, x, show=False, **summary_params), is_pai,
-            oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+                shap_values, x, show=False, **summary_params), oss_dest,
+            oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def write_shap_values(shap_values, driver, conn, result_table,

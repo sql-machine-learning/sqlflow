@@ -11,79 +11,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: ALPS supports tensorflow 1.15 currently, should run this example with
+# Tensorflow 1.15.x installed.
+
 import os
 import shutil
 
 import tensorflow as tf
-from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
-                                          SparseColumn)
-from alps.framework.engine import LocalEngine
+# pylint: disable=E0401
+# need to import GroupedSparseColumn, SparseColumn when it's used
+from alps.framework.column.column import DenseColumn
 from alps.framework.experiment import EstimatorBuilder
 from alps.io.base import OdpsConf
+# pylint: enable=E0401
 from runtime.alps.train import train
+from runtime.tensorflow.get_tf_version import tf_is_version2
 
 
 class SQLFlowEstimatorBuilder(EstimatorBuilder):
     def _build(self, experiment, run_config):
         feature_columns = []
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="deep_id_0", num_buckets=15033),
-                dimension=512,
-                combiner="mean",
-                initializer=None))
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="user_space_stat_0", num_buckets=310),
-                dimension=64,
-                combiner="mean",
-                initializer=None))
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="user_behavior_stat_0", num_buckets=511),
-                dimension=64,
-                combiner="mean",
-                initializer=None))
-        feature_columns.append(
-            tf.feature_column.embedding_column(
-                tf.feature_column.categorical_column_with_identity(
-                    key="space_stat_0", num_buckets=418),
-                dimension=64,
-                combiner="mean",
-                initializer=None))
-        return tf.estimator.DNNClassifier(n_classes=2,
-                                          hidden_units=[10, 20],
-                                          config=run_config,
-                                          feature_columns=feature_columns)
+
+        for col_name in [
+                "sepal_length", "sepal_width", "petal_length", "petal_width"
+        ]:
+            feature_columns.append(tf.feature_column.numeric_column(col_name))
+        return tf.estimator.DNNClassifier(  # pylint: disable=no-member
+            n_classes=3,
+            hidden_units=[10, 20],
+            config=run_config,
+            feature_columns=feature_columns)
 
 
 if __name__ == "__main__":
+    if tf_is_version2():
+        raise ValueError("ALPS must run with Tensorflow == 1.15.x")
     odps_project = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
     odps_conf = OdpsConf(
         accessid=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK"),
         accesskey=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK"),
-        # endpoint should looks like: "https://service.cn.maxcompute.aliyun.com/api"
+        # endpoint should looks like:
+        # "https://service.cn.maxcompute.aliyun.com/api"
         endpoint=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT"),
         project=odps_project)
-    features = [
-        SparseColumn(name="deep_id", shape=[15033], dtype="int"),
-        SparseColumn(name="user_space_stat", shape=[310], dtype="int"),
-        SparseColumn(name="user_behavior_stat", shape=[511], dtype="int"),
-        SparseColumn(name="space_stat", shape=[418], dtype="int")
-    ]
-    labels = DenseColumn(name="l", shape=[1], dtype="int", separator=",")
+
+    features = []
+    for col_name in [
+            "sepal_length", "sepal_width", "petal_length", "petal_width"
+    ]:
+        # NOTE: add sparse columns like:
+        # SparseColumn(name="deep_id", shape=[15033], dtype="int")
+        features.append(DenseColumn(name=col_name, shape=[1], dtype="float32"))
+    labels = DenseColumn(name="class", shape=[1], dtype="int", separator=",")
+
     try:
         os.mkdir("scratch")
     except FileExistsError:
         pass
+
     train(SQLFlowEstimatorBuilder(),
           odps_conf=odps_conf,
           project=odps_project,
-          train_table="gomaxcompute_driver_w7u.sparse_column_test",
-          eval_table="gomaxcompute_driver_w7u.sparse_column_test",
+          train_table="%s.sqlflow_test_iris_train" % odps_project,
+          eval_table="%s.sqlflow_test_iris_test" % odps_project,
           features=features,
           labels=labels,
           feature_map_table="",

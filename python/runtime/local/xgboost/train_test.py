@@ -21,8 +21,8 @@ from runtime.local.xgboost import train
 from runtime.xgboost.dataset import xgb_dataset
 
 # iris dataset features meta
-# TODO(yancey1989): implement runtime.feature_derivation API to generate the following
-# feature metas
+# TODO(yancey1989): implement runtime.feature_derivation API to generate
+# the following feature metas
 feature_metas = {
     "sepal_length": {
         "feature_name": "sepal_length",

@@ -13,36 +13,25 @@
 
 import os
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import runtime
 import seaborn as sns
 import shap
 import tensorflow as tf
 from runtime import explainer
 from runtime.db import buffered_db_writer, connect_with_data_source
-from tensorflow.estimator import (BoostedTreesClassifier,
-                                  BoostedTreesRegressor, DNNClassifier,
-                                  DNNLinearCombinedClassifier,
-                                  DNNLinearCombinedRegressor, DNNRegressor,
-                                  LinearClassifier, LinearRegressor)
-
-from .get_tf_version import tf_is_version2
-from .input_fn import input_fn
-from .keras_with_feature_column_input import init_model_with_feature_column
+from runtime.import_model import import_model
+from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.input_fn import input_fn
+from runtime.tensorflow.keras_with_feature_column_input import \
+    init_model_with_feature_column
 
 sns_colors = sns.color_palette('colorblind')
 # Disable Tensorflow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # Use non-interactive background
 plt.switch_backend('agg')
-
-try:
-    import sqlflow_models
-except:
-    pass
 
 # Disable Tensorflow INFO and WARNING logs
 if tf_is_version2():
@@ -61,7 +50,6 @@ def explain(datasource,
             label_meta={},
             model_params={},
             save="",
-            is_pai=False,
             pai_table="",
             plot_type='bar',
             result_table="",
@@ -74,39 +62,23 @@ def explain(datasource,
             oss_sk=None,
             oss_endpoint=None,
             oss_bucket_name=None):
-    # import custom model package
-    runtime.import_model_def(estimator_string, globals())
-    estimator_cls = eval(estimator_string)
-
-    if is_pai:
-        FLAGS = tf.app.flags.FLAGS
-        model_params["model_dir"] = FLAGS.checkpointDir
-    else:
-        model_params['model_dir'] = save
-
-    def _input_fn():
-        if is_pai:
-            dataset = input_fn("",
-                               datasource,
-                               feature_column_names,
-                               feature_metas,
-                               label_meta,
-                               is_pai=True,
-                               pai_table=pai_table)
-        else:
-            dataset = input_fn(select, datasource, feature_column_names,
-                               feature_metas, label_meta)
-        return dataset.batch(1).cache()
-
+    estimator_cls = import_model(estimator_string)
+    model_params['model_dir'] = save
     model_params.update(feature_columns)
 
+    def _input_fn():
+        dataset = input_fn(select, datasource, feature_column_names,
+                           feature_metas, label_meta)
+        return dataset.batch(1).cache()
+
     estimator = init_model_with_feature_column(estimator_cls, model_params)
+    conn = connect_with_data_source(datasource)
 
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
-                              result_table, feature_column_names, is_pai,
-                              pai_table, hdfs_namenode_addr, hive_location,
+                              result_table, feature_column_names, conn.driver,
+                              conn, hdfs_namenode_addr, hive_location,
                               hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
                               oss_endpoint, oss_bucket_name)
     else:
@@ -116,37 +88,31 @@ def explain(datasource,
                 item.numpy()[0][0] for item in features.values()
             ]
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
-                     result_table, feature_column_names, is_pai, pai_table,
+                     result_table, feature_column_names, conn.driver, conn,
                      hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
                      oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
-                          result_table, feature_column_names, is_pai,
-                          pai_table, hdfs_namenode_addr, hive_location,
-                          hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
-                          oss_endpoint, oss_bucket_name):
+                          result_table, feature_column_names, driver, conn,
+                          hdfs_namenode_addr, hive_location, hdfs_user,
+                          hdfs_pass, oss_dest, oss_ak, oss_sk, oss_endpoint,
+                          oss_bucket_name):
     result = estimator.experimental_predict_with_explanations(input_fn)
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
     gain = estimator.experimental_feature_importances(normalize=True)
     if result_table != "":
-        if is_pai:
-            write_dfc_result(dfc_mean, gain, result_table, "pai_maxcompute",
-                             None, feature_column_names, hdfs_namenode_addr,
-                             hive_location, hdfs_user, hdfs_pass)
-        else:
-            conn = connect_with_data_source(datasource)
-            write_dfc_result(dfc_mean, gain, result_table, conn.driver, conn,
-                             feature_column_names, hdfs_namenode_addr,
-                             hive_location, hdfs_user, hdfs_pass)
-    explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), is_pai, oss_dest,
-                            oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+        write_dfc_result(dfc_mean, gain, result_table, driver, conn,
+                         feature_column_names, hdfs_namenode_addr,
+                         hive_location, hdfs_user, hdfs_pass)
+    explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), oss_dest, oss_ak,
+                            oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
-                 feature_column_names, is_pai, pai_table, hdfs_namenode_addr,
+                 feature_column_names, driver, conn, hdfs_namenode_addr,
                  hive_location, hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
                  oss_endpoint, oss_bucket_name):
     def predict(d):
@@ -181,20 +147,13 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
     shap_values = shap.KernelExplainer(
         predict, shap_dataset_summary).shap_values(shap_dataset, l1_reg="aic")
     if result_table != "":
-        if is_pai:
-            write_shap_values(shap_values, "pai_maxcompute", None,
-                              result_table, feature_column_names,
-                              hdfs_namenode_addr, hive_location, hdfs_user,
-                              hdfs_pass)
-        else:
-            conn = connect_with_data_source(datasource)
-            write_shap_values(shap_values, conn.driver, conn, result_table,
-                              feature_column_names, hdfs_namenode_addr,
-                              hive_location, hdfs_user, hdfs_pass)
+        write_shap_values(shap_values, driver, conn, result_table,
+                          feature_column_names, hdfs_namenode_addr,
+                          hive_location, hdfs_user, hdfs_pass)
     explainer.plot_and_save(
         lambda: shap.summary_plot(
             shap_values, shap_dataset, show=False, plot_type=plot_type),
-        is_pai, oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+        oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def create_explain_result_table(conn, result_table):

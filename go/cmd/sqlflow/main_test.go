@@ -636,7 +636,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(20, len(c))
+	a.Equal(21, len(c))
 	a.Equal("BoostedTreesClassifier", c[0].Text)
 
 	p.InsertText(`DNN`, false, true)
@@ -1114,6 +1114,16 @@ func TestParseArgument(t *testing.T) {
 	a.False(opts.Run || opts.Release)
 	a.Equal("my_model", opts.ModelName)
 	a.Equal("v1.0", opts.Version)
+
+	opts, err = getOptions("list model")
+	a.NoError(err)
+	a.True(opts.List && opts.Model)
+	a.False(opts.Run || opts.Release || opts.Delete)
+
+	opts, err = getOptions("list repo")
+	a.NoError(err)
+	a.True(opts.List && opts.Repo)
+	a.False(opts.Run || opts.Release || opts.Delete)
 
 	// invalid args
 	opts, err = getOptions("kill model my_model")

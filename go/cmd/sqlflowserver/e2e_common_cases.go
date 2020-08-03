@@ -72,6 +72,7 @@ func caseShowDatabases(t *testing.T) {
 		"sqlflow_model_zoo":           "",
 		"sqlflow_public_models":       "",
 		"xgboost_sparse_data_test_db": "",
+		"cora":                        "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
@@ -664,14 +665,6 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		a.Equal(len(rows), 1)
 	}
 
-	removeColumnNamePrefix := func(columns []string) []string {
-		for idx := range columns {
-			split := strings.Split(columns[idx], ".")
-			columns[idx] = split[len(split)-1]
-		}
-		return columns
-	}
-
 	trainedModel := "xgb_kv_column_trained_model"
 	if !isPai {
 		trainedModel = fmt.Sprintf("%s.%s", dbName, trainedModel)
@@ -759,19 +752,18 @@ func decodeAnyTypedRowData(anyData [][]*any.Any) ([][]interface{}, error) {
 	return slice, nil
 }
 
+func removeColumnNamePrefix(columns []string) []string {
+	for i, c := range columns {
+		split := strings.Split(c, ".")
+		columns[i] = split[len(split)-1]
+	}
+	return columns
+}
+
 func caseTestOptimizeClauseWithoutGroupBy(t *testing.T) {
 	a := assert.New(t)
 
-	removeColumnNamePrefix := func(columns []string) []string {
-		for i, c := range columns {
-			split := strings.Split(c, ".")
-			columns[i] = split[len(split)-1]
-		}
-		return columns
-	}
-
 	dbName := "optimize_test_db"
-
 	resultTable := fmt.Sprintf("%s.%s", dbName, "woodcarving_result")
 
 	woodcarvingOptimizeSQLTemplate := `SELECT * FROM optimize_test_db.woodcarving
@@ -820,19 +812,55 @@ INTO ` + resultTable + `;`
 	}
 }
 
+func caseTestOptimizeClauseWithBinaryVarType(t *testing.T) {
+	a := assert.New(t)
+
+	dbName := "optimize_test_db"
+	resultTable := fmt.Sprintf("%s.%s", dbName, "woodcarving_result")
+
+	binaryWoodCarvingSQL := `SELECT * FROM optimize_test_db.woodcarving
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * amount)
+CONSTRAINT SUM(finishing * amount) <= 100, SUM(carpentry * amount) <= 80, amount <= max_num
+WITH 
+	variables="amount(product)",
+	var_type="Binary"
+USING glpk
+INTO ` + resultTable + `;`
+
+	_, _, _, err := connectAndRunSQL(binaryWoodCarvingSQL)
+	a.NoError(err)
+
+	queryResultSQL := fmt.Sprintf("SELECT product, amount FROM %s;", resultTable)
+
+	header, rows, _, err := connectAndRunSQL(queryResultSQL)
+	header = removeColumnNamePrefix(header)
+	a.NoError(err)
+	a.Equal(2, len(header))
+
+	a.Equal("product", header[0])
+	a.Equal("amount", header[1])
+	a.Equal(2, len(rows))
+	decodedRows, err := decodeAnyTypedRowData(rows)
+	a.NoError(err)
+	a.Equal(len(rows), len(decodedRows))
+	for i := 0; i < len(decodedRows); i++ {
+		a.Equal(2, len(decodedRows[i]))
+		a.IsType("", decodedRows[i][0])
+		a.IsType(int64(0), decodedRows[i][1])
+	}
+
+	sort.Slice(decodedRows, func(i int, j int) bool {
+		return decodedRows[i][0].(string) < decodedRows[j][0].(string)
+	})
+
+	a.True(reflect.DeepEqual(decodedRows[0], []interface{}{"soldier", int64(1)}))
+	a.True(reflect.DeepEqual(decodedRows[1], []interface{}{"train", int64(1)}))
+}
+
 func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
 	a := assert.New(t)
 
-	removeColumnNamePrefix := func(columns []string) []string {
-		for i, c := range columns {
-			split := strings.Split(c, ".")
-			columns[i] = split[len(split)-1]
-		}
-		return columns
-	}
-
 	dbName := "optimize_test_db"
-
 	resultTable := fmt.Sprintf("%s.%s", dbName, "shipment_result")
 
 	shipmentOptimizeSQL := fmt.Sprintf(`SELECT 

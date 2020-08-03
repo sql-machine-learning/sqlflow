@@ -151,3 +151,37 @@ func VerifyColumnNameAndType(trainParsed, predParsed *parser.SQLFlowSelectStmt, 
 	}
 	return nil
 }
+
+// GetSQLFieldType is quiet like verify but accept a SQL string as input, and returns
+// an ordered list of the field types.
+func GetSQLFieldType(slct string, db *database.DB) ([]string, []string, error) {
+	rows, err := FetchSamples(db, slct, 1)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil, fmt.Errorf("query %s gives 0 row", slct)
+	}
+
+	if rows.Err() != nil {
+		return nil, nil, err
+	}
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ft := []string{}
+	flds := []string{}
+	for _, ct := range columnTypes {
+		_, fld := Decomp(ct.Name())
+		typeName := ct.DatabaseTypeName()
+		flds = append(flds, fld)
+		ft = append(ft, typeName)
+	}
+
+	return flds, ft, nil
+}

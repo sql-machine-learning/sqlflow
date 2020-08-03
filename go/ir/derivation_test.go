@@ -135,7 +135,7 @@ func mockTrainStmtCross() *TrainStmt {
 		FieldDesc: &FieldDesc{Name: "c4", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
 	}
 	c5 := &NumericColumn{
-		FieldDesc: &FieldDesc{Name: "c5", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: false},
+		FieldDesc: &FieldDesc{Name: "c5", DType: Int, Shape: []int{1}, Delimiter: "", IsSparse: true},
 	}
 
 	features["feature_columns"] = []FeatureColumn{
@@ -211,17 +211,13 @@ LABEL class INTO model_table;`,
 }
 
 func TestFeatureDerivation(t *testing.T) {
+	testDB := os.Getenv("SQLFLOW_TEST_DB")
+	if testDB != "mysql" && testDB != "hive" {
+		t.Skip("skip TestFeatureDerivation for tests not using MySQL or Hive")
+	}
+
 	a := assert.New(t)
-	// Prepare feature derivation test table in MySQL.
-	db, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
-	if err != nil {
-		a.Fail("error connect to mysql: %v", err)
-	}
-	defer db.Close()
-	err = testdata.Popularize(db.DB, testdata.FeatureDerivationCaseSQL)
-	if err != nil {
-		a.Fail("error creating test data: %v", err)
-	}
+	db := database.GetTestingDBSingleton()
 
 	trainStmt := mockTrainStmtNormal()
 	e := InferFeatureColumns(trainStmt, db)

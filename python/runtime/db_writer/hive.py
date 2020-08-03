@@ -58,7 +58,6 @@ class HiveDBWriter(BufferedDBWriter):
         return result
 
     def _indexing_table_schema(self, table_schema):
-        cursor = self.conn.cursor()
         column_list = self._column_list()
 
         schema_idx = []
@@ -77,7 +76,7 @@ class HiveDBWriter(BufferedDBWriter):
 
     def _ordered_row_data(self, row):
         # Use NULL as the default value for hive columns
-        row_data = ["NULL" for i in range(len(self.table_schema))]
+        row_data = ["NULL" for _ in range(len(self.table_schema))]
         for idx, element in enumerate(row):
             row_data[self.schema_idx[idx]] = str(element)
         return CSV_DELIMITER.join(row_data)

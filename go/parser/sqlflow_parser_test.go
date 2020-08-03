@@ -308,3 +308,82 @@ func TestParserErrorMessage(t *testing.T) {
 	a.Equal(-1, idx)
 	a.True(strings.Contains(e.Error(), `near or before "select b f`))
 }
+
+func TestRemoveCommentInSQLStatement(t *testing.T) {
+	testFunc := func(inputSQL, expectedOutputSQL string, noError bool) {
+		actualOutputSQL, err := RemoveCommentInSQLStatement(inputSQL)
+		if noError {
+			assert.NoError(t, err)
+			assert.Equal(t, expectedOutputSQL, actualOutputSQL)
+			return
+		}
+		assert.Error(t, err)
+	}
+
+	testFunc(`SELECT * FROM a;`, `SELECT * FROM a;`, true)
+	testFunc(`SELECT * FROM a -- I am a comment`, `SELECT * FROM a `, true)
+	testFunc("SELECT * FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n INTO c",
+		"SELECT * FROM a \n TO TRAIN b WITH \n INTO c", true)
+	testFunc("SELECT '--' FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n INTO c",
+		"SELECT '--' FROM a \n TO TRAIN b WITH \n INTO c", true)
+	testFunc("SELECT \"abc -- FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n\" INTO c",
+		"SELECT \"abc -- FROM a -- I am a comment\n TO TRAIN b WITH -- 2nd comment\n\" INTO c", true)
+	testFunc("SELECT \"abc\\\" -- comment\" FROM b", "SELECT \"abc\\\" -- comment\" FROM b", true)
+	testFunc("SELECT \"abc", "", false)
+	testFunc("SELECT 'a\\'bc", "", false)
+
+	testFunc("SELECT a /*bc*/ FROM b", "SELECT a   FROM b", true)
+	testFunc("SELECT a /**/ FROM b", "SELECT a   FROM b", true)
+	testFunc("SELECT a /*/ FROM b", "SELECT a   FROM b", false)
+	testFunc("SELECT \"a /*bc*/\" FROM b", "SELECT \"a /*bc*/\" FROM b", true)
+	testFunc("/*--hehe*/SELECT \"a /*bc*/\" FROM b", " SELECT \"a /*bc*/\" FROM b", true)
+	testFunc("--\n/*--hehe*/SELECT \"a /*bc*/\" FROM b", "\n SELECT \"a /*bc*/\" FROM b", true)
+	testFunc("--/*--hehe*/SELECT \"a /*bc*/\" FROM b", "", true)
+}
+
+func TestParseSQLStatementWithComment(t *testing.T) {
+	sqlWithoutTailingComment := `SELECT * FROM iris.train
+TO TRAIN DNNClassifier  -- comment 1
+WITH -- comment 2
+	model.hidden_units=[16, 32], -- comment 3
+	model.n_classes=3 /* comment
+4 */
+LABEL class --
+INTO my_dnn_classifier;`
+
+	tailingComment := `
+-- comment 5
+-- comment 6
+-- /* comment 7 */
+`
+
+	for _, dialect := range []string{"mysql", "hive", "maxcompute"} {
+		testSQL := sqlWithoutTailingComment
+		testTailingComment := tailingComment
+		// NOTE(sneaxiy): OdpsParserAdaptor cannot parse /*...*/
+		if dialect == "maxcompute" {
+			var err error
+			testSQL, err = removeMultipleLineComment(testSQL)
+			assert.NoError(t, err)
+			testTailingComment, err = removeMultipleLineComment(testTailingComment)
+			assert.NoError(t, err)
+		}
+
+		parsed, err := Parse(dialect, testSQL+testTailingComment)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(parsed))
+		assert.Equal(t, testSQL, parsed[0].Original)
+		assert.Equal(t, "SELECT * FROM iris.train\n", parsed[0].StandardSelect.String())
+		assert.Equal(t, true, parsed[0].IsUnfinishedSelect)
+		assert.Equal(t, true, parsed[0].IsExtendedSyntax())
+		assert.Equal(t, true, parsed[0].Train)
+		assert.Equal(t, "DNNClassifier", parsed[0].Estimator)
+		assert.Equal(t, "my_dnn_classifier", parsed[0].Save)
+		assert.Equal(t, "class", parsed[0].Label)
+		assert.Equal(t, 2, len(parsed[0].TrainAttrs))
+		_, ok := parsed[0].TrainAttrs["model.hidden_units"]
+		assert.Equal(t, true, ok)
+		_, ok = parsed[0].TrainAttrs["model.n_classes"]
+		assert.Equal(t, true, ok)
+	}
+}

@@ -1,5 +1,7 @@
 FROM ubuntu:18.04
 
+ARG FIND_FASTED_MIRROR=true
+
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
 
 # Install Python, Go, Java and other build tools

@@ -30,7 +30,6 @@ type predictFiller struct {
 	Select       string
 	ResultTable  string
 	ResultColumn string
-	IsPAI        bool
 	PAITable     string
 	Using        string
 }
@@ -67,9 +66,9 @@ type requirementsFiller struct {
 const tfImportsText = `
 import tensorflow as tf
 from runtime.tensorflow import is_tf_estimator
-from tensorflow.estimator import DNNClassifier, DNNRegressor, LinearClassifier, LinearRegressor, BoostedTreesClassifier, BoostedTreesRegressor, DNNLinearCombinedClassifier, DNNLinearCombinedRegressor
+from runtime.import_model import import_model
 try:
-	from runtime.pai import model
+	from runtime import oss
 	from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 except:
 	pass # PAI is not always needed
@@ -80,23 +79,23 @@ const tfLoadModelTmplText = tfImportsText + `
 FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
-estimator = {{.Estimator}}
+estimator = import_model('''{{.Estimator}}''')
 is_estimator = is_tf_estimator(estimator)
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 `
 
 const tfSaveModelTmplText = tfImportsText + `
 import types
 
-estimator = {{.Estimator}}
+estimator = import_model('''{{.Estimator}}''')
 is_estimator = is_tf_estimator(estimator)
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
@@ -106,16 +105,16 @@ if is_estimator:
     if FLAGS.task_index == 0:
         with open("exported_path", "r") as fn:
             saved_model_path = fn.read()
-        model.save_dir("{{.OSSModelDir}}", saved_model_path)
-        model.save_file("{{.OSSModelDir}}", "exported_path")
+        oss.save_dir("{{.OSSModelDir}}", saved_model_path)
+        oss.save_file("{{.OSSModelDir}}", "exported_path")
 else:
     if len(FLAGS.worker_hosts.split(",")) > 1:
         if FLAGS.task_index == 0:
-            model.save_file("{{.OSSModelDir}}", "exported_path")
+            oss.save_file("{{.OSSModelDir}}", "exported_path")
     else:
-        model.save_file("{{.OSSModelDir}}", "model_save")
+        oss.save_file("{{.OSSModelDir}}", "model_save")
 
-model.save_metas("{{.OSSModelDir}}",
+oss.save_metas("{{.OSSModelDir}}",
            {{.NumWorkers}},
            "tensorflow_model_desc",
            "{{.Estimator}}",
@@ -146,7 +145,7 @@ const tfPredictTmplText = tfImportsText + `
 import os
 import types
 import traceback
-from runtime.tensorflow import predict
+from runtime.pai.tensorflow import predict
 
 try:
     import sqlflow_models
@@ -167,25 +166,25 @@ set_oss_environs(FLAGS)
  feature_metas,
  label_meta,
  model_params,
- feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+ feature_columns_code) = oss.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 feature_columns = eval(feature_columns_code)
 
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(eval(estimator))
+is_estimator = is_tf_estimator(import_model(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 
-predict.pred(datasource="{{.DataSource}}",
+predict._predict(datasource="{{.DataSource}}",
              estimator_string=estimator,
              select="""{{.Select}}""",
              result_table="{{.ResultTable}}",
@@ -198,7 +197,6 @@ predict.pred(datasource="{{.DataSource}}",
              model_params=model_params,
              save="model_save",
              batch_size=1,
-             is_pai="{{.IsPAI}}" == "true",
              pai_table="{{.PAITable}}")
 `
 
@@ -212,7 +210,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.tensorflow import explain
+from runtime.pai.tensorflow import explain
 
 try:
     tf.enable_eager_execution()
@@ -229,25 +227,25 @@ feature_column_names_map,
 feature_metas,
 label_meta,
 model_params,
-feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+feature_columns_code) = oss.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(eval(estimator))
+is_estimator = is_tf_estimator(import_model(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 
 
-explain.explain(datasource="{{.DataSource}}",
+explain._explain(datasource="{{.DataSource}}",
                 estimator_string=estimator,
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,
@@ -257,7 +255,6 @@ explain.explain(datasource="{{.DataSource}}",
                 model_params=model_params,
                 save="model_save",
                 result_table="{{.ResultTable}}",
-                is_pai="{{.IsPAI}}" == "true",
                 pai_table="{{.PAITable}}",
                 oss_dest='''{{.ResultOSSDest}}''',
                 oss_ak='''{{.ResultOSSAK}}''',
@@ -276,7 +273,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.tensorflow import evaluate
+from runtime.pai.tensorflow import evaluate
 
 try:
     tf.enable_eager_execution()
@@ -293,24 +290,24 @@ feature_column_names_map,
 feature_metas,
 label_meta,
 model_params,
-feature_columns_code) = model.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
+feature_columns_code) = oss.load_metas("{{.OSSModelDir}}", "tensorflow_model_desc")
 
 feature_columns = eval(feature_columns_code)
 # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
 # because predicting do not need these parameters.
 
-is_estimator = is_tf_estimator(eval(estimator))
+is_estimator = is_tf_estimator(import_model(estimator))
 
 # Keras single node is using h5 format to save the model, no need to deal with export model format.
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
-    model.load_file("{{.OSSModelDir}}", "exported_path")
+    oss.load_file("{{.OSSModelDir}}", "exported_path")
     # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    model.load_dir("{{.OSSModelDir}}/model_save")
+    oss.load_dir("{{.OSSModelDir}}/model_save")
 else:
-    model.load_file("{{.OSSModelDir}}", "model_save")
+    oss.load_file("{{.OSSModelDir}}", "model_save")
 
-evaluate.evaluate(datasource="{{.DataSource}}",
+evaluate._evaluate(datasource="{{.DataSource}}",
                   estimator_string=estimator,
                   select="""{{.Select}}""",
                   result_table="{{.ResultTable}}",
@@ -324,6 +321,5 @@ evaluate.evaluate(datasource="{{.DataSource}}",
                   batch_size=1,
                   validation_steps=None,
                   verbose=0,
-                  is_pai="{{.IsPAI}}" == "true",
                   pai_table="{{.PAITable}}")
 `
