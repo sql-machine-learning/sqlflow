@@ -21,27 +21,27 @@ import (
 	"sqlflow.org/sqlflow/go/model"
 )
 
-func downloadModelFromDB(opts *options) (string, error) {
+func downloadModelFromDB(opts *options) error {
 	if opts.DataSource == "" {
 		opts.DataSource = os.Getenv("SQLFLOW_DATASOURCE")
 		if opts.DataSource == "" {
-			return "", fmt.Errorf("You should specify a datasource with -d or set env SQLFLOW_DATASOURCE")
+			return fmt.Errorf("You should specify a datasource with -d or set env SQLFLOW_DATASOURCE")
 		}
 	}
 	db, err := database.OpenDB(opts.DataSource)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer db.Close()
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return err
 	}
 	filename, err := model.DumpDBModel(db, opts.ModelName, cwd)
 	if err != nil {
-		return "", err
+		return err
 	}
 	fmt.Printf("model \"%s\" downloaded successfully at %s\n", opts.ModelName, filename)
-	return filename, nil
+	return nil
 }

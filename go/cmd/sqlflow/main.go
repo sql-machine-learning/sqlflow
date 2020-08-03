@@ -443,7 +443,6 @@ func runSQLFlowClient(opts *options) error {
 
 func processOptions(opts *options) {
 	var err error
-	var filename string
 	switch {
 	case opts.Run:
 		err = runSQLFlowClient(opts)
@@ -464,7 +463,7 @@ func processOptions(opts *options) {
 	case opts.List && opts.Repo:
 		err = listRepos(opts)
 	case opts.Get && opts.Model:
-		filename, err = downloadModelFromDB(opts)
+		err = downloadModelFromDB(opts)
 	default:
 		err = runSQLFlowClient(opts)
 	}
