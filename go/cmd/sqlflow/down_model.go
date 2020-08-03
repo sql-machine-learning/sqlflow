@@ -42,5 +42,6 @@ func downloadModelFromDB(opts *options) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Printf("model \"%s\" downloaded successfully at %s\n", opts.ModelName, filename)
 	return filename, nil
 }
