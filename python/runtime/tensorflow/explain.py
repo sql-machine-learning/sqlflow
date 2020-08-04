@@ -28,12 +28,12 @@ from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
 
 sns_colors = sns.color_palette('colorblind')
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # Use non-interactive background
 plt.switch_backend('agg')
 
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 if tf_is_version2():
     import logging
     tf.get_logger().setLevel(logging.ERROR)

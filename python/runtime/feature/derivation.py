@@ -582,7 +582,7 @@ def derive_label(label, fd_map):
     assert label_field_desc is not None, \
         "deriveLabel: LABEL COLUMN '%s' not found" % label_name
 
-    # use shape [] if label shape is [1] for Tensorflow scalar label
+    # use shape [] if label shape is [1] for TensorFlow scalar label
     # shape should be [].
     shape = label_field_desc.shape
     if shape is None or (len(shape) == 1 and shape[0] == 1):
