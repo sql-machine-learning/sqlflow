@@ -101,7 +101,7 @@ $ sqlflow delete repo model_image:v0.1
 
 For a SELECT program using the SQLFlow syntax extension, the SQLFlow server converts it into a [workflow](workflow.md) and submit the workflow job to a workflow engine like Argo/Tekton on Kubernetes. Each step in the workflow is one SQL statement.
 
-By default, we use a default Docker image to run the training, predicting or explaining job. The default Docker image contains pre-made Tensorflow estimator models, Keras models defined in [sqlflow_models repo](https://github.com/sql-machine-learning/models) and XGBoost. To use a custom model repo Docker image, write SQL statements mentioned above:
+By default, we use a default Docker image to run the training, predicting or explaining job. The default Docker image contains pre-made TensorFlow estimator models, Keras models defined in [sqlflow_models repo](https://github.com/sql-machine-learning/models) and XGBoost. To use a custom model repo Docker image, write SQL statements mentioned above:
 
 ```sql
 SELECT * FROM employee WHERE onboard_year < 2019

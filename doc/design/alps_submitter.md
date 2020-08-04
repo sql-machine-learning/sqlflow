@@ -158,7 +158,7 @@ LABEL class
 ```
 
 ### Semantic Analyze
-Feature Expressions except for Tensorflow Feature Column API should raise an error.
+Feature Expressions except for TensorFlow Feature Column API should raise an error.
 ```sql
 /* Not supported */
 select * from kaggle_credit_fraud_training_data

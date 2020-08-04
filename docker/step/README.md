@@ -1,6 +1,6 @@
-# A Slim Tensorflow Step Image
+# A Slim TensorFlow Step Image
 
-This image is used when submitting Argo workflows to run Tensorflow/PAI Tensorflow jobs. To build this image, you should follow the below steps:
+This image is used when submitting Argo workflows to run TensorFlow/PAI TensorFlow jobs. To build this image, you should follow the below steps:
 
 1. Go to SQLFlow root directory
     ```bash

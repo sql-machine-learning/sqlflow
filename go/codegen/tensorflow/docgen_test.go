@@ -22,5 +22,5 @@ import (
 
 func TestDocGenInMarkdown(t *testing.T) {
 	a := assert.New(t)
-	a.True(strings.HasPrefix(DocGenInMarkdown(), `# Tensorflow`))
+	a.True(strings.HasPrefix(DocGenInMarkdown(), `# TensorFlow`))
 }

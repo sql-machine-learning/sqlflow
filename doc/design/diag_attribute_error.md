@@ -31,7 +31,7 @@ this can active three advantages at least:
 
 1. Early testing, we can do early testing before running the job; users can wait less time and cluster save resources.
 2. More accurate diagnostic message.
-3. Model developers do not have to involve dependencies other than Keras or Tensorflow.
+3. Model developers do not have to involve dependencies other than Keras or TensorFlow.
 
 ## Design
 

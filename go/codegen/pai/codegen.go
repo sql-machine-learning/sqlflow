@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	// ModelTypeTF is the mode type that trained by PAI Tensorflow.
+	// ModelTypeTF is the mode type that trained by PAI TensorFlow.
 	ModelTypeTF = iota
-	// ModelTypeXGBoost is the model type that use PAI Tensorflow to train XGBoost models.
+	// ModelTypeXGBoost is the model type that use PAI TensorFlow to train XGBoost models.
 	ModelTypeXGBoost
 	// ModelTypePAIML is the model type that trained by PAI machine learning algorithm toolkit
 	ModelTypePAIML
@@ -103,7 +103,7 @@ func genRequirements(isXGBoost bool) (string, error) {
 	return code.String(), nil
 }
 
-// Train generates a Python program a PAI command arguments to train a Tensorflow model.
+// Train generates a Python program a PAI command arguments to train a TensorFlow model.
 func Train(ir *ir.TrainStmt, session *pb.Session, tarball, paramsFile, modelName, ossModelPathToSave, ossModelPathToLoad, cwd string) (code, paiCmd, requirements string, e error) {
 	cc, e := GetClusterConfig(ir.Attributes)
 	if e != nil {

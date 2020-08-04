@@ -20,7 +20,7 @@ from runtime.tensorflow.predict import estimator_predict, keras_predict
 
 def predict(datasource, select, data_table, result_table, label_column,
             oss_model_path):
-    """PAI Tensorflow prediction wrapper
+    """PAI TensorFlow prediction wrapper
     This function do some preparation for the local prediction, say,
     download the model from OSS, extract metadata and so on.
 
