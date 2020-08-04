@@ -36,9 +36,12 @@ type tidbParser struct {
 
 // Init creates the TiDB parser instance and other resources.
 func newTiDBParser() *tidbParser {
-	return &tidbParser{
+	parser := &tidbParser{
 		psr: parser.New(),
 		re:  regexp.MustCompile(`.* near "([^"]+)".*`)}
+	parser.psr.EnableWindowFunc(true)
+
+	return parser
 }
 
 func (p *tidbParser) Dialect() string {
