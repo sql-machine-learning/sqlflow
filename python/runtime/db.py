@@ -534,3 +534,54 @@ def execute(conn, sql_stmt):
             return False
         finally:
             cur.close()
+
+
+def query(conn, statement, fetch_size=128):
+    """Execute given statement and return a result set.
+
+    Args:
+        conn: a database connection, this function will not close it
+        statement: a sql query statement
+    
+    Returns:
+        A generator represents the result set, somehow like the cursor
+    """
+    driver = conn.driver
+
+    def reader():
+        while True:
+            rows = cursor.fetchmany(size=fetch_size)
+            if not rows:
+                break
+            # NOTE: keep the connection while training or connection will lost
+            # if no activities appear.
+            if driver == "mysql":
+                conn.ping(True)
+            for row in rows:
+                yield list(row)
+            if len(rows) < fetch_size:
+                break
+        cursor.close()
+
+    # (TODO: lhw) make maxcompute compitable to python db-api, so we
+    # do not need to process it specifically, after that, we need to
+    # modify db_generator to call this function
+    if driver == "hive":
+        # trip the suffix ';' to avoid the ParseException in hive
+        statement = statement.rstrip(';')
+        cursor = conn.cursor(configuration=conn.session_cfg)
+    else:
+        cursor = conn.cursor()
+    # eagerly execute the statement in case the user do not
+    # call the generateor
+    cursor.execute(statement)
+    if cursor.description:
+        if driver == "hive":
+            name_and_type = _get_hive_columns_and_types(cursor)
+        else:
+            name_and_type = _get_mysql_columns_and_types(cursor)
+
+        reader.field_names = [item[0] for item in name_and_type]
+        reader.field_types = [item[1] for item in name_and_type]
+        reader.last_row_id = cursor.lastrowid
+    return reader
