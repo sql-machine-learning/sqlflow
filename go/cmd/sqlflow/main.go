@@ -60,6 +60,7 @@ Usage:
     sqlflow [options] [run] [-e <program> -f <file>]
     sqlflow [options] release repo [--force] <repo_dir> <repo_name> <version>
     sqlflow [options] release model [--force] [--local] [--desc=<desc>] <model_name> <version>
+    sqlflow [options] get model <model_name>
     sqlflow [options] delete repo <repo_name> <version>
     sqlflow [options] delete model <model_name> <version>
     sqlflow [options] list repo
@@ -86,25 +87,26 @@ Release Options:
         --desc=<desc>            description for this model`
 
 type options struct {
-	CertFile, EnvFile string
-	SQLFlowServer     string `docopt:"--sqlflow-server"`
-	ModelZooServer    string `docopt:"--model-zoo-server"`
-	DataSource        string
-	Execute           string
-	Run               bool
-	File              string
-	Delete, Release   bool
-	Repo, Model       bool
-	Force             bool
-	Local             bool
-	RepoDir           string `docopt:"<repo_dir>"`
-	RepoName          string `docopt:"<repo_name>"`
-	ModelName         string `docopt:"<model_name>"`
-	Version           string `docopt:"<version>"`
-	Description       string `docopt:"--desc"`
-	List              bool
-	User              string
-	Password          string
+	CertFile, EnvFile    string
+	SQLFlowServer        string `docopt:"--sqlflow-server"`
+	ModelZooServer       string `docopt:"--model-zoo-server"`
+	DataSource           string
+	Execute              string
+	Run                  bool
+	File                 string
+	Delete, Release, Get bool
+	Repo, Model          bool
+	Force                bool
+	Local                bool
+	RepoDir              string `docopt:"<repo_dir>"`
+	RepoName             string `docopt:"<repo_name>"`
+	ModelName            string `docopt:"<model_name>"`
+	Version              string `docopt:"<version>"`
+	Description          string `docopt:"--desc"`
+	LocalFile            string
+	List                 bool
+	User                 string
+	Password             string
 }
 
 func isSpace(c byte) bool {
@@ -460,6 +462,8 @@ func processOptions(opts *options) {
 		err = listModels(opts)
 	case opts.List && opts.Repo:
 		err = listRepos(opts)
+	case opts.Get && opts.Model:
+		err = downloadModelFromDB(opts)
 	default:
 		err = runSQLFlowClient(opts)
 	}
