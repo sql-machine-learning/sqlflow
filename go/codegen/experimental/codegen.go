@@ -22,12 +22,22 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-// GenerateCodeTrain generate a Couler program to submit a workflow to run the sql program.
+// GenerateCodeCouler generate a Couler program to submit a workflow to run the sql program.
 // 1. generate IR of each statement.
 // 2. generate runtime code of each statement
 // 3. generate couler program to form a workflow
-func GenerateCodeTrain(sqlStmts []string, session *pb.Session) (string, error) {
-
+func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) {
+	stmts, err := parseToIR(sqlProgram, session)
+	if err != nil {
+		return "", err
+	}
+	for _, stmt := range stmts {
+		stepCode, err := generateStepCode(stmt, session)
+		if err != nil {
+			return "", err
+		}
+		fmt.Println(stepCode)
+	}
 	return "", nil
 }
 
@@ -76,9 +86,46 @@ func parseToIR(sqlProgram string, session *pb.Session) ([]ir.SQLFlowStmt, error)
 		if err != nil {
 			return nil, err
 		}
-		// TODO(typhoonzero): run initializeAndCheckAttributes here.
+		if err = initializeAndCheckAttributes(r); err != nil {
+			return nil, err
+		}
 		r.SetOriginalSQL(sql.Original)
 		result = append(result, r)
 	}
 	return result, nil
+}
+
+func generateStepCode(stmt ir.SQLFlowStmt, session *pb.Session) (string, error) {
+	switch stmt.(type) {
+	case *ir.TrainStmt:
+		trainStmt := stmt.(*ir.TrainStmt)
+		if strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST.") {
+			return XGBoostGenerateTrain(trainStmt, session)
+		}
+		return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+	default:
+		return "", fmt.Errorf("not implemented stmt execution type %v", stmt)
+	}
+}
+
+func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
+	switch s := stmt.(type) {
+	case *ir.TrainStmt:
+		if s.GetModelKind() == ir.XGBoost {
+			return InitializeAttributes(s)
+		}
+		// 	else if s.GetModelKind() == ir.KMeans {
+		// 		return pai.InitializeKMeansAttributes(s)
+		// 	}
+		// 	return tensorflow.InitializeAttributes(s)
+		// case *ir.OptimizeStmt:
+		// 	return optimize.InitializeAttributes(s)
+	}
+	return nil
+}
+
+// InitializeAttributes initializes the attributes of XGBoost and does type checking for them
+func InitializeAttributes(trainStmt *ir.TrainStmt) error {
+	attributeDictionary.ExportDefaults(trainStmt.Attributes)
+	return fullAttrValidator.Validate(trainStmt.Attributes)
 }
