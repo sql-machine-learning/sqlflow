@@ -11,10 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
+from urllib.parse import parse_qs, urlparse
+
+import six
 
 
-class ResultSet(ABC):
+@six.add_metaclass(ABCMeta)
+class ResultSet(object):
     """Base class for DB query result, caller can iteratable this object
     to get all result rows"""
     def __init__(self):
@@ -66,11 +70,13 @@ class ResultSet(ABC):
 
     @abstractmethod
     def close(self):
-        """Close the ResultSet explicitly, release any resource incurred by this query"""
+        """Close the ResultSet explicitly, release any resource incurred by this query
+        implementation should support close multi-times"""
         pass
 
 
-class Connection(ABC):
+@six.add_metaclass(ABCMeta)
+class Connection(object):
     """Base class for DB connection
 
     Args:
@@ -78,7 +84,24 @@ class Connection(ABC):
 
     """
     def __init__(self, conn_uri):
-        self.conn_uri = conn_uri
+        self.uristr = conn_uri
+        self.uripts = self._parse_uri()
+        self.params = parse_qs(
+            self.uripts.query,
+            keep_blank_values=True,
+        )
+        self.params["database"] = self.uripts.path.strip("/")
+        for k, l in self.params.items():
+            if len(l) == 1:
+                self.params[k] = self.params[k][0]
+
+    def _parse_uri(self):
+        """Parse the connection string into URI parts
+        Returns:
+            A ParseResult, different implementations should always pack 
+            the result into ParseResult
+        """
+        return urlparse(self.uristr)
 
     @abstractmethod
     def _get_result_set(self, statement):
@@ -110,7 +133,14 @@ class Connection(ABC):
         return self._get_result_set(statement)
 
     def exec(self, statement):
-        """Execute given statement and return True on success"""
+        """Execute given statement and return True on success
+
+        Args:
+            statement: the statement to execute
+
+        Returns:
+            True on success, False otherwise
+        """
         try:
             rs = self._get_result_set(statement)
             return rs.success()
@@ -118,3 +148,11 @@ class Connection(ABC):
             return False
         finally:
             rs.close()
+
+    @abstractmethod
+    def close(self):
+        """Close the connection, implementation should support close multi-times"""
+        pass
+
+    def __del__(self):
+        self.close()
