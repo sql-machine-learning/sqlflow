@@ -1,25 +1,20 @@
 # This Dockerfile containers Jupyter Notebook server with many
 # SQLFlow tutorials and SQLFlow magic command.
 
-FROM alpine:3.12
+FROM python:3.8-slim
 
 ARG FIND_FASTED_MIRROR=true
 
 COPY docker/dev/find_fastest_resources.sh /usr/local/bin/
-RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh && \
-    choose_fastest_alpine_source && \
+RUN /bin/bash -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest_resources.sh && \
+    find_fastest_apt_source && \
     choose_fastest_pip_source; fi'
-
-RUN apk add --no-cache python3 py3-pip py3-pyzmq py3-grpcio
 
 # Install IPythono Notebook tutorials
 COPY /docker/jupyter/js /jupyter/js/
 COPY build/tutorial /workspace
 COPY docker/jupyter/install-jupyter.sh /jupyter/install-jupyter.sh
 RUN /bin/sh /jupyter/install-jupyter.sh
-
-# Cleanup
-RUN apk del --purge py3-pip
 
 # The following SQLFlow gRPC server endpoint implies the server runs in a container,
 # and if container has the option --net=container:sqlflow_server_container, SQLFlow magic
