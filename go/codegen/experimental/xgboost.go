@@ -145,13 +145,16 @@ def step_entry():
     feature_column_map = None
     {{ end }}
     label_fc = {{.LabelColumnCode}}
-    label_meta = label_fc.get_field_desc()[0].to_json()
+    label_meta = json.loads(label_fc.get_field_desc()[0].to_json())
 
     fc_map_ir, fc_label_ir = runtime.feature.infer_feature_columns(conn, select, feature_column_map, label_fc, n=1000)
     fc_map = runtime.feature.compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
     feature_column_list = fc_map["feature_columns"]
-    feature_metas = runtime.feature.get_ordered_field_descs(fc_map_ir)
-    feature_column_names = [fd.name for fd in feature_metas]
+    feature_metas_obj_list = runtime.feature.get_ordered_field_descs(fc_map_ir)
+    feature_metas = dict()
+    for fd in feature_metas_obj_list:
+        feature_metas[fd.name] = json.loads(fd.to_json())
+    feature_column_names = [fd.name for fd in feature_metas_obj_list]
 
     # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
     # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
@@ -163,9 +166,12 @@ def step_entry():
         dtrain = xgb_dataset(ds, train_fn, select, feature_metas,
                              feature_column_names, label_meta, is_pai,
                              pai_train_table, transform_fn=transform_fn)
-        dval = xgb_dataset(ds, val_fn, val_select, feature_metas,
-                           feature_column_names, label_meta, is_pai,
-                           pai_train_table, transform_fn=transform_fn)
+        if val_select:
+            dval = xgb_dataset(ds, val_fn, val_select, feature_metas,
+                               feature_column_names, label_meta, is_pai,
+                               pai_train_table, transform_fn=transform_fn)
+        else:
+            dval = None
         eval_result = runtime.{{.Submitter}}.xgboost.train(dtrain, train_params, model_params, dval)
 `
 
@@ -199,8 +205,7 @@ func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 			dataFormat,
 			codegen.AttrToPythonValue(shape),
 			isSparseStr,
-			"[]")
-		// codegen.AttrToPythonValue(vocabList))
+			codegen.AttrToPythonValue(vocabList))
 		fcCodes = append(fcCodes, code)
 	}
 
@@ -300,73 +305,6 @@ func parseAttribute(attrs map[string]interface{}) map[string]map[string]interfac
 		}
 	}
 	return params
-}
-
-// FieldMeta delicates Field Meta with Json format which used in code generator
-type FieldMeta struct {
-	FeatureName string `json:"feature_name"`
-	DType       string `json:"dtype"`
-	Delimiter   string `json:"delimiter"`
-	Format      string `json:"format"`
-	Shap        []int  `json:"shape"`
-	IsSparse    bool   `json:"is_sparse"`
-}
-
-func resolveFieldMeta(desc *ir.FieldDesc) FieldMeta {
-	return FieldMeta{
-		FeatureName: desc.Name,
-		DType:       codegen.DTypeToString(desc.DType),
-		Delimiter:   desc.Delimiter,
-		Format:      desc.Format,
-		Shap:        desc.Shape,
-		IsSparse:    desc.IsSparse,
-	}
-}
-
-func resolveFeatureMeta(fds []ir.FieldDesc) ([]byte, []string, error) {
-	ret := make(map[string]FieldMeta)
-	featureNames := []string{}
-	for _, f := range fds {
-		ret[f.Name] = resolveFieldMeta(&f)
-		featureNames = append(featureNames, f.Name)
-	}
-	f, e := json.Marshal(ret)
-	return f, featureNames, e
-}
-
-// deriveFeatureColumnCodeAndFieldDescs generates the feature column codes and feature descs, which are used for
-// codegen in Python codes.
-// The returned feature column code is like "xgboost_extended.feature_column.numeric(...)".
-// The returned feature descs contain all field descs used in feature column code.
-func deriveFeatureColumnCodeAndFieldDescs(fcs []ir.FeatureColumn, labelFc ir.FeatureColumn) (featureColumnsCode string, fieldDescs []ir.FieldDesc, label ir.FieldDesc, err error) {
-	if fcs == nil {
-		return "", nil, ir.FieldDesc{}, fmt.Errorf("feature_columns should not be nil")
-	}
-
-	fcCodes := make([]string, 0, len(fcs))
-	for _, fc := range fcs {
-		code, err := codegen.GenerateFeatureColumnCode(fc, "xgboost_extended")
-		if err != nil {
-			return "", nil, ir.FieldDesc{}, err
-		}
-
-		fcCodes = append(fcCodes, code)
-
-		for _, desc := range fc.GetFieldDesc() {
-			fieldDescs = append(fieldDescs, *desc)
-		}
-	}
-
-	featureColumnsCode = strings.Join(fcCodes, ",\n")
-
-	switch c := labelFc.(type) {
-	case *ir.NumericColumn:
-		label = *c.FieldDesc
-	default:
-		return "", nil, ir.FieldDesc{}, fmt.Errorf("unsupported label column type %T on %v", c, c)
-	}
-
-	return featureColumnsCode, fieldDescs, label, err
 }
 
 func init() {

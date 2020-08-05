@@ -50,7 +50,13 @@ func AttrToPythonValue(attr interface{}) string {
 	case []int:
 		intArrayAttrStr, _ := MarshalToJSONString(attr.([]int))
 		return intArrayAttrStr
-		// TODO(typhoonzero): support []float etc.
+	case []string:
+		l := attr.([]string)
+		if len(l) == 0 {
+			return "[]"
+		}
+		stringListStr, _ := MarshalToJSONString(l)
+		return stringListStr
 	case []interface{}:
 		tmplist := attr.([]interface{})
 		if len(tmplist) > 0 {
