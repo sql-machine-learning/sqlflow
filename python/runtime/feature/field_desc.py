@@ -85,6 +85,11 @@ class FieldDesc(object):
         Returns:
             A Python dict.
         """
+        vocab = None
+        if self.vocabulary is not None:
+            vocab = list(self.vocabulary)
+            vocab.sort()
+
         return {
             "name": self.name,
             "dtype": self.dtype,
@@ -92,7 +97,7 @@ class FieldDesc(object):
             "format": self.format,
             "shape": self.shape,
             "is_sparse": self.is_sparse,
-            "vocabulary": self.vocabulary,
+            "vocabulary": vocab,
             "max_id": self.max_id,
         }
 

@@ -11,8 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import unittest
 
+import runtime.feature.column as fc
 import runtime.feature.derivation as fd
 import runtime.testing as testing
 from runtime.feature.column import (CategoryIDColumn, CrossColumn,
@@ -82,6 +84,14 @@ class TestGetMaxIndexOfKeyValueString(unittest.TestCase):
 @unittest.skipUnless(testing.get_driver() in ["mysql", "hive"],
                      "skip non MySQL and Hive tests")
 class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
+    def check_json_dump(self, features):
+        dump_json = json.dumps(features, cls=fc.JSONEncoderWithFeatureColumn)
+        new_features = json.loads(dump_json,
+                                  cls=fc.JSONDecoderWithFeatureColumn)
+        new_dump_json = json.dumps(new_features,
+                                   cls=fc.JSONEncoderWithFeatureColumn)
+        self.assertEqual(dump_json, new_dump_json)
+
     def test_without_cross(self):
         features = {
             'feature_columns': [
@@ -107,6 +117,9 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         conn = testing.get_singleton_db_connection()
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
+
+        self.check_json_dump(features)
+        self.check_json_dump(label)
 
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
@@ -225,6 +238,9 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
 
+        self.check_json_dump(features)
+        self.check_json_dump(label)
+
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
         features = features["feature_columns"]
@@ -316,6 +332,9 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
             FieldDesc(name='class', dtype=DataType.INT, shape=[1]))
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
+
+        self.check_json_dump(features)
+        self.check_json_dump(label)
 
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
