@@ -13,8 +13,15 @@
 # limitations under the License.
 
 changed_py_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' )
+
+echo "$changed_py_files"
+
 if [[ "$changed_py_files" == "" ]]; then
     exit 0
 fi
 pylint "$changed_py_files"
 flake8 "$changed_py_files"
+
+echo "check all python files"
+flake8 /work/python
+echo $?
