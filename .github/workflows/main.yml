@@ -18,6 +18,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: pre-commit
       run: |
+        export TRAVIS_BUILD_DIR=${{ github.workspace }}
         go generate ./...
         go install ./...
         pre-commit run -a --show-diff-on-failure
