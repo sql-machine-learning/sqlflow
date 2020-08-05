@@ -78,14 +78,14 @@ class FieldDesc(object):
         self.vocabulary = vocabulary
         self.max_id = max_id
 
-    def to_json(self):
+    def to_dict(self):
         """
-        Convert the FieldDesc object to a json string.
+        Convert the FieldDesc object to a Python dict.
 
         Returns:
-            A string which represents the json value of the FieldDesc object.
+            A Python dict.
         """
-        return json.dumps({
+        return {
             "name": self.name,
             "dtype": self.dtype,
             "delimiter": self.delimiter,
@@ -94,4 +94,36 @@ class FieldDesc(object):
             "is_sparse": self.is_sparse,
             "vocabulary": self.vocabulary,
             "max_id": self.max_id,
-        })
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        """
+        Create a FieldDesc object from a Python dict.
+
+        Returns:
+            A FieldDesc object.
+        """
+        return FieldDesc(**d)
+
+    def to_json(self):
+        """
+        Convert the FieldDesc object to a json string.
+
+        Returns:
+            A string which represents the json value of the FieldDesc object.
+        """
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, s):
+        """
+        Create a FieldDesc object from a json string.
+
+        Args:
+            s (str): the JSON string.
+
+        Returns:
+            A FieldDesc object.
+        """
+        return cls.from_dict(**json.loads(s))
