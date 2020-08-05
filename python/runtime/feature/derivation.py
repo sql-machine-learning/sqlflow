@@ -11,9 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    'infer_feature_columns',
-]
+__all__ = ['infer_feature_columns', 'get_ordered_field_descs']
 
 import re
 
@@ -639,3 +637,13 @@ def infer_feature_columns(conn, select, features, label, n=1000):
                                          selected_field_names, label_name)
     label = derive_label(label, fd_map)
     return features, label
+
+
+def get_ordered_field_descs(features):
+    assert isinstance(features, dict)
+    fd_list = []
+    for target in features:
+        for fc in features[target]:
+            for fd in fc.get_field_desc():
+                fd_list.append(fd)
+    return fd_list

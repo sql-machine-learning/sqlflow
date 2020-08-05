@@ -186,7 +186,7 @@ type FieldMeta struct {
 func resolveFieldMeta(desc *ir.FieldDesc) FieldMeta {
 	return FieldMeta{
 		FeatureName: desc.Name,
-		DType:       tf.DTypeToString(desc.DType),
+		DType:       codegen.DTypeToString(desc.DType),
 		Delimiter:   desc.Delimiter,
 		Format:      desc.Format,
 		Shap:        desc.Shape,

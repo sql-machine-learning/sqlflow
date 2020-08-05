@@ -18,35 +18,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"text/template"
 
 	"sqlflow.org/sqlflow/go/attribute"
 	"sqlflow.org/sqlflow/go/codegen"
-	tf "sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
 type xgbTrainFiller struct {
-	DataSource         string
-	Select             string
-	ValidationSelect   string
-	ModelParamsJSON    string
-	TrainParamsJSON    string
-	FieldDescJSON      string
-	LabelJSON          string
-	FeatureColumnNames []string
-	FeatureColumnCode  string
-	DiskCache          bool
-	BatchSize          int
-	Epoch              int
-	Submitter          string
+	DataSource        string
+	Select            string
+	ValidationSelect  string
+	ModelParamsJSON   string
+	TrainParamsJSON   string
+	FeatureColumnCode string
+	LabelColumnCode   string
+	DiskCache         bool
+	BatchSize         int
+	Epoch             int
+	Submitter         string
 }
 
 // XGBoostGenerateTrain returns the step code
 func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
-	if err := resolveModelParams(trainStmt); err != nil {
+	var err error
+	if err = resolveModelParams(trainStmt); err != nil {
 		return "", err
 	}
 	params := parseAttribute(trainStmt.Attributes)
@@ -68,15 +67,19 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 		delete(params["train."], "num_workers")
 	}
 
-	// TODO(typhoonzero): use feature derivation at runtime.
-	if len(trainStmt.Features) != 1 {
+	if len(trainStmt.Features) > 1 {
 		return "", fmt.Errorf("xgboost only support 0 or 1 feature column set, received %d", len(trainStmt.Features))
 	}
-
-	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(trainStmt.Features["feature_columns"], trainStmt.Label)
-	if err != nil {
-		return "", err
+	// featureColumnCode is a python map definition code like fc_map = {"feature_columns": [...]}
+	featureColumnCode := ""
+	if len(trainStmt.Features) == 1 {
+		featureColumnCode, err = generateFeatureColumnCode(trainStmt.Features["feature_columns"])
+		if err != nil {
+			return "", err
+		}
 	}
+	labelColumnCode, err := generateFeatureColumnCode([]ir.FeatureColumn{trainStmt.Label})
+
 	mp, err := json.Marshal(params[""])
 	if err != nil {
 		return "", err
@@ -85,29 +88,23 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 	if err != nil {
 		return "", err
 	}
-	f, fs, err := resolveFeatureMeta(featureFieldDesc)
-	if err != nil {
-		return "", err
-	}
-	l, err := json.Marshal(resolveFieldMeta(&labelFieldDesc))
-	if err != nil {
-		return "", err
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter == "" {
+		submitter = "local"
 	}
 
 	filler := xgbTrainFiller{
-		DataSource:         session.DbConnStr,
-		Select:             trainStmt.Select,
-		ValidationSelect:   trainStmt.ValidationSelect,
-		ModelParamsJSON:    string(mp),
-		TrainParamsJSON:    string(tp),
-		FieldDescJSON:      string(f),
-		LabelJSON:          string(l),
-		FeatureColumnNames: fs,
-		FeatureColumnCode:  featureColumnCode,
-		DiskCache:          diskCache,
-		BatchSize:          batchSize,
-		Epoch:              epoch,
-		Submitter:          os.Getenv("SQLFLOW_submitter"),
+		DataSource:        session.DbConnStr,
+		Select:            trainStmt.Select,
+		ValidationSelect:  trainStmt.ValidationSelect,
+		ModelParamsJSON:   string(mp),
+		TrainParamsJSON:   string(tp),
+		FeatureColumnCode: featureColumnCode,
+		LabelColumnCode:   labelColumnCode,
+		DiskCache:         diskCache,
+		BatchSize:         batchSize,
+		Epoch:             epoch,
+		Submitter:         submitter,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Parse(xgbTrainTemplate))
@@ -121,30 +118,43 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 var xgbTrainTemplate = `
 def step_entry():
     import json
-    import runtime
+	import tempfile
+	import os
+	import runtime
+	import runtime.local
+    import runtime.local.xgboost
+    import runtime.feature.column as fc
+    import runtime.feature.field_desc as fd
+    from runtime.model import EstimatorType
     from runtime.xgboost.dataset import xgb_dataset
+    import runtime.xgboost as xgboost_extended
 
     model_params = json.loads('''{{.ModelParamsJSON}}''')
     train_params = json.loads('''{{.TrainParamsJSON}}''')
-    feature_metas = json.loads('''{{.FieldDescJSON}}''')
-    label_meta = json.loads('''{{.LabelJSON}}''')
 
     ds = "{{.DataSource}}"
     is_pai = False
     pai_train_table = ""
     select = "{{.Select}}"
     val_select = "{{.ValidationSelect}}"
+    conn = runtime.db.connect_with_data_source(ds)
 
-    # Derive feature columns at runtime like:
-    # fcmap, fc_label = infer_feature_columns(conn, select, features, label, n=1000)
+    {{ if .FeatureColumnCode }}
+    feature_column_map = {"featuren_columns": [{{.FeatureColumnCode}}]}
+    {{ else }}
+    feature_column_map = None
+    {{ end }}
+    label_fc = {{.LabelColumnCode}}
+    label_meta = label_fc.get_field_desc()[0].to_json()
 
-    feature_column_names = [{{range .FeatureColumnNames}}
-    "{{.}}",
-    {{end}}]
+    fc_map_ir, fc_label_ir = runtime.feature.infer_feature_columns(conn, select, feature_column_map, label_fc, n=1000)
+    fc_map = runtime.feature.compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
+    feature_column_list = fc_map["feature_columns"]
+    feature_metas = runtime.feature.get_ordered_field_descs(fc_map_ir)
+    feature_column_names = [fd.name for fd in feature_metas]
 
     # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
     # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
-    feature_column_list = [{{.FeatureColumnCode}}]
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_list)
 
     with tempfile.TemporaryDirectory() as tmp_dir_name:
@@ -159,8 +169,47 @@ def step_entry():
         eval_result = runtime.{{.Submitter}}.xgboost.train(dtrain, train_params, model_params, dval)
 `
 
+func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
+	fcCodes := make([]string, 0, len(fcList))
+	for _, fc := range fcList {
+		// xgboost have no cross feature column, just get the first field desc
+		fd := fc.GetFieldDesc()[0]
+		tmpl := `fc.%s(fd.FieldDesc(name="%s", dtype=fd.DataType.%s, delimiter="%s", format=fd.DataFormat.%s, shape=%s, is_sparse=%s, vocabulary=%s))`
+		fcTypeName := reflect.TypeOf(fc).Elem().Name()
+		isSparseStr := "False"
+		if fd.IsSparse {
+			isSparseStr = "True"
+		}
+		vocabList := []string{}
+		for k := range fd.Vocabulary {
+			vocabList = append(vocabList, k)
+		}
+		dataFormat := "PLAIN"
+		if fd.Format != "" {
+			dataFormat = fd.Format
+		}
+		shape := []int{1}
+		if len(fd.Shape) != 0 {
+			shape = fd.Shape
+		}
+
+		code := fmt.Sprintf(tmpl, fcTypeName, fd.Name,
+			strings.ToUpper(codegen.DTypeToString(fd.DType)),
+			fd.Delimiter,
+			dataFormat,
+			codegen.AttrToPythonValue(shape),
+			isSparseStr,
+			"[]")
+		// codegen.AttrToPythonValue(vocabList))
+		fcCodes = append(fcCodes, code)
+	}
+
+	return strings.Join(fcCodes, ",\n"), nil
+}
+
 // TODO(typhoonzero): below functions are copied from codegen/xgboost/codegen.go
 // remove the original functions when this experimental packages are ready.
+// -----------------------------------------------------------------------------
 
 func getXGBoostObjectives() (ret []string) {
 	for k := range attribute.XGBoostObjectiveDocs {
@@ -266,7 +315,7 @@ type FieldMeta struct {
 func resolveFieldMeta(desc *ir.FieldDesc) FieldMeta {
 	return FieldMeta{
 		FeatureName: desc.Name,
-		DType:       tf.DTypeToString(desc.DType),
+		DType:       codegen.DTypeToString(desc.DType),
 		Delimiter:   desc.Delimiter,
 		Format:      desc.Format,
 		Shap:        desc.Shape,
@@ -325,3 +374,5 @@ func init() {
 	fullAttrValidator = attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
 	fullAttrValidator.Update(attributeDictionary)
 }
+
+// -----------------------------------------------------------------------------

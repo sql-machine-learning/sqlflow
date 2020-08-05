@@ -26,6 +26,7 @@ class DataType(object):
     INT = 0
     FLOAT = 1
     STRING = 2
+    INT64 = 3
 
 
 # DataFormat is used in FieldDesc to represent the data format
@@ -66,7 +67,9 @@ class FieldDesc(object):
                  is_sparse=False,
                  vocabulary=None,
                  max_id=0):
-        assert dtype in [DataType.INT, DataType.FLOAT, DataType.STRING]
+        assert dtype in [
+            DataType.INT, DataType.FLOAT, DataType.STRING, DataType.INT64
+        ]
         assert format in [DataFormat.CSV, DataFormat.KV, DataFormat.PLAIN]
 
         self.name = name
@@ -87,6 +90,9 @@ class FieldDesc(object):
         """
         return json.dumps({
             "name": self.name,
+            # this line is used to be compatible to current code, remove it
+            # after refactor.
+            "feature_name": self.name,
             "dtype": self.dtype,
             "delimiter": self.delimiter,
             "format": self.format,
