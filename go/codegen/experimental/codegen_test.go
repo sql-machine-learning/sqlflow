@@ -14,13 +14,17 @@
 package experimental
 
 import (
+	"os"
 	"testing"
 
 	"sqlflow.org/sqlflow/go/database"
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-func TestXGBCodegen(t *testing.T) {
+func TestExperimentalXGBCodegen(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skipf("skip TestExperimentalXGBCodegen of DB type %s", os.Getenv("SQLFLOW_TEST_DB"))
+	}
 	sql := "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 LABEL class INTO sqlflow_models.xgb_classification;"
 	s := &pb.Session{DbConnStr: database.GetTestingMySQLURL()}
 	_, err := GenerateCodeCouler(sql, s)

@@ -115,6 +115,7 @@ func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
 		if s.GetModelKind() == ir.XGBoost {
 			return InitializeAttributes(s)
 		}
+		// TODO(typhoonzero): add below lines
 		// 	else if s.GetModelKind() == ir.KMeans {
 		// 		return pai.InitializeKMeansAttributes(s)
 		// 	}
