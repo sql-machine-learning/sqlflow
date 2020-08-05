@@ -68,8 +68,9 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 		delete(params["train."], "num_workers")
 	}
 
+	// TODO(typhoonzero): use feature derivation at runtime.
 	if len(trainStmt.Features) != 1 {
-		return "", fmt.Errorf("xgboost only support 1 feature column set, received %d", len(trainStmt.Features))
+		return "", fmt.Errorf("xgboost only support 0 or 1 feature column set, received %d", len(trainStmt.Features))
 	}
 
 	featureColumnCode, featureFieldDesc, labelFieldDesc, err := deriveFeatureColumnCodeAndFieldDescs(trainStmt.Features["feature_columns"], trainStmt.Label)
@@ -128,15 +129,18 @@ def step_entry():
     feature_metas = json.loads('''{{.FieldDescJSON}}''')
     label_meta = json.loads('''{{.LabelJSON}}''')
 
-    feature_column_names = [{{range .FeatureColumnNames}}
-    "{{.}}",
-    {{end}}]
-
     ds = "{{.DataSource}}"
     is_pai = False
     pai_train_table = ""
     select = "{{.Select}}"
     val_select = "{{.ValidationSelect}}"
+
+    # Derive feature columns at runtime like:
+    # fcmap, fc_label = infer_feature_columns(conn, select, features, label, n=1000)
+
+    feature_column_names = [{{range .FeatureColumnNames}}
+    "{{.}}",
+    {{end}}]
 
     # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
     # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.

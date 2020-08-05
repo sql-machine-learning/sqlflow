@@ -21,9 +21,7 @@ import (
 )
 
 func TestXGBCodegen(t *testing.T) {
-	t.Skip("enable this test when finished generate code using runtime.feature.*")
-
-	sql := "SELECT * FROM iris TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 LABEL class INTO sqlflow_models.xgb_classification;"
+	sql := "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 LABEL class INTO sqlflow_models.xgb_classification;"
 	s := &pb.Session{DbConnStr: database.GetTestingMySQLURL()}
 	_, err := GenerateCodeCouler(sql, s)
 	if err != nil {
