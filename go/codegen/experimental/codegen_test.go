@@ -11,16 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tensorflow
+package experimental
 
 import (
-	"strings"
+	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"sqlflow.org/sqlflow/go/database"
+	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-func TestDocGenInMarkdown(t *testing.T) {
-	a := assert.New(t)
-	a.True(strings.HasPrefix(DocGenInMarkdown(), `# TensorFlow`))
+func TestExperimentalXGBCodegen(t *testing.T) {
+	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
+		t.Skipf("skip TestExperimentalXGBCodegen of DB type %s", os.Getenv("SQLFLOW_TEST_DB"))
+	}
+	sql := "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 LABEL class INTO sqlflow_models.xgb_classification;"
+	s := &pb.Session{DbConnStr: database.GetTestingMySQLURL()}
+	_, err := GenerateCodeCouler(sql, s)
+	if err != nil {
+		t.Errorf("error %s", err)
+	}
 }

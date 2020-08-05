@@ -411,7 +411,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
             Like: odps://access_id:access_key@service.com/api?
                          curr_project=test_ci&scheme=http
         estimator_string: string
-            Tensorflow estimator name, Keras class name, or XGBoost
+            TensorFlow estimator name, Keras class name, or XGBoost
         select: string
             The SQL statement for selecting data for train
         validation_select: string
