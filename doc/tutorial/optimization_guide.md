@@ -1,6 +1,6 @@
 # Use SQLFlow to Solve Optimization Problems
 
-This document explains how to use the SQLFlow extended syntax to solve the optimization problems.
+This document explains how to use the SQLFlow to solve the optimization problems.
 
 ## The Optimization SQL Syntax
 
@@ -101,7 +101,7 @@ Solved result is:
 Saved in my_db.woodcarving_result_table.
 ```
 
-We can also see the solved result by the SQL statement `SELECT * FROM my_db.woodcarving_result_table;`:
+We can also examine the solved result by the SQL statement `SELECT * FROM my_db.woodcarving_result_table;`:
 
 ```
 +---------+--------+
@@ -191,7 +191,7 @@ USING glpk
 INTO my_db.transportation_result_table;
 ```
 
-where there are `GROUP BY` clauses in the constraint rules, which means:
+where there are `GROUP BY` clauses in the constraint rules, which mean:
 
 - `SUM(amount) <= capacity GROUP BY plant` : for each plant, the sum of the amount value should not exceed the capacity of the plant.
 - `SUM(amount) >= demand GROUP BY markets` : for each market, the sum of the amount value should be larger than or equal to the demand of the market.
@@ -214,7 +214,7 @@ Solved result is:
 Saved in my_db.transportation_result_table.
 ```
 
-We can also see the solved result by the SQL statement `SELECT * FROM my_db.transportation_result_table;`:
+We can also examine the solved result by the SQL statement `SELECT * FROM my_db.transportation_result_table;`:
 
 ```
 +--------+---------+--------+
@@ -228,4 +228,4 @@ We can also see the solved result by the SQL statement `SELECT * FROM my_db.tran
 ```
 
 ## Summary
-In the above examples, we explain how to use the SQLFlow extended syntax to solve the optimization problems. Currently, we only support the linear optimization problem and the GLPK solver. We would support more optimization problems and solvers in the future version.
+In the above examples, we explain how to use the SQLFlow to solve the optimization problems. Currently, we only support the linear optimization problem and the GLPK solver. We would support more optimization problems and solvers in the future version.
