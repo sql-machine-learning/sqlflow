@@ -52,8 +52,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    tensorflow.AttrToPythonValue,
-		"DTypeToString":        tensorflow.DTypeToString,
+		"attrToPythonValue":    codegen.AttrToPythonValue,
+		"DTypeToString":        codegen.DTypeToString,
 	}).Parse(templateTrain))
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err

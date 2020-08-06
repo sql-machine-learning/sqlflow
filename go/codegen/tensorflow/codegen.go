@@ -68,58 +68,6 @@ var distributedTrainingAttributes = attribute.Dictionary{}.
 	Int("train.evaluator_cpu", 200, "", nil).
 	Int("train.evaluator_gpu", 0, "", nil)
 
-// AttrToPythonValue format the WITH attributes to corresponding Python code.
-func AttrToPythonValue(attr interface{}) string {
-	switch attr.(type) {
-	case bool:
-		return strings.Title(fmt.Sprintf("%v", attr.(bool)))
-	case int:
-		return fmt.Sprintf("%d", attr.(int))
-	case int64:
-		return fmt.Sprintf("%d", attr.(int64))
-	case float32:
-		return fmt.Sprintf("%f", attr.(float32))
-	case float64: // FIXME(typhoonzero): may never use
-		return fmt.Sprintf("%f", attr.(float64))
-	case []int:
-		intArrayAttrStr, _ := codegen.MarshalToJSONString(attr.([]int))
-		return intArrayAttrStr
-		// TODO(typhoonzero): support []float etc.
-	case []interface{}:
-		tmplist := attr.([]interface{})
-		if len(tmplist) > 0 {
-			if _, ok := tmplist[0].(int); ok {
-				intlist := []int{}
-				for _, v := range tmplist {
-					intlist = append(intlist, v.(int))
-				}
-				intlistStr, _ := codegen.MarshalToJSONString(intlist)
-				return intlistStr
-			}
-		}
-		// TODO(typhoonzero): support []float etc.
-		return "[]"
-	case string:
-		return fmt.Sprintf("\"%s\"", attr.(string))
-	default:
-		return ""
-	}
-}
-
-// DTypeToString returns string value of dtype
-func DTypeToString(dt int) string {
-	switch dt {
-	case ir.Float:
-		return "float32"
-	case ir.Int:
-		return "int64"
-	case ir.String:
-		return "string"
-	default:
-		return ""
-	}
-}
-
 // TODO(shendiaomo): Make the optimizer related code more general and exported in `attribute.go` if other frameworks
 // than TensorFlow have to support python objects as model attributes.
 
@@ -343,8 +291,8 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    AttrToPythonValue,
-		"DTypeToString":        DTypeToString,
+		"attrToPythonValue":    codegen.AttrToPythonValue,
+		"DTypeToString":        codegen.DTypeToString,
 	}).Parse(tfTrainTemplateText))
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err
@@ -389,8 +337,8 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    AttrToPythonValue,
-		"DTypeToString":        DTypeToString,
+		"attrToPythonValue":    codegen.AttrToPythonValue,
+		"DTypeToString":        codegen.DTypeToString,
 	}).Parse(tfPredTemplateText))
 	if err := predTemplate.Execute(&program, filler); err != nil {
 		return "", err
@@ -433,8 +381,8 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    AttrToPythonValue,
-		"DTypeToString":        DTypeToString,
+		"attrToPythonValue":    codegen.AttrToPythonValue,
+		"DTypeToString":        codegen.DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
@@ -474,8 +422,8 @@ func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
 		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    AttrToPythonValue,
-		"DTypeToString":        DTypeToString,
+		"attrToPythonValue":    codegen.AttrToPythonValue,
+		"DTypeToString":        codegen.DTypeToString,
 	}).Parse(tfEvaluateTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
