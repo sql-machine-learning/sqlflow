@@ -83,7 +83,7 @@ class MySQLResultSet(ResultSet):
             self._cursor = None
 
 
-class MySQLConnection(Connection):
+class HiveConnection(Connection):
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
         self._conn = connect(user=self.uripts.username,
@@ -111,7 +111,7 @@ class MySQLConnection(Connection):
             return MySQLResultSet(cursor)
         except Exception as e:
             cursor.close()
-            return MySQLResultSet(None, e)
+            return MySQLResultSet(None, str(e))
 
     def close(self):
         if self._conn:

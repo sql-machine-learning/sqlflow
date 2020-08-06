@@ -15,20 +15,20 @@ import unittest
 from unittest import TestCase
 
 from runtime import testing
-from runtime.dbapi.mysql_connection import MySQLConnection
+from runtime.dbapi.mysql_connection import HiveConnection
 
 
 @unittest.skipUnless(testing.get_driver() == "mysql", "Skip non-mysql test")
 class TestMySQLConnection(TestCase):
     def test_connecion(self):
         try:
-            conn = MySQLConnection(testing.get_datasource())
+            conn = HiveConnection(testing.get_datasource())
             conn.close()
         except:
             self.fail()
 
     def test_query(self):
-        conn = MySQLConnection(testing.get_datasource())
+        conn = HiveConnection(testing.get_datasource())
         rs = conn.query("select * from notexist limit 1")
         self.assertFalse(rs.success())
 
@@ -49,7 +49,7 @@ class TestMySQLConnection(TestCase):
         self.assertTrue(20, len(rows))
 
     def test_exec(self):
-        conn = MySQLConnection(testing.get_datasource())
+        conn = HiveConnection(testing.get_datasource())
         rs = conn.exec("create table test_exec(a int)")
         self.assertTrue(rs)
         rs = conn.exec("insert into test_exec values(1), (2)")
