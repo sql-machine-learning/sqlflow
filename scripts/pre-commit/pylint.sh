@@ -12,9 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-changed_py_files=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' )
-if [[ "$changed_py_files" == "" ]]; then
+if [[ "$TRAVIS_BUILD_DIR" != "" ]]; then
+    # CI should check all files in ./python
+    file_or_dir_to_check=$TRAVIS_BUILD_DIR/python
+else
+    # Local pre-commit would check the changed files only
+    file_or_dir_to_check=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' )
+fi
+
+if [[ "$file_or_dir_to_check" == "" ]]; then
     exit 0
 fi
-pylint "$changed_py_files"
-flake8 "$changed_py_files"
+
+# TODO(sneaxiy): enable pylint on CI after fixing so many errors
+if [[ "$TRAVIS_BUILD_DIR" == "" ]]; then
+    pylint "$file_or_dir_to_check"
+fi
+
+flake8 "$file_or_dir_to_check"

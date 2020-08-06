@@ -77,7 +77,10 @@ class MySQLResultSet(ResultSet):
         return self._err
 
     def close(self):
-        """Close the ResultSet explicitly, release any resource incurred by this query"""
+        """
+        Close the ResultSet explicitly, release any resource incurred
+        by this query
+        """
         if self._cursor:
             self._cursor.close()
             self._cursor = None
@@ -94,7 +97,8 @@ class MySQLConnection(Connection):
                              port=self.uripts.port)
 
     def _parse_uri(self):
-        # MySQL connection string is a DataSourceName(DSN), we need to do some pre-process
+        # MySQL connection string is a DataSourceName(DSN),
+        # we need to do some pre-process
         pattern = r"^(\w+)://(\w*):(\w*)@tcp\(([.a-zA-Z0-9\-]*):([0-9]*)\)/(\w*)(\?.*)?$"  # noqa: W605, E501
         found_result = re.findall(pattern, self.uristr)
         scheme, user, passwd, host, port, db, config = found_result[0]

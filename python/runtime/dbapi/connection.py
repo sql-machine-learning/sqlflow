@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod
 from urllib.parse import parse_qs, urlparse
 
 import six
@@ -49,7 +49,7 @@ class ResultSet(object):
             fetch_size: max record to retrive
 
         Returns:
-            A list of records, each record is a list 
+            A list of records, each record is a list
             represent a row in the result set
         """
         pass
@@ -87,7 +87,8 @@ class Connection(object):
     """Base class for DB connection
 
     Args:
-        conn_uri: a connection uri in the schema://name:passwd@host/path?params format
+        conn_uri: a connection uri in the schema://name:passwd@host/path?params
+            format.
 
     """
     def __init__(self, conn_uri):
@@ -104,7 +105,7 @@ class Connection(object):
     def _parse_uri(self):
         """Parse the connection string into URI parts
         Returns:
-            A ParseResult, different implementations should always pack 
+            A ParseResult, different implementations should always pack
             the result into ParseResult
         """
         return urlparse(self.uristr)
@@ -133,7 +134,7 @@ class Connection(object):
             statement: the statement to execute
 
         Returns:
-            A ResultSet object which is iteratable, each generated 
+            A ResultSet object which is iteratable, each generated
             record in the iterator is a result-row wrapped by list
         """
         return self._get_result_set(statement)
@@ -150,14 +151,17 @@ class Connection(object):
         try:
             rs = self._get_result_set(statement)
             return rs.success()
-        except:
+        except:  # noqa: E722
             return False
         finally:
             rs.close()
 
     @abstractmethod
     def close(self):
-        """Close the connection, implementation should support close multi-times"""
+        """
+        Close the connection, implementation should support
+        close multi-times
+        """
         pass
 
     def __del__(self):
