@@ -75,6 +75,8 @@ class FieldDesc(object):
         self.format = format
         self.shape = shape
         self.is_sparse = is_sparse
+        if vocabulary is not None:
+            vocabulary = set(list(vocabulary))
         self.vocabulary = vocabulary
         self.max_id = max_id
 
