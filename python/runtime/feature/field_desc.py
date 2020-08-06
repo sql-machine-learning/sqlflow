@@ -59,16 +59,14 @@ class FieldDesc(object):
     """
     def __init__(self,
                  name="",
-                 dtype=DataType.INT,
+                 dtype=DataType.INT64,
                  delimiter="",
                  format=DataFormat.PLAIN,
                  shape=None,
                  is_sparse=False,
                  vocabulary=None,
                  max_id=0):
-        assert dtype in [
-            DataType.INT, DataType.FLOAT, DataType.STRING, DataType.INT64
-        ]
+        assert dtype in [DataType.INT64, DataType.FLOAT, DataType.STRING]
         assert format in [DataFormat.CSV, DataFormat.KV, DataFormat.PLAIN]
 
         self.name = name
