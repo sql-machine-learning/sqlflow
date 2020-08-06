@@ -52,11 +52,12 @@ jobs:
         PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
         # bash scripts/travis/upload_codecov.sh
     - name: maxcompute unit test
+      env:
+        SQLFLOW_TEST_DB_MAXCOMPUTE_AK: ${{ secrets.MAXCOMPUTE_AK }}
+        SQLFLOW_TEST_DB_MAXCOMPUTE_SK: ${{ secrets.MAXCOMPUTE_SK }}
       run: |
         set -e
         source build/env/bin/activate
-        export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
-        export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
         PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
         # bash scripts/travis/upload_codecov.sh
     - name: java unit test
