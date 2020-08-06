@@ -21,48 +21,48 @@ jobs:
         go generate ./...
         go install ./...
         pre-commit run -a --show-diff-on-failure
-    - name: build mysql image
-      run: docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
-    - name: mysql unit test
-      run: |
-        set -e
-        bash scripts/test/prepare.sh
-        source build/env/bin/activate
-        docker stop mysql || true
-        docker rm mysql || true
-        docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow:mysql
-        SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
-        # bash scripts/travis/upload_codecov.sh
-  test-hive-java:
-    runs-on: [self-hosted, linux]
-    env:
-      SQLFLOW_PARSER_SERVER_PORT: 12300
-      SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
-    steps:
-    - uses: actions/checkout@v1
-    - name: hive unit test
-      run: |
-        set -e
-        bash scripts/test/prepare.sh
-        source build/env/bin/activate
-        docker pull sqlflow/gohive:dev
-        docker stop hive || true
-        docker rm hive || true
-        docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
-        PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
-        # bash scripts/travis/upload_codecov.sh
-    - name: maxcompute unit test
-      run: |
-        set -e
-        source build/env/bin/activate
-        export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
-        export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
-        PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
-        # bash scripts/travis/upload_codecov.sh
-    - name: java unit test
-      run: |
-        set -e
-        bash scripts/test/java.sh
+  #   - name: build mysql image
+  #     run: docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+  #   - name: mysql unit test
+  #     run: |
+  #       set -e
+  #       bash scripts/test/prepare.sh
+  #       source build/env/bin/activate
+  #       docker stop mysql || true
+  #       docker rm mysql || true
+  #       docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow:mysql
+  #       SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
+  #       # bash scripts/travis/upload_codecov.sh
+  # test-hive-java:
+  #   runs-on: [self-hosted, linux]
+  #   env:
+  #     SQLFLOW_PARSER_SERVER_PORT: 12300
+  #     SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #   - name: hive unit test
+  #     run: |
+  #       set -e
+  #       bash scripts/test/prepare.sh
+  #       source build/env/bin/activate
+  #       docker pull sqlflow/gohive:dev
+  #       docker stop hive || true
+  #       docker rm hive || true
+  #       docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
+  #       PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
+  #       # bash scripts/travis/upload_codecov.sh
+  #   - name: maxcompute unit test
+  #     run: |
+  #       set -e
+  #       source build/env/bin/activate
+  #       export SQLFLOW_TEST_DB_MAXCOMPUTE_AK=$MAXCOMPUTE_AK
+  #       export SQLFLOW_TEST_DB_MAXCOMPUTE_SK=$MAXCOMPUTE_SK
+  #       PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
+  #       # bash scripts/travis/upload_codecov.sh
+  #   - name: java unit test
+  #     run: |
+  #       set -e
+  #       bash scripts/test/java.sh
   test-workflow:
     runs-on: [self-hosted, linux]
     env:
@@ -81,7 +81,8 @@ jobs:
         # bash scripts/travis/upload_codecov.sh
   push-images:
     runs-on: [self-hosted, linux]
-    needs: [test-mysql, test-hive-java, test-workflow]
+    # needs: [test-mysql, test-hive-java, test-workflow]
+    needs: [test-mysql]
     steps:
     - uses: actions/checkout@v1
     - name: push server images
@@ -99,7 +100,8 @@ jobs:
         bash scripts/travis/deploy_docker.sh
   linux-client:
     runs-on: ubuntu-latest
-    needs: [test-mysql, test-hive-java, test-workflow]
+    # needs: [test-mysql, test-hive-java, test-workflow]
+    needs: [test-mysql]
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2
@@ -125,7 +127,8 @@ jobs:
   # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
   macos-client:
     runs-on: macos-latest
-    needs: [test-mysql, test-hive-java, test-workflow]
+    # needs: [test-mysql, test-hive-java, test-workflow]
+    needs: [test-mysql]
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2
@@ -150,7 +153,8 @@ jobs:
         bash scripts/travis/deploy_client.sh
   windows-client:
     runs-on: windows-latest
-    needs: [test-mysql, test-hive-java, test-workflow]
+    # needs: [test-mysql, test-hive-java, test-workflow]
+    needs: [test-mysql]
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2
