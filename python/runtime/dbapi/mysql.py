@@ -83,12 +83,13 @@ class MySQLResultSet(ResultSet):
             self._cursor = None
 
 
-class HiveConnection(Connection):
+class MySQLConnection(Connection):
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
+        self.params["database"] = self.uripts.path.strip("/")
         self._conn = connect(user=self.uripts.username,
                              passwd=self.uripts.password,
-                             db=self.uripts.path.strip("/"),
+                             db=self.params["database"],
                              host=self.uripts.hostname,
                              port=self.uripts.port)
 
@@ -96,13 +97,9 @@ class HiveConnection(Connection):
         # MySQL connection string is a DataSourceName(DSN), we need to do some pre-process
         pattern = r"^(\w+)://(\w*):(\w*)@tcp\(([.a-zA-Z0-9\-]*):([0-9]*)\)/(\w*)(\?.*)?$"  # noqa: W605, E501
         found_result = re.findall(pattern, self.uristr)
-        scheme, user, passwd, host, port, database, config_str = found_result[
-            0]
-        res = ParseResult(scheme, "{}:{}@{}:{}".format(user, passwd, host,
-                                                       port), database, "",
-                          config_str.lstrip("?"), "")
-        # we can't set the port,user and password fields, so, re-parse the url
-        return urlparse(urlunparse(res))
+        scheme, user, passwd, host, port, db, config = found_result[0]
+        netloc = "{}:{}@{}:{}".format(user, passwd, host, port)
+        return ParseResult(scheme, netloc, db, "", config.lstrip("?"), "")
 
     def _get_result_set(self, statement):
         cursor = self._conn.cursor()
