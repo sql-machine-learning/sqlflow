@@ -97,7 +97,6 @@ jobs:
       run: echo "::set-env name=TRAVIS_BRANCH::${{ github.head_ref }}"
     - if: ${{ github.event_name == 'push' }}
       run: echo "::set-env name=TRAVIS_BRANCH::${GITHUB_REF##*/}"
-    - name: release latest linux client binary
     - name: push server images
       env:
         DOCKER_USERNAME: "typhoon1986"
