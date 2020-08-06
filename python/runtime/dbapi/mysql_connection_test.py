@@ -24,7 +24,7 @@ class TestMySQLConnection(TestCase):
         try:
             conn = MySQLConnection(testing.get_datasource())
             conn.close()
-        except:
+        except:  # noqa: E722
             self.fail()
 
     def test_query(self):
