@@ -60,7 +60,7 @@ class HiveConnection(Connection):
     """Hive connection
 
     conn_uri: uri in format: hive://usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_queuename=mr
-        all params start with 'session.' with be treated as session configuration
+        all params start with 'session.' will be treated as session configuration
     """
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
