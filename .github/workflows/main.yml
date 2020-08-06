@@ -80,7 +80,9 @@ jobs:
         bash scripts/test/workflow.sh
         # bash scripts/travis/upload_codecov.sh
   push-images:
-    - runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, linux]
+    needs: [test-mysql, test-hive-java, test-workflow]
+    steps:
     - uses: actions/checkout@v1
     - name: push server images
       env:
