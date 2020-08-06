@@ -34,9 +34,9 @@ class DataType(object):
 # CSV: in the form of "1,2,4"
 # KV:  in the form of "0:3.2 1:-0.3 10:3.9"
 class DataFormat(object):
-    PLAIN = 0
-    CSV = 1
-    KV = 2
+    PLAIN = ""
+    CSV = "csv"
+    KV = "kv"
 
 
 class FieldDesc(object):
@@ -111,7 +111,14 @@ class FieldDesc(object):
         Returns:
             A FieldDesc object.
         """
-        return FieldDesc(**d)
+        return FieldDesc(name=d["name"],
+                         dtype=d["dtype"],
+                         delimiter=d["delimiter"],
+                         format=d["format"],
+                         shape=d["shape"],
+                         is_sparse=d["is_sparse"],
+                         vocabulary=d["vocabulary"],
+                         max_id=d["max_id"])
 
     def to_json(self):
         """

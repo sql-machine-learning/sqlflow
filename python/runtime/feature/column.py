@@ -58,9 +58,10 @@ class FeatureColumn(object):
         Returns:
             A Python dict which represents the FeatureColumn object.
         """
-        d = feature_column._to_dict()
-        d["type"] = type(feature_column).__name__
-        return d
+        return {
+            "type": type(feature_column).__name__,
+            "value": feature_column._to_dict(),
+        }
 
     def _to_dict(self):
         """
@@ -86,7 +87,7 @@ class FeatureColumn(object):
         """
         if isinstance(obj, dict):
             typ = obj.get("type")
-            return eval(typ)._from_dict(obj)
+            return eval(typ)._from_dict(obj.get("value"))
         elif isinstance(obj, FeatureColumn):
             return obj
         else:
@@ -177,7 +178,6 @@ class BucketColumn(CategoryColumn):
 
     def _to_dict(self):
         return {
-            "type": "BucketColumn",
             "source_column": FeatureColumn.to_dict(self.source_column),
             "boundaries": self.boundaries,
         }
@@ -249,7 +249,6 @@ class CategoryHashColumn(CategoryColumn):
 
     def _to_dict(self):
         return {
-            "type": "CategoryHashColumn",
             "field_desc": self.field_desc.to_dict(),
             "bucket_size": self.bucket_size,
         }
