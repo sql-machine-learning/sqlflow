@@ -59,7 +59,6 @@ class FieldDesc(object):
     """
     def __init__(self,
                  name="",
-                 feature_name="",
                  dtype=DataType.INT64,
                  delimiter="",
                  format=DataFormat.PLAIN,
