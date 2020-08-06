@@ -11,16 +11,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tensorflow
+package codegen
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDocGenInMarkdown(t *testing.T) {
+func TestAttrToPython(t *testing.T) {
 	a := assert.New(t)
-	a.True(strings.HasPrefix(DocGenInMarkdown(), `# TensorFlow`))
+	l := []string{"a", "b", "c"}
+	v := AttrToPythonValue(l)
+	a.Equal("[\"a\",\"b\",\"c\"]", v)
+	l = []string{}
+	v = AttrToPythonValue(l)
+	a.Equal("[]", v)
 }

@@ -21,7 +21,7 @@ from odps import tunnel
 from runtime.db import (MYSQL_FIELD_TYPE_DICT, buffered_db_writer, connect,
                         connect_with_data_source, db_generator,
                         get_table_schema, limit_select, parseHiveDSN,
-                        parseMaxComputeDSN, parseMySQLDSN, read_feature,
+                        parseMaxComputeDSN, parseMySQLDSN, query, read_feature,
                         read_features_from_row, selected_columns_and_types)
 
 
@@ -401,6 +401,33 @@ class TestLimitSelect(TestCase):
 
         self.assertEqual("SELECT * FROM t \t  LIMIT 4; ",
                          limit_select("SELECT * FROM t \t ; ", 4))
+
+
+@unittest.skipIf(testing.get_driver() == "maxcompute", "skip non mysql tests")
+class TestQuery(TestCase):
+    def test_query(self):
+        conn = connect_with_data_source(testing.get_datasource())
+        gen = query(conn, "select * from iris.train limit 1")
+        rows = [row for row in gen()]
+        self.assertEqual(1, len(rows))
+
+        query(conn, "drop table if exists A")
+
+        query(conn, "create table A(a int);")
+        query(conn, "insert into A values(1)")
+        gen = query(conn, "select * from A;")
+        rows = [row for row in gen()]
+        self.assertEqual(1, len(rows))
+
+        query(conn, "truncate table A")
+        gen = query(conn, "select * from A;")
+        rows = [row for row in gen()]
+        self.assertEqual(0, len(rows))
+        self.assertEqual(1, len(gen.field_names))
+        self.assertEqual("a", gen.field_names[0])
+        self.assertEqual("INT", gen.field_types[0])
+
+        query(conn, "drop table if exists A")
 
 
 if __name__ == "__main__":

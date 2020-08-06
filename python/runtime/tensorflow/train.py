@@ -24,7 +24,7 @@ from runtime.tensorflow.train_keras import keras_train_and_save
 
 from ..model_metadata import collect_model_metadata
 
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 

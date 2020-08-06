@@ -36,7 +36,7 @@ FLAGS = define_tf_flags()
 
 def evaluate(datasource, select, data_table, result_table, oss_model_path,
              metrics):
-    """PAI Tensorflow evaluate wrapper
+    """PAI TensorFlow evaluate wrapper
     This function do some preparation for the local evaluation, say,
     download the model from OSS, extract metadata and so on.
 

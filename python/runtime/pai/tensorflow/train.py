@@ -24,7 +24,7 @@ from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
 
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
