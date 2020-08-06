@@ -14,7 +14,6 @@
 import re
 from urllib.parse import ParseResult, urlparse, urlunparse
 
-import dsnparse
 # NOTE: use MySQLdb to avoid bugs like infinite reading:
 # https://bugs.mysql.com/bug.php?id=91971
 from MySQLdb import connect
