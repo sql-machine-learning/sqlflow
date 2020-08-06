@@ -44,6 +44,59 @@ class FeatureColumn(object):
         """
         raise NotImplementedError()
 
+    @classmethod
+    def to_dict(cls, feature_column):
+        """
+        Convert the FeatureColumn object to a Python dict, which can be
+        serialized to a JSON string.
+
+        Args:
+            feature_column (FeatureColumn): a FeatureColumn object.
+
+        Returns:
+            A Python dict which represents the FeatureColumn object.
+        """
+        d = feature_column._to_dict()
+        d["type"] = type(feature_column).__name__
+        return d
+
+    def _to_dict(self):
+        """
+        The underlying implementation of `FeatureColumn.to_dict`.
+
+        Returns:
+            A Python dict which represents the FeatureColumn object.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def from_dict(cls, d):
+        """
+        Create a FeatureColumn object from a Python dict. It can
+        be used to deserialize a FeatureColumn object from a JSON string.
+
+        Args:
+            d (dict): a Python dict object.
+
+        Returns:
+            A FeatureColumn object.
+        """
+        typ = d.get("type")
+        return eval(typ)._from_dict(d)
+
+    @classmethod
+    def _from_dict(self, d):
+        """
+        The underlying implementation of `FeatureColumn.from_dict`.
+
+        Args:
+            d (dict): a Python dict object.
+
+        Returns:
+            A FeatureColumn object.
+        """
+        raise NotImplementedError()
+
 
 class CategoryColumn(FeatureColumn):
     """
@@ -78,6 +131,16 @@ class NumericColumn(FeatureColumn):
     def new_feature_column_from(self, field_desc):
         return NumericColumn(field_desc)
 
+    def _to_dict(self):
+        return {
+            "field_desc": self.field_desc.to_dict(),
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        fd = FieldDesc.from_dict(d["field_desc"])
+        return NumericColumn(fd)
+
 
 class BucketColumn(CategoryColumn):
     """
@@ -104,6 +167,19 @@ class BucketColumn(CategoryColumn):
     def num_class(self):
         return len(self.boundaries) + 1
 
+    def _to_dict(self):
+        return {
+            "type": "BucketColumn",
+            "source_column": FeatureColumn.to_dict(self.source_column),
+            "boundaries": self.boundaries,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        source_column = FeatureColumn.from_dict(d["source_column"])
+        boundaries = d["boundaries"]
+        return BucketColumn(source_column, boundaries)
+
 
 class CategoryIDColumn(CategoryColumn):
     """
@@ -126,6 +202,18 @@ class CategoryIDColumn(CategoryColumn):
 
     def num_class(self):
         return self.bucket_size
+
+    def _to_dict(self):
+        return {
+            "field_desc": self.field_desc.to_dict(),
+            "bucket_size": self.bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        field_desc = FieldDesc.from_dict(d["field_desc"])
+        bucket_size = d["bucket_size"]
+        return CategoryIDColumn(field_desc, bucket_size)
 
 
 class CategoryHashColumn(CategoryColumn):
@@ -150,6 +238,19 @@ class CategoryHashColumn(CategoryColumn):
     def num_class(self):
         return self.bucket_size
 
+    def _to_dict(self):
+        return {
+            "type": "CategoryHashColumn",
+            "field_desc": self.field_desc.to_dict(),
+            "bucket_size": self.bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        field_desc = FieldDesc.from_dict(d["field_desc"])
+        bucket_size = d["bucket_size"]
+        return CategoryHashColumn(field_desc, bucket_size)
+
 
 class SeqCategoryIDColumn(CategoryColumn):
     """
@@ -172,6 +273,18 @@ class SeqCategoryIDColumn(CategoryColumn):
 
     def num_class(self):
         return self.bucket_size
+
+    def _to_dict(self):
+        return {
+            "field_desc": self.field_desc.to_dict(),
+            "bucket_size": self.bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        field_desc = FieldDesc.from_dict(d["field_desc"])
+        bucket_size = d["bucket_size"]
+        return SeqCategoryIDColumn(field_desc, bucket_size)
 
 
 class CrossColumn(CategoryColumn):
@@ -209,6 +322,31 @@ class CrossColumn(CategoryColumn):
 
     def num_class(self):
         return self.hash_bucket_size
+
+    def _to_dict(self):
+        keys = []
+        for k in self.keys:
+            if isinstance(k, six.string_types):
+                keys.append(k)
+            else:
+                keys.append(FeatureColumn.to_dict(k))
+
+        return {
+            "keys": keys,
+            "hash_bucket_size": self.hash_bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        keys = []
+        for k in d["keys"]:
+            if isinstance(k, six.string_types):
+                keys.append(k)
+            else:
+                keys.append(FeatureColumn.from_dict(k))
+
+        hash_bucket_size = d["hash_bucket_size"]
+        return CrossColumn(keys, hash_bucket_size)
 
 
 class EmbeddingColumn(FeatureColumn):
@@ -259,6 +397,31 @@ class EmbeddingColumn(FeatureColumn):
                                initializer=self.initializer,
                                name=self.name)
 
+    def _to_dict(self):
+        category_column = None
+        if self.category_column is not None:
+            category_column = FeatureColumn.to_dict(self.category_column)
+
+        return {
+            "category_column": category_column,
+            "dimension": self.dimension,
+            "combiner": self.combiner,
+            "initializer": self.initializer,
+            "name": self.name,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        category_column = d["category_column"]
+        if category_column is not None:
+            category_column = FeatureColumn.from_dict(category_column)
+
+        return EmbeddingColumn(category_column=category_column,
+                               dimension=d["dimension"],
+                               combiner=d["combiner"],
+                               initializer=d["initializer"],
+                               name=d["name"])
+
 
 class IndicatorColumn(FeatureColumn):
     """
@@ -291,3 +454,21 @@ class IndicatorColumn(FeatureColumn):
             category_column = None
 
         return IndicatorColumn(category_column, self.name)
+
+    def _to_dict(self):
+        category_column = None
+        if self.category_column is not None:
+            category_column = FeatureColumn.to_dict(self.category_column)
+
+        return {
+            "category_column": category_column,
+            "name": self.name,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        category_column = d["category_column"]
+        if category_column is not None:
+            category_column = FeatureColumn.from_dict(category_column)
+
+        return IndicatorColumn(category_column=category_column, name=d["name"])

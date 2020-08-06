@@ -39,7 +39,7 @@ def to_package_dtype(dtype, package):
         The data type accepted by the feature column implementation
         packages including TensorFlow and XGBoost.
     """
-    if dtype == DataType.INT:
+    if dtype == DataType.INT64:
         return package.dtypes.int64
 
     if dtype == DataType.FLOAT:
