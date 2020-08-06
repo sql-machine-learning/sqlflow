@@ -13,12 +13,16 @@
 
 package ir
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // FeatureColumn corresponds to the COLUMN clause in TO TRAIN.
 type FeatureColumn interface {
 	GetFieldDesc() []*FieldDesc
 	ApplyTo(*FieldDesc) (FeatureColumn, error)
+	GenPythonCode() string
 }
 
 // CategoryColumn corresponds to categorical column
@@ -41,6 +45,27 @@ type FieldDesc struct {
 	// if the column data is used as embedding(category_column()), the `num_buckets` should use the maxID
 	// appeared in the sample data. if error still occurs, users should set `num_buckets` manually.
 	MaxID int64
+}
+
+// GenPythonCode generate Python code to construct a runtime.feature.field_desc
+func (fd *FieldDesc) GenPythonCode() string {
+	isSparseStr := "False"
+	if fd.IsSparse {
+		isSparseStr = "True"
+	}
+	vocabList := []string{}
+	for k := range fd.Vocabulary {
+		vocabList = append(vocabList, k)
+	}
+	// pass format = "" to let runtime feature derivation to fill it in.
+	return fmt.Sprintf(`runtime.feature.field_desc.FieldDesc(name="%s", dtype=fd.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s)`,
+		fd.Name,
+		strings.ToUpper(DTypeToString(fd.DType)),
+		fd.Delimiter,
+		AttrToPythonValue(fd.Shape),
+		isSparseStr,
+		AttrToPythonValue(vocabList),
+	)
 }
 
 // Possible DType values in FieldDesc
@@ -66,6 +91,12 @@ func (c *NumericColumn) GetFieldDesc() []*FieldDesc {
 // ApplyTo applies the FeatureColumn to a new field
 func (c *NumericColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	return &NumericColumn{other}, nil
+}
+
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *NumericColumn) GenPythonCode() string {
+	code := fmt.Sprintf(`runtime.feature.column.NumericColumn(%s)`, c.FieldDesc.GenPythonCode())
+	return code
 }
 
 // BucketColumn represents `tf.feature_column.bucketized_column`
@@ -95,6 +126,15 @@ func (c *BucketColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 // NumClass returns class number of BucketColumn
 func (c *BucketColumn) NumClass() int64 {
 	return int64(len(c.Boundaries)) + 1
+}
+
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *BucketColumn) GenPythonCode() string {
+	code := fmt.Sprintf(`runtime.feature.column.BucketColumn(%s, %s)`,
+		c.SourceColumn.GenPythonCode(),
+		AttrToPythonValue(c.Boundaries),
+	)
+	return code
 }
 
 // CrossColumn represents `tf.feature_column.crossed_column`
@@ -133,6 +173,23 @@ func (c *CrossColumn) NumClass() int64 {
 	return c.HashBucketSize
 }
 
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *CrossColumn) GenPythonCode() string {
+	keysCode := []string{}
+	for _, k := range c.Keys {
+		if strKey, ok := k.(string); ok {
+			keysCode = append(keysCode, strKey)
+		} else if nc, ok := k.(*NumericColumn); ok {
+			keysCode = append(keysCode, nc.GenPythonCode())
+		}
+	}
+	code := fmt.Sprintf(`runtime.feature.column.CrossColumn([%s], %d)`,
+		strings.Join(keysCode, ","),
+		c.HashBucketSize,
+	)
+	return code
+}
+
 // CategoryIDColumn represents `tf.feature_column.categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_identity
 type CategoryIDColumn struct {
@@ -153,6 +210,15 @@ func (c *CategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 // NumClass returns class number of CategoryIDColumn
 func (c *CategoryIDColumn) NumClass() int64 {
 	return c.BucketSize
+}
+
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *CategoryIDColumn) GenPythonCode() string {
+	code := fmt.Sprintf(`runtime.feature.column.CategoryIDColumn(%s, %d)`,
+		c.FieldDesc.GenPythonCode(),
+		c.BucketSize,
+	)
+	return code
 }
 
 // CategoryHashColumn represents `tf.feature_column.categorical_column_with_hash_bucket`
@@ -177,6 +243,15 @@ func (c *CategoryHashColumn) NumClass() int64 {
 	return c.BucketSize
 }
 
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *CategoryHashColumn) GenPythonCode() string {
+	code := fmt.Sprintf(`runtime.feature.column.CategoryHashColumn(%s, %d)`,
+		c.FieldDesc.GenPythonCode(),
+		c.BucketSize,
+	)
+	return code
+}
+
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/sequence_categorical_column_with_identity
 type SeqCategoryIDColumn struct {
@@ -197,6 +272,15 @@ func (c *SeqCategoryIDColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 // NumClass returns class number of SeqCategoryIDColumn
 func (c *SeqCategoryIDColumn) NumClass() int64 {
 	return c.BucketSize
+}
+
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *SeqCategoryIDColumn) GenPythonCode() string {
+	code := fmt.Sprintf(`runtime.feature.column.SeqCategoryIDColumn(%s, %d)`,
+		c.FieldDesc.GenPythonCode(),
+		c.BucketSize,
+	)
+	return code
 }
 
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
@@ -243,6 +327,24 @@ func (c *EmbeddingColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 	return ret, nil
 }
 
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *EmbeddingColumn) GenPythonCode() string {
+	catColCode := ""
+	if c.CategoryColumn == nil {
+		catColCode = "None"
+	} else {
+		catColCode = c.CategoryColumn.GenPythonCode()
+	}
+	code := fmt.Sprintf(`runtime.feature.column.EmbeddingColumn(category_column=%s, dimension=%d, combiner="%s", initializer="%s", name="%s")`,
+		catColCode,
+		c.Dimension,
+		c.Combiner,
+		c.Initializer,
+		c.Name,
+	)
+	return code
+}
+
 // IndicatorColumn represents `tf.feature_column.indicator_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/indicator_column
 type IndicatorColumn struct {
@@ -276,4 +378,19 @@ func (c *IndicatorColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 		}
 	}
 	return ret, nil
+}
+
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *IndicatorColumn) GenPythonCode() string {
+	catColCode := ""
+	if c.CategoryColumn == nil {
+		catColCode = "None"
+	} else {
+		catColCode = c.CategoryColumn.GenPythonCode()
+	}
+	code := fmt.Sprintf(`runtime.feature.column.IndicatorColumn(category_column=%s, name="%s")`,
+		catColCode,
+		c.Name,
+	)
+	return code
 }

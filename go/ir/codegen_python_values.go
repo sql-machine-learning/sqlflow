@@ -11,23 +11,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package codegen
+package ir
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
-
-	"sqlflow.org/sqlflow/go/ir"
 )
 
 // DTypeToString returns string value of dtype
 func DTypeToString(dt int) string {
 	switch dt {
-	case ir.Float:
+	case Float:
 		return "float32"
-	case ir.Int:
+	case Int:
 		return "int64"
-	case ir.String:
+	case String:
 		return "string"
 	default:
 		return ""
@@ -76,4 +75,10 @@ func AttrToPythonValue(attr interface{}) string {
 	default:
 		return ""
 	}
+}
+
+// MarshalToJSONString converts any data to JSON string.
+func MarshalToJSONString(in interface{}) (string, error) {
+	bytes, err := json.Marshal(in)
+	return string(bytes), err
 }

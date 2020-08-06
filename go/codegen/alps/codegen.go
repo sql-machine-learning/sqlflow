@@ -19,7 +19,6 @@ import (
 	"strings"
 	"text/template"
 
-	"sqlflow.org/sqlflow/go/codegen"
 	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
@@ -51,9 +50,9 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    codegen.AttrToPythonValue,
-		"DTypeToString":        codegen.DTypeToString,
+		"intArrayToJSONString": ir.MarshalToJSONString,
+		"attrToPythonValue":    ir.AttrToPythonValue,
+		"DTypeToString":        ir.DTypeToString,
 	}).Parse(templateTrain))
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err

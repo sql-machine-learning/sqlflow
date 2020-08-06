@@ -290,9 +290,9 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    codegen.AttrToPythonValue,
-		"DTypeToString":        codegen.DTypeToString,
+		"intArrayToJSONString": ir.MarshalToJSONString,
+		"attrToPythonValue":    ir.AttrToPythonValue,
+		"DTypeToString":        ir.DTypeToString,
 	}).Parse(tfTrainTemplateText))
 	if err := trainTemplate.Execute(&program, filler); err != nil {
 		return "", err
@@ -336,9 +336,9 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var predTemplate = template.Must(template.New("Pred").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    codegen.AttrToPythonValue,
-		"DTypeToString":        codegen.DTypeToString,
+		"intArrayToJSONString": ir.MarshalToJSONString,
+		"attrToPythonValue":    ir.AttrToPythonValue,
+		"DTypeToString":        ir.DTypeToString,
 	}).Parse(tfPredTemplateText))
 	if err := predTemplate.Execute(&program, filler); err != nil {
 		return "", err
@@ -380,9 +380,9 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Explain").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    codegen.AttrToPythonValue,
-		"DTypeToString":        codegen.DTypeToString,
+		"intArrayToJSONString": ir.MarshalToJSONString,
+		"attrToPythonValue":    ir.AttrToPythonValue,
+		"DTypeToString":        ir.DTypeToString,
 	}).Parse(boostedTreesExplainTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
@@ -421,9 +421,9 @@ func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 	}
 	var program bytes.Buffer
 	var tmpl = template.Must(template.New("Evaluate").Funcs(template.FuncMap{
-		"intArrayToJSONString": codegen.MarshalToJSONString,
-		"attrToPythonValue":    codegen.AttrToPythonValue,
-		"DTypeToString":        codegen.DTypeToString,
+		"intArrayToJSONString": ir.MarshalToJSONString,
+		"attrToPythonValue":    ir.AttrToPythonValue,
+		"DTypeToString":        ir.DTypeToString,
 	}).Parse(tfEvaluateTemplateText))
 	if err := tmpl.Execute(&program, filler); err != nil {
 		return "", err
