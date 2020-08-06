@@ -12,7 +12,7 @@
 # limitations under the License.
 
 # NOTE: ALPS supports tensorflow 1.15 currently, should run this example with
-# Tensorflow 1.15.x installed.
+# TensorFlow 1.15.x installed.
 
 import os
 import shutil
@@ -45,7 +45,7 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
 
 if __name__ == "__main__":
     if tf_is_version2():
-        raise ValueError("ALPS must run with Tensorflow == 1.15.x")
+        raise ValueError("ALPS must run with TensorFlow == 1.15.x")
     odps_project = os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")
     odps_conf = OdpsConf(
         accessid=os.getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK"),

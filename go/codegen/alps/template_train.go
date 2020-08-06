@@ -101,7 +101,7 @@ class SQLFlowEstimatorBuilder(EstimatorBuilder):
 
 if __name__ == "__main__":
     if tf_is_version2():
-        raise ValueError("ALPS must run with Tensorflow == 1.15.x")
+        raise ValueError("ALPS must run with TensorFlow == 1.15.x")
 
     driver, dsn = "{{.DataSource}}".split("://")
     user, passwd, endpoint, odps_project = db.parseMaxComputeDSN(dsn)

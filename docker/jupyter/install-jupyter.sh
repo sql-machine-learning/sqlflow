@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 # install jupyterhub Python package so that this image can be used as jupyterhub
 # singleuser notebook server, ref: https://github.com/jupyterhub/jupyterhub/tree/master/singleuser
@@ -28,7 +28,7 @@ apk add py3-cryptography py3-ruamel.yaml.clib py3-requests
 
 pip -q install \
     jupyterhub==1.1.0 \
-    notebook \
+    notebook==6.0.3 \
     sqlflow==0.13.0
 
 # Load SQLFlow's Jupyter magic command

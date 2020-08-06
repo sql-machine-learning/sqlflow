@@ -24,7 +24,7 @@ except:  # noqa: E722
     import tensorflow as tf
 
 # This module contain utilities for PAI distributed training.
-# Note that currently PAI only support Tensorflow 1.x versions
+# Note that currently PAI only support TensorFlow 1.x versions
 # importing this module should make sure that currently installed
 # tensorflow is version 1.x.
 

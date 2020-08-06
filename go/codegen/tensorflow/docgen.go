@@ -26,7 +26,7 @@ func DocGenInMarkdown() string {
 	return doc.String()
 }
 
-const docTemplateText = `# Tensorflow Parameters
+const docTemplateText = `# TensorFlow Parameters
 
 ## TRAIN
 
