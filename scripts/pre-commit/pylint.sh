@@ -13,8 +13,10 @@
 # limitations under the License.
 
 if [[ "$TRAVIS_BUILD_DIR" != "" ]]; then
+    # CI should check all files in ./python
     file_or_dir_to_check=$TRAVIS_BUILD_DIR/python
 else
+    # Local pre-commit would check the changed files only
     file_or_dir_to_check=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.py$' )
 fi
 

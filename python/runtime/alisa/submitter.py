@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import os
-from os import path
 
 from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
