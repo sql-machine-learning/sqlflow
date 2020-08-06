@@ -23,10 +23,9 @@ __all__ = [
 # DataType is used in FieldDesc to represent the data type of
 # a database field.
 class DataType(object):
-    INT = 0
+    INT64 = 0
     FLOAT = 1
     STRING = 2
-    INT64 = 3
 
 
 # DataFormat is used in FieldDesc to represent the data format
