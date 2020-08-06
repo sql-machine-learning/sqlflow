@@ -24,7 +24,7 @@ class TestHiveConnection(TestCase):
         try:
             conn = HiveConnection(testing.get_datasource())
             conn.close()
-        except:
+        except:  # noqa: E722
             self.fail()
 
     def test_query(self):

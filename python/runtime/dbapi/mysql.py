@@ -12,7 +12,7 @@
 # limitations under the License
 
 import re
-from urllib.parse import ParseResult, urlparse, urlunparse
+from urllib.parse import ParseResult
 
 # NOTE: use MySQLdb to avoid bugs like infinite reading:
 # https://bugs.mysql.com/bug.php?id=91971

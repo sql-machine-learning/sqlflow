@@ -50,7 +50,8 @@ class HiveResultSet(ResultSet):
         return self._err
 
     def close(self):
-        """Close the ResultSet explicitly, release any resource incurred by this query"""
+        """Close the ResultSet explicitly, release any
+        resource incurred by this query"""
         if self._cursor:
             self._cursor.close()
             self._cursor = None
@@ -59,8 +60,10 @@ class HiveResultSet(ResultSet):
 class HiveConnection(Connection):
     """Hive connection
 
-    conn_uri: uri in format: hive://usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapreduce_job_queuename=mr
-        all params start with 'session.' will be treated as session configuration
+    conn_uri: uri in format:
+        hive://usr:pswd@hiveserver:10000/mydb?auth=PLAIN&session.mapred=mr
+        All params start with 'session.' will be treated as session
+        configuration
     """
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
