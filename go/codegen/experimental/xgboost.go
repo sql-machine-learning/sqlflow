@@ -118,10 +118,10 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 var xgbTrainTemplate = `
 def step_entry():
     import json
-	import tempfile
-	import os
-	import runtime
-	import runtime.local
+    import tempfile
+    import os
+    import runtime
+    import runtime.local
     import runtime.local.xgboost
     import runtime.feature.column as fc
     import runtime.feature.field_desc as fd
@@ -180,7 +180,8 @@ func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 	for _, fc := range fcList {
 		// xgboost have no cross feature column, just get the first field desc
 		fd := fc.GetFieldDesc()[0]
-		tmpl := `fc.%s(fd.FieldDesc(name="%s", dtype=fd.DataType.%s, delimiter="%s", format=fd.DataFormat.%s, shape=%s, is_sparse=%s, vocabulary=%s))`
+		// pass format = "" to let runtime feature derivation to fill it in.
+		tmpl := `fc.%s(fd.FieldDesc(name="%s", dtype=fd.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s))`
 		fcTypeName := reflect.TypeOf(fc).Elem().Name()
 		isSparseStr := "False"
 		if fd.IsSparse {
@@ -190,10 +191,6 @@ func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 		for k := range fd.Vocabulary {
 			vocabList = append(vocabList, k)
 		}
-		dataFormat := "PLAIN"
-		if fd.Format != "" {
-			dataFormat = fd.Format
-		}
 		shape := []int{1}
 		if len(fd.Shape) != 0 {
 			shape = fd.Shape
@@ -202,7 +199,6 @@ func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 		code := fmt.Sprintf(tmpl, fcTypeName, fd.Name,
 			strings.ToUpper(codegen.DTypeToString(fd.DType)),
 			fd.Delimiter,
-			dataFormat,
 			codegen.AttrToPythonValue(shape),
 			isSparseStr,
 			codegen.AttrToPythonValue(vocabList))

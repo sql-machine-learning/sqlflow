@@ -90,8 +90,8 @@ class FieldDesc(object):
         """
         return json.dumps({
             "name": self.name,
-            # this line is used to be compatible to current code, remove it
-            # after refactor.
+            # FIXME(typhoonzero): this line is used to be compatible to
+            # current code, remove it after the refactor.
             "feature_name": self.name,
             "dtype": self.dtype,
             "delimiter": self.delimiter,
