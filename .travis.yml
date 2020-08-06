@@ -40,7 +40,7 @@ jobs:
     - set -e
     - $TRAVIS_BUILD_DIR/scripts/travis/build.sh
     - docker run --rm -it -v $TRAVIS_BUILD_DIR:/work -w /work
-      -e TRAVIS_BUILD_DIR=$TRAVIS_BUILD_DIR sqlflow:dev
+      -e TRAVIS_BUILD_DIR=/work sqlflow:dev
       pre-commit run -a --show-diff-on-failure
   - env: SQLFLOW_TEST_DB=mysql
     script:
