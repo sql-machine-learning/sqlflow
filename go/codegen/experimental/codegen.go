@@ -65,8 +65,7 @@ func parseToIR(sqlProgram string, session *pb.Session) ([]ir.SQLFlowStmt, error)
 	for _, sql := range sqls {
 		if sql.IsExtendedSyntax() {
 			if sql.Train {
-				// TODO(typhoonzero): use feature derivation at runtime, call GenerateTrainStmt only.
-				r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false, false)
+				r, err = ir.GenerateTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.ShowTrain {
 				r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
 			} else if sql.Explain {
