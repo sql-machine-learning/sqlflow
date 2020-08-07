@@ -82,6 +82,15 @@ class TestGetMaxIndexOfKeyValueString(unittest.TestCase):
 @unittest.skipUnless(testing.get_driver() in ["mysql", "hive"],
                      "skip non MySQL and Hive tests")
 class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
+    def check_serialize(self, features, label):
+        f_dict, l_dict = fd.feature_columns_to_dict(features, label)
+        new_features, new_label = fd.dict_to_feature_columns(f_dict, l_dict)
+        new_f_dict, new_l_dict = fd.feature_columns_to_dict(
+            new_features, new_label)
+        self.assertEqual(f_dict, new_f_dict)
+        self.assertEqual(l_dict, new_l_dict)
+        return new_features, new_label
+
     def test_without_cross(self):
         features = {
             'feature_columns': [
@@ -107,6 +116,8 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         conn = testing.get_singleton_db_connection()
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
+
+        features, label = self.check_serialize(features, label)
 
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
@@ -230,6 +241,8 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
 
+        features, label = self.check_serialize(features, label)
+
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
         features = features["feature_columns"]
@@ -321,6 +334,8 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
             FieldDesc(name='class', dtype=DataType.INT64, shape=[1]))
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
+
+        features, label = self.check_serialize(features, label)
 
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)

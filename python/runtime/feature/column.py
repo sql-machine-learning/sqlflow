@@ -169,7 +169,6 @@ class BucketColumn(CategoryColumn):
 
     def _to_dict(self):
         return {
-            "type": "BucketColumn",
             "source_column": FeatureColumn.to_dict(self.source_column),
             "boundaries": self.boundaries,
         }
@@ -240,7 +239,6 @@ class CategoryHashColumn(CategoryColumn):
 
     def _to_dict(self):
         return {
-            "type": "CategoryHashColumn",
             "field_desc": self.field_desc.to_dict(),
             "bucket_size": self.bucket_size,
         }

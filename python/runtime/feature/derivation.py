@@ -11,14 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['infer_feature_columns', 'get_ordered_field_descs']
+__all__ = [
+    'infer_feature_columns',
+    'get_ordered_field_descs',
+    'dict_to_feature_columns',
+    'feature_columns_to_dict',
+]
 
 import re
 
 import numpy as np
 import six
 from runtime.feature.column import (CategoryIDColumn, EmbeddingColumn,
-                                    IndicatorColumn, NumericColumn)
+                                    FeatureColumn, IndicatorColumn,
+                                    NumericColumn)
 from runtime.feature.field_desc import DataFormat, DataType, FieldDesc
 from runtime.verifier import fetch_samples
 
@@ -647,3 +653,60 @@ def get_ordered_field_descs(features):
             for fd in fc.get_field_desc():
                 fd_list.append(fd)
     return fd_list
+
+
+def feature_columns_to_dict(features, label):
+    """
+    Convert features and label to Python dict, which
+    can be serialized.
+
+    Args:
+        features (dict[str -> list[FeatureColumn]]): the input feature
+            columns. The key of the dict is the target name, e.g.
+            "feature_columns".
+        label (FeatureColumn): the FeatureColumn object of the label.
+
+    Returns:
+        A tuple of (feature_dict, label_dict).
+    """
+    fc_dict = {}
+    for target, fc_list in features.items():
+        fc_dict[target] = []
+        for fc in fc_list:
+            fc_dict[target].append(FeatureColumn.to_dict(fc))
+
+    if label is not None:
+        label_dict = FeatureColumn.to_dict(label)
+    else:
+        label_dict = None
+
+    return fc_dict, label_dict
+
+
+def dict_to_feature_columns(feature_dict, label_dict):
+    """
+    Convert feature_dict and label_dict to FeatureColumn
+    map/object. It is the reverse process of `feature_columns_to_dict`.
+
+    Args:
+        feature_dict (dict): the feature column dict.
+        label_dict (dict): the label column dict.
+
+    Returns:
+        A tuple of (features, label), where features is of type
+        dict[str -> list[FeatureColumn]], and label is of type
+        FeatureColumn.
+    """
+    features = {}
+    for target, f_dict_list in feature_dict.items():
+        features[target] = []
+        for f_dict in f_dict_list:
+            fc = FeatureColumn.from_dict(f_dict)
+            features[target].append(fc)
+
+    if label_dict is not None:
+        label = FeatureColumn.from_dict(label_dict)
+    else:
+        label = None
+
+    return features, label
