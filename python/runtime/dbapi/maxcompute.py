@@ -76,7 +76,8 @@ class MaxComputeConnection(Connection):
     connection with maxcompute
 
     Args:
-        conn_uri: uri in format: maxcompute://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
+        conn_uri: uri in format:
+        maxcompute://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
     """
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
