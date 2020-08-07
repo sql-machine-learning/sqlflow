@@ -15,22 +15,23 @@ import unittest
 from unittest import TestCase
 
 from runtime import testing
-from runtime.dbapi.mysql_connection import MySQLConnection
+from runtime.dbapi.hive import HiveConnection
 
 
-@unittest.skipUnless(testing.get_driver() == "mysql", "Skip non-mysql test")
-class TestMySQLConnection(TestCase):
+@unittest.skipUnless(testing.get_driver() == "hive", "Skip non-hive test")
+class TestHiveConnection(TestCase):
     def test_connecion(self):
         try:
-            conn = MySQLConnection(testing.get_datasource())
+            conn = HiveConnection(testing.get_datasource())
             conn.close()
         except:  # noqa: E722
             self.fail()
 
     def test_query(self):
-        conn = MySQLConnection(testing.get_datasource())
+        conn = HiveConnection(testing.get_datasource())
         rs = conn.query("select * from notexist limit 1")
         self.assertFalse(rs.success())
+        self.assertTrue("Table not found" in rs.error())
 
         rs = conn.query("select * from train limit 1")
         self.assertTrue(rs.success())
@@ -49,7 +50,7 @@ class TestMySQLConnection(TestCase):
         self.assertTrue(20, len(rows))
 
     def test_exec(self):
-        conn = MySQLConnection(testing.get_datasource())
+        conn = HiveConnection(testing.get_datasource())
         rs = conn.exec("create table test_exec(a int)")
         self.assertTrue(rs)
         rs = conn.exec("insert into test_exec values(1), (2)")
@@ -60,8 +61,6 @@ class TestMySQLConnection(TestCase):
         self.assertTrue(2, len(rows))
         rs = conn.exec("drop table test_exec")
         self.assertTrue(rs)
-        rs = conn.exec("drop table not_exist")
-        self.assertFalse(rs)
 
 
 if __name__ == "__main__":
