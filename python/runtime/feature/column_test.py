@@ -45,7 +45,8 @@ class TestFeatureColumn(unittest.TestCase):
         self.assertEqual(json_desc["format"], desc.format)
         self.assertEqual(json_desc["shape"], desc.shape)
         self.assertEqual(json_desc["is_sparse"], desc.is_sparse)
-        self.assertEqual(json_desc["vocabulary"], desc.vocabulary)
+        vocab = set(json_desc["vocabulary"])
+        self.assertEqual(vocab, desc.vocabulary)
         self.assertEqual(json_desc["max_id"], desc.max_id)
 
     def test_feature_column_subclass(self):
