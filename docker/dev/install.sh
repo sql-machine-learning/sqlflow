@@ -74,7 +74,7 @@ rm -rf "$HOME"/.cache/pip/*
 
 
 echo "Install Go compiler ..."
-GO_MIRROR_0="http://mirrors.ustc.edu.cn/golang/go1.13.4.linux-amd64.tar.gz"
+GO_MIRROR_0="https://studygolang.com/dl/golang/go1.13.4.linux-amd64.tar.gz"
 GO_MIRROR_1="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
 axel --quiet --output go.tar.gz $GO_MIRROR_0 $GO_MIRROR_1
 tar -C /usr/local -xzf go.tar.gz
