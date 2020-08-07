@@ -23,7 +23,6 @@ import (
 	"text/template"
 
 	"sqlflow.org/sqlflow/go/attribute"
-	"sqlflow.org/sqlflow/go/codegen"
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
 )
@@ -197,11 +196,11 @@ func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 		}
 
 		code := fmt.Sprintf(tmpl, fcTypeName, fd.Name,
-			strings.ToUpper(codegen.DTypeToString(fd.DType)),
+			strings.ToUpper(ir.DTypeToString(fd.DType)),
 			fd.Delimiter,
-			codegen.AttrToPythonValue(shape),
+			ir.AttrToPythonValue(shape),
 			isSparseStr,
-			codegen.AttrToPythonValue(vocabList))
+			ir.AttrToPythonValue(vocabList))
 		fcCodes = append(fcCodes, code)
 	}
 

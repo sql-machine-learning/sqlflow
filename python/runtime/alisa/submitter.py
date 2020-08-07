@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import os
-from os import path
 
 from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
@@ -41,12 +40,12 @@ def getAlisaBucket():
 
 def upload_resource(file_path, oss_obj_name, bucket):
     """Upload resource from file_path to oss with given oss_obj_name
-    
+
     Args:
         file_path: file path to upload
         oss_obj_name: name of uploaded oss object
         bucket: oss bucket to store the object
-    
+
     Returns:
         The oss object uri to access the uploaded resource
     """

@@ -542,7 +542,7 @@ def query(conn, statement, fetch_size=128):
     Args:
         conn: a database connection, this function will not close it
         statement: a sql query statement
-    
+
     Returns:
         A generator represents the result set, somehow like the cursor
     """
