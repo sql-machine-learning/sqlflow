@@ -11,8 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from urllib.parse import ParseResult, urlunparse
-
 from odps import ODPS, tunnel
 from runtime.dbapi.connection import Connection, ResultSet
 
