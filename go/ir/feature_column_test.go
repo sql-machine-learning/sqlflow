@@ -14,7 +14,6 @@
 package ir
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,9 +21,6 @@ import (
 
 func TestFeatureColumnGenPythonCode(t *testing.T) {
 	a := assert.New(t)
-	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
-		t.Skipf("skip TestFeatureColumnGenPythonCode for %s", os.Getenv("SQLFLOW_TEST_DB"))
-	}
 	nc := &NumericColumn{
 		FieldDesc: &FieldDesc{
 			Name:  "testcol",
@@ -41,4 +37,31 @@ func TestFeatureColumnGenPythonCode(t *testing.T) {
 	}
 	a.Equal("runtime.feature.column.EmbeddingColumn(category_column=None, dimension=128, combiner=\"\", initializer=\"\", name=\"\")",
 		emd.GenPythonCode())
+}
+
+func TestFeatureColumnMarshalJSON(t *testing.T) {
+	a := assert.New(t)
+
+	nc := &NumericColumn{
+		FieldDesc: &FieldDesc{
+			Name:  "testcol",
+			Shape: []int{10},
+			DType: Float,
+		},
+	}
+	s, err := MarshalToJSONString(nc)
+	a.NoError(err)
+	a.Equal(`{"type":"NumericColumn","value":{"field_desc":{"name":"testcol","dtype":1,"delimiter":"","format":"","shape":[10],"is_sparse":false,"vocabulary":null,"max_id":0}}}`, s)
+
+	emb := &EmbeddingColumn{
+		CategoryColumn: &CrossColumn{
+			Keys:           []interface{}{"c1", nc},
+			HashBucketSize: 64,
+		},
+		Dimension: 128,
+		Name:      "c3",
+	}
+	s, err = MarshalToJSONString(emb)
+	a.NoError(err)
+	a.Equal(`{"type":"EmbeddingColumn","value":{"category_column":{"type":"CrossColumn","value":{"hash_bucket_size":64,"keys":["c1",{"type":"NumericColumn","value":{"field_desc":{"name":"testcol","dtype":1,"delimiter":"","format":"","shape":[10],"is_sparse":false,"vocabulary":null,"max_id":0}}}]}},"combiner":"","dimension":128,"initializer":"","name":"c3"}}`, s)
 }
