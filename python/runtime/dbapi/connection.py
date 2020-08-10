@@ -156,6 +156,18 @@ class Connection(object):
         finally:
             rs.close()
 
+    def get_table_schema(self, table_name):
+        """Get table schema for given table
+
+        Args:
+            table_name: name of the table to get schema
+
+        Returns:
+            A list of (column_name, column_type) tuples
+        """
+        rs = self.query("SELECT * FROM %s limit 0" % table_name)
+        return rs.column_info()
+
     @abstractmethod
     def close(self):
         """

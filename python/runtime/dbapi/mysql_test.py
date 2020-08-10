@@ -63,6 +63,13 @@ class TestMySQLConnection(TestCase):
         rs = conn.exec("drop table not_exist")
         self.assertFalse(rs)
 
+    def test_get_table_schema(self):
+        conn = MySQLConnection(testing.get_datasource())
+        col_info = conn.get_table_schema("iris.train")
+        self.assertEqual([('sepal_length', 'FLOAT'), ('sepal_width', 'FLOAT'),
+                          ('petal_length', 'FLOAT'), ('petal_width', 'FLOAT'),
+                          ('class', 'INT')], col_info)
+
 
 if __name__ == "__main__":
     unittest.main()

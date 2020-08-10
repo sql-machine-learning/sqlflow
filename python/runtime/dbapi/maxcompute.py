@@ -43,7 +43,8 @@ class MaxComputeResultSet(ResultSet):
             return self.column_info
 
         r = self._open_reader()
-        self._column_info = [(col.name, col.type) for col in r._schema.columns]
+        self._column_info = [(col.name, str.upper(col.type))
+                             for col in r._schema.columns]
         return self._column_info
 
     def _open_reader(self):
@@ -81,18 +82,17 @@ class MaxComputeConnection(Connection):
     """
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
+        self.driver = "maxcompute"
         self.params["database"] = self.params["curr_project"]
         # compose an endpoint, only keep the host and path and replace scheme
         endpoint = self.uripts._replace(scheme=self.params["scheme"],
                                         query="",
                                         netloc=self.uripts.hostname)
+        self.endpoint = endpoint.geturl()
         self._conn = ODPS(self.uripts.username,
                           self.uripts.password,
                           project=self.params["database"],
-                          endpoint=endpoint.geturl())
-
-    def _parse_uri(self):
-        return super()._parse_uri()
+                          endpoint=self.endpoint)
 
     def _get_result_set(self, statement):
         try:
@@ -104,3 +104,7 @@ class MaxComputeConnection(Connection):
     def close(self):
         if self._conn:
             self._conn = None
+
+    def get_table_schema(self, table_name):
+        schema = self._conn.get_table(table_name).schema
+        return [(c.name, str(c.type).upper()) for c in schema.columns]
