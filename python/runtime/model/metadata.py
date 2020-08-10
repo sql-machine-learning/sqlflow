@@ -22,10 +22,11 @@ def collect_metadata(original_sql,
                      select,
                      validation_select,
                      model_repo_image,
-                     estimator,
+                     class_name,
                      attributes,
                      features=None,
                      label=None,
+                     evaluation=None,
                      **kwargs):
     """
     Collect kinds of model metadata and put them in a dict. The parameter list
@@ -36,10 +37,11 @@ def collect_metadata(original_sql,
         select (str): the select statement.
         validation_select (str): the validation select statement.
         model_repo_image (str): the model repo docker image name.
-        estimator (str): the estimator name.
+        class_name (str): the estimator name.
         attributes (dict): the attribute map.
         features (dict[str->list[FeatureColumn]]): the feature column map.
         label (FeatureColumn): the label column.
+        evaluation (dict): the evaluation result of the model.
         kwargs (dict): any extra metadata to be saved.
 
     Returns:

@@ -61,7 +61,7 @@ class TestMetadata(unittest.TestCase):
             self.assertEqual(meta['select'], select)
             self.assertEqual(meta['validation_select'], validation_select)
             self.assertEqual(meta['model_repo_image'], model_repo_image)
-            self.assertEqual(meta['estimator'], estimator)
+            self.assertEqual(meta['class_name'], estimator)
             self.assertEqual(meta['attributes'], attributes)
             meta_features = meta['features']
             meta_label = meta['label']
@@ -78,7 +78,8 @@ class TestMetadata(unittest.TestCase):
             self.assertEqual(meta_label.get_field_desc()[0].name, 'class')
             self.assertEqual(meta_label.get_field_desc()[0].shape, [5])
             self.assertEqual(meta_label.get_field_desc()[0].delimiter, ',')
-            self.assertEqual(meta['evaluation'], 0.5)
+            self.assertEqual(meta['evaluation'], {'accuracy': 0.5})
+            self.assertEqual(meta['my_data'], 0.25)
 
         meta = collect_metadata(original_sql,
                                 select,
@@ -87,8 +88,8 @@ class TestMetadata(unittest.TestCase):
                                 estimator,
                                 attributes,
                                 features,
-                                label,
-                                evaluation=0.5)
+                                label, {'accuracy': 0.5},
+                                my_data=0.25)
 
         assert_metadata(meta)
 

@@ -61,7 +61,7 @@ def train(datasource,
                                   select=select,
                                   validation_select=validation_select,
                                   model_repo_image=model_repo_image,
-                                  estimator=estimator_string,
+                                  class_name=estimator_string,
                                   attributes=model_params,
                                   features=None,
                                   label=None)
