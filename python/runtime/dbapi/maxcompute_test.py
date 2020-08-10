@@ -45,10 +45,10 @@ class TestMaxComputeConnection(TestCase):
         self.assertTrue(rs.success())
 
         col_info = rs.column_info()
-        self.assertEqual([('sepal_length', 'double'),
-                          ('sepal_width', 'double'),
-                          ('petal_length', 'double'),
-                          ('petal_width', 'double'), ('class', 'bigint')],
+        self.assertEqual([('sepal_length', 'DOUBLE'),
+                          ('sepal_width', 'DOUBLE'),
+                          ('petal_length', 'DOUBLE'),
+                          ('petal_width', 'DOUBLE'), ('class', 'BIGINT')],
                          col_info)
 
         rows = [r for r in rs]
@@ -68,6 +68,15 @@ class TestMaxComputeConnection(TestCase):
         self.assertTrue(2, len(rows))
         rs = conn.exec("drop table alifin_jtest_dev.sqlflow_test_exec")
         self.assertTrue(rs)
+
+    def test_get_table_schema(self):
+        conn = MaxComputeConnection(testing.get_datasource())
+        col_info = conn.get_table_schema("sqlflow_iris_train")
+        self.assertEqual([('sepal_length', 'DOUBLE'),
+                          ('sepal_width', 'DOUBLE'),
+                          ('petal_length', 'DOUBLE'),
+                          ('petal_width', 'DOUBLE'), ('class', 'BIGINT')],
+                         col_info)
 
 
 if __name__ == "__main__":

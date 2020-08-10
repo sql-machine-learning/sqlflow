@@ -67,6 +67,7 @@ class HiveConnection(Connection):
     """
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
+        self.driver = "hive"
         self.params["database"] = self.uripts.path.strip("/")
         self._conn = connect(user=self.uripts.username,
                              password=self.uripts.password,
@@ -80,7 +81,7 @@ class HiveConnection(Connection):
     def _get_result_set(self, statement):
         cursor = self._conn.cursor(configuration=self._session_cfg)
         try:
-            cursor.execute(statement)
+            cursor.execute(statement.rstrip(";"))
             return HiveResultSet(cursor)
         except Exception as e:
             cursor.close()
