@@ -452,14 +452,10 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 
 		return e
 	} else if strings.EqualFold(fileExtension, ".py") {
-		programAbsPath := getRunnableProgramAbsPath(program)
-		// If the first parameter is python Program
-		if _, e := os.Stat(programAbsPath); e != nil {
-			return fmt.Errorf("Failed to get the python file %s", programAbsPath)
-		}
-
+		// If the first parameter is a Python program
 		// Build the command
-		pyCmdParams := append([]string{programAbsPath}, runStmt.Parameters[1:]...)
+		moduleName := strings.TrimSuffix(program, fileExtension)
+		pyCmdParams := append([]string{"-m", moduleName}, runStmt.Parameters[1:]...)
 		cmd := exec.Command("python", pyCmdParams...)
 		cmd.Dir = s.Cwd
 
