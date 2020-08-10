@@ -105,7 +105,7 @@ couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 
 {{ range $ss := .StepList }}
 {{.Code}}
-couler.run_script(image="{{.Image}}", source=step_entry_{{.StepIndex}}, env=step_envs, resource=resource)
+couler.run_script(image="{{.Image}}", source=step_entry_{{.StepIndex}}, env=step_envs, resources=resources)
 {{end}}
 `
 
