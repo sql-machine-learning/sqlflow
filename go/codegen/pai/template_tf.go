@@ -126,6 +126,7 @@ oss.save_metas("{{.OSSModelDir}}",
            feature_columns_code)
 `
 
+// install sklearn-pandas==1.8.0 to fix deps for sklearn2pmml with Python2 on PAI.
 const paiRequirementsTmplText = `
 adanet==0.8.0
 numpy==1.16.2
@@ -136,6 +137,7 @@ shap==0.28.5
 scikit-learn==0.20.4
 tensorflow-datasets==3.0.0
 {{if .IsXGBoost }}
+sklearn-pandas==1.8.0
 xgboost==0.82
 sklearn2pmml==0.56.0
 {{end}}
