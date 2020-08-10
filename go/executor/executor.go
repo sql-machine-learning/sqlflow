@@ -48,6 +48,7 @@ const (
 	sqlflowToRunContextKeySelect = "SQLFLOW_TO_RUN_SELECT"
 	sqlflowToRunContextKeyInto   = "SQLFLOW_TO_RUN_INTO"
 	sqlflowToRunContextKeyImage  = "SQLFLOW_TO_RUN_IMAGE"
+	sqlflowToRunProgramFolder    = "/opt/sqlflow/run"
 )
 
 // Figures contains analyzed figures as strings
@@ -419,6 +420,14 @@ func (s *pythonExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
 	return nil
 }
 
+func getRunnableProgramAbsPath(fileNameOrPath string) string {
+	if path.IsAbs(fileNameOrPath) {
+		return fileNameOrPath
+	}
+
+	return path.Join(sqlflowToRunProgramFolder, fileNameOrPath)
+}
+
 func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	if len(runStmt.Parameters) == 0 {
 		return fmt.Errorf("Parameters shouldn't be empty")
@@ -443,13 +452,15 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 
 		return e
 	} else if strings.EqualFold(fileExtension, ".py") {
+		programAbsPath := getRunnableProgramAbsPath(program)
 		// If the first parameter is python Program
-		if _, e := os.Stat(program); e != nil {
-			return fmt.Errorf("Failed to get the python file %s", program)
+		if _, e := os.Stat(programAbsPath); e != nil {
+			return fmt.Errorf("Failed to get the python file %s", programAbsPath)
 		}
 
 		// Build the command
-		cmd := exec.Command("python", runStmt.Parameters...)
+		pyCmdParams := append([]string{programAbsPath}, runStmt.Parameters[1:]...)
+		cmd := exec.Command("python", pyCmdParams...)
 		cmd.Dir = s.Cwd
 
 		_, e := s.runCommand(cmd, context, false)

@@ -301,7 +301,8 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 
 	// If the first parameter is a Python program
 	if strings.EqualFold(fileExtension, ".py") {
-		if _, e := os.Stat(program); e != nil {
+		programAbsPath := getRunnableProgramAbsPath(program)
+		if _, e := os.Stat(programAbsPath); e != nil {
 			return fmt.Errorf("Cannot find the Python file %s", program)
 		}
 
@@ -312,7 +313,7 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		args = append(args, fmt.Sprintf(`%s='%s'`, sqlflowToRunContextKeyImage, runStmt.ImageName))
 
 		// Read the content of Python program
-		code, e := ioutil.ReadFile(program)
+		code, e := ioutil.ReadFile(programAbsPath)
 		if e != nil {
 			return e
 		}
