@@ -34,9 +34,9 @@ class DataType(object):
 # CSV: in the form of "1,2,4"
 # KV:  in the form of "0:3.2 1:-0.3 10:3.9"
 class DataFormat(object):
-    PLAIN = 0
-    CSV = 1
-    KV = 2
+    PLAIN = ""
+    CSV = "csv"
+    KV = "kv"
 
 
 class FieldDesc(object):
@@ -59,7 +59,6 @@ class FieldDesc(object):
     """
     def __init__(self,
                  name="",
-                 feature_name="",
                  dtype=DataType.INT64,
                  delimiter="",
                  format=DataFormat.PLAIN,
@@ -76,6 +75,8 @@ class FieldDesc(object):
         self.format = format
         self.shape = shape
         self.is_sparse = is_sparse
+        if vocabulary is not None:
+            vocabulary = set(list(vocabulary))
         self.vocabulary = vocabulary
         self.max_id = max_id
 
@@ -86,6 +87,11 @@ class FieldDesc(object):
         Returns:
             A Python dict.
         """
+        vocab = None
+        if self.vocabulary is not None:
+            vocab = list(self.vocabulary)
+            vocab.sort()
+
         return {
             "name": self.name,
             # FIXME(typhoonzero): this line is used to be compatible to
@@ -96,7 +102,7 @@ class FieldDesc(object):
             "format": self.format,
             "shape": self.shape,
             "is_sparse": self.is_sparse,
-            "vocabulary": self.vocabulary,
+            "vocabulary": vocab,
             "max_id": self.max_id,
         }
 
@@ -108,7 +114,14 @@ class FieldDesc(object):
         Returns:
             A FieldDesc object.
         """
-        return FieldDesc(**d)
+        return FieldDesc(name=d["name"],
+                         dtype=d["dtype"],
+                         delimiter=d["delimiter"],
+                         format=d["format"],
+                         shape=d["shape"],
+                         is_sparse=d["is_sparse"],
+                         vocabulary=d["vocabulary"],
+                         max_id=d["max_id"])
 
     def to_json(self):
         """
