@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -291,6 +292,14 @@ func (s *alisaExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
 	return executeOptimizeUsingOptFlow(s.pythonExecutor, stmt)
 }
 
+func getRunnableProgramAbsPath(fileNameOrPath string) string {
+	if path.IsAbs(fileNameOrPath) {
+		return fileNameOrPath
+	}
+
+	return path.Join(sqlflowToRunProgramFolder, fileNameOrPath)
+}
+
 func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	if len(runStmt.Parameters) == 0 {
 		return fmt.Errorf("Parameters shouldn't be empty")
@@ -303,7 +312,7 @@ func (s *alisaExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	if strings.EqualFold(fileExtension, ".py") {
 		programAbsPath := getRunnableProgramAbsPath(program)
 		if _, e := os.Stat(programAbsPath); e != nil {
-			return fmt.Errorf("Cannot find the Python file %s", program)
+			return fmt.Errorf("Cannot find the Python file %s", programAbsPath)
 		}
 
 		// Build the arguments

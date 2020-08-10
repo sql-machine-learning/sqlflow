@@ -420,14 +420,6 @@ func (s *pythonExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
 	return nil
 }
 
-func getRunnableProgramAbsPath(fileNameOrPath string) string {
-	if path.IsAbs(fileNameOrPath) {
-		return fileNameOrPath
-	}
-
-	return path.Join(sqlflowToRunProgramFolder, fileNameOrPath)
-}
-
 func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	if len(runStmt.Parameters) == 0 {
 		return fmt.Errorf("Parameters shouldn't be empty")
