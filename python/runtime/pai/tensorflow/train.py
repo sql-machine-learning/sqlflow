@@ -16,7 +16,7 @@ import types
 
 from runtime import oss
 from runtime.import_model import import_model
-from runtime.model_metadata import collect_model_metadata
+from runtime.model import collect_metadata
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.tensorflow.train_estimator import estimator_train_and_save
 from runtime.pai.tensorflow.train_keras import keras_train_and_save
@@ -56,11 +56,15 @@ def train(datasource,
           model_repo_image="",
           original_sql="",
           feature_column_names_map=None):
-    model_meta = collect_model_metadata(original_sql, select,
-                                        validation_select, estimator_string,
-                                        model_params, feature_columns_code,
-                                        feature_metas, label_meta, None,
-                                        model_repo_image)
+    # TODO(sneaxiy): collect features and label
+    model_meta = collect_metadata(original_sql=original_sql,
+                                  select=select,
+                                  validation_select=validation_select,
+                                  model_repo_image=model_repo_image,
+                                  estimator=estimator_string,
+                                  attributes=model_params,
+                                  features=None,
+                                  label=None)
     estimator = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator)
 

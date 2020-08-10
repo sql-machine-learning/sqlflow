@@ -52,8 +52,7 @@ class Model:
 
     Usage:
 
-        meta = runtime.collect_model_metadata(train_params={...},
-                                              model_params={...})
+        meta = runtime.model.collect_metadata(attributes={...}, ...)
         m = runtime.model.Model(ModelType.XGBOOST, meta)
         m.save(datasource="mysql://", "sqlflow_models.my_model")
 
