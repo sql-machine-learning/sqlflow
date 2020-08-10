@@ -48,6 +48,7 @@ const (
 	sqlflowToRunContextKeySelect = "SQLFLOW_TO_RUN_SELECT"
 	sqlflowToRunContextKeyInto   = "SQLFLOW_TO_RUN_INTO"
 	sqlflowToRunContextKeyImage  = "SQLFLOW_TO_RUN_IMAGE"
+	sqlflowToRunProgramFolder    = "/opt/sqlflow/run"
 )
 
 // Figures contains analyzed figures as strings
@@ -443,13 +444,11 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 
 		return e
 	} else if strings.EqualFold(fileExtension, ".py") {
-		// If the first parameter is python Program
-		if _, e := os.Stat(program); e != nil {
-			return fmt.Errorf("Failed to get the python file %s", program)
-		}
-
+		// If the first parameter is a Python program
 		// Build the command
-		cmd := exec.Command("python", runStmt.Parameters...)
+		moduleName := strings.TrimSuffix(program, fileExtension)
+		pyCmdParams := append([]string{"-m", moduleName}, runStmt.Parameters[1:]...)
+		cmd := exec.Command("python", pyCmdParams...)
 		cmd.Dir = s.Cwd
 
 		_, e := s.runCommand(cmd, context, false)
