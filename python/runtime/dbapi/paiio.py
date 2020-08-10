@@ -103,8 +103,40 @@ class PaiIOConnection(Connection):
         """Get schema of given table, caller need to supply the full
         uri for paiio table, this is slight different with other connections.
         """
-        con = PaiIOConnection(full_uri)
-        rs = con.query()
+        return PaiIOConnection.get_schema(full_uri)
+
+    def query(self, statement=None):
+        return super().query(statement)
+
+    @staticmethod
+    def get_table_row_num(table_uri):
+        """Get row number of given table
+
+        Args:
+            table_uri: the full uri for the table to get row from
+
+        Return:
+            Number of rows in the table
+        """
+        reader = paiio.TableReader(table_uri)
+        row_num = reader.get_row_count()
+        reader.close()
+        return row_num
+
+    @staticmethod
+    def get_schema(table_uri):
+        """Get schema of the given table
+
+        Args:
+            table_uri: the full uri for the table to get row from
+
+        Returns:
+            A list of column metas, like [(field_a, INT), (field_b, STRING)]
+        """
+        rs = PaiIOConnection(table_uri).query()
         col_info = rs.column_info()
         rs.close()
         return col_info
+
+    def close(self):
+        pass
