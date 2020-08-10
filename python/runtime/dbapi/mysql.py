@@ -89,6 +89,7 @@ class MySQLResultSet(ResultSet):
 class MySQLConnection(Connection):
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
+        self.driver = "mysql"
         self.params["database"] = self.uripts.path.strip("/")
         self._conn = connect(user=self.uripts.username,
                              passwd=self.uripts.password,

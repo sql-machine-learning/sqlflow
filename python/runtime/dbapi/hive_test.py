@@ -62,6 +62,13 @@ class TestHiveConnection(TestCase):
         rs = conn.exec("drop table test_exec")
         self.assertTrue(rs)
 
+    def test_get_table_schema(self):
+        conn = HiveConnection(testing.get_datasource())
+        col_info = conn.get_table_schema("iris.train")
+        self.assertEqual([('sepal_length', 'FLOAT'), ('sepal_width', 'FLOAT'),
+                          ('petal_length', 'FLOAT'), ('petal_width', 'FLOAT'),
+                          ('class', 'INT')], col_info)
+
 
 if __name__ == "__main__":
     unittest.main()
