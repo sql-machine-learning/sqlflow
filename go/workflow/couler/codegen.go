@@ -51,7 +51,8 @@ func fillEnvFromSession(envs *map[string]string, session *pb.Session) {
 	fillMapIfValueNotEmpty(*envs, "SQLFLOW_submitter", session.Submitter)
 }
 
-func getStepEnvs(session *pb.Session) (map[string]string, error) {
+// GetStepEnvs returns a map of envs used for couler workflow.
+func GetStepEnvs(session *pb.Session) (map[string]string, error) {
 	envs := make(map[string]string)
 	// fill step envs from the environment variables on sqlflowserver
 	for _, env := range os.Environ() {
@@ -67,7 +68,9 @@ func getStepEnvs(session *pb.Session) (map[string]string, error) {
 	fillEnvFromSession(&envs, session)
 	return envs, nil
 }
-func verifyResources(resources string) error {
+
+// VerifyResources verifies the SQLFLOW_WORKFLOW_RESOURCES env to be valid.
+func VerifyResources(resources string) error {
 	if resources != "" {
 		var r map[string]interface{}
 		if e := json.Unmarshal([]byte(resources), &r); e != nil {
@@ -77,7 +80,8 @@ func verifyResources(resources string) error {
 	return nil
 }
 
-func getSecret() (string, string, error) {
+// GetSecret returns the workflow secret name, value.
+func GetSecret() (string, string, error) {
 	secretMap := make(map[string]map[string]string)
 	secretCfg := os.Getenv("SQLFLOW_WORKFLOW_SECRET")
 	if secretCfg == "" {
@@ -99,7 +103,7 @@ func getSecret() (string, string, error) {
 
 // GenFiller generates Filler to fill the template
 func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error) {
-	stepEnvs, err := getStepEnvs(session)
+	stepEnvs, err := GetStepEnvs(session)
 	if err != nil {
 		return nil, err
 	}
@@ -109,11 +113,11 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 			return nil, fmt.Errorf("SQLFLOW_WORKFLOW_TTL: %s should be int", os.Getenv("SQLFLOW_WORKFLOW_TTL"))
 		}
 	}
-	secretName, secretData, e := getSecret()
+	secretName, secretData, e := GetSecret()
 	if e != nil {
 		return nil, e
 	}
-	if e := verifyResources(os.Getenv(envResource)); e != nil {
+	if e := VerifyResources(os.Getenv(envResource)); e != nil {
 		return nil, e
 	}
 

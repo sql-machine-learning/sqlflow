@@ -28,6 +28,7 @@ import (
 )
 
 type xgbTrainFiller struct {
+	StepIndex         int
 	DataSource        string
 	Select            string
 	ValidationSelect  string
@@ -41,8 +42,8 @@ type xgbTrainFiller struct {
 	Submitter         string
 }
 
-// XGBoostGenerateTrain returns the step code
-func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
+// XGBoostGenerateTrain returns the step code.
+func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, error) {
 	var err error
 	if err = resolveModelParams(trainStmt); err != nil {
 		return "", err
@@ -93,6 +94,7 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 	}
 
 	filler := xgbTrainFiller{
+		StepIndex:         stepIndex,
 		DataSource:        session.DbConnStr,
 		Select:            trainStmt.Select,
 		ValidationSelect:  trainStmt.ValidationSelect,
@@ -115,7 +117,7 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 }
 
 var xgbTrainTemplate = `
-def step_entry():
+def step_entry_{{.StepIndex}}():
     import json
     import tempfile
     import os
