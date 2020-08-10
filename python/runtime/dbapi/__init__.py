@@ -14,11 +14,13 @@
 from runtime.dbapi.hive import HiveConnection
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.dbapi.mysql import MySQLConnection
+from runtime.dbapi.paiio import PaiIOConnection
 
 DRIVRE_MAP = {
     "mysql": MySQLConnection,
     "hive": HiveConnection,
-    "maxcompute": MaxComputeConnection
+    "maxcompute": MaxComputeConnection,
+    "paiio": PaiIOConnection
 }
 
 
