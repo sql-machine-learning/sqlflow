@@ -118,7 +118,9 @@ def solve_model(model, solver):
         solver (str): the solver used to solve the model.
 
     Returns:
-        A numpy array which is the solved result of the model.
+        A tuple of (np.ndarray, float), where the numpy array is
+        the solved x of the model and the float value is the solved
+        objective function value of the model.
 
     Raises:
         ValueError if the solving process fails.
@@ -152,7 +154,9 @@ def solve_model(model, solver):
         raise ValueError(msg)
 
     np_dtype = np.int64 if model.x[0].is_integer() else np.float64
-    return np.array(result_values, dtype=np_dtype)
+    x = np.array(result_values, dtype=np_dtype)
+    y = model.objective()
+    return x, y
 
 
 def load_db_data_to_data_frame(datasource, select):
@@ -193,8 +197,9 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     Save the solved result of the Pyomo model into the database.
 
     Args:
-        solved_result (numpy.ndarray): a numpy array which indicates
-            the solved result.
+        solved_result (tuple(numpy.ndarray, float)): a numpy array
+            which indicates the solved x, and a float value which
+            indicates the objective function value.
         data_frame (panda.DataFrame): the input table data.
         variables (list[str]): the variable names to be optimized.
         result_value_name (str): the result value name to be optimized.
@@ -223,7 +228,7 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
         variables=variables)
 
     column_names.append(result_value_name)
-    data_frame[result_value_name] = solved_result
+    data_frame[result_value_name] = solved_result[0]
 
     conn = db.connect_with_data_source(datasource)
     with db.buffered_db_writer(conn.driver, conn, result_table,
@@ -235,6 +240,7 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     print('Solved result is:')
     print(data_frame)
     print('Saved in {}.'.format(result_table))
+    print('Objective value is {}'.format(solved_result[1]))
 
 
 def run_optimize_locally(datasource, select, variables, variable_type,
@@ -269,8 +275,8 @@ def run_optimize_locally(datasource, select, variables, variable_type,
                                            objective=objective,
                                            direction=direction,
                                            constraints=constraints)
-    solved_result = solve_model(model, solver)
-    save_solved_result_in_db(solved_result=solved_result,
+    solved_x, solved_y = solve_model(model, solver)
+    save_solved_result_in_db(solved_result=[solved_x, solved_y],
                              data_frame=data_frame,
                              variables=variables,
                              result_value_name=result_value_name,
