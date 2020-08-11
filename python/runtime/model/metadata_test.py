@@ -19,12 +19,14 @@ from runtime.feature.field_desc import FieldDesc
 from runtime.model.metadata import (collect_metadata, load_metadata,
                                     save_metadata)
 
-FILENAME = 'meta.json'
-
 
 class TestMetadata(unittest.TestCase):
+    def setUp(self):
+        self.file_name = 'meta.json'
+
     def tearDown(self):
-        os.remove(FILENAME)
+        if os.path.exists(self.file_name):
+            os.remove(self.file_name)
 
     def test_metadata(self):
         original_sql = '''
@@ -48,7 +50,7 @@ class TestMetadata(unittest.TestCase):
 
         features = {
             'feature_columns': [
-                NumericColumn(FieldDesc(name='c1', shape=[3])),
+                NumericColumn(FieldDesc(name='c1', shape=[3], delimiter=",")),
                 NumericColumn(FieldDesc(name='c2', shape=[1])),
             ],
         }
@@ -56,7 +58,7 @@ class TestMetadata(unittest.TestCase):
         label = NumericColumn(FieldDesc(name='class', shape=[5],
                                         delimiter=','))
 
-        def assert_metadata(meta):
+        def check_metadata(meta):
             self.assertEqual(meta['original_sql'], original_sql)
             self.assertEqual(meta['select'], select)
             self.assertEqual(meta['validation_select'], validation_select)
@@ -70,14 +72,18 @@ class TestMetadata(unittest.TestCase):
             meta_features = meta_features['feature_columns']
             self.assertEqual(type(meta_features[0]), NumericColumn)
             self.assertEqual(type(meta_features[1]), NumericColumn)
-            self.assertEqual(meta_features[0].get_field_desc()[0].name, 'c1')
-            self.assertEqual(meta_features[0].get_field_desc()[0].shape, [3])
-            self.assertEqual(meta_features[1].get_field_desc()[0].name, 'c2')
-            self.assertEqual(meta_features[1].get_field_desc()[0].shape, [1])
+            field_desc = meta_features[0].get_field_desc()[0]
+            self.assertEqual(field_desc.name, 'c1')
+            self.assertEqual(field_desc.shape, [3])
+            self.assertEqual(field_desc.delimiter, ',')
+            field_desc = meta_features[1].get_field_desc()[0]
+            self.assertEqual(field_desc.name, 'c2')
+            self.assertEqual(field_desc.shape, [1])
             self.assertEqual(type(meta_label), NumericColumn)
-            self.assertEqual(meta_label.get_field_desc()[0].name, 'class')
-            self.assertEqual(meta_label.get_field_desc()[0].shape, [5])
-            self.assertEqual(meta_label.get_field_desc()[0].delimiter, ',')
+            field_desc = meta_label.get_field_desc()[0]
+            self.assertEqual(field_desc.name, 'class')
+            self.assertEqual(field_desc.shape, [5])
+            self.assertEqual(field_desc.delimiter, ',')
             self.assertEqual(meta['evaluation'], {'accuracy': 0.5})
             self.assertEqual(meta['my_data'], 0.25)
 
@@ -91,11 +97,11 @@ class TestMetadata(unittest.TestCase):
                                 label, {'accuracy': 0.5},
                                 my_data=0.25)
 
-        assert_metadata(meta)
+        check_metadata(meta)
 
-        save_metadata(FILENAME, meta)
-        meta = load_metadata(FILENAME)
-        assert_metadata(meta)
+        save_metadata(self.file_name, meta)
+        meta = load_metadata(self.file_name)
+        check_metadata(meta)
 
 
 if __name__ == '__main__':
