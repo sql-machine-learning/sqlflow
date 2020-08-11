@@ -16,7 +16,7 @@ from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.dbapi.mysql import MySQLConnection
 from runtime.dbapi.paiio import PaiIOConnection
 
-DRIVRE_MAP = {
+DRIVER_MAP = {
     "mysql": MySQLConnection,
     "hive": HiveConnection,
     "maxcompute": MaxComputeConnection,
@@ -39,6 +39,6 @@ def connect(uri):
     parts = uri.split("://")
     if len(parts) < 2:
         raise ValueError("Input should be a valid uri.")
-    if parts[0] not in DRIVRE_MAP:
+    if parts[0] not in DRIVER_MAP:
         raise ValueError("Can't find driver for scheme: %s" % parts[0])
-    return DRIVRE_MAP[parts[0]](uri)
+    return DRIVER_MAP[parts[0]](uri)
