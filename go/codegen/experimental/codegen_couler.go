@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"text/template"
 
+	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/workflow/couler"
 )
@@ -40,6 +41,39 @@ type coulerFiller struct {
 	SecretName  string
 	SecretData  string
 	Resources   string
+}
+
+// GenerateCodeCouler generate a Couler program to submit a workflow to run the sql program.
+// 1. generate IR of each statement.
+// 2. generate runtime code of each statement
+// 3. generate couler program to form a workflow
+func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) {
+	var defaultDockerImage = "sqlflow/sqlflow:step"
+	stmts, err := parseToIR(sqlProgram, session)
+	if err != nil {
+		return "", err
+	}
+	stepList := []*stepContext{}
+	for idx, stmt := range stmts {
+		stepCode, err := generateStepCode(stmt, idx, session)
+		if err != nil {
+			return "", err
+		}
+		image := defaultDockerImage
+		if trainStmt, ok := stmt.(*ir.TrainStmt); ok {
+			if trainStmt.ModelImage != "" {
+				image = trainStmt.ModelImage
+			}
+		}
+		// TODO(typhoonzero): find out the image that should be used by the predict statements.
+		step := &stepContext{
+			Code:      stepCode,
+			Image:     image,
+			StepIndex: idx,
+		}
+		stepList = append(stepList, step)
+	}
+	return CodeGenCouler(stepList, session)
 }
 
 // CodeGenCouler generate couler code to generate a workflow

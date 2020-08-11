@@ -96,8 +96,8 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 	filler := xgbTrainFiller{
 		StepIndex:         stepIndex,
 		DataSource:        session.DbConnStr,
-		Select:            trainStmt.Select,
-		ValidationSelect:  trainStmt.ValidationSelect,
+		Select:            strings.Trim(trainStmt.Select, " \n"),
+		ValidationSelect:  strings.Trim(trainStmt.ValidationSelect, " \n"),
 		ModelParamsJSON:   string(mp),
 		TrainParamsJSON:   string(tp),
 		FeatureColumnCode: featureColumnCode,
