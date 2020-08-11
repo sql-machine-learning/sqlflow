@@ -51,6 +51,8 @@ func TestEnd2EndWorkflowExperimental(t *testing.T) {
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+	// set back SQLFLOW_WORKFLOW_BACKEND
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
 }
 
 func CaseWorkflowTrainXgboost(t *testing.T) {
