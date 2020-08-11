@@ -356,7 +356,7 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
             constraints=constraints)
         self.assertTrue(isinstance(model, pyomo_env.ConcreteModel))
 
-        result_x, result_y = solve_model(model, 'glpk')
+        result_x, result_y = solve_model(model, 'baron')
         self.assertTrue(
             np.array_equal(result_x, np.array([99, 1, 31, 59], dtype='int64')))
         self.assertAlmostEqual(result_y, 2581.2)
