@@ -33,7 +33,7 @@ class HiveResultSet(ResultSet):
         """
 
         if self._column_info is not None:
-            return self.column_info
+            return self._column_info
 
         columns = []
         for desc in self._cursor.description:
@@ -86,6 +86,16 @@ class HiveConnection(Connection):
         except Exception as e:
             cursor.close()
             return HiveResultSet(None, str(e))
+
+    def cursor(self):
+        """Get a cursor on the connection
+        We insist not to use the low level api like cursor.
+        Instead, we can directly use query/exec
+        """
+        return self._conn.cursor()
+
+    def commit(self):
+        return self._conn.commit()
 
     def close(self):
         if self._conn:

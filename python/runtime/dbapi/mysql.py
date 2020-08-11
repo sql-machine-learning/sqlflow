@@ -55,10 +55,10 @@ class MySQLResultSet(ResultSet):
             A list of column metas, like [(field_a, INT), (field_b, STRING)]
         """
         if self._column_info is not None:
-            return self.column_info
+            return self._column_info
 
         columns = []
-        for desc in self._cursor.description:
+        for desc in self._cursor.description or []:
             # NOTE: MySQL returns an integer number instead of a string
             # to represent the data type.
             typ = MYSQL_FIELD_TYPE_DICT.get(desc[1])
@@ -114,6 +114,16 @@ class MySQLConnection(Connection):
         except Exception as e:
             cursor.close()
             return MySQLResultSet(None, str(e))
+
+    def cursor(self):
+        """Get a cursor on the connection
+        We insist not to use the low level api like cursor.
+        Instead, we can directly use query/exec
+        """
+        return self._conn.cursor()
+
+    def commit(self):
+        return self._conn.commit()
 
     def close(self):
         if self._conn:

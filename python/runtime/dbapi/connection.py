@@ -102,6 +102,11 @@ class Connection(object):
             if len(l) == 1:
                 self.params[k] = l[0]
 
+    def param(self, param_name, default_value=""):
+        if not self.params:
+            return default_value
+        return self.params.get(param_name, default_value)
+
     def _parse_uri(self):
         """Parse the connection string into URI parts
         Returns:

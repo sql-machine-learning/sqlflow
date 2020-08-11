@@ -11,8 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from urllib.parse import parse_qs, urlparse
+
 from odps import ODPS, tunnel
 from runtime.dbapi.connection import Connection, ResultSet
+
+COMPRESS_ODPS_ZLIB = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
 
 
 class MaxComputeResultSet(ResultSet):
@@ -40,18 +44,17 @@ class MaxComputeResultSet(ResultSet):
             A list of column metas, like [(field_a, INT), (field_b, STRING)]
         """
         if self._column_info is not None:
-            return self.column_info
+            return self._column_info
 
         r = self._open_reader()
-        self._column_info = [(col.name, str.upper(col.type))
+        self._column_info = [(col.name, str(col.type).upper())
                              for col in r._schema.columns]
         return self._column_info
 
     def _open_reader(self):
         if not self._reader:
-            compress = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
-            self._reader = self._instance.open_reader(tunnel=True,
-                                                      compress_option=compress)
+            self._reader = self._instance.open_reader(
+                tunnel=True, compress_option=COMPRESS_ODPS_ZLIB)
         return self._reader
 
     def success(self):
@@ -82,17 +85,32 @@ class MaxComputeConnection(Connection):
     """
     def __init__(self, conn_uri):
         super().__init__(conn_uri)
+        user, pwd, endpoint, proj = MaxComputeConnection.get_uri_parts(
+            conn_uri)
         self.driver = "maxcompute"
-        self.params["database"] = self.params["curr_project"]
+        self.params["database"] = proj
+        self.endpoint = endpoint
+        self._conn = ODPS(user, pwd, project=proj, endpoint=endpoint)
+
+    @staticmethod
+    def get_uri_parts(uri):
+        """Get username, password, endpoint, projectfrom given uri
+
+        Args:
+            uri: a vliad maxcompute connection uri
+
+        Returns:
+            A tuple (username, password, endpoint, project)
+        """
+        uripts = urlparse(uri)
+        params = parse_qs(uripts.query)
         # compose an endpoint, only keep the host and path and replace scheme
-        endpoint = self.uripts._replace(scheme=self.params["scheme"],
-                                        query="",
-                                        netloc=self.uripts.hostname)
-        self.endpoint = endpoint.geturl()
-        self._conn = ODPS(self.uripts.username,
-                          self.uripts.password,
-                          project=self.params["database"],
-                          endpoint=self.endpoint)
+        endpoint = uripts._replace(scheme=params.get("scheme", ["http"])[0],
+                                   query="",
+                                   netloc=uripts.hostname)
+        endpoint = endpoint.geturl()
+        return (uripts.username, uripts.password, endpoint,
+                params.get("curr_project", [""])[0])
 
     def _get_result_set(self, statement):
         try:
@@ -108,3 +126,19 @@ class MaxComputeConnection(Connection):
     def get_table_schema(self, table_name):
         schema = self._conn.get_table(table_name).schema
         return [(c.name, str(c.type).upper()) for c in schema.columns]
+
+    def write_table(self,
+                    table_name,
+                    rows,
+                    compress_option=COMPRESS_ODPS_ZLIB):
+        """Append rows to given table, this is a driver specific api
+
+        Args:
+            table_name: the table to write
+            rows: list of rows, each row is a data tuple, like [(1,True,"ok"),(2,False,"bad")]
+            compress_options: the compress options defined in 
+                tunnel.CompressOption.CompressAlgorithm
+        """
+        self._conn.write_table(table_name,
+                               rows,
+                               compress_option=compress_option)

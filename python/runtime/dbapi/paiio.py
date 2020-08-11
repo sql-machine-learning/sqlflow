@@ -41,7 +41,7 @@ class PaiIOResultSet(ResultSet):
             A list of column metas, like [(field_a, INT), (field_b, STRING)]
         """
         if self._column_info is not None:
-            return self.column_info
+            return self._column_info
 
         schema = self._reader.get_schema()
         columns = [(c['colname'], str.upper(c['typestr'])) for c in schema]
