@@ -10,3 +10,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+
+from runtime.dbapi.hive import HiveConnection
+from runtime.dbapi.maxcompute import MaxComputeConnection
+from runtime.dbapi.mysql import MySQLConnection
+
+DRIVRE_MAP = {
+    "mysql": MySQLConnection,
+    "hive": HiveConnection,
+    "maxcompute": MaxComputeConnection
+}
+
+
+def connect(uri):
+    """Connect to given uri
+
+    Params:
+      uri: a valid URI string
+
+    Returns:
+      A Connection object
+
+    Raises:
+      ValueError if the uri is not valid or can't find given driver
+    """
+    parts = uri.split("://")
+    if len(parts) < 2:
+        raise ValueError("Input should be a valid uri.")
+    if parts[0] not in DRIVRE_MAP:
+        raise ValueError("Can't find driver for scheme: %s" % parts[0])
+    return DRIVRE_MAP[parts[0]](uri)

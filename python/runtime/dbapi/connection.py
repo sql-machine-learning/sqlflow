@@ -74,6 +74,13 @@ class ResultSet(object):
         implementation should support close multi-times"""
         pass
 
+    def error(self):
+        """Get the error message if self.success()==False
+        Returns:
+            The error message
+        """
+        return ""
+
 
 @six.add_metaclass(ABCMeta)
 class Connection(object):
@@ -91,10 +98,9 @@ class Connection(object):
             self.uripts.query,
             keep_blank_values=True,
         )
-        self.params["database"] = self.uripts.path.strip("/")
         for k, l in self.params.items():
             if len(l) == 1:
-                self.params[k] = self.params[k][0]
+                self.params[k] = l[0]
 
     def _parse_uri(self):
         """Parse the connection string into URI parts
@@ -149,6 +155,18 @@ class Connection(object):
             return False
         finally:
             rs.close()
+
+    def get_table_schema(self, table_name):
+        """Get table schema for given table
+
+        Args:
+            table_name: name of the table to get schema
+
+        Returns:
+            A list of (column_name, column_type) tuples
+        """
+        rs = self.query("SELECT * FROM %s limit 0" % table_name)
+        return rs.column_info()
 
     @abstractmethod
     def close(self):
