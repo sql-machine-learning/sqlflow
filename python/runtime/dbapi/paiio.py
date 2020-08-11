@@ -13,8 +13,12 @@
 
 import re
 
-import paiio
 from runtime.dbapi.connection import Connection, ResultSet
+
+try:
+    import paiio
+except Exception:  # noqa: E722
+    pass
 
 
 class PaiIOResultSet(ResultSet):
