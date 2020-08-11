@@ -18,7 +18,7 @@ import runtime.pai.pai_distributed as pai_dist
 import six
 import xgboost as xgb
 from runtime import oss as pai_model_store
-from runtime.model_metadata import collect_model_metadata, save_model_metadata
+from runtime.model import collect_metadata, save_metadata
 from runtime.xgboost.dataset import xgb_dataset
 from runtime.xgboost.pai_rabit import PaiXGBoostTracker, PaiXGBoostWorker
 
@@ -167,6 +167,7 @@ def train(datasource,
     else:
         bst = None
 
+    re = None
     for per_batch_dmatrix in dtrain:
         watchlist = [(per_batch_dmatrix, "train")]
         if len(validation_select.strip()) > 0:
@@ -182,11 +183,16 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        metadata = collect_model_metadata(original_sql, select,
-                                          validation_select, "XGBoost",
-                                          model_params, train_params,
-                                          feature_metas, label_meta, re,
-                                          model_repo_image)
+        # TODO(sneaxiy): collect features and label
+        metadata = collect_metadata(original_sql=original_sql,
+                                    select=select,
+                                    validation_select=validation_select,
+                                    model_repo_image=model_repo_image,
+                                    class_name=model_params.get("booster"),
+                                    attributes=model_params,
+                                    features=None,
+                                    label=None,
+                                    evaluation=re)
         save_model_to_local_file(bst, model_params, metadata, filename)
 
         if is_pai and len(oss_model_dir) > 0:
@@ -241,7 +247,7 @@ def save_model_to_local_file(booster, model_params, meta, filename):
     # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
     booster.set_attr(scikit_learn=json.dumps(bst_meta))
     booster.save_model(filename)
-    save_model_metadata("model_meta.json", meta)
+    save_metadata("model_meta.json", meta)
     booster.set_attr(scikit_learn=None)
     model.load_model(filename)
 
