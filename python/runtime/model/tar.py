@@ -28,7 +28,7 @@ def zip_dir(src_dir, tarball):
             The output tarball name.
     """
     with tarfile.open(tarball, "w:gz") as tar:
-        tar.add(src_dir, recursive=True)
+        tar.add(src_dir, arcname="./", recursive=True)
 
 
 def unzip_dir(tarball, dest_dir=os.getcwd()):

@@ -23,6 +23,7 @@ from os import path
 from runtime import db, oss
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
+from runtime.oss import delete_oss_dir_recursive
 from runtime.pai import cluster_conf
 from runtime.pai.kmeans import get_train_kmeans_pai_cmd
 from runtime.pai.random_forest import get_train_random_forest_pai_cmd
@@ -249,30 +250,6 @@ def get_project(datasource):
     dsn = get_datasource_dsn(datasource)
     _, _, _, project = db.parseMaxComputeDSN(dsn)
     return project
-
-
-def delete_oss_dir_recursive(bucket, directory):
-    """Recursively delete a directory on the OSS
-
-    Args:
-        bucket: bucket on OSS
-        directory: the directory to delete
-    """
-    if not directory.endswith("/"):
-        raise SQLFlowDiagnostic("dir to delete must end with /")
-
-    loc = bucket.list_objects(prefix=directory, delimiter="/")
-    object_path_list = []
-    for obj in loc.object_list:
-        object_path_list.append(obj.key)
-
-    # delete sub dir first
-    if len(loc.prefix_list) > 0:
-        for sub_prefix in loc.prefix_list:
-            delete_oss_dir_recursive(bucket, sub_prefix)
-    # empty list param will raise error
-    if len(object_path_list) > 0:
-        bucket.batch_delete_objects(object_path_list)
 
 
 def clean_oss_model_path(oss_path):
