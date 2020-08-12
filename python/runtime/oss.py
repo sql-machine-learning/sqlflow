@@ -147,7 +147,8 @@ def save_file(oss_model_dir, local_file_name, oss_file_name=None):
     to OSS directory.
 
     Args:
-        oss_model_dir (str): the OSS model directory.
+        oss_model_dir (str): the OSS model directory. It is in the format
+            of oss://bucket/path/to/dir/.
         local_file_name (str): the local file path.
         oss_file_name (str): the OSS file path to save. If None,
             use local_file_name as oss_file_name.
@@ -182,7 +183,8 @@ def load_file(oss_model_dir, local_file_name, oss_file_name=None):
     Load file from OSS to local directory.
 
     Args:
-        oss_model_dir (str): the OSS model directory.
+        oss_model_dir (str): the OSS model directory. It is in the format
+            of oss://bucket/path/to/dir/.
         local_file_name (str): the local file path.
         oss_file_name (str): the OSS file path to load. If None,
             use local_file_name as oss_file_name.

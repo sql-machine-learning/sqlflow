@@ -168,6 +168,7 @@ class Model:
 
         Args:
             oss_model_dir (str): the OSS model directory to save.
+                It is in the format of oss://bucket/path/to/dir/.
             local_dir (str): the local directory to save.
 
         Returns:
@@ -185,6 +186,7 @@ class Model:
 
         Args:
             oss_model_dir (str): the OSS model directory to load.
+                It is in the format of oss://bucket/path/to/dir/.
             local_dir (str): the local directory to load.
 
         Returns:
