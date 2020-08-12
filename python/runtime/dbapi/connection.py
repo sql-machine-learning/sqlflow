@@ -12,9 +12,9 @@
 # limitations under the License
 
 from abc import ABCMeta, abstractmethod
-from urllib.parse import parse_qs, urlparse
 
 import six
+from six.moves.urllib.parse import parse_qs, urlparse
 
 
 @six.add_metaclass(ABCMeta)
@@ -102,6 +102,11 @@ class Connection(object):
             if len(l) == 1:
                 self.params[k] = l[0]
 
+    def param(self, param_name, default_value=""):
+        if not self.params:
+            return default_value
+        return self.params.get(param_name, default_value)
+
     def _parse_uri(self):
         """Parse the connection string into URI parts
         Returns:
@@ -139,7 +144,7 @@ class Connection(object):
         """
         return self._get_result_set(statement)
 
-    def exec(self, statement):
+    def execute(self, statement):
         """Execute given statement and return True on success
 
         Args:
