@@ -15,28 +15,34 @@ package experimental
 
 import (
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/go/database"
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
 func TestExperimentalXGBCodegen(t *testing.T) {
+	a := assert.New(t)
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skipf("skip TestExperimentalXGBCodegen of DB type %s", os.Getenv("SQLFLOW_TEST_DB"))
 	}
 	// test without COLUMN clause
 	sql := "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 LABEL class INTO sqlflow_models.xgb_classification;"
 	s := &pb.Session{DbConnStr: database.GetTestingMySQLURL()}
-	_, err := GenerateCodeCouler(sql, s)
+	coulerCode, err := GenerateCodeCouler(sql, s)
 	if err != nil {
 		t.Errorf("error %s", err)
 	}
+	a.True(strings.Contains(coulerCode, `couler.run_script(image="sqlflow/sqlflow:step", source=step_entry_0, env=step_envs, resources=resources)`))
 
 	// test with COLUMN clause
 	sql = "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 COLUMN petal_length LABEL class INTO sqlflow_models.xgb_classification;"
-	_, err = GenerateCodeCouler(sql, s)
+	coulerCode, err = GenerateCodeCouler(sql, s)
 	if err != nil {
 		t.Errorf("error %s", err)
 	}
+	expected := `feature_column_map = {"featuren_columns": [fc.NumericColumn(fd.FieldDesc(name="petal_length", dtype=fd.DataType.FLOAT32, delimiter="", format="", shape=[1], is_sparse=False, vocabulary=[]))]}`
+	a.True(strings.Contains(coulerCode, expected))
 }

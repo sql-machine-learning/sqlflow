@@ -18,7 +18,7 @@ from runtime.feature.column import (BucketColumn, CategoryHashColumn,
                                     EmbeddingColumn, IndicatorColumn,
                                     NumericColumn, SeqCategoryIDColumn)
 from runtime.feature.field_desc import DataType
-from runtime.model import EstimatorType
+from runtime.model.model import EstimatorType
 
 __all__ = [
     'compile_ir_feature_columns',

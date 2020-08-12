@@ -27,18 +27,32 @@ import (
 // 2. generate runtime code of each statement
 // 3. generate couler program to form a workflow
 func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) {
+	var defaultDockerImage = "sqlflow/sqlflow:step"
 	stmts, err := parseToIR(sqlProgram, session)
 	if err != nil {
 		return "", err
 	}
-	for _, stmt := range stmts {
-		stepCode, err := generateStepCode(stmt, session)
+	stepList := []*stepContext{}
+	for idx, stmt := range stmts {
+		stepCode, err := generateStepCode(stmt, idx, session)
 		if err != nil {
 			return "", err
 		}
-		fmt.Println(stepCode)
+		image := defaultDockerImage
+		if trainStmt, ok := stmt.(*ir.TrainStmt); ok {
+			if trainStmt.ModelImage != "" {
+				image = trainStmt.ModelImage
+			}
+		}
+		// TODO(typhoonzero): find out the image that should be used by the predict statements.
+		step := &stepContext{
+			Code:      stepCode,
+			Image:     image,
+			StepIndex: idx,
+		}
+		stepList = append(stepList, step)
 	}
-	return "", nil
+	return CodeGenCouler(stepList, session)
 }
 
 func parseToIR(sqlProgram string, session *pb.Session) ([]ir.SQLFlowStmt, error) {
@@ -95,12 +109,12 @@ func parseToIR(sqlProgram string, session *pb.Session) ([]ir.SQLFlowStmt, error)
 	return result, nil
 }
 
-func generateStepCode(stmt ir.SQLFlowStmt, session *pb.Session) (string, error) {
+func generateStepCode(stmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (string, error) {
 	switch stmt.(type) {
 	case *ir.TrainStmt:
 		trainStmt := stmt.(*ir.TrainStmt)
 		if strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST.") {
-			return XGBoostGenerateTrain(trainStmt, session)
+			return XGBoostGenerateTrain(trainStmt, stepIndex, session)
 		}
 		return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
 	default:

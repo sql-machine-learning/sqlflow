@@ -20,10 +20,10 @@ from collections import OrderedDict
 import couler.pyfunc as pyfunc
 import pyaml
 
-_wf: dict = {}
-_secrets: dict = {}
-_steps: OrderedDict = OrderedDict()
-_templates: dict = {}
+_wf = dict()
+_secrets = dict()
+_steps = OrderedDict()
+_templates = dict()
 _update_steps_lock = True
 _run_concurrent_lock = False
 _concurrent_func_line = -1
@@ -36,7 +36,7 @@ _when_prefix = None
 # '_condition_id' records the line number where the 'couler.when()' is invoked.
 _condition_id = None
 # '_while_steps' records the step of recursive logic
-_while_steps: OrderedDict = OrderedDict()
+_while_steps = OrderedDict()
 # '_while_lock' indicates the recursive call starts
 _while_lock = False
 # TTL_cleaned for the workflow
@@ -506,7 +506,7 @@ def concurrent(function_list):
     _run_concurrent_lock = False
 
 
-def yaml():
+def __dump_yaml():
     wf = copy.deepcopy(_wf)
     wf["apiVersion"] = "argoproj.io/v1alpha1"
     wf["kind"] = "Workflow"
@@ -529,10 +529,10 @@ def yaml():
 def _dump_yaml():
     yaml_str = ""
     if len(_secrets) > 0:
-        yaml_str = pyaml.dump(_secrets, string_val_style="plain")
+        yaml_str = pyaml.dump(_secrets)
         yaml_str = "%s\n---\n" % yaml_str
     if len(_steps) > 0:
-        yaml_str = yaml_str + pyaml.dump(yaml(), string_val_style="plain")
+        yaml_str = yaml_str + pyaml.dump(__dump_yaml())
     print(yaml_str)
 
 

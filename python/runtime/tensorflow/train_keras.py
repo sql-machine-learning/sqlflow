@@ -17,7 +17,7 @@ import warnings
 
 import six
 import tensorflow as tf
-from runtime.model_metadata import save_model_metadata
+from runtime.model import save_metadata
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.keras_with_feature_column_input import \
@@ -175,9 +175,10 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
             print("%s: %s" % (k, v))
         model_meta["evaluation"] = val_metrics
 
+    # write model metadata to model_meta.json
+    save_metadata("model_meta.json", model_meta)
+
     try:
-        # write model metadata to model_meta.json
-        save_model_metadata("model_meta.json", model_meta)
         # NOTE: classifier.save_weights may fail if the model has
         # sqlflow_train_loop and does not have Keras layers defined.
         # So save metadata before calling save_weights.
