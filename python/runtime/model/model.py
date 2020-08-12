@@ -83,7 +83,7 @@ class Model:
         """
         model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
         _dump_pkl(self, model_obj_file)
-        zip_dir(local_dir, tarball)
+        zip_dir(local_dir, tarball, arcname="./")
         os.remove(model_obj_file)
 
     @staticmethod
