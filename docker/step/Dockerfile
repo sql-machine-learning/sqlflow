@@ -36,6 +36,12 @@ RUN apt-get update && \
   unzip -qq odpscmd_public.zip -d /install/local/odpscmd && \
   rm -rf odpscmd_public.zip
 
+RUN wget -q https://minlp.com/downloads/xecs/baron/current/baron-lin64.zip && \
+    unzip -qq baron-lin64.zip -d /install && \
+    mv /install/baron-lin64/baron /usr/bin && \
+    rm -rf /install/baron-lin64 && \
+    rm -rf baron-lin64.zip
+
 ADD build/sqlflow_models-0.0.1-py3-none-any.whl /
 RUN bash -c 'pip install --no-cache-dir --prefix=/install \
     /sqlflow_models-0.0.1-py3-none-any.whl \
@@ -49,7 +55,9 @@ RUN bash -c 'pip install --no-cache-dir --prefix=/install \
     seaborn==0.9.0 \
     dill==0.3.0 \
     sklearn2pmml==0.56.0 \
-    shap==0.30.1'
+    shap==0.30.1 \
+    PyUtilib==5.8.0 \
+    pyomo==5.6.9'
 
 RUN py3clean /install /usr/lib/python3.6
 
