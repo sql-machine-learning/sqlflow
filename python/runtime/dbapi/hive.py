@@ -11,13 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from impala.dbapi import connect
+try:
+    from impala.dbapi import connect
+except:
+    pass
 from runtime.dbapi.connection import Connection, ResultSet
 
 
 class HiveResultSet(ResultSet):
     def __init__(self, cursor, err=None):
-        super().__init__()
+        super(HiveResultSet, self).__init__()
         self._cursor = cursor
         self._column_info = None
         self._err = err
@@ -66,7 +69,7 @@ class HiveConnection(Connection):
         configuration
     """
     def __init__(self, conn_uri):
-        super().__init__(conn_uri)
+        super(HiveConnection, self).__init__(conn_uri)
         self.driver = "hive"
         self.params["database"] = self.uripts.path.strip("/")
         self._conn = connect(user=self.uripts.username,

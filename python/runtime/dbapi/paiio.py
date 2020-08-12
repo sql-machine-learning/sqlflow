@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from __future__ import absolute_import
+
 import re
 
 from runtime.dbapi.connection import Connection, ResultSet
@@ -23,7 +25,7 @@ except Exception:  # noqa: E722
 
 class PaiIOResultSet(ResultSet):
     def __init__(self, reader, err=None):
-        super().__init__()
+        super(PaiIOResultSet, self).__init__()
         self._reader = reader
         self._column_info = None
         self._err = err
@@ -44,7 +46,7 @@ class PaiIOResultSet(ResultSet):
             return self._column_info
 
         schema = self._reader.get_schema()
-        columns = [(c['colname'], str.upper(c['typestr'])) for c in schema]
+        columns = [(c['colname'], str(c['typestr']).upper()) for c in schema]
         self._column_info = columns
         return self._column_info
 
@@ -72,7 +74,8 @@ class PaiIOConnection(Connection):
     """PaiIOConnection emulate a connection for paiio,
     currently only support full-table reading. That means
     we can't filter the data, join the table and so on.
-    The only supported query statement is `None`.
+    The only supported query statement is `None`. The scheme
+    part of the uri can be 'paiio' or 'odps'
 
     Typical use is:
     con = PaiIOConnection("paiio://db/tables/my_table")
@@ -80,16 +83,17 @@ class PaiIOConnection(Connection):
     rows = [r for r in res]
     """
     def __init__(self, conn_uri):
-        super().__init__(conn_uri)
+        super(PaiIOConnection, self).__init__(conn_uri)
+        # (TODO: lhw) change driver to paiio
         self.driver = "pai_maxcompute"
-        match = re.findall(r"paiio://\w+/tables/(.+)", self.uripts.path)
+        match = re.findall(r"\w+://\w+/tables/(.+)", conn_uri)
         if len(match) < 1:
             raise ValueError("Should specify table in uri with format: "
                              "paiio://db/tables/table?param_a=a&param_b=b")
-        self.params["database"] = self.uripts.hostname
-        self.params["table"] = match[0]
+        self.params["table"] = conn_uri.replace("paiio://", "odps://")
         self.params["slice_id"] = self.params.get("slice_id", 0)
         self.params["slice_count"] = self.params.get("slice_count", 1)
+        print(self.params)
 
     def _get_result_set(self, statement):
         if statement is not None:
@@ -101,6 +105,7 @@ class PaiIOConnection(Connection):
                                        slice_count=self.params["slice_count"])
             return PaiIOResultSet(reader, None)
         except Exception as e:
+            print(e.args)
             return PaiIOResultSet(None, str(e))
 
     def get_table_schema(self, full_uri):
@@ -110,7 +115,7 @@ class PaiIOConnection(Connection):
         return PaiIOConnection.get_schema(full_uri)
 
     def query(self, statement=None):
-        return super().query(statement)
+        return super(PaiIOConnection, self).query(statement)
 
     @staticmethod
     def get_table_row_num(table_uri):
@@ -144,3 +149,7 @@ class PaiIOConnection(Connection):
 
     def close(self):
         pass
+
+
+if __name__ == "__main__":
+    PaiIOConnection("odps://alifin_jtest_dev/tables/m8N3IXKF0a2tcnCg")

@@ -12,9 +12,9 @@
 # limitations under the License
 
 from abc import ABCMeta, abstractmethod
-from urllib.parse import parse_qs, urlparse
 
 import six
+from six.moves.urllib.parse import parse_qs, urlparse
 
 
 @six.add_metaclass(ABCMeta)
@@ -144,7 +144,7 @@ class Connection(object):
         """
         return self._get_result_set(statement)
 
-    def exec(self, statement):
+    def execute(self, statement):
         """Execute given statement and return True on success
 
         Args:

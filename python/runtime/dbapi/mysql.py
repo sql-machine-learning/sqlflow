@@ -12,12 +12,16 @@
 # limitations under the License
 
 import re
-from urllib.parse import ParseResult
+
+from runtime.dbapi.connection import Connection, ResultSet
+from six.moves.urllib.parse import ParseResult
 
 # NOTE: use MySQLdb to avoid bugs like infinite reading:
 # https://bugs.mysql.com/bug.php?id=91971
-from MySQLdb import connect
-from runtime.dbapi.connection import Connection, ResultSet
+try:
+    from MySQLdb import connect
+except:
+    pass
 
 try:
     import MySQLdb.constants.FIELD_TYPE as MYSQL_FIELD_TYPE
@@ -40,7 +44,7 @@ except:  # noqa: E722
 
 class MySQLResultSet(ResultSet):
     def __init__(self, cursor, err=None):
-        super().__init__()
+        super(MySQLResultSet, self).__init__()
         self._cursor = cursor
         self._column_info = None
         self._err = err
@@ -88,7 +92,7 @@ class MySQLResultSet(ResultSet):
 
 class MySQLConnection(Connection):
     def __init__(self, conn_uri):
-        super().__init__(conn_uri)
+        super(MySQLConnection, self).__init__(conn_uri)
         self.driver = "mysql"
         self.params["database"] = self.uripts.path.strip("/")
         self._conn = connect(user=self.uripts.username,

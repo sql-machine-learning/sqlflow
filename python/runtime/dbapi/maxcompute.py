@@ -11,10 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from urllib.parse import parse_qs, urlparse
-
 from odps import ODPS, tunnel
 from runtime.dbapi.connection import Connection, ResultSet
+from six.moves.urllib.parse import parse_qs, urlparse
 
 COMPRESS_ODPS_ZLIB = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
 
@@ -22,7 +21,7 @@ COMPRESS_ODPS_ZLIB = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
 class MaxComputeResultSet(ResultSet):
     """MaxCompute query result"""
     def __init__(self, instance, err=None):
-        super().__init__()
+        super(MaxComputeResultSet, self).__init__()
         self._instance = instance
         self._column_info = None
         self._err = err
@@ -84,7 +83,7 @@ class MaxComputeConnection(Connection):
         maxcompute://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
     """
     def __init__(self, conn_uri):
-        super().__init__(conn_uri)
+        super(MaxComputeConnection, self).__init__(conn_uri)
         user, pwd, endpoint, proj = MaxComputeConnection.get_uri_parts(
             conn_uri)
         self.driver = "maxcompute"
