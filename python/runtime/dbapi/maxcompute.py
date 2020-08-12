@@ -96,7 +96,7 @@ class MaxComputeConnection(Connection):
         """Get username, password, endpoint, projectfrom given uri
 
         Args:
-            uri: a vliad maxcompute connection uri
+            uri: a valid maxcompute connection uri
 
         Returns:
             A tuple (username, password, endpoint, project)
