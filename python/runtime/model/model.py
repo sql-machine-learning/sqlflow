@@ -201,7 +201,7 @@ def _dump_pkl(obj, to_file):
     """Dump the Python object to file with Pickle.
     """
     with open(to_file, "wb") as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(obj, f, protocol=2)
 
 
 def _load_pkl(from_file):
