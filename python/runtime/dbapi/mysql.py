@@ -20,7 +20,7 @@ from six.moves.urllib.parse import ParseResult
 # https://bugs.mysql.com/bug.php?id=91971
 try:
     from MySQLdb import connect
-except:
+except:  #noqa E722
     pass
 
 try:

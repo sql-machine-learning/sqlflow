@@ -134,8 +134,9 @@ class MaxComputeConnection(Connection):
 
         Args:
             table_name: the table to write
-            rows: list of rows, each row is a data tuple, like [(1,True,"ok"),(2,False,"bad")]
-            compress_options: the compress options defined in 
+            rows: list of rows, each row is a data tuple,
+                like [(1,True,"ok"),(2,False,"bad")]
+            compress_options: the compress options defined in
                 tunnel.CompressOption.CompressAlgorithm
         """
         self._conn.write_table(table_name,

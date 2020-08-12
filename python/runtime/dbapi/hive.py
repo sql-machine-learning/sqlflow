@@ -13,7 +13,7 @@
 
 try:
     from impala.dbapi import connect
-except:
+except:  #noqa E722
     pass
 from runtime.dbapi.connection import Connection, ResultSet
 
