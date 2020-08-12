@@ -116,7 +116,7 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 	return program.String(), nil
 }
 
-var xgbTrainTemplate = `
+const xgbTrainTemplate = `
 def step_entry_{{.StepIndex}}():
     import json
     import tempfile
@@ -141,7 +141,7 @@ def step_entry_{{.StepIndex}}():
     conn = runtime.db.connect_with_data_source(ds)
 
     {{ if .FeatureColumnCode }}
-    feature_column_map = {"featuren_columns": [{{.FeatureColumnCode}}]}
+    feature_column_map = {"feature_columns": [{{.FeatureColumnCode}}]}
     {{ else }}
     feature_column_map = None
     {{ end }}
