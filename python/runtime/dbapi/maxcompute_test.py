@@ -56,17 +56,17 @@ class TestMaxComputeConnection(TestCase):
 
     def test_exec(self):
         conn = MaxComputeConnection(testing.get_datasource())
-        rs = conn.exec(
+        rs = conn.execute(
             "create table alifin_jtest_dev.sqlflow_test_exec(a int)")
         self.assertTrue(rs)
-        rs = conn.exec(
+        rs = conn.execute(
             "insert into alifin_jtest_dev.sqlflow_test_exec values(1), (2)")
         self.assertTrue(rs)
         rs = conn.query("select * from alifin_jtest_dev.sqlflow_test_exec")
         self.assertTrue(rs.success())
         rows = [r for r in rs]
         self.assertTrue(2, len(rows))
-        rs = conn.exec("drop table alifin_jtest_dev.sqlflow_test_exec")
+        rs = conn.execute("drop table alifin_jtest_dev.sqlflow_test_exec")
         self.assertTrue(rs)
 
     def test_get_table_schema(self):
