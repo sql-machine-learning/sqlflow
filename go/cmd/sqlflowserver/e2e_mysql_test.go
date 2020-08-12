@@ -112,6 +112,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTestOptimizeClauseWithoutGroupBy", caseTestOptimizeClauseWithoutGroupBy)
 	t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
 	t.Run("CaseTestOptimizeClauseWithBinaryVarType", caseTestOptimizeClauseWithBinaryVarType)
+	t.Run("CaseTestOptimizeClauseWithoutConstraint", caseTestOptimizeClauseWithoutConstraint)
 }
 
 func CaseShouldError(t *testing.T) {

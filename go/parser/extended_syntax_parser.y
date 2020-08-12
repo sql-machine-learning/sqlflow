@@ -132,7 +132,7 @@ type OptimizeClause struct {
 	// Direction can be MAXIMIZE or MINIMIZE
 	Direction string
 	Objective *Expr
-	Constrants ConstraintList
+	Constraints ConstraintList
 	OptimizeAttrs Attributes
 	Solver string
 	OptimizeInto string
@@ -161,6 +161,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
   expl ExprList
   ctexp  *Constraint
   ctexpl ConstraintList
+  octexpl ConstraintList
   atrs Attributes
   eslt *SQLFlowSelectStmt
   slct StandardSelect
@@ -190,6 +191,7 @@ func attrsUnion(as1, as2 Attributes) Attributes {
 %type  <expl> ExprList pythonlist columns
 %type  <ctexp> constraint
 %type  <ctexpl> constraint_list
+%type  <octexpl> optional_constraint_list
 %type  <atrs> attr
 %type  <atrs> attrs
 %type  <tbls> stringlist, identlist
@@ -323,36 +325,41 @@ run_clause
 | TO RUN IDENT CMD stringlist INTO identlist { $$.ImageName = $3; $$.Parameters = $5; $$.OutputTables = $7 }
 ;
 
+optional_constraint_list
+: /* empty */ { $$ = ConstraintList{} }
+| CONSTRAINT constraint_list { $$ = $2 }
+;
+
 optimize_clause
-: TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
+: TO MAXIMIZE expr optional_constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
-	$$.Constrants = $5;
-	$$.OptimizeAttrs = $7;
-	$$.Solver = $9;
-	$$.OptimizeInto = $11;
+	$$.Constraints = $4;
+	$$.OptimizeAttrs = $6;
+	$$.Solver = $8;
+	$$.OptimizeInto = $10;
 }
-| TO MAXIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
+| TO MAXIMIZE expr optional_constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MAXIMIZE";
 	$$.Objective = $3;
-	$$.Constrants = $5;
-	$$.OptimizeAttrs = $7;
-	$$.OptimizeInto = $9;
+	$$.Constraints = $4;
+	$$.OptimizeAttrs = $6;
+	$$.OptimizeInto = $8;
 }
-| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs USING IDENT INTO IDENT {
+| TO MINIMIZE expr optional_constraint_list WITH attrs USING IDENT INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
-	$$.Constrants = $5;
-	$$.OptimizeAttrs = $7;
-	$$.Solver = $9;
-	$$.OptimizeInto = $11;
+	$$.Constraints = $4;
+	$$.OptimizeAttrs = $6;
+	$$.Solver = $8;
+	$$.OptimizeInto = $10;
 }
-| TO MINIMIZE expr CONSTRAINT constraint_list WITH attrs INTO IDENT {
+| TO MINIMIZE expr optional_constraint_list WITH attrs INTO IDENT {
 	$$.Direction = "MINIMIZE";
 	$$.Objective = $3;
-	$$.Constrants = $5;
-	$$.OptimizeAttrs = $7;
-	$$.OptimizeInto = $9;
+	$$.Constraints = $4;
+	$$.OptimizeAttrs = $6;
+	$$.OptimizeInto = $8;
 };
 
 show_train_clause
