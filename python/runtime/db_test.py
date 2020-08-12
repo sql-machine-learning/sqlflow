@@ -182,7 +182,7 @@ class TestGetTableSchema(TestCase):
                 ('sepal_width', 'FLOAT'),
                 ('petal_length', 'FLOAT'),
                 ('petal_width', 'FLOAT'),
-                ('class', 'INT'),
+                ('class', 'INT(11)'),
             ]
             self.assertEqual(expect, schema)
 
