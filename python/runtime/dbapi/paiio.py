@@ -115,12 +115,6 @@ class PaiIOConnection(Connection):
             print(e.args)
             return PaiIOResultSet(None, str(e))
 
-    def get_table_schema(self, full_uri):
-        """Get schema of given table, caller need to supply the full
-        uri for paiio table, this is slight different with other connections.
-        """
-        return PaiIOConnection.get_schema(full_uri)
-
     def query(self, statement=None):
         return super(PaiIOConnection, self).query(statement)
 
@@ -185,7 +179,3 @@ class PaiIOConnection(Connection):
 
     def close(self):
         pass
-
-
-if __name__ == "__main__":
-    PaiIOConnection("odps://alifin_jtest_dev/tables/m8N3IXKF0a2tcnCg")

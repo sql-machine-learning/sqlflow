@@ -43,6 +43,6 @@ func TestExperimentalXGBCodegen(t *testing.T) {
 	if err != nil {
 		t.Errorf("error %s", err)
 	}
-	expected := `feature_column_map = {"featuren_columns": [fc.NumericColumn(fd.FieldDesc(name="petal_length", dtype=fd.DataType.FLOAT32, delimiter="", format="", shape=[1], is_sparse=False, vocabulary=[]))]}`
+	expected := `feature_column_map = {"feature_columns": [fc.NumericColumn(fd.FieldDesc(name="petal_length", dtype=fd.DataType.FLOAT32, delimiter="", format="", shape=[1], is_sparse=False, vocabulary=[]))]}`
 	a.True(strings.Contains(coulerCode, expected))
 }
