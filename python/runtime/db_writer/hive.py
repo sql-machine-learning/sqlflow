@@ -97,7 +97,7 @@ class HiveDBWriter(BufferedDBWriter):
         # load CSV into Hive
         load_sql = "LOAD DATA INPATH '%s/%s/' OVERWRITE INTO TABLE %s" % (
             hdfs_path, self.table_name, self.table_name)
-        self.conn.exec(load_sql)
+        self.conn.execute(load_sql)
 
         # remove the temporary dir on hdfs
         cmd_str = "hdfs dfs %s -rm -r -f %s/%s/" % (cmd_namenode_str,

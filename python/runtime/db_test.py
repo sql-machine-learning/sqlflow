@@ -64,9 +64,9 @@ class TestDB(TestCase):
         select_tbl = '''select * from test_db.tbl'''
         table_schema = ["label", "features"]
         values = [(1, '5,6,1,2')] * 10
-        self.assertTrue(conn.exec(create_db))
-        self.assertTrue(conn.exec(drop_tbl))
-        self.assertTrue(conn.exec(create_tbl))
+        self.assertTrue(conn.execute(create_db))
+        self.assertTrue(conn.execute(drop_tbl))
+        self.assertTrue(conn.execute(create_tbl))
 
         with buffered_db_writer(conn,
                                 "test_db.tbl",
@@ -87,12 +87,12 @@ class TestDB(TestCase):
         table_schema = ["features", "label"]
         values = [('5,6,1,2', 1)] * 10
 
-        conn.exec(self.drop_statement)
+        conn.execute(self.drop_statement)
 
         if conn.driver == "hive":
-            conn.exec(self.hive_create_statement)
+            conn.execute(self.hive_create_statement)
         else:
-            conn.exec(self.create_statement)
+            conn.execute(self.create_statement)
         with buffered_db_writer(conn, table_name, table_schema,
                                 buff_size=10) as w:
             for row in values:
@@ -116,9 +116,9 @@ class TestGenerator(TestCase):
     def test_generator(self):
         conn = connect(testing.get_datasource())
         # prepare test data
-        conn.exec(self.drop_statement)
-        conn.exec(self.create_statement)
-        conn.exec(self.insert_statement)
+        conn.executeute(self.drop_statement)
+        conn.executeute(self.create_statement)
+        conn.executeute(self.insert_statement)
 
         column_name_to_type = {
             "features": {
@@ -260,15 +260,15 @@ class TestMySQLFieldType(TestCase):
             if str_type in ["VARCHAR", "CHAR"]:
                 str_type += "(255)"
 
-            conn.exec(drop_table_sql)
-            conn.exec(create_table_sql % str_type)
+            conn.execute(drop_table_sql)
+            conn.execute(create_table_sql % str_type)
             # we are meant to use low layer cursor here to
             # check the type value with the real value returned by mysql
             cursor = conn.cursor()
             cursor.execute(select_sql)
             int_type_actual = cursor.description[0][1]
             cursor.close()
-            conn.exec(drop_table_sql)
+            conn.execute(drop_table_sql)
 
             self.assertEqual(int_type_actual, int_type,
                              "%s not match" % str_type)
@@ -297,9 +297,9 @@ class TestQuery(TestCase):
         rows = [row for row in gen()]
         self.assertEqual(1, len(rows))
 
-        conn.exec("drop table if exists A")
-        conn.exec("create table A(a int);")
-        conn.exec("insert into A values(1)")
+        conn.execute("drop table if exists A")
+        conn.execute("create table A(a int);")
+        conn.execute("insert into A values(1)")
         gen = conn.query("select * from A;")
         rows = [row for row in gen()]
         self.assertEqual(1, len(rows))
@@ -312,7 +312,7 @@ class TestQuery(TestCase):
         self.assertEqual("a", gen.field_names[0])
         self.assertEqual("INT", gen.field_types[0])
 
-        self.assertTrue(conn.exec("drop table if exists A"))
+        self.assertTrue(conn.execute("drop table if exists A"))
 
 
 if __name__ == "__main__":

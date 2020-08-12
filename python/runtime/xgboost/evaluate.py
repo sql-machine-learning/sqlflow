@@ -142,19 +142,11 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
 
     # write evaluation result to result table
     if is_pai:
-        driver = "pai_maxcompute"
+        driver = "paiio"
     else:
         driver = conn.driver
     result_columns = ["loss"] + validation_metrics
-    with db.buffered_db_writer(driver,
-                               conn,
-                               result_table,
-                               result_columns,
-                               100,
-                               hdfs_namenode_addr=hdfs_namenode_addr,
-                               hive_location=hive_location,
-                               hdfs_user=hdfs_user,
-                               hdfs_pass=hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, result_columns, 100) as w:
         row = ["0.0"]
         for mn in validation_metrics:
             row.append(str(evaluate_results[mn]))

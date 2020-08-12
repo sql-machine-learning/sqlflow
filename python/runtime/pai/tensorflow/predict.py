@@ -13,6 +13,7 @@
 
 import tensorflow as tf
 from runtime import db, oss
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.import_model import import_model
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.predict import estimator_predict, keras_predict
@@ -95,13 +96,10 @@ def _predict(datasource,
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
-    conn = None
-    driver = "pai_maxcompute"
-    pai_table_parts = pai_table.split(".")
-    formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
-                                                   pai_table_parts[1])
-    selected_cols = db.pai_selected_cols(formatted_pai_table)
-    predict_generator = db.pai_maxcompute_db_generator(formatted_pai_table)
+    driver = "paiio"
+    conn = PaiIOConnection.from_table(pai_table)
+    selected_cols = db.selected_cols(conn, None)
+    predict_generator = db.db_generator(conn, None)
 
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):

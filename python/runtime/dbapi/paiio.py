@@ -75,7 +75,11 @@ class PaiIOConnection(Connection):
     currently only support full-table reading. That means
     we can't filter the data, join the table and so on.
     The only supported query statement is `None`. The scheme
-    part of the uri can be 'paiio' or 'odps'
+    part of the uri can be 'paiio' or 'odps'.
+
+    A PaiIOConnection always binds to a specific table.
+    Init PaiIOConnection do not establish any real connection,
+    so, feel free to new a connection object when needed.
 
     Typical use is:
     con = PaiIOConnection("paiio://db/tables/my_table")
@@ -85,14 +89,17 @@ class PaiIOConnection(Connection):
     def __init__(self, conn_uri):
         super(PaiIOConnection, self).__init__(conn_uri)
         # (TODO: lhw) change driver to paiio
-        self.driver = "pai_maxcompute"
+        self.driver = "paiio"
         match = re.findall(r"\w+://\w+/tables/(.+)", conn_uri)
         if len(match) < 1:
             raise ValueError("Should specify table in uri with format: "
-                             "paiio://db/tables/table?param_a=a&param_b=b")
-        self.params["table"] = conn_uri.replace("paiio://", "odps://")
-        self.params["slice_id"] = self.params.get("slice_id", 0)
-        self.params["slice_count"] = self.params.get("slice_count", 1)
+                             "paiio://db/tables/table?param_a=a&param_b=b"
+                             "but get: %s" % conn_uri)
+
+        table = self.uripts._replace(scheme="odps", query="")
+        self.params["table"] = table.geturl()
+        self.params["slice_id"] = int(self.params.get("slice_id", "0"))
+        self.params["slice_count"] = int(self.params.get("slice_count", "1"))
         print(self.params)
 
     def _get_result_set(self, statement):
@@ -117,35 +124,64 @@ class PaiIOConnection(Connection):
     def query(self, statement=None):
         return super(PaiIOConnection, self).query(statement)
 
-    @staticmethod
-    def get_table_row_num(table_uri):
-        """Get row number of given table
-
-        Args:
-            table_uri: the full uri for the table to get row from
+    def get_table_row_num(self):
+        """Get row number of the binded table
 
         Return:
             Number of rows in the table
         """
-        reader = paiio.TableReader(table_uri)
+        reader = paiio.TableReader(self.params["table"])
         row_num = reader.get_row_count()
         reader.close()
         return row_num
 
-    @staticmethod
-    def get_schema(table_uri):
-        """Get schema of the given table
-
-        Args:
-            table_uri: the full uri for the table to get row from
+    def get_schema(self):
+        """Get schema of the binded table
 
         Returns:
             A list of column metas, like [(field_a, INT), (field_b, STRING)]
         """
-        rs = PaiIOConnection(table_uri).query()
+        rs = self.query()
         col_info = rs.column_info()
         rs.close()
         return col_info
+
+    @staticmethod
+    def from_table(table_name, slice_id=0, slice_count=1):
+        """Get a connection object from given table, if slice_count > 1
+        then, bind to a table slice
+
+        Args:
+            table_name: an odps table name in format: db.table
+            slice_id: the slice id for binding
+            slice_count: total slice count
+
+        Returns:
+            A PaiIOConnection object
+        """
+        uri = PaiIOConnection.get_uri_of_table(table_name, slice_id,
+                                               slice_count)
+        return PaiIOConnection(uri)
+
+    @staticmethod
+    def get_uri_of_table(table_name, slice_id=0, slice_count=1):
+        """Get a connection object from a talbe name
+
+        Args:
+            table_name: a table name in format: db.table
+            slice_id: the slice id for binding
+            slice_count: total slice count
+
+        Returns:
+            A uri for the talbe slice with which we can get a connection
+            by PaiIOConnection()
+        """
+        pts = table_name.split(".")
+        if len(pts) != 2:
+            raise ValueError("paiio table name should in db.table format.")
+        uri = "paiio://%s/tables/%s?slice_id=%d&slice_count=%d" % (
+            pts[0], pts[1], slice_id, slice_count)
+        return uri
 
     def close(self):
         pass

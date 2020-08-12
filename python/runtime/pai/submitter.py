@@ -48,6 +48,7 @@ tensorflow-datasets==3.0.0
 XGB_REQUIREMENT = TF_REQUIREMENT + """
 xgboost==0.82
 sklearn2pmml==0.56.0
+sklearn_pandas==1.6.0
 """
 
 
@@ -94,7 +95,7 @@ def create_tmp_table_from_select(select, datasource):
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
     # (NOTE: lhw) maxcompute conn doesn't support close
     # we should unify db interface
-    if not conn.exec(create_sql):
+    if not conn.execute(create_sql):
         raise SQLFlowDiagnostic("Can't crate tmp table for %s" % select)
     return "%s.%s" % (project, tmp_tb_name)
 
@@ -106,7 +107,7 @@ def drop_tables(tables, datasource):
         for table in tables:
             if table != "":
                 drop_sql = "DROP TABLE IF EXISTS %s" % table
-                conn.exec(drop_sql)
+                conn.execute(drop_sql)
     except:  # noqa: E722
         # odps will clear table itself, so even fail here, we do
         # not need to raise error
@@ -572,14 +573,14 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         model_type: type of model defined in runtime.oss
     """
     conn = db.connect_with_data_source(datasource)
-    conn.exec("DROP TABLE IF EXISTS %s" % result_table)
+    conn.execute("DROP TABLE IF EXISTS %s" % result_table)
     # PAI ml will create result table itself
     if model_type == EstimatorType.PAIML:
         return
 
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
-    conn.exec(create_table_sql)
+    conn.execute(create_table_sql)
 
     # if label is not in data table, add a int column for it
     schema = db.get_table_schema(conn, result_table)
@@ -590,11 +591,11 @@ def create_predict_result_table(datasource, select, result_table, label_column,
             break
     col_names = [col[0] for col in schema]
     if label_column not in col_names:
-        db.execute(
+        conn.execute(
             conn, "ALTER TABLE %s ADD %s %s" %
             (result_table, label_column, col_type))
     if train_label_column != label_column and train_label_column in col_names:
-        db.execute(
+        conn.execute(
             conn, "ALTER TABLE %s DROP COLUMN %s" %
             (result_table, train_label_column))
 
@@ -693,7 +694,7 @@ def create_explain_result_table(datasource, data_table, result_table,
     """
     conn = db.connect_with_data_source(datasource)
     drop_stmt = "DROP TABLE IF EXISTS %s" % result_table
-    conn.exec(drop_stmt)
+    conn.execute(drop_stmt)
 
     create_stmt = ""
     if model_type == EstimatorType.PAIML:
@@ -728,7 +729,7 @@ def create_explain_result_table(datasource, data_table, result_table,
             "not supported modelType %d for creating Explain result table" %
             model_type)
 
-    if not conn.exec(create_stmt):
+    if not conn.execute(create_stmt):
         raise SQLFlowDiagnostic("Can't create explain result table")
 
 
@@ -756,7 +757,7 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
 
     conn = db.connect_with_data_source(datasource)
     # drop result table if exists
-    conn.exec("DROP TABLE IF EXISTS %s;" % result_table)
+    conn.execute("DROP TABLE IF EXISTS %s;" % result_table)
     schema = db.get_table_schema(conn, data_table)
     fields = [f[0] for f in schema if f[0] != label_column]
     return ('''pai -name feature_importance -project algo_public '''
@@ -871,7 +872,7 @@ def create_evaluate_result_table(datasource, result_table, metrics):
     sql = "CREATE TABLE IF NOT EXISTS %s (%s);" % (result_table,
                                                    ",".join(fields))
     conn = db.connect_with_data_source(datasource)
-    conn.exec(sql)
+    conn.execute(sql)
 
 
 def submit_pai_evaluate(datasource, model_name, select, result_table,

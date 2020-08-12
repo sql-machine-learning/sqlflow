@@ -17,8 +17,7 @@ import six
 from six.moves.urllib.parse import parse_qs, urlparse
 
 
-@six.add_metaclass(ABCMeta)
-class ResultSet(object):
+class ResultSet(six.Iterator):
     """Base class for DB query result, caller can iteratable this object
     to get all result rows"""
     def __init__(self):

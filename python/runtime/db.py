@@ -13,13 +13,13 @@
 
 import contextlib
 import re
-from urllib import parse
 
 import numpy as np
 import runtime.db_writer as db_writer
 import six
 from runtime.dbapi import PaiIOConnection
 from runtime.dbapi import connect as dbapi_connect
+from six.moves.urllib import parse
 
 
 def connect_with_data_source(driver_dsn):
@@ -122,17 +122,23 @@ def selected_columns_and_types(conn, select):
 
 
 def selected_cols(conn, select):
-    name_and_type = selected_columns_and_types(conn, select)
+    """Get selected column for given select
+
+    Args:
+        conn: a dbapi.Connection object
+        select: a selection statement, for paiio driver
+            this params is ignored
+    
+    Returns:
+        Column names of the selection.
+        When conn.driver is paiio, the columns are exactlly
+        all columns in given connection table
+    """
+    if conn.driver == "paiio":
+        name_and_type = conn.query().column_info()
+    else:
+        name_and_type = selected_columns_and_types(conn, select)
     return [item[0] for item in name_and_type]
-
-
-def pai_selected_cols(table):
-    rs = PaiIOConnection.get_schema(table)
-    return [i[0] for i in rs.column_info()]
-
-
-def get_pai_table_row_num(table):
-    return PaiIOConnection.get_table_row_num(table)
 
 
 def read_features_from_row(row, select_cols, feature_column_names,
@@ -186,22 +192,6 @@ def db_generator(conn, statement, label_meta=None):
     return reader
 
 
-def pai_maxcompute_db_generator(table,
-                                label_column_name=None,
-                                slice_id=0,
-                                slice_count=1):
-    parts = parse.urlparse(table)
-    params = parse.parse_qs(parts.query)
-    params["slice_id"] = params.get("slice_id", (slice_id, ))
-    params["slice_count"] = params.get("slice_count", (slice_count, ))
-    parts._replace(query=parse.urlencode(params))
-    uri = parse.urlunparse(parts)
-    conn = PaiIOConnection(uri)
-    if label_column_name:
-        label_meta = dict({"feature_name": label_column_name})
-    return db_generator(conn, None, label_meta)
-
-
 @contextlib.contextmanager
 def buffered_db_writer(conn, table_name, table_schema, buff_size=100):
     driver = conn.driver
@@ -220,7 +210,7 @@ def buffered_db_writer(conn, table_name, table_schema, buff_size=100):
             hive_location=conn.param("hive_location", ""),
             hdfs_user=conn.param("hdfs_user", ""),
             hdfs_pass=conn.param("hdfs_pass", ""))
-    elif driver == "pai_maxcompute":
+    elif driver == "paiio":
         w = db_writer.PAIMaxComputeDBWriter(table_name, table_schema,
                                             buff_size)
     else:

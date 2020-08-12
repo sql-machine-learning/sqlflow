@@ -175,20 +175,17 @@ def create_explain_result_table(conn, result_table):
 def write_shap_values(shap_values, driver, conn, result_table,
                       feature_column_names, hdfs_namenode_addr, hive_location,
                       hdfs_user, hdfs_pass):
-    with buffered_db_writer(driver, conn, result_table, feature_column_names,
-                            100, hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with buffered_db_writer(conn, result_table, feature_column_names) as w:
         for row in shap_values[0]:
+            print(row)
             w.write(list(row))
 
 
 def write_dfc_result(dfc_mean, gain, result_table, driver, conn,
                      feature_column_names, hdfs_namenode_addr, hive_location,
                      hdfs_user, hdfs_pass):
-    with buffered_db_writer(driver, conn, result_table,
-                            ["feature", "dfc", "gain"], 100,
-                            hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with buffered_db_writer(conn, result_table, ["feature", "dfc", "gain"],
+                            100) as w:
         for row_name in feature_column_names:
             w.write([row_name, dfc_mean.loc[row_name], gain[row_name]])
 
