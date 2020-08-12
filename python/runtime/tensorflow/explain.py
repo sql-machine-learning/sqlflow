@@ -177,7 +177,6 @@ def write_shap_values(shap_values, driver, conn, result_table,
                       hdfs_user, hdfs_pass):
     with buffered_db_writer(conn, result_table, feature_column_names) as w:
         for row in shap_values[0]:
-            print(row)
             w.write(list(row))
 
 

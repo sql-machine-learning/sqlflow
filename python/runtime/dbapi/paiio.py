@@ -100,7 +100,6 @@ class PaiIOConnection(Connection):
         self.params["table"] = table.geturl()
         self.params["slice_id"] = int(self.params.get("slice_id", "0"))
         self.params["slice_count"] = int(self.params.get("slice_count", "1"))
-        print(self.params)
 
     def _get_result_set(self, statement):
         if statement is not None:
@@ -112,7 +111,6 @@ class PaiIOConnection(Connection):
                                        slice_count=self.params["slice_count"])
             return PaiIOResultSet(reader, None)
         except Exception as e:
-            print(e.args)
             return PaiIOResultSet(None, str(e))
 
     def query(self, statement=None):
