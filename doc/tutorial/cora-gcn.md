@@ -54,21 +54,21 @@ You can have a quick peek of the data by running the following standard SQL stat
 
 ```sql
 %%sqlflow
-describe cora.node;
-describe cora.edge;
+DESCRIBE cora.node;
+DESCRIBE cora.edge;
 ```
 
 ```sql
 %%sqlflow
-select * from cora.node limit 10;
+SELECT * FROM cora.node LIMIT 10;
 ```
 
-## Train GCN on the Cora dataset
+## Train the GCN on the Cora dataset
 
 Let's train a GCN model!
 
 ### Load data from Cora
-You can load the data from database following a standard SQL command such as `SELECT * FROM cora.node`. However, since GCN is supposed to deal with graph data, you have to load both the `Node Table` and `Edge Table` at once.
+You can load the data from the database following a standard SQL command such as `SELECT * FROM cora.node`. However, since the GCN model is supposed to deal with the graph data, you have to load both the `Node Table` and `Edge Table` at once.
 
 In order to do so, you need to use the `JOIN` command in SQL to select all the data from `Node Table` and `Edge Table`. The following command is used to load all the data for training GCN.
 
@@ -79,11 +79,11 @@ LEFT JOIN cora.edge ON (cora.node.id = cora.edge.from_node_id OR cora.node.id = 
 ORDER BY cora.node.id;
 ```
 
-The `OR` statement in the command is used to select all the possible bidirectional edges from the dataset. Without this `OR` command, some of the edges will be missing and it is not possible to construct the entire graph.
+The `OR` statement in the command is used to select all the possible bidirectional edges from the dataset. Without this `OR` statement, some of the edges will be missing and it is not possible to construct the entire graph.
 
 With the `COLUMN` clause provided, SQLFlow can handle the comma separated string `features` with command `COLUMN DENSE(features)`.
 
-The GCN in SQLFlow is able to build the entire graph automatically with input in the folloing order: `node.id`, `node.features`, `node.label`, `edge.from_node_id`, `edge.to_node_id`. Please make sure the order is correct in order to run GCN successfully.
+The GCN model in SQLFlow is able to build the entire graph automatically with inputs in the folloing order: `node.id`, `node.features`, `node.label`, `edge.from_node_id`, `edge.to_node_id`. Please make sure the order is correct in order to run the GCN model successfully.
 
 ### Train GCN
 
@@ -104,7 +104,7 @@ feature_col | Name for the column in database to be used as the features of each
 from_node_col | Name for the column in database to be used as the from_node id of each edge. | String
 to_node_col | Name for the column in database to be used as the to_node id of each edge. | String
 
-After loading the dataset, you would be able to train GCN with following command:
+After loading the dataset, you would be able to train the GCN model with following command:
 
 ```text
 TO TRAIN sqlflow_models.GCN
@@ -167,7 +167,7 @@ After the prediction, you can check the prediction result by
 SELECT * FROM cora.predict LIMIT 5;
 ```
 
-## Evaluate GCN
+## Evaluate the Trained GCN Model
 
 With the support of SQLFlow, you can evaluate the model's performance on the evaluation dataset. GCN will generate the evaluation results during training phase, so one can get the evaluation result with:
 
