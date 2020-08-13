@@ -29,6 +29,9 @@ func generateStepCode(stmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (
 			return XGBoostGenerateTrain(trainStmt, stepIndex, session)
 		}
 		return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+	case *ir.NormalStmt:
+		stmt := stmt.(*ir.NormalStmt)
+		return GenerateNormalStmtStep(string(*stmt), session, stepIndex)
 	default:
 		return "", fmt.Errorf("not implemented stmt execution type %v", stmt)
 	}

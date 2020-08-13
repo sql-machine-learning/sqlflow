@@ -144,6 +144,20 @@ class Connection(object):
         """
         return self._get_result_set(statement)
 
+    def is_query(self, statement):
+        """Return true if the statement is a query SQL statement."""
+        s = statement.strip()
+        s = s.upper()
+
+        if s.startswith("SELECT") and s.find("INTO") == -1:
+            return True
+        if s.startswith("SHOW") and s.find("CREATE") >= 0 and s.find(
+                "DATABASES") >= 0 and s.find("TABLES"):
+            return True
+        if s.startswith("DESC") or s.startswith("EXPLAIN"):
+            return True
+        return False
+
     def execute(self, statement):
         """Execute given statement and return True on success
 
