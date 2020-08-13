@@ -291,25 +291,25 @@ INTO e2etest_pai_dnn;`, caseTrainTable)
 	}
 
 	evalSQL := fmt.Sprintf(`SELECT * FROM %s
-TO EVALUATE e2etest_pai_dnn
-WITH validation.metrics="Accuracy,Recall"
-LABEL class
-INTO %s.e2etest_pai_dnn_evaluate_result;`, caseTrainTable, caseDB)
+	TO EVALUATE e2etest_pai_dnn
+	WITH validation.metrics="Accuracy,Recall"
+	LABEL class
+	INTO %s.e2etest_pai_dnn_evaluate_result;`, caseTrainTable, caseDB)
 	_, _, _, err = connectAndRunSQL(evalSQL)
 	if err != nil {
 		a.Fail("Run trainSQL error: %v", err)
 	}
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
-TO PREDICT %s.pai_dnn_predict.class
-USING e2etest_pai_dnn;`, caseTestTable, caseDB)
+	TO PREDICT %s.pai_dnn_predict.class
+	USING e2etest_pai_dnn;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(predSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
 	}
 
 	showPred := fmt.Sprintf(`SELECT *
-FROM %s.pai_dnn_predict LIMIT 5;`, caseDB)
+	FROM %s.pai_dnn_predict LIMIT 5;`, caseDB)
 	_, rows, _, err := connectAndRunSQL(showPred)
 	if err != nil {
 		a.Fail("Run showPred error: %v", err)
@@ -329,10 +329,10 @@ FROM %s.pai_dnn_predict LIMIT 5;`, caseDB)
 	}
 
 	explainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO EXPLAIN e2etest_pai_dnn
-WITH label_col=class
-USING TreeExplainer
-INTO %s.pai_dnn_explain_result;`, caseTestTable, caseDB)
+	TO EXPLAIN e2etest_pai_dnn
+	WITH label_col=class
+	USING TreeExplainer
+	INTO %s.pai_dnn_explain_result;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(explainSQL)
 	if err != nil {
 		a.Fail("Run predSQL error: %v", err)
@@ -487,19 +487,19 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 
 	t.Run("group", func(t *testing.T) {
 		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
-		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
-		t.Run("CasePAIMaxComputeTrainDenseColWithoutIndicatingShape", CasePAIMaxComputeTrainDenseColWithoutIndicatingShape)
-		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
-		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
-		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
-		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
-		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
-		t.Run("CasePAIMaxComputeTrainPredictDiffColumns", CasePAIMaxComputeTrainPredictDiffColumns)
-		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
-		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
-		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
-		t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
+		// t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		// t.Run("CasePAIMaxComputeTrainDenseColWithoutIndicatingShape", CasePAIMaxComputeTrainDenseColWithoutIndicatingShape)
+		// t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+		// t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		// t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+		// t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
+		// t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		// t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		// t.Run("CasePAIMaxComputeTrainPredictDiffColumns", CasePAIMaxComputeTrainPredictDiffColumns)
+		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
+		// // FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
+		// // t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+		// t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
 	})
 
 }

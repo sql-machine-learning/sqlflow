@@ -12,9 +12,10 @@
 # limitations under the License
 
 import tensorflow as tf
-from runtime import db, oss
-from runtime.import_model import import_model
+from runtime import db
+from runtime.model import oss
 from runtime.tensorflow import is_tf_estimator
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.predict import estimator_predict, keras_predict
 
 

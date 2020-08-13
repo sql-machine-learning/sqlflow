@@ -41,7 +41,7 @@ from alps.framework.column.column import (DenseColumn, GroupedSparseColumn,
 from alps.framework.engine import LocalEngine
 from alps.framework.experiment import EstimatorBuilder
 from alps.io.base import OdpsConf
-from runtime import db
+from runtime.model import db
 from runtime.alps.train import train
 from runtime.tensorflow.get_tf_version import tf_is_version2
 

@@ -13,8 +13,8 @@
 
 import os
 
-from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.model import oss
 from runtime.pai.submitter import gen_rand_string
 
 AlisaTaskTypePAI = 0

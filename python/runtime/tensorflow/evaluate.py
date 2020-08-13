@@ -14,9 +14,9 @@
 import sys
 
 from runtime.db import buffered_db_writer, connect_with_data_source
-from runtime.import_model import import_model
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column

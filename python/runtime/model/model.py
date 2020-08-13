@@ -16,7 +16,7 @@ import os
 import tempfile
 from enum import Enum
 
-import runtime.oss as oss
+from runtime.model import oss
 from runtime.model.db import read_with_generator, write_with_generator
 from runtime.model.tar import unzip_dir, zip_dir
 

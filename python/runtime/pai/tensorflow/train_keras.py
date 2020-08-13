@@ -12,8 +12,7 @@
 # limitations under the License.
 
 import tensorflow as tf
-from runtime import oss
-from runtime.model import save_metadata
+from runtime.model import oss, save_metadata
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
