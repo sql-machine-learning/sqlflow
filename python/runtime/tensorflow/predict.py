@@ -17,9 +17,9 @@ import os
 import numpy as np
 import tensorflow as tf
 from runtime import db
-from runtime.import_model import import_model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import (get_dtype,
                                          parse_sparse_feature_predict,
                                          tf_generator)

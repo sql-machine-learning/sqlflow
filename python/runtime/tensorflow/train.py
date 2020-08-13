@@ -15,9 +15,9 @@ import glob
 import os
 import types
 
-from runtime.import_model import import_model
 from runtime.model import collect_metadata
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
 from runtime.tensorflow.train_estimator import estimator_train_and_save

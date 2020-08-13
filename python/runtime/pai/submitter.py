@@ -20,10 +20,10 @@ import subprocess
 import tempfile
 from os import path
 
-from runtime import db, oss
+from runtime import db
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.model import EstimatorType
+from runtime.model import EstimatorType, oss
 from runtime.pai import cluster_conf
 from runtime.pai.kmeans import get_train_kmeans_pai_cmd
 from runtime.pai.random_forest import get_train_random_forest_pai_cmd
@@ -253,33 +253,9 @@ def get_project(datasource):
     return project
 
 
-def delete_oss_dir_recursive(bucket, directory):
-    """Recursively delete a directory on the OSS
-
-    Args:
-        bucket: bucket on OSS
-        directory: the directory to delete
-    """
-    if not directory.endswith("/"):
-        raise SQLFlowDiagnostic("dir to delete must end with /")
-
-    loc = bucket.list_objects(prefix=directory, delimiter="/")
-    object_path_list = []
-    for obj in loc.object_list:
-        object_path_list.append(obj.key)
-
-    # delete sub dir first
-    if len(loc.prefix_list) > 0:
-        for sub_prefix in loc.prefix_list:
-            delete_oss_dir_recursive(bucket, sub_prefix)
-    # empty list param will raise error
-    if len(object_path_list) > 0:
-        bucket.batch_delete_objects(object_path_list)
-
-
 def clean_oss_model_path(oss_path):
     bucket = oss.get_models_bucket()
-    delete_oss_dir_recursive(bucket, oss_path)
+    oss.delete_oss_dir_recursive(bucket, oss_path)
 
 
 def max_compute_table_url(table):
@@ -570,7 +546,7 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         label_column: name of the label column, if not exist in select
             result, we will add a int column in the result table
         train_label_column: name of the label column when training
-        model_type: type of model defined in runtime.oss
+        model_type: type of model defined in runtime.model.oss
     """
     conn = db.connect_with_data_source(datasource)
     conn.execute("DROP TABLE IF EXISTS %s" % result_table)

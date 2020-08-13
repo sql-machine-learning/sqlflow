@@ -29,7 +29,7 @@ func TestExperimentalXGBCodegen(t *testing.T) {
 		t.Skipf("skip TestExperimentalXGBCodegen of DB type %s", os.Getenv("SQLFLOW_TEST_DB"))
 	}
 	// test without COLUMN clause
-	sql := "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 LABEL class INTO sqlflow_models.xgb_classification;"
+	sql := "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"multi:softmax\",num_class=3 LABEL class INTO sqlflow_models.xgb_classification;"
 	s := &pb.Session{DbConnStr: database.GetTestingMySQLURL()}
 	coulerCode, err := GenerateCodeCouler(sql, s)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestExperimentalXGBCodegen(t *testing.T) {
 	a.True(strings.Contains(coulerCode, `couler.run_script(image="sqlflow/sqlflow:step", source=step_entry_0, env=step_envs, resources=resources)`))
 
 	// test with COLUMN clause
-	sql = "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"binary:logistic\",num_class=3 COLUMN petal_length LABEL class INTO sqlflow_models.xgb_classification;"
+	sql = "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"multi:softmax\",num_class=3 COLUMN petal_length LABEL class INTO sqlflow_models.xgb_classification;"
 	coulerCode, err = GenerateCodeCouler(sql, s)
 	if err != nil {
 		t.Errorf("error %s", err)
