@@ -192,6 +192,7 @@ func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 		for k := range fd.Vocabulary {
 			vocabList = append(vocabList, k)
 		}
+
 		shape := []int{1}
 		if len(fd.Shape) != 0 {
 			shape = fd.Shape
