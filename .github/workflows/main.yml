@@ -81,6 +81,7 @@ jobs:
         set -e
         bash scripts/test/prepare.sh
         source build/env/bin/activate
+        docker pull sqlflow/sqlflow:step
         bash scripts/test/workflow.sh
         # bash scripts/travis/upload_codecov.sh
   push-images:

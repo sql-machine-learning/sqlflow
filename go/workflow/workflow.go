@@ -14,8 +14,14 @@
 package workflow
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"strings"
 
+	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/ir"
 	"sqlflow.org/sqlflow/go/log"
@@ -42,6 +48,8 @@ type Workflow interface {
 func New(backend string) (Codegen, Workflow, error) {
 	if backend == "couler" {
 		return &couler.Codegen{}, &argo.Workflow{}, nil
+	} else if backend == "experimental" {
+		return nil, &argo.Workflow{}, nil
 	}
 	return nil, nil, fmt.Errorf("the specified backend: %s has not support", backend)
 }
@@ -52,34 +60,65 @@ func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Log
 	if e != nil {
 		return "", e
 	}
+	var yaml string
+	var wf Workflow
 
-	stmts, e := parser.Parse(driverName, sqlProgram)
-	if e != nil {
-		return "", e
-	}
-	sqls := sql.RewriteStatementsWithHints(stmts, driverName)
-
-	spIRs, e := sql.ResolveSQLProgram(sqls, logger)
-	if e != nil {
-		return "", e
-	}
-
-	// New Codegen and workflow operator instance according to the backend identifier
-	cg, wf, e := New(backend)
-	if e != nil {
-		return "", e
-	}
-
-	// Generate Fluid/Tekton program
-	py, e := cg.GenCode(spIRs, session)
-	if e != nil {
-		return "", e
-	}
-
-	// translate Couler program to workflow YAML
-	yaml, e := cg.GenYAML(py)
-	if e != nil {
-		return "", e
+	if backend == "couler" {
+		stmts, e := parser.Parse(driverName, sqlProgram)
+		if e != nil {
+			return "", e
+		}
+		sqls := sql.RewriteStatementsWithHints(stmts, driverName)
+		spIRs, e := sql.ResolveSQLProgram(sqls, logger)
+		if e != nil {
+			return "", e
+		}
+		// New Codegen and workflow operator instance according to the backend identifier
+		var cg Codegen
+		cg, wf, e = New(backend)
+		if e != nil {
+			return "", e
+		}
+		// Generate Fluid/Tekton program
+		py, e := cg.GenCode(spIRs, session)
+		if e != nil {
+			return "", e
+		}
+		// translate Couler program to workflow YAML
+		yaml, e = cg.GenYAML(py)
+		if e != nil {
+			return "", e
+		}
+	} else if backend == "experimental" {
+		// FIXME(typhoonzero): refactor this later
+		wf = &argo.Workflow{}
+		py, e := experimental.GenerateCodeCouler(sqlProgram, session)
+		if e != nil {
+			return "", e
+		}
+		tmpfile, e := ioutil.TempFile("/tmp", "couler")
+		if e != nil {
+			return "", e
+		}
+		defer os.Remove(tmpfile.Name())
+		pyFileName := tmpfile.Name()
+		if _, e = tmpfile.Write([]byte(py)); e != nil {
+			tmpfile.Close()
+		}
+		cmdline := bytes.Buffer{}
+		fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
+		if c := os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"); len(c) > 0 {
+			fmt.Fprintf(&cmdline, "--cluster_config %s ", c)
+		}
+		fmt.Fprintf(&cmdline, "--file %s", pyFileName)
+		coulerExec := strings.Split(cmdline.String(), " ")
+		cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
+		cmd.Env = append(os.Environ())
+		yamlBytes, e := cmd.CombinedOutput()
+		if e != nil {
+			return "", e
+		}
+		yaml = string(yamlBytes)
 	}
 
 	return wf.Submit(yaml)
