@@ -29,43 +29,6 @@ from runtime.model import EstimatorType, Model, collect_metadata
 from runtime.xgboost.dataset import xgb_dataset
 
 
-def get_feature_info(datasource, select, feature_column_map, label_column):
-    """
-    Get the feature column information. This method would do feature
-    derivation.
-
-    Args:
-        datasource (str): the database connection URI.
-        select (str): the select SQL statement.
-        feature_column_map (dict): the feature column map.
-        label_column (FeatureColumn): the label column.
-
-    Returns:
-        A tuple of (fc_map_ir, fc_label_ir, feature_column_names,
-        feature_metas, transform_fn).
-    """
-    conn = db.connect_with_data_source(datasource)
-    fc_map_ir, fc_label_ir = infer_feature_columns(conn,
-                                                   select,
-                                                   feature_column_map,
-                                                   label_column,
-                                                   n=1000)
-    fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
-    feature_column_list = fc_map["feature_columns"]
-    feature_metas_obj_list = get_ordered_field_descs(fc_map_ir)
-    feature_metas = dict()
-    for fd in feature_metas_obj_list:
-        feature_metas[fd.name] = json.loads(fd.to_json())
-    label_meta = json.loads(label_column.get_field_desc()[0].to_json())
-    feature_column_names = [fd.name for fd in feature_metas_obj_list]
-
-    # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause.
-    # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
-        feature_column_names, *feature_column_list)
-    return fc_map_ir, fc_label_ir, feature_column_names, feature_metas, label_meta, transform_fn
-
-
 def train(original_sql,
           model_image,
           estimator,
@@ -104,8 +67,26 @@ def train(original_sql,
     Returns:
         A dict which indicates the evaluation result.
     """
-    fc_map, fc_label, feature_column_names, feature_metas, label_meta, transform_fn = \
-        get_feature_info(datasource, select, feature_column_map, label_column)
+    conn = db.connect_with_data_source(datasource)
+    fc_map_ir, fc_label_ir = infer_feature_columns(conn,
+                                                   select,
+                                                   feature_column_map,
+                                                   label_column,
+                                                   n=1000)
+    fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
+    feature_column_list = fc_map["feature_columns"]
+    feature_metas_obj_list = get_ordered_field_descs(fc_map_ir)
+    feature_metas = dict()
+    for fd in feature_metas_obj_list:
+        feature_metas[fd.name] = json.loads(fd.to_json())
+    label_meta = json.loads(label_column.get_field_desc()[0].to_json())
+    feature_column_names = [fd.name for fd in feature_metas_obj_list]
+
+    # NOTE: in the current implementation, we are generating a transform_fn
+    # from the COLUMN clause. The transform_fn is executed during the process
+    # of dumping the original data into DMatrix SVM file.
+    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
+        feature_column_names, *feature_column_list)
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,
@@ -121,7 +102,7 @@ def train(original_sql,
 
     file_name = "my_model"
     if load:
-        model.load_from_db(datasource, load)
+        Model.load_from_db(datasource, load)
         bst = xgb.Booster()
         bst.load_model(file_name)
     else:
@@ -162,8 +143,8 @@ def train(original_sql,
                             model_repo_image=model_image,
                             class_name=estimator,
                             attributes=model_params,
-                            features=fc_map,
-                            label=fc_label,
+                            features=fc_map_ir,
+                            label=fc_label_ir,
                             evaluation=eval_result,
                             num_workers=1)
 

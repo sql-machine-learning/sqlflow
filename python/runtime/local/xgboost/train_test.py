@@ -24,7 +24,7 @@ class TestXGBoostTrain(unittest.TestCase):
                          "skip non mysql tests")
     def test_train(self):
         ds = testing.get_datasource()
-        original_sql = """SELECT * FROM iris.train 
+        original_sql = """SELECT * FROM iris.train
         TO TRAIN xgboost.gbtree
         WITH
             objective="multi:softmax",
