@@ -14,7 +14,7 @@
 import copy
 
 import runtime.xgboost as xgboost_extended
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.predict import pred
 

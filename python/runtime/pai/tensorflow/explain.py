@@ -17,10 +17,10 @@ import sys
 import matplotlib
 import pandas as pd
 import tensorflow as tf
-from runtime import oss
-from runtime.import_model import import_model
+from runtime.model import oss
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.explain import explain_boosted_trees, explain_dnns
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column

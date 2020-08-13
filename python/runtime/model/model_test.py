@@ -15,7 +15,7 @@ import os
 import tempfile
 import unittest
 
-import runtime.oss as oss
+import runtime.model.oss as oss
 from runtime.model import EstimatorType, Model
 from runtime.testing import get_datasource
 
