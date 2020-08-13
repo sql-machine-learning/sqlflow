@@ -43,7 +43,7 @@ class EstimatorType(Enum):
     PAIML = 2
 
 
-class Model:
+class Model(object):
     """Model module represents a SQLFlow trained model, which includes
     three parts:
     1. the estimator type indicates which SQLFlow estimator comes from.

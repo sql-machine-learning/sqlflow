@@ -29,6 +29,9 @@ import (
 
 type xgbTrainFiller struct {
 	StepIndex         int
+	OriginalSQL       string
+	ModelImage        string
+	Estimator         string
 	DataSource        string
 	Select            string
 	ValidationSelect  string
@@ -36,6 +39,8 @@ type xgbTrainFiller struct {
 	TrainParamsJSON   string
 	FeatureColumnCode string
 	LabelColumnCode   string
+	Save              string
+	Load              string
 	DiskCache         bool
 	BatchSize         int
 	Epoch             int
@@ -95,6 +100,9 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 
 	filler := xgbTrainFiller{
 		StepIndex:         stepIndex,
+		OriginalSQL:       trainStmt.OriginalSQL,
+		ModelImage:        trainStmt.ModelImage,
+		Estimator:         trainStmt.Estimator,
 		DataSource:        session.DbConnStr,
 		Select:            strings.Trim(trainStmt.Select, " \n"),
 		ValidationSelect:  strings.Trim(trainStmt.ValidationSelect, " \n"),
@@ -102,6 +110,8 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 		TrainParamsJSON:   string(tp),
 		FeatureColumnCode: featureColumnCode,
 		LabelColumnCode:   labelColumnCode,
+		Save:              trainStmt.Into,
+		Load:              trainStmt.PreTrainedModel,
 		DiskCache:         diskCache,
 		BatchSize:         batchSize,
 		Epoch:             epoch,
@@ -119,61 +129,35 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 const xgbTrainTemplate = `
 def step_entry_{{.StepIndex}}():
     import json
-    import tempfile
-    import os
-    import runtime
-    import runtime.local
-    import runtime.local.xgboost
     import runtime.feature.column as fc
     import runtime.feature.field_desc as fd
-    from runtime.model import EstimatorType
-    from runtime.xgboost.dataset import xgb_dataset
-    import runtime.xgboost as xgboost_extended
-
-    model_params = json.loads('''{{.ModelParamsJSON}}''')
-    train_params = json.loads('''{{.TrainParamsJSON}}''')
-
-    ds = "{{.DataSource}}"
-    is_pai = False
-    pai_train_table = ""
-    select = "{{.Select}}"
-    val_select = "{{.ValidationSelect}}"
-    conn = runtime.db.connect_with_data_source(ds)
+    import runtime.{{.Submitter}}.xgboost as xgboost_submitter
 
     {{ if .FeatureColumnCode }}
     feature_column_map = {"feature_columns": [{{.FeatureColumnCode}}]}
     {{ else }}
     feature_column_map = None
     {{ end }}
-    label_fc = {{.LabelColumnCode}}
-    label_meta = json.loads(label_fc.get_field_desc()[0].to_json())
+    label_column = {{.LabelColumnCode}}
 
-    fc_map_ir, fc_label_ir = runtime.feature.infer_feature_columns(conn, select, feature_column_map, label_fc, n=1000)
-    fc_map = runtime.feature.compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
-    feature_column_list = fc_map["feature_columns"]
-    feature_metas_obj_list = runtime.feature.get_ordered_field_descs(fc_map_ir)
-    feature_metas = dict()
-    for fd in feature_metas_obj_list:
-        feature_metas[fd.name] = json.loads(fd.to_json())
-    feature_column_names = [fd.name for fd in feature_metas_obj_list]
+    model_params = json.loads("""{{.ModelParamsJSON}}""")
+    train_params = json.loads("""{{.TrainParamsJSON}}""")
 
-    # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
-    # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_list)
-
-    with tempfile.TemporaryDirectory() as tmp_dir_name:
-        train_fn = os.path.join(tmp_dir_name, 'train.txt')
-        val_fn = os.path.join(tmp_dir_name, 'val.txt')
-        dtrain = xgb_dataset(ds, train_fn, select, feature_metas,
-                             feature_column_names, label_meta, is_pai,
-                             pai_train_table, transform_fn=transform_fn)
-        if val_select:
-            dval = xgb_dataset(ds, val_fn, val_select, feature_metas,
-                               feature_column_names, label_meta, is_pai,
-                               pai_train_table, transform_fn=transform_fn)
-        else:
-            dval = None
-        eval_result = runtime.{{.Submitter}}.xgboost.train(dtrain, train_params, model_params, dval)
+    xgboost_submitter.train(original_sql="""{{.OriginalSQL}}""",
+                            model_image="""{{.ModelImage}}""",
+                            estimator="""{{.Estimator}}""",
+                            datasource="""{{.DataSource}}""",
+                            select="""{{.Select}}""",
+                            validation_select="""{{.ValidationSelect}}""",
+                            model_params=model_params,
+                            train_params=train_params,
+                            feature_column_map=feature_column_map,
+                            label_column=label_column,
+                            save="""{{.Save}}""",
+                            load="""{{.Load}}""",
+                            disk_cache="{{.DiskCache}}"=="true",
+                            batch_size={{.BatchSize}},
+                            epoch={{.Epoch}})
 `
 
 func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
