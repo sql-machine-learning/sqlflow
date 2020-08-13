@@ -17,7 +17,7 @@ import os
 import tarfile
 
 
-def zip_dir(src_dir, tarball):
+def zip_dir(src_dir, tarball, arcname=None):
     """To compress a directory into tarball.
 
     Args:
@@ -26,9 +26,12 @@ def zip_dir(src_dir, tarball):
 
         tarball: string
             The output tarball name.
+
+        arcname: string
+            The output name of src_dir in the tarball.
     """
     with tarfile.open(tarball, "w:gz") as tar:
-        tar.add(src_dir, recursive=True)
+        tar.add(src_dir, arcname=arcname, recursive=True)
 
 
 def unzip_dir(tarball, dest_dir=os.getcwd()):

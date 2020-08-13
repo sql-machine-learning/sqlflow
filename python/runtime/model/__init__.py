@@ -14,4 +14,4 @@
 from runtime.model.metadata import collect_metadata  # noqa: F401
 from runtime.model.metadata import load_metadata  # noqa: F401
 from runtime.model.metadata import save_metadata  # noqa: F401
-from runtime.model.model import EstimatorType, Model, load  # noqa: F401
+from runtime.model.model import EstimatorType, Model  # noqa: F401
