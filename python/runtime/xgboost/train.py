@@ -16,9 +16,10 @@ import sys
 import runtime.pai.pai_distributed as pai_dist
 import six
 import xgboost as xgb
-from runtime import oss as pai_model_store
 from runtime.local.xgboost.save import save_model_to_local_file
-from runtime.model import collect_metadata, save_metadata
+from runtime.model import collect_metadata
+from runtime.model import oss as pai_model_store
+from runtime.model import save_metadata
 from runtime.xgboost.dataset import xgb_dataset
 from runtime.xgboost.pai_rabit import PaiXGBoostTracker, PaiXGBoostWorker
 

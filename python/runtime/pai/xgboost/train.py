@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.feature_column import ComposedColumnTransformer
 from runtime.xgboost.train import dist_train

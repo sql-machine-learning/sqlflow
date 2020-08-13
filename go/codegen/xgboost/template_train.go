@@ -50,7 +50,7 @@ if "{{.IsPAI}}" == "true":
     set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
-    from runtime import oss
+    from runtime.model import oss
     oss.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
@@ -99,7 +99,7 @@ FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
-	from runtime import oss
+	from runtime.model import oss
 	oss.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
