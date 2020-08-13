@@ -110,7 +110,6 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 	if err := coulerTemplate.Execute(&program, filler); err != nil {
 		return "", err
 	}
-	fmt.Println(program.String())
 	return program.String(), nil
 }
 

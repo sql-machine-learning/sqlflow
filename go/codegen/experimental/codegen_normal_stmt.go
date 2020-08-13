@@ -15,7 +15,6 @@ package experimental
 
 import (
 	"bytes"
-	"fmt"
 	"text/template"
 
 	pb "sqlflow.org/sqlflow/go/proto"
@@ -55,6 +54,5 @@ func GenerateNormalStmtStep(stmt string, session *pb.Session, stepIndex int) (st
 	if err := normalStmtStepTemplate.Execute(&program, filler); err != nil {
 		return "", err
 	}
-	fmt.Println(program.String())
 	return program.String(), nil
 }
