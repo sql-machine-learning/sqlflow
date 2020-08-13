@@ -249,7 +249,7 @@ def pai_dataset(filename,
                 batch_size=None,
                 feature_column_code="",
                 raw_data_dir=None):
-    from subprocess import Popen, PIPE, STDOUT
+    from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
 

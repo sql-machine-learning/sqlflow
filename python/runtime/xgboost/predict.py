@@ -121,10 +121,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
     result_column_names.append(pred_label_name)
 
     line_no = 0
-    if is_pai:
-        driver = "paiio"
-    else:
-        driver = conn.driver
     with db.buffered_db_writer(conn, result_table, result_column_names,
                                100) as w:
         while True:

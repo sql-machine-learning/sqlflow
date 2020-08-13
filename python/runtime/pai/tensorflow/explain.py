@@ -17,7 +17,7 @@ import sys
 import matplotlib
 import pandas as pd
 import tensorflow as tf
-from runtime import db, oss
+from runtime import oss
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.import_model import import_model
 from runtime.tensorflow import is_tf_estimator

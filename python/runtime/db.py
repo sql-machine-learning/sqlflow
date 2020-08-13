@@ -17,9 +17,7 @@ import re
 import numpy as np
 import runtime.db_writer as db_writer
 import six
-from runtime.dbapi import PaiIOConnection
 from runtime.dbapi import connect as dbapi_connect
-from six.moves.urllib import parse
 
 
 def connect_with_data_source(driver_dsn):
@@ -128,7 +126,7 @@ def selected_cols(conn, select):
         conn: a dbapi.Connection object
         select: a selection statement, for paiio driver
             this params is ignored
-    
+
     Returns:
         Column names of the selection.
         When conn.driver is paiio, the columns are exactlly

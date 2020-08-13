@@ -17,7 +17,6 @@ from unittest import TestCase
 
 import numpy as np
 import runtime.testing as testing
-from odps import tunnel
 from runtime.db import (buffered_db_writer, connect_with_data_source,
                         db_generator, get_table_schema, limit_select,
                         read_feature, read_features_from_row,
@@ -116,9 +115,9 @@ class TestGenerator(TestCase):
     def test_generator(self):
         conn = connect(testing.get_datasource())
         # prepare test data
-        conn.executeute(self.drop_statement)
-        conn.executeute(self.create_statement)
-        conn.executeute(self.insert_statement)
+        conn.execute(self.drop_statement)
+        conn.execute(self.create_statement)
+        conn.execute(self.insert_statement)
 
         column_name_to_type = {
             "features": {
@@ -182,7 +181,7 @@ class TestGetTableSchema(TestCase):
                 ('sepal_width', 'FLOAT'),
                 ('petal_length', 'FLOAT'),
                 ('petal_width', 'FLOAT'),
-                ('class', 'INT(11)'),
+                ('class', 'INT'),
             ]
             self.assertEqual(expect, schema)
 
@@ -293,24 +292,25 @@ class TestLimitSelect(TestCase):
 class TestQuery(TestCase):
     def test_query(self):
         conn = connect_with_data_source(testing.get_datasource())
-        gen = conn.query("select * from iris.train limit 1")
-        rows = [row for row in gen()]
+        rs = conn.query("select * from iris.train limit 1")
+        rows = [row for row in rs]
         self.assertEqual(1, len(rows))
 
         conn.execute("drop table if exists A")
         conn.execute("create table A(a int);")
         conn.execute("insert into A values(1)")
-        gen = conn.query("select * from A;")
-        rows = [row for row in gen()]
+        rs = conn.query("select * from A;")
+        rows = [row for row in rs]
         self.assertEqual(1, len(rows))
 
         conn.query("truncate table A")
-        gen = conn.query("select * from A;")
-        rows = [row for row in gen()]
+        rs = conn.query("select * from A;")
+        rows = [row for row in rs]
         self.assertEqual(0, len(rows))
-        self.assertEqual(1, len(gen.field_names))
-        self.assertEqual("a", gen.field_names[0])
-        self.assertEqual("INT", gen.field_types[0])
+        columns = rs.column_info()
+        self.assertEqual(1, len(columns))
+        self.assertEqual("a", columns[0][0])
+        self.assertEqual("INT", columns[0][1])
 
         self.assertTrue(conn.execute("drop table if exists A"))
 

@@ -141,10 +141,6 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
         evaluate_results[metric_name] = metric_value
 
     # write evaluation result to result table
-    if is_pai:
-        driver = "paiio"
-    else:
-        driver = conn.driver
     result_columns = ["loss"] + validation_metrics
     with db.buffered_db_writer(conn, result_table, result_columns, 100) as w:
         row = ["0.0"]
