@@ -17,10 +17,10 @@ import runtime.pai.pai_distributed as pai_dist
 import six
 import xgboost as xgb
 from runtime import oss as pai_model_store
+from runtime.local.xgboost.save import save_model_to_local_file
 from runtime.model import collect_metadata, save_metadata
 from runtime.xgboost.dataset import xgb_dataset
 from runtime.xgboost.pai_rabit import PaiXGBoostTracker, PaiXGBoostWorker
-from runtime.xgboost.save import save_model_to_local_file
 
 
 def dist_train(flags,
