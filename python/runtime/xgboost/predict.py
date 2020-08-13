@@ -14,6 +14,7 @@
 import numpy as np
 import xgboost as xgb
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.xgboost.dataset import xgb_dataset
 
 DEFAULT_PREDICT_BATCH_SIZE = 10000
@@ -39,7 +40,7 @@ def pred(datasource,
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
-        conn = None
+        conn = PaiIOConnection.from_table(pai_table)
     dpred = xgb_dataset(
         datasource=datasource,
         fn='predict.txt',
@@ -59,11 +60,7 @@ def pred(datasource,
     bst.load_model("my_model")  # load data
     print("Start predicting XGBoost model...")
 
-    if is_pai:
-        pai_table = "odps://{}/tables/{}".format(*pai_table.split("."))
-        selected_cols = db.pai_selected_cols(pai_table)
-    else:
-        selected_cols = db.selected_cols(conn, select)
+    selected_cols = db.selected_cols(conn, select)
 
     feature_file_id = 0
     train_label_name = train_label_meta["feature_name"]
@@ -124,19 +121,8 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
     result_column_names.append(pred_label_name)
 
     line_no = 0
-    if is_pai:
-        driver = "pai_maxcompute"
-    else:
-        driver = conn.driver
-    with db.buffered_db_writer(driver,
-                               conn,
-                               result_table,
-                               result_column_names,
-                               100,
-                               hdfs_namenode_addr=hdfs_namenode_addr,
-                               hive_location=hive_location,
-                               hdfs_user=hdfs_user,
-                               hdfs_pass=hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, result_column_names,
+                               100) as w:
         while True:
             line = feature_file_read.readline()
             if not line:

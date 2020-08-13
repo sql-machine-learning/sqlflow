@@ -17,6 +17,7 @@ import sys
 import matplotlib
 import pandas as pd
 import tensorflow as tf
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.model import oss
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.explain import explain_boosted_trees, explain_dnns
@@ -112,8 +113,8 @@ def _explain(datasource,
         return dataset.batch(1).cache()
 
     estimator = init_model_with_feature_column(estimator_cls, model_params)
-    driver = "pai_maxcompute"
-    conn = None
+    driver = "paiio"
+    conn = PaiIOConnection.from_table(result_table) if result_table else None
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,

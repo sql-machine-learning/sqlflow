@@ -21,6 +21,7 @@ import tempfile
 from os import path
 
 from runtime import db
+from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType, oss
 from runtime.pai import cluster_conf
@@ -47,6 +48,7 @@ tensorflow-datasets==3.0.0
 XGB_REQUIREMENT = TF_REQUIREMENT + """
 xgboost==0.82
 sklearn2pmml==0.56.0
+sklearn_pandas==1.6.0
 """
 
 
@@ -93,7 +95,7 @@ def create_tmp_table_from_select(select, datasource):
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
     # (NOTE: lhw) maxcompute conn doesn't support close
     # we should unify db interface
-    if not db.execute(conn, create_sql):
+    if not conn.execute(create_sql):
         raise SQLFlowDiagnostic("Can't crate tmp table for %s" % select)
     return "%s.%s" % (project, tmp_tb_name)
 
@@ -105,7 +107,7 @@ def drop_tables(tables, datasource):
         for table in tables:
             if table != "":
                 drop_sql = "DROP TABLE IF EXISTS %s" % table
-                db.execute(conn, drop_sql)
+                conn.execute(drop_sql)
     except:  # noqa: E722
         # odps will clear table itself, so even fail here, we do
         # not need to raise error
@@ -130,6 +132,10 @@ def get_oss_model_url(model_full_path):
     return "oss://%s/%s" % (oss.SQLFLOW_MODELS_BUCKET, model_full_path)
 
 
+def parse_maxcompute_dsn(datasource):
+    return MaxComputeConnection.get_uri_parts(datasource)
+
+
 def drop_pai_model(datasource, model_name):
     """Drop PAI model
 
@@ -137,8 +143,7 @@ def drop_pai_model(datasource, model_name):
         datasource: current datasource
         model_name: name of the model to drop
     """
-    dsn = get_datasource_dsn(datasource)
-    user, passwd, address, database = db.parseMaxComputeDSN(dsn)
+    user, passwd, address, database = parse_maxcompute_dsn(datasource)
     cmd = "drop offlinemodel if exists %s" % model_name
     subprocess.run([
         "odpscmd", "-u", user, "-p", passwd, "--project", database,
@@ -215,8 +220,7 @@ def submit_pai_task(pai_cmd, datasource):
         pai_cmd: The command to submit
         datasource: The datasource this cmd will manipulate
     """
-    dsn = get_datasource_dsn(datasource)
-    user, passwd, address, project = db.parseMaxComputeDSN(dsn)
+    user, passwd, address, project = parse_maxcompute_dsn(datasource)
     cmd = [
         "odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
         "--project", project, "--endpoint", address, "-e", pai_cmd
@@ -230,8 +234,7 @@ def submit_pai_task(pai_cmd, datasource):
 def get_oss_model_save_path(datasource, model_name):
     if not model_name:
         return None
-    dsn = get_datasource_dsn(datasource)
-    user, _, _, project = db.parseMaxComputeDSN(dsn)
+    user, _, _, project = parse_maxcompute_dsn(datasource)
     user = user or "unknown"
     return "/".join([project, user, model_name])
 
@@ -246,8 +249,7 @@ def get_project(datasource):
     Args:
         datasource: The odps url to extract project
     """
-    dsn = get_datasource_dsn(datasource)
-    _, _, _, project = db.parseMaxComputeDSN(dsn)
+    _, _, _, project = parse_maxcompute_dsn(datasource)
     return project
 
 
@@ -547,14 +549,14 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         model_type: type of model defined in runtime.model.oss
     """
     conn = db.connect_with_data_source(datasource)
-    db.execute(conn, "DROP TABLE IF EXISTS %s" % result_table)
+    conn.execute("DROP TABLE IF EXISTS %s" % result_table)
     # PAI ml will create result table itself
     if model_type == EstimatorType.PAIML:
         return
 
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
-    db.execute(conn, create_table_sql)
+    conn.execute(create_table_sql)
 
     # if label is not in data table, add a int column for it
     schema = db.get_table_schema(conn, result_table)
@@ -565,11 +567,11 @@ def create_predict_result_table(datasource, select, result_table, label_column,
             break
     col_names = [col[0] for col in schema]
     if label_column not in col_names:
-        db.execute(
+        conn.execute(
             conn, "ALTER TABLE %s ADD %s %s" %
             (result_table, label_column, col_type))
     if train_label_column != label_column and train_label_column in col_names:
-        db.execute(
+        conn.execute(
             conn, "ALTER TABLE %s DROP COLUMN %s" %
             (result_table, train_label_column))
 
@@ -668,7 +670,7 @@ def create_explain_result_table(datasource, data_table, result_table,
     """
     conn = db.connect_with_data_source(datasource)
     drop_stmt = "DROP TABLE IF EXISTS %s" % result_table
-    db.execute(conn, drop_stmt)
+    conn.execute(drop_stmt)
 
     create_stmt = ""
     if model_type == EstimatorType.PAIML:
@@ -703,7 +705,7 @@ def create_explain_result_table(datasource, data_table, result_table,
             "not supported modelType %d for creating Explain result table" %
             model_type)
 
-    if not db.execute(conn, create_stmt):
+    if not conn.execute(create_stmt):
         raise SQLFlowDiagnostic("Can't create explain result table")
 
 
@@ -731,7 +733,7 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
 
     conn = db.connect_with_data_source(datasource)
     # drop result table if exists
-    db.execute(conn, "DROP TABLE IF EXISTS %s;" % result_table)
+    conn.execute("DROP TABLE IF EXISTS %s;" % result_table)
     schema = db.get_table_schema(conn, data_table)
     fields = [f[0] for f in schema if f[0] != label_column]
     return ('''pai -name feature_importance -project algo_public '''
@@ -846,7 +848,7 @@ def create_evaluate_result_table(datasource, result_table, metrics):
     sql = "CREATE TABLE IF NOT EXISTS %s (%s);" % (result_table,
                                                    ",".join(fields))
     conn = db.connect_with_data_source(datasource)
-    db.execute(conn, sql)
+    conn.execute(sql)
 
 
 def submit_pai_evaluate(datasource, model_name, select, result_table,

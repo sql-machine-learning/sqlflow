@@ -231,8 +231,7 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     data_frame[result_value_name] = solved_result[0]
 
     conn = db.connect_with_data_source(datasource)
-    with db.buffered_db_writer(conn.driver, conn, result_table,
-                               column_names) as w:
+    with db.buffered_db_writer(conn, result_table, column_names) as w:
         for i in six.moves.range(len(data_frame)):
             rows = list(data_frame.loc[i])
             w.write(rows)
