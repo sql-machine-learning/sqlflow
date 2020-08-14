@@ -106,7 +106,7 @@ class Model(object):
         os.remove(model_obj_file)
         return model
 
-    def save_to_db(self, datasource, table, local_dir=os.getcwd()):
+    def save_to_db(self, datasource, table, local_dir=None):
         """
         This save function would archive all the files on local_dir
         into a tarball, and save it into DBMS with the specified table
@@ -120,6 +120,9 @@ class Model(object):
         Returns:
             None.
         """
+        if local_dir is None:
+            local_dir = os.getcwd()
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             self._zip(local_dir, tarball)
@@ -139,7 +142,7 @@ class Model(object):
             write_with_generator(datasource, table, _bytes_reader(tarball))
 
     @staticmethod
-    def load_from_db(datasource, table, local_dir=os.getcwd()):
+    def load_from_db(datasource, table, local_dir=None):
         """
         Load the saved model from DBMS and unzip it on local_dir.
 
@@ -152,6 +155,9 @@ class Model(object):
             Model: a Model object represent the model type and meta
             information.
         """
+        if local_dir is None:
+            local_dir = os.getcwd()
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             gen = read_with_generator(datasource, table)
@@ -161,7 +167,7 @@ class Model(object):
 
             return Model._unzip(local_dir, tarball)
 
-    def save_to_oss(self, oss_model_dir, local_dir=os.getcwd()):
+    def save_to_oss(self, oss_model_dir, local_dir=None):
         """
         This save function would archive all the files on local_dir
         into a tarball, and save it into OSS model directory.
@@ -174,13 +180,16 @@ class Model(object):
         Returns:
             None.
         """
+        if local_dir is None:
+            local_dir = os.getcwd()
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             self._zip(local_dir, tarball)
             oss.save_file(oss_model_dir, tarball, TARBALL_NAME)
 
     @staticmethod
-    def load_from_oss(oss_model_dir, local_dir=os.getcwd()):
+    def load_from_oss(oss_model_dir, local_dir=None):
         """
         Load the saved model from OSS and unzip it on local_dir.
 
@@ -193,6 +202,9 @@ class Model(object):
             Model: a Model object represent the model type and meta
             information.
         """
+        if local_dir is None:
+            local_dir = os.getcwd()
+
         with tempfile.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
