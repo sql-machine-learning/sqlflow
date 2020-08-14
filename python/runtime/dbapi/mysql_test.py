@@ -78,7 +78,7 @@ class TestMySQLConnection(TestCase):
         tw = table_writer.ProtobufWriter(rs)
         lines = tw.dump_strings()
         self.assertTrue(lines[0].find(
-            "head { column_names: \"sepal_length\" column_names: \"sepal_width\" column_names: \"petal_length\" column_names: \"petal_width\" column_names: \"class\" }"
+            "head { column_names: \"sepal_length\" column_names: \"sepal_width\" column_names: \"petal_length\" column_names: \"petal_width\" column_names: \"class\" }"  # noqa: E501
         ) >= 0)
 
 

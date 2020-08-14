@@ -12,3 +12,5 @@
 # limitations under the License.
 
 from runtime.dbapi.table_writer.protobuf_writer import ProtobufWriter
+
+__all__ = ["ProtobufWriter"]

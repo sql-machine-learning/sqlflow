@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.protobuf import any_pb2, text_format, wrappers_pb2
+from google.protobuf import text_format, wrappers_pb2
 from runtime.dbapi.connection import ResultSet
 from runtime.dbapi.table_writer import sqlflow_pb2
 
@@ -41,7 +41,7 @@ class ProtobufWriter:
             v = wrappers_pb2.Int32Value(value=value)
         elif isinstance(value, float):
             v = wrappers_pb2.FloatValue(value=value)
-        elif isinstance(value, string):
+        elif isinstance(value, str):
             v = wrappers_pb2.StringValue(value=value)
         else:
             raise ValueError("not supported cell data type: %s" % type(value))
