@@ -56,7 +56,7 @@ def collect_metadata(original_sql,
     attr_copy = copy.deepcopy(attributes)
     for (k, v) in attr_copy.items():
         try:
-            json.dumps(v, cls=JSONEncoderWithFeatureColumn)
+            json.dumps(v)
         except:  # noqa: E722
             attr_copy[k] = str(v)
     metadata['attributes'] = attr_copy

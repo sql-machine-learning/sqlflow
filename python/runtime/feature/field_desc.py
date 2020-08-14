@@ -24,7 +24,7 @@ __all__ = [
 # a database field.
 class DataType(object):
     INT64 = 0
-    FLOAT = 1
+    FLOAT32 = 1
     STRING = 2
 
 
@@ -66,7 +66,7 @@ class FieldDesc(object):
                  is_sparse=False,
                  vocabulary=None,
                  max_id=0):
-        assert dtype in [DataType.INT64, DataType.FLOAT, DataType.STRING]
+        assert dtype in [DataType.INT64, DataType.FLOAT32, DataType.STRING]
         assert format in [DataFormat.CSV, DataFormat.KV, DataFormat.PLAIN]
 
         self.name = name

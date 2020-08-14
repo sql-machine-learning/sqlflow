@@ -34,7 +34,7 @@ def zip_dir(src_dir, tarball, arcname=None):
         tar.add(src_dir, arcname=arcname, recursive=True)
 
 
-def unzip_dir(tarball, dest_dir=os.getcwd()):
+def unzip_dir(tarball, dest_dir=None):
     """To decompress a tarball to a directory.
 
     Args:
@@ -44,5 +44,8 @@ def unzip_dir(tarball, dest_dir=os.getcwd()):
         dest_dir: string
             The output path.
     """
+    if dest_dir is None:
+        dest_dir = os.getcwd()
+
     with tarfile.open(tarball, 'r:gz') as tar:
         tar.extractall(path=dest_dir)
