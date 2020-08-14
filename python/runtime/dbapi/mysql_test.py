@@ -15,6 +15,7 @@ import unittest
 from unittest import TestCase
 
 from runtime import testing
+from runtime.dbapi import table_writer
 from runtime.dbapi.mysql import MySQLConnection
 
 
@@ -69,6 +70,16 @@ class TestMySQLConnection(TestCase):
         self.assertEqual([('sepal_length', 'FLOAT'), ('sepal_width', 'FLOAT'),
                           ('petal_length', 'FLOAT'), ('petal_width', 'FLOAT'),
                           ('class', 'INT')], col_info)
+
+    def test_proto_table_writer(self):
+        conn = MySQLConnection(testing.get_datasource())
+        rs = conn.query("select * from iris.train limit 10;")
+        self.assertTrue(rs.success())
+        tw = table_writer.ProtobufWriter(rs)
+        lines = tw.dump_strings()
+        self.assertTrue(lines[0].find(
+            "head { column_names: \"sepal_length\" column_names: \"sepal_width\" column_names: \"petal_length\" column_names: \"petal_width\" column_names: \"class\" }"
+        ) >= 0)
 
 
 if __name__ == "__main__":
