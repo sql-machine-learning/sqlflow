@@ -104,12 +104,17 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 		submitter = "local"
 	}
 
+	dbConnStr, err := GeneratePyDbConnStr(session)
+	if err != nil {
+		return "", err
+	}
+
 	filler := xgbTrainFiller{
 		StepIndex:         stepIndex,
 		OriginalSQL:       replaceNewLineRuneAndTrimSpace(trainStmt.OriginalSQL),
 		ModelImage:        trainStmt.ModelImage,
 		Estimator:         trainStmt.Estimator,
-		DataSource:        session.DbConnStr,
+		DataSource:        dbConnStr,
 		Select:            replaceNewLineRuneAndTrimSpace(trainStmt.Select),
 		ValidationSelect:  replaceNewLineRuneAndTrimSpace(trainStmt.ValidationSelect),
 		ModelParamsJSON:   string(mp),
