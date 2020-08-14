@@ -23,8 +23,8 @@ __all__ = [
 # DataType is used in FieldDesc to represent the data type of
 # a database field.
 class DataType(object):
-    INT = 0
-    FLOAT = 1
+    INT64 = 0
+    FLOAT32 = 1
     STRING = 2
 
 
@@ -34,9 +34,9 @@ class DataType(object):
 # CSV: in the form of "1,2,4"
 # KV:  in the form of "0:3.2 1:-0.3 10:3.9"
 class DataFormat(object):
-    PLAIN = 0
-    CSV = 1
-    KV = 2
+    PLAIN = ""
+    CSV = "csv"
+    KV = "kv"
 
 
 class FieldDesc(object):
@@ -59,14 +59,14 @@ class FieldDesc(object):
     """
     def __init__(self,
                  name="",
-                 dtype=DataType.INT,
+                 dtype=DataType.INT64,
                  delimiter="",
                  format=DataFormat.PLAIN,
                  shape=None,
                  is_sparse=False,
                  vocabulary=None,
                  max_id=0):
-        assert dtype in [DataType.INT, DataType.FLOAT, DataType.STRING]
+        assert dtype in [DataType.INT64, DataType.FLOAT32, DataType.STRING]
         assert format in [DataFormat.CSV, DataFormat.KV, DataFormat.PLAIN]
 
         self.name = name
@@ -75,8 +75,53 @@ class FieldDesc(object):
         self.format = format
         self.shape = shape
         self.is_sparse = is_sparse
+        if vocabulary is not None:
+            vocabulary = set(list(vocabulary))
         self.vocabulary = vocabulary
         self.max_id = max_id
+
+    def to_dict(self):
+        """
+        Convert the FieldDesc object to a Python dict.
+
+        Returns:
+            A Python dict.
+        """
+        vocab = None
+        if self.vocabulary is not None:
+            vocab = list(self.vocabulary)
+            vocab.sort()
+
+        return {
+            "name": self.name,
+            # FIXME(typhoonzero): this line is used to be compatible to
+            # current code, remove it after the refactor.
+            "feature_name": self.name,
+            "dtype": self.dtype,
+            "delimiter": self.delimiter,
+            "format": self.format,
+            "shape": self.shape,
+            "is_sparse": self.is_sparse,
+            "vocabulary": vocab,
+            "max_id": self.max_id,
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        """
+        Create a FieldDesc object from a Python dict.
+
+        Returns:
+            A FieldDesc object.
+        """
+        return FieldDesc(name=d["name"],
+                         dtype=d["dtype"],
+                         delimiter=d["delimiter"],
+                         format=d["format"],
+                         shape=d["shape"],
+                         is_sparse=d["is_sparse"],
+                         vocabulary=d["vocabulary"],
+                         max_id=d["max_id"])
 
     def to_json(self):
         """
@@ -85,13 +130,17 @@ class FieldDesc(object):
         Returns:
             A string which represents the json value of the FieldDesc object.
         """
-        return json.dumps({
-            "name": self.name,
-            "dtype": self.dtype,
-            "delimiter": self.delimiter,
-            "format": self.format,
-            "shape": self.shape,
-            "is_sparse": self.is_sparse,
-            "vocabulary": self.vocabulary,
-            "max_id": self.max_id,
-        })
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, s):
+        """
+        Create a FieldDesc object from a json string.
+
+        Args:
+            s (str): the JSON string.
+
+        Returns:
+            A FieldDesc object.
+        """
+        return cls.from_dict(**json.loads(s))

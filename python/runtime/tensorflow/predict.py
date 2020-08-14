@@ -17,19 +17,19 @@ import os
 import numpy as np
 import tensorflow as tf
 from runtime import db
-from runtime.import_model import import_model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import (get_dtype,
                                          parse_sparse_feature_predict,
                                          tf_generator)
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
 
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 if tf_is_version2():
     import logging
     tf.get_logger().setLevel(logging.ERROR)
@@ -87,9 +87,7 @@ def keras_predict(estimator, model_params, save, result_table,
         del column_names[train_label_index]
     column_names.append(result_col_name)
 
-    with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
-                               hdfs_namenode_addr, hive_location, hdfs_user,
-                               hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, column_names, 100) as w:
         for features in pred_dataset:
             if hasattr(classifier, 'sqlflow_predict_one'):
                 result = classifier.sqlflow_predict_one(features)
@@ -225,9 +223,7 @@ def estimator_predict(estimator, model_params, save, result_table,
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 
-    with db.buffered_db_writer(driver, conn, result_table, write_cols, 100,
-                               hdfs_namenode_addr, hive_location, hdfs_user,
-                               hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, write_cols, 100) as w:
         for row, _ in predict_generator():
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,

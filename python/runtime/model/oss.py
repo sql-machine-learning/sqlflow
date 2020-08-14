@@ -16,6 +16,7 @@ import pickle
 
 import oss2
 import tensorflow as tf
+from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.tensorflow import is_tf_estimator
 
 # NOTE(typhoonzero): hard code bucket name "sqlflow-models" as the bucket to
@@ -83,6 +84,34 @@ def mkdir(bucket, oss_dir):
         bucket.put_object(path, "")
 
 
+def delete_oss_dir_recursive(bucket, directory):
+    """
+    Recursively delete a directory on the OSS
+
+    Args:
+        bucket: bucket on OSS
+        directory (str): the directory to delete
+
+    Returns:
+        None.
+    """
+    if not directory.endswith("/"):
+        raise SQLFlowDiagnostic("dir to delete must end with /")
+
+    loc = bucket.list_objects(prefix=directory, delimiter="/")
+    object_path_list = []
+    for obj in loc.object_list:
+        object_path_list.append(obj.key)
+
+    # delete sub dir first
+    if len(loc.prefix_list) > 0:
+        for sub_prefix in loc.prefix_list:
+            delete_oss_dir_recursive(bucket, sub_prefix)
+    # empty list param will raise error
+    if len(object_path_list) > 0:
+        bucket.batch_delete_objects(object_path_list)
+
+
 def save_dir(oss_model_dir, local_dir):
     '''
     Recursively upload local_dir under oss_model_dir
@@ -112,17 +141,30 @@ def load_dir(oss_model_dir):
             bucket.get_object_to_file(obj.key, obj.key.replace(prefix, ""))
 
 
-def save_file(oss_model_dir, file_name):
-    '''
+def save_file(oss_model_dir, local_file_name, oss_file_name=None):
+    """
     Save the local file (file_name is a file under current directory)
     to OSS directory.
-    '''
+
+    Args:
+        oss_model_dir (str): the OSS model directory. It is in the format
+            of oss://bucket/path/to/dir/.
+        local_file_name (str): the local file path.
+        oss_file_name (str): the OSS file path to save. If None,
+            use local_file_name as oss_file_name.
+
+    Returns:
+        None.
+    """
+    if oss_file_name is None:
+        oss_file_name = local_file_name
+
     bucket = get_models_bucket()
-    oss_path = get_oss_path_from_uri(oss_model_dir, file_name)
+    oss_path = get_oss_path_from_uri(oss_model_dir, oss_file_name)
     oss_path = remove_bucket_prefix(oss_path)
 
     mkdir(bucket, oss_model_dir)
-    bucket.put_object_from_file(oss_path, file_name)
+    bucket.put_object_from_file(oss_path, local_file_name)
 
 
 def save_string(oss_file_path, data):
@@ -136,14 +178,27 @@ def save_string(oss_file_path, data):
     bucket.put_object(oss_file_path, data)
 
 
-def load_file(oss_model_dir, file_name):
-    '''
+def load_file(oss_model_dir, local_file_name, oss_file_name=None):
+    """
     Load file from OSS to local directory.
-    '''
-    oss_file_path = "/".join([oss_model_dir.rstrip("/"), file_name])
+
+    Args:
+        oss_model_dir (str): the OSS model directory. It is in the format
+            of oss://bucket/path/to/dir/.
+        local_file_name (str): the local file path.
+        oss_file_name (str): the OSS file path to load. If None,
+            use local_file_name as oss_file_name.
+
+    Returns:
+        None.
+    """
+    if oss_file_name is None:
+        oss_file_name = local_file_name
+
+    oss_file_path = "/".join([oss_model_dir.rstrip("/"), oss_file_name])
     oss_file_path = remove_bucket_prefix(oss_file_path)
     bucket = get_models_bucket()
-    bucket.get_object_to_file(oss_file_path, file_name)
+    bucket.get_object_to_file(oss_file_path, local_file_name)
 
 
 def load_string(oss_file_path):
@@ -228,7 +283,9 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
         save_file(oss_model_dir, "exported_path")
     else:
         if num_workers > 1:
-            save_file(oss_model_dir, "exported_path")
+            FLAGS = tf.app.flags.FLAGS
+            if FLAGS.task_index == 0:
+                save_file(oss_model_dir, "exported_path")
         else:
             save_file(oss_model_dir, "model_save")
 

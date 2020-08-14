@@ -66,9 +66,9 @@ type requirementsFiller struct {
 const tfImportsText = `
 import tensorflow as tf
 from runtime.tensorflow import is_tf_estimator
-from runtime.import_model import import_model
+from runtime.tensorflow.import_model import import_model
 try:
-	from runtime import oss
+	from runtime.model import oss
 	from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 except:
 	pass # PAI is not always needed
@@ -92,40 +92,7 @@ else:
     oss.load_file("{{.OSSModelDir}}", "model_save")
 `
 
-const tfSaveModelTmplText = tfImportsText + `
-import types
-
-estimator = import_model('''{{.Estimator}}''')
-is_estimator = is_tf_estimator(estimator)
-
-# Keras single node is using h5 format to save the model, no need to deal with export model format.
-# Keras distributed mode will use estimator, so this is also needed.
-FLAGS = tf.app.flags.FLAGS
-if is_estimator:
-    if FLAGS.task_index == 0:
-        with open("exported_path", "r") as fn:
-            saved_model_path = fn.read()
-        oss.save_dir("{{.OSSModelDir}}", saved_model_path)
-        oss.save_file("{{.OSSModelDir}}", "exported_path")
-else:
-    if len(FLAGS.worker_hosts.split(",")) > 1:
-        if FLAGS.task_index == 0:
-            oss.save_file("{{.OSSModelDir}}", "exported_path")
-    else:
-        oss.save_file("{{.OSSModelDir}}", "model_save")
-
-oss.save_metas("{{.OSSModelDir}}",
-           {{.NumWorkers}},
-           "tensorflow_model_desc",
-           "{{.Estimator}}",
-           feature_column_names,
-           feature_column_names_map,
-           feature_metas,
-           label_meta,
-           model_params,
-           feature_columns_code)
-`
-
+// install sklearn-pandas==1.8.0 to fix deps for sklearn2pmml with Python2 on PAI.
 const paiRequirementsTmplText = `
 adanet==0.8.0
 numpy==1.16.2
@@ -136,6 +103,7 @@ shap==0.28.5
 scikit-learn==0.20.4
 tensorflow-datasets==3.0.0
 {{if .IsXGBoost }}
+sklearn-pandas==1.8.0
 xgboost==0.82
 sklearn2pmml==0.56.0
 {{end}}

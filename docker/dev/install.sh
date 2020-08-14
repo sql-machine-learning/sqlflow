@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 if [ "$FIND_FASTED_MIRROR" == "true" ]; then
     # shellcheck disable=SC1091
@@ -74,7 +74,7 @@ rm -rf "$HOME"/.cache/pip/*
 
 
 echo "Install Go compiler ..."
-GO_MIRROR_0="http://mirrors.ustc.edu.cn/golang/go1.13.4.linux-amd64.tar.gz"
+GO_MIRROR_0="https://studygolang.com/dl/golang/go1.13.4.linux-amd64.tar.gz"
 GO_MIRROR_1="https://dl.google.com/go/go1.13.4.linux-amd64.tar.gz"
 axel --quiet --output go.tar.gz $GO_MIRROR_0 $GO_MIRROR_1
 tar -C /usr/local -xzf go.tar.gz
@@ -143,3 +143,11 @@ axel --quiet --output /usr/local/bin/google_checks.xml \
 axel --quiet --output /usr/local/bin/checkstyle-8.29-all.jar \
     "$QINIU_BUCKET/checkstyle/checkstyle-8.29-all.jar" \
     "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar"
+
+echo "Install BARON mathematical programming solver ..."
+axel --quiet --output /tmp/baron-lin64.zip \
+    "https://minlp.com/downloads/xecs/baron/current/baron-lin64.zip"
+unzip -qq /tmp/baron-lin64.zip -d /tmp/
+mv /tmp/baron-lin64/baron /usr/bin
+rm -rf /tmp/baron-lin64
+rm -rf /tmp/baron-lin64.zip

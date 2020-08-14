@@ -60,7 +60,7 @@ def write_with_generator(datasource, table, gen):
     _create_table(conn, table)
     idx = 0
 
-    with buffered_db_writer(conn.driver, conn, table, ["id", "block"]) as w:
+    with buffered_db_writer(conn, table, ["id", "block"]) as w:
         for d in gen():
             block = base64.b64encode(d)
             row = [idx, block]

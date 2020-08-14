@@ -185,3 +185,13 @@ func TestTiDBParseDeps(t *testing.T) {
 	a.Equal("prepared", stmts[1].Outputs[0])
 	a.Equal("original_table", stmts[1].Inputs[0])
 }
+
+func TestTiDBParseWindowFunc(t *testing.T) {
+	a := assert.New(t)
+
+	p := newTiDBParser()
+	stmts, i, e := p.Parse("SELECT LAG(value, 1) OVER (ORDER BY date) AS value_lag_1 FROM t1;")
+	a.NoError(e)
+	a.Equal(-1, i)
+	a.Equal(1, len(stmts))
+}

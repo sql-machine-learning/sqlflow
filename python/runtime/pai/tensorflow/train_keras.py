@@ -12,8 +12,7 @@
 # limitations under the License.
 
 import tensorflow as tf
-from runtime import oss
-from runtime.model_metadata import save_model_metadata
+from runtime.model import oss, save_metadata
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
@@ -110,5 +109,5 @@ def keras_train_distributed(classifier,
     with open("exported_path", "w") as fn:
         fn.write(export_path_str)
     # write model metadata to model_meta.json
-    save_model_metadata("model_meta.json", model_meta)
+    save_metadata("model_meta.json", model_meta)
     print("Done training, model exported to: %s" % export_path_str)

@@ -21,6 +21,7 @@ import numpy as np
 import six
 import xgboost as xgb
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
 from scipy.sparse import vstack
 from sklearn.datasets import load_svmlight_file, load_svmlight_files
 
@@ -55,19 +56,18 @@ def xgb_dataset(datasource,
         os.mkdir(raw_data_dir)
 
     if is_pai:
-        for dmatrix in pai_dataset(
-                fn,
-                feature_metas,
-                feature_column_names,
-                label_meta,
-                "odps://{}/tables/{}".format(*pai_table.split(".")),
-                pai_single_file,
-                cache,
-                rank,
-                nworkers,
-                batch_size=batch_size,
-                feature_column_code=feature_column_code,
-                raw_data_dir=raw_data_dir):
+        for dmatrix in pai_dataset(fn,
+                                   feature_metas,
+                                   feature_column_names,
+                                   label_meta,
+                                   pai_table,
+                                   pai_single_file,
+                                   cache,
+                                   rank,
+                                   nworkers,
+                                   batch_size=batch_size,
+                                   feature_column_code=feature_column_code,
+                                   raw_data_dir=raw_data_dir):
             yield dmatrix
         return
 
@@ -222,7 +222,7 @@ def get_pai_table_slice_count(table, nworkers, batch_size):
     if batch_size is None or batch_size <= 0:
         batch_size = 4096  # default batch_size
 
-    row_cnt = db.get_pai_table_row_num(table)
+    row_cnt = PaiIOConnection.from_table(table).get_table_row_num()
 
     assert row_cnt >= nworkers, "Data number {} should not " \
                                 "less than worker number {}"\
@@ -336,12 +336,9 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *feature_column_transformers)
 
-    label_column_name = label_meta['feature_name'] if label_meta else None
-    gen = db.pai_maxcompute_db_generator(pai_table,
-                                         label_column_name,
-                                         slice_id=slice_id,
-                                         slice_count=slice_count)()
-    selected_cols = db.pai_selected_cols(pai_table)
+    conn = PaiIOConnection.from_table(pai_table, slice_id, slice_count)
+    gen = db.db_generator(conn, None)()
+    selected_cols = db.selected_cols(conn, None)
     filename = "{}/{}.txt".format(dname, slice_id)
     dump_dmatrix(filename,
                  gen,

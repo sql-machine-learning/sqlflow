@@ -25,6 +25,7 @@ source build/env/bin/activate
 
 python -m pip install --quiet \
     numpy==1.16.2 \
+    tensorflow-metadata==0.22.2 \
     tensorflow==2.0.1 \
     impyla==0.16.0 \
     pyodps==0.8.3 \

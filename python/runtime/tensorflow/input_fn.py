@@ -218,7 +218,9 @@ def get_dataset_fn(select,
                            pai_table=pai_table,
                            num_workers=num_workers,
                            worker_id=worker_id)
-        dataset = dataset.cache("cache_train")
+        # NOTE(typhoonzero): on PAI some times cache to a file may cause
+        # "lockfile already exists" error.
+        dataset = dataset.cache()
         if shuffle_size is not None:
             dataset = dataset.shuffle(shuffle_size)
         dataset = dataset.batch(batch_size)

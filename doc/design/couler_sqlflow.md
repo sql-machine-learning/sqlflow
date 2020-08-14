@@ -104,7 +104,7 @@ Note: You can check more details about the IR definition from [ir.go](/pkg/ir/ir
 
 ### SQLFLow Submitter Python Module
 
-An SQLFlow submitter Python module `runtime.{tensorflow,xgboost,elasticdl}.train` accepts an SQLFlow IR with protobuf text format, and then submit a Tensorflow, XGBoost or ElasticDL training job, we can call it like:
+An SQLFlow submitter Python module `runtime.{tensorflow,xgboost,elasticdl}.train` accepts an SQLFlow IR with protobuf text format, and then submit a TensorFlow, XGBoost or ElasticDL training job, we can call it like:
 
 ``` bash
 cat ir.proto_text | python -m runtime.xgboost.train

@@ -18,7 +18,7 @@ from runtime.feature.column import (BucketColumn, CategoryHashColumn,
                                     EmbeddingColumn, IndicatorColumn,
                                     NumericColumn, SeqCategoryIDColumn)
 from runtime.feature.field_desc import DataType
-from runtime.model import EstimatorType
+from runtime.model.model import EstimatorType
 
 __all__ = [
     'compile_ir_feature_columns',
@@ -39,10 +39,10 @@ def to_package_dtype(dtype, package):
         The data type accepted by the feature column implementation
         packages including TensorFlow and XGBoost.
     """
-    if dtype == DataType.INT:
+    if dtype == DataType.INT64:
         return package.dtypes.int64
 
-    if dtype == DataType.FLOAT:
+    if dtype == DataType.FLOAT32:
         return package.dtypes.float32
 
     if dtype == DataType.STRING:

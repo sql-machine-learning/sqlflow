@@ -14,9 +14,9 @@
 import sys
 
 from runtime.db import buffered_db_writer, connect_with_data_source
-from runtime.import_model import import_model
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
@@ -158,9 +158,7 @@ def write_result_metrics(result_metrics, metric_name_list, result_table,
     # NOTE: assume that the result table is already created with columns:
     # loss | metric_names ...
     column_names = metric_name_list
-    with buffered_db_writer(driver, conn, result_table, column_names, 100,
-                            hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with buffered_db_writer(conn, result_table, column_names, 100) as w:
         row = []
         for key in metric_name_list:
             row.append(result_metrics[key])

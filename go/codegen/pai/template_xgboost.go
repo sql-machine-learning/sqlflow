@@ -31,7 +31,7 @@ import json
 import copy
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.predict import pred
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
@@ -102,7 +102,7 @@ if os.environ.get('DISPLAY', '') == '':
 
 import json
 from runtime.xgboost.explain import explain
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
@@ -162,7 +162,7 @@ const xgbEvalTemplateText = `
 import json
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.evaluate import evaluate
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()

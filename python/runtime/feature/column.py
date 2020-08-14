@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 import six
 from runtime.feature.field_desc import DataType, FieldDesc
 
@@ -41,6 +43,66 @@ class FeatureColumn(object):
         Returns:
             A new feature column object which is of the same type,
             and holds the given FieldDesc object.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def to_dict(cls, feature_column):
+        """
+        Convert the FeatureColumn object to a Python dict, which can be
+        serialized to a JSON string.
+
+        Args:
+            feature_column (FeatureColumn): a FeatureColumn object.
+
+        Returns:
+            A Python dict which represents the FeatureColumn object.
+        """
+        return {
+            "type": type(feature_column).__name__,
+            "value": feature_column._to_dict(),
+        }
+
+    def _to_dict(self):
+        """
+        The underlying implementation of `FeatureColumn.to_dict`.
+
+        Returns:
+            A Python dict which represents the FeatureColumn object.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def from_dict_or_feature_column(cls, obj):
+        """
+        If obj is of type dict, create a FeatureColumn object from a Python
+        dict. If obj is of type FeatureColumn, return itself. This method
+        can be used to deserialize a FeatureColumn object from a JSON string.
+
+        Args:
+            obj (dict|FeatureColumn): a Python dict or FeatureColumn object.
+
+        Returns:
+            A FeatureColumn object.
+        """
+        if isinstance(obj, dict):
+            typ = obj.get("type")
+            return eval(typ)._from_dict(obj.get("value"))
+        elif isinstance(obj, FeatureColumn):
+            return obj
+        else:
+            raise TypeError("not supported type %s" % type(obj))
+
+    @classmethod
+    def _from_dict(self, d):
+        """
+        The underlying implementation of `FeatureColumn.from_dict`.
+
+        Args:
+            d (dict): a Python dict object.
+
+        Returns:
+            A FeatureColumn object.
         """
         raise NotImplementedError()
 
@@ -78,6 +140,16 @@ class NumericColumn(FeatureColumn):
     def new_feature_column_from(self, field_desc):
         return NumericColumn(field_desc)
 
+    def _to_dict(self):
+        return {
+            "field_desc": self.field_desc.to_dict(),
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        fd = FieldDesc.from_dict(d["field_desc"])
+        return NumericColumn(fd)
+
 
 class BucketColumn(CategoryColumn):
     """
@@ -104,6 +176,19 @@ class BucketColumn(CategoryColumn):
     def num_class(self):
         return len(self.boundaries) + 1
 
+    def _to_dict(self):
+        return {
+            "source_column": FeatureColumn.to_dict(self.source_column),
+            "boundaries": self.boundaries,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        source_column = FeatureColumn.from_dict_or_feature_column(
+            d["source_column"])
+        boundaries = d["boundaries"]
+        return BucketColumn(source_column, boundaries)
+
 
 class CategoryIDColumn(CategoryColumn):
     """
@@ -126,6 +211,18 @@ class CategoryIDColumn(CategoryColumn):
 
     def num_class(self):
         return self.bucket_size
+
+    def _to_dict(self):
+        return {
+            "field_desc": self.field_desc.to_dict(),
+            "bucket_size": self.bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        field_desc = FieldDesc.from_dict(d["field_desc"])
+        bucket_size = d["bucket_size"]
+        return CategoryIDColumn(field_desc, bucket_size)
 
 
 class CategoryHashColumn(CategoryColumn):
@@ -150,6 +247,18 @@ class CategoryHashColumn(CategoryColumn):
     def num_class(self):
         return self.bucket_size
 
+    def _to_dict(self):
+        return {
+            "field_desc": self.field_desc.to_dict(),
+            "bucket_size": self.bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        field_desc = FieldDesc.from_dict(d["field_desc"])
+        bucket_size = d["bucket_size"]
+        return CategoryHashColumn(field_desc, bucket_size)
+
 
 class SeqCategoryIDColumn(CategoryColumn):
     """
@@ -172,6 +281,18 @@ class SeqCategoryIDColumn(CategoryColumn):
 
     def num_class(self):
         return self.bucket_size
+
+    def _to_dict(self):
+        return {
+            "field_desc": self.field_desc.to_dict(),
+            "bucket_size": self.bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        field_desc = FieldDesc.from_dict(d["field_desc"])
+        bucket_size = d["bucket_size"]
+        return SeqCategoryIDColumn(field_desc, bucket_size)
 
 
 class CrossColumn(CategoryColumn):
@@ -209,6 +330,31 @@ class CrossColumn(CategoryColumn):
 
     def num_class(self):
         return self.hash_bucket_size
+
+    def _to_dict(self):
+        keys = []
+        for k in self.keys:
+            if isinstance(k, six.string_types):
+                keys.append(k)
+            else:
+                keys.append(FeatureColumn.to_dict(k))
+
+        return {
+            "keys": keys,
+            "hash_bucket_size": self.hash_bucket_size,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        keys = []
+        for k in d["keys"]:
+            if isinstance(k, six.string_types):
+                keys.append(k)
+            else:
+                keys.append(FeatureColumn.from_dict_or_feature_column(k))
+
+        hash_bucket_size = d["hash_bucket_size"]
+        return CrossColumn(keys, hash_bucket_size)
 
 
 class EmbeddingColumn(FeatureColumn):
@@ -259,6 +405,32 @@ class EmbeddingColumn(FeatureColumn):
                                initializer=self.initializer,
                                name=self.name)
 
+    def _to_dict(self):
+        category_column = None
+        if self.category_column is not None:
+            category_column = FeatureColumn.to_dict(self.category_column)
+
+        return {
+            "category_column": category_column,
+            "dimension": self.dimension,
+            "combiner": self.combiner,
+            "initializer": self.initializer,
+            "name": self.name,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        category_column = d["category_column"]
+        if category_column is not None:
+            category_column = FeatureColumn.from_dict_or_feature_column(
+                category_column)
+
+        return EmbeddingColumn(category_column=category_column,
+                               dimension=d["dimension"],
+                               combiner=d["combiner"],
+                               initializer=d["initializer"],
+                               name=d["name"])
+
 
 class IndicatorColumn(FeatureColumn):
     """
@@ -291,3 +463,90 @@ class IndicatorColumn(FeatureColumn):
             category_column = None
 
         return IndicatorColumn(category_column, self.name)
+
+    def _to_dict(self):
+        category_column = None
+        if self.category_column is not None:
+            category_column = FeatureColumn.to_dict(self.category_column)
+
+        return {
+            "category_column": category_column,
+            "name": self.name,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        category_column = d["category_column"]
+        if category_column is not None:
+            category_column = FeatureColumn.from_dict_or_feature_column(
+                category_column)
+
+        return IndicatorColumn(category_column=category_column, name=d["name"])
+
+
+class JSONEncoderWithFeatureColumn(json.JSONEncoder):
+    """
+    A helper class to serialize FeatureColumn objects to JSON string.
+    """
+    def default(self, obj):
+        """
+        Convert obj to an object that `json.dumps` accepts.
+        If obj is of type FeatureColumn, convert it to a Python
+        dict.
+
+        Args:
+            obj: any Python object.
+
+        Returns:
+            A Python object that `json.dumps` accepts.
+        """
+        if isinstance(obj, FeatureColumn):
+            return FeatureColumn.to_dict(obj)
+
+        # Use the default JSONEncoder if obj is not FeatureColumn
+        return json.JSONEncoder.default(self, obj)
+
+
+SUPPORTED_CONCRETE_FEATURE_COLUMNS = [
+    'NumericColumn',
+    'BucketColumn',
+    'CategoryIDColumn',
+    'CategoryHashColumn',
+    'SeqCategoryIDColumn',
+    'CrossColumn',
+    'EmbeddingColumn',
+    'IndicatorColumn',
+]
+
+
+def feature_column_json_hook(obj):
+    """
+    An object hook method that json.JSONDecoder accepts.
+    It is used to convert a Python dict to FeatureColumn object
+    if possible. See https://docs.python.org/3/library/json.html
+    for the usage of object hook.
+
+    Args:
+        obj: any Python object.
+
+    Returns:
+        If obj can be converted to a FeatureColumn object, convert
+        it. Otherwise, return itself.
+    """
+    if isinstance(obj, dict):
+        typ = obj.get("type")
+        if typ in SUPPORTED_CONCRETE_FEATURE_COLUMNS:
+            return FeatureColumn.from_dict_or_feature_column(obj)
+
+    return obj
+
+
+class JSONDecoderWithFeatureColumn(json.JSONDecoder):
+    """
+    A helper class to deserialize JSON string to FeatureColumn objects.
+    """
+    def __init__(self, *args, **kwargs):
+        # See here: https://docs.python.org/3/library/json.html
+        # for the usage of object_hook
+        kwargs['object_hook'] = feature_column_json_hook
+        super(JSONDecoderWithFeatureColumn, self).__init__(*args, **kwargs)

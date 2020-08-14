@@ -11,9 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    'infer_feature_columns',
-]
+__all__ = ['infer_feature_columns', 'get_ordered_field_descs']
 
 import re
 
@@ -109,7 +107,7 @@ def new_default_field_desc(name):
         A FieldDesc object whose name is the given name,
         and the data type is INT.
     """
-    return FieldDesc(name=name, dtype=DataType.INT)
+    return FieldDesc(name=name, dtype=DataType.INT64)
 
 
 # A regular expression to match any real number
@@ -189,15 +187,15 @@ def fill_csv_field_desc(cell, field_desc):
     # sparse tensor in CSV format is "Int". We should remove this constraint
     # if we will support other data formats in the future.
     if field_desc.is_sparse:
-        field_desc.dtype = DataType.INT
+        field_desc.dtype = DataType.INT64
 
     field_desc.delimiter = ","
     for v in values:
-        if field_desc.dtype == DataType.INT:
+        if field_desc.dtype == DataType.INT64:
             try:
                 int_value = INT64_TYPE(v)
             except ValueError:
-                field_desc.dtype = DataType.FLOAT
+                field_desc.dtype = DataType.FLOAT32
                 field_desc.max_id = 0  # clear the max id
                 continue
         else:
@@ -266,7 +264,7 @@ def fill_plain_field_desc(cell, field_desc):
         # Build vocabulary from the sample data
         field_desc.vocabulary.add(cell)
     else:
-        field_desc.dtype = DataType.FLOAT
+        field_desc.dtype = DataType.FLOAT32
         field_desc.shape = [1]
 
 
@@ -290,10 +288,10 @@ def fill_field_descs(generator, fd_map):
     for idx, dtype in enumerate(dtypes):
         dtype = dtype.upper()
         if dtype in ["INT", "TINYINT", "DECIMAL", "BIGINT"]:
-            fd_map[names[idx]].dtype = DataType.INT
+            fd_map[names[idx]].dtype = DataType.INT64
             fd_map[names[idx]].shape = [1]
         elif dtype in ["FLOAT", "DOUBLE"]:
-            fd_map[names[idx]].dtype = DataType.FLOAT
+            fd_map[names[idx]].dtype = DataType.FLOAT32
             fd_map[names[idx]].shape = [1]
         elif dtype in ["CHAR", "VARCHAR", "TEXT", "STRING"]:
             str_column_indices.append(idx)
@@ -582,7 +580,7 @@ def derive_label(label, fd_map):
     assert label_field_desc is not None, \
         "deriveLabel: LABEL COLUMN '%s' not found" % label_name
 
-    # use shape [] if label shape is [1] for Tensorflow scalar label
+    # use shape [] if label shape is [1] for TensorFlow scalar label
     # shape should be [].
     shape = label_field_desc.shape
     if shape is None or (len(shape) == 1 and shape[0] == 1):
@@ -639,3 +637,13 @@ def infer_feature_columns(conn, select, features, label, n=1000):
                                          selected_field_names, label_name)
     label = derive_label(label, fd_map)
     return features, label
+
+
+def get_ordered_field_descs(features):
+    assert isinstance(features, dict)
+    fd_list = []
+    for target in features:
+        for fc in features[target]:
+            for fd in fc.get_field_desc():
+                fd_list.append(fd)
+    return fd_list

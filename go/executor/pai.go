@@ -476,7 +476,7 @@ func executeOptimizeUsingOptFlow(pythonExecutor *pythonExecutor, stmt *ir.Optimi
 		dropTmpTables([]string{table}, pythonExecutor.Session.DbConnStr)
 	}
 
-	if len(stmt.Variables) > 1 {
+	if len(stmt.Variables) > 2 {
 		joinedVarName := strings.Join(stmt.Variables, "__")
 		concatColumnNames := make([]string, 0)
 		for i, v := range stmt.Variables {

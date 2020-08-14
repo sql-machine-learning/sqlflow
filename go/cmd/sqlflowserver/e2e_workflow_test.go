@@ -76,6 +76,10 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
 	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
 	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+	// test experimental workflow generation
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
+	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
 }
 
 func CaseWorkflowStepErrorMessage(t *testing.T) {
@@ -353,4 +357,32 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+}
+
+func CaseWorkflowTrainXgboost(t *testing.T) {
+	a := assert.New(t)
+
+	sqlProgram := `SELECT * FROM iris.train LIMIT 100;
+
+SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH objective="multi:softmax",num_class=3
+LABEL class
+INTO sqlflow_models.xgb_classification;`
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
 }
