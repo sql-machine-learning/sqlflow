@@ -362,7 +362,9 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 func CaseWorkflowTrainXgboost(t *testing.T) {
 	a := assert.New(t)
 
-	sqlProgram := `SELECT * FROM iris.train
+	sqlProgram := `SELECT * FROM iris.train LIMIT 100;
+
+SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
 WITH objective="multi:softmax",num_class=3
 LABEL class
