@@ -70,20 +70,7 @@ func TFTrainWithLoadAndSave(ir *ir.TrainStmt, session *pb.Session, modelPathToSa
 		return "", err
 	}
 
-	// append code snippet to save model
-	checkpointDir := OSSModelURL(modelPathToSave)
-	var tpl = template.Must(template.New("SaveModel").Parse(tfSaveModelTmplText))
-	filler := saveModelFiller{
-		OSSModelDir: checkpointDir,
-		Estimator:   ir.Estimator,
-		NumWorkers:  cc.Worker.Count,
-	}
-	var saveCode bytes.Buffer
-	if err = tpl.Execute(&saveCode, filler); err != nil {
-		return "", err
-	}
-
-	fullCode := fmt.Sprintf("%s\n%s\n%s", loadCode, trainCode, saveCode.String())
+	fullCode := fmt.Sprintf("%s\n%s", loadCode, trainCode)
 	return fullCode, nil
 }
 
