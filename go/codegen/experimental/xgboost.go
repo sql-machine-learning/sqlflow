@@ -47,6 +47,12 @@ type xgbTrainFiller struct {
 	Submitter         string
 }
 
+func replaceNewLineRuneAndTrimSpace(s string) string {
+	s = strings.ReplaceAll(s, "\r", " ")
+	s = strings.ReplaceAll(s, "\n", " ")
+	return strings.TrimSpace(s)
+}
+
 // XGBoostGenerateTrain returns the step code.
 func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, error) {
 	var err error
@@ -100,12 +106,12 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 
 	filler := xgbTrainFiller{
 		StepIndex:         stepIndex,
-		OriginalSQL:       trainStmt.OriginalSQL,
+		OriginalSQL:       replaceNewLineRuneAndTrimSpace(trainStmt.OriginalSQL),
 		ModelImage:        trainStmt.ModelImage,
 		Estimator:         trainStmt.Estimator,
 		DataSource:        session.DbConnStr,
-		Select:            strings.Trim(trainStmt.Select, " \n"),
-		ValidationSelect:  strings.Trim(trainStmt.ValidationSelect, " \n"),
+		Select:            replaceNewLineRuneAndTrimSpace(trainStmt.Select),
+		ValidationSelect:  replaceNewLineRuneAndTrimSpace(trainStmt.ValidationSelect),
 		ModelParamsJSON:   string(mp),
 		TrainParamsJSON:   string(tp),
 		FeatureColumnCode: featureColumnCode,
