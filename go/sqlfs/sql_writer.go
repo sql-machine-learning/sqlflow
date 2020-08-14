@@ -18,6 +18,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+
+	"sqlflow.org/sqlflow/go/database"
 )
 
 func flushToSQLTable(db *sql.DB, table string) func([]byte) error {
@@ -44,12 +46,12 @@ func noopWrapUp() error {
 	return nil
 }
 
-func newSQLWriter(db *sql.DB, dbms, table string, bufSize int) (io.WriteCloser, error) {
-	if e := dropTableIfExists(db, table); e != nil {
+func newSQLWriter(db *database.DB, table string, bufSize int) (io.WriteCloser, error) {
+	if e := dropTableIfExists(db.DB, table); e != nil {
 		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
 	}
-	if e := createTable(db, dbms, table); e != nil {
+	if e := createTable(db, table); e != nil {
 		return nil, fmt.Errorf("cannot create table %s: %v", table, e)
 	}
-	return newFlushWriteCloser(flushToSQLTable(db, table), noopWrapUp, bufSize), nil
+	return newFlushWriteCloser(flushToSQLTable(db.DB, table), noopWrapUp, bufSize), nil
 }

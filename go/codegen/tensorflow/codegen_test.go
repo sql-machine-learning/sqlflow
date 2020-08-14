@@ -14,6 +14,7 @@
 package tensorflow
 
 import (
+	"os"
 	"regexp"
 	"testing"
 
@@ -47,10 +48,12 @@ func TestTrainCodegen(t *testing.T) {
 	code, err := Pred(pir, sess)
 	a.NoError(err)
 
-	r, _ := regexp.Compile(`hdfs_user="(.*)"`)
-	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
-	r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
-	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
+	if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+		r, _ := regexp.Compile(`hdfs_user="(.*)"`)
+		a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
+		r, _ = regexp.Compile(`hdfs_pass="(.*)"`)
+		a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
+	}
 }
 
 func TestTrainWithModelRepoImage(t *testing.T) {

@@ -19,10 +19,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
+
+	"sqlflow.org/sqlflow/go/database"
 )
 
 func flushToCSV() (func([]byte) error, *os.File, error) {
@@ -96,11 +99,31 @@ func uploadCSVFile(csv *os.File, db *sql.DB, hivePath, table, user, passwd, name
 	}
 }
 
-func newHiveWriter(db *sql.DB, hivePath, table, user, passwd, namenodeAddr string, bufSize int) (io.WriteCloser, error) {
-	if e := dropTableIfExists(db, table); e != nil {
+func getHdfsParams(connStr string) (namenodeAddr,
+	hiveLocation, user, passwd string, e error) {
+	uri, e := url.Parse(connStr)
+	if e != nil {
+		return
+	}
+	if uri.User != nil {
+		user = uri.User.Username()
+		passwd, _ = uri.User.Password()
+	}
+	query := uri.Query()
+	namenodeAddr = query.Get("hdfs_namenode_addr")
+	hiveLocation = query.Get("hive_location")
+	return
+}
+
+func newHiveWriter(db *database.DB, table string, bufSize int) (io.WriteCloser, error) {
+	namenodeAddr, hivePath, user, passwd, e := getHdfsParams(db.DataSourceName)
+	if e != nil {
+		return nil, e
+	}
+	if e := dropTableIfExists(db.DB, table); e != nil {
 		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
 	}
-	if e := createTable(db, "hive", table); e != nil {
+	if e := createTable(db, table); e != nil {
 		return nil, fmt.Errorf("cannot create table %s: %v", table, e)
 	}
 
@@ -108,6 +131,6 @@ func newHiveWriter(db *sql.DB, hivePath, table, user, passwd, namenodeAddr strin
 	if e != nil {
 		return nil, e
 	}
-	upload := uploadCSVFile(csv, db, hivePath, table, user, passwd, namenodeAddr)
+	upload := uploadCSVFile(csv, db.DB, hivePath, table, user, passwd, namenodeAddr)
 	return newFlushWriteCloser(flush, upload, bufSize), nil
 }

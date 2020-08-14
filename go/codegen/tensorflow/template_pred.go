@@ -105,9 +105,5 @@ pred(datasource="{{.DataSource}}",
      feature_metas=feature_metas,
      model_params=model_params,
      save="{{.Save}}",
-     batch_size=1,
-     hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
-     hive_location="{{.HiveLocation}}",
-     hdfs_user="{{.HDFSUser}}",
-     hdfs_pass="{{.HDFSPass}}")
+     batch_size=1)
 `

@@ -16,6 +16,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
 
@@ -97,7 +98,9 @@ func createTestingMySQLDB() *DB {
 func testingHiveURL() string {
 	// NOTE: sample dataset is written in
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
-	return "hive://root:root@localhost:10000/churn"
+	namenodeAddr := os.Getenv("SQLFLOW_TEST_HDFS_NAMENODE_ADDR")
+	return fmt.Sprintf("hive://root:root@localhost:10000/churn?"+
+		"hdfs_namenode_addr=%s&hive_location=/hivepath", namenodeAddr)
 }
 
 func createTestingHiveDB() *DB {
@@ -165,8 +168,5 @@ func assertNoErr(e error) {
 func GetSessionFromTestingDB() *proto.Session {
 	db := GetTestingDBSingleton()
 	return &proto.Session{
-		DbConnStr:    db.URL(),
-		HiveLocation: "/sqlflow",
-		HdfsUser:     "",
-		HdfsPass:     ""}
+		DbConnStr: db.URL()}
 }
