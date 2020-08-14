@@ -52,6 +52,7 @@ def train(datasource,
           pai_table="",
           pai_val_table="",
           feature_columns_code="",
+          model_params_code_map={},
           model_repo_image="",
           original_sql=""):
     # TODO(sneaxiy): collect features and label

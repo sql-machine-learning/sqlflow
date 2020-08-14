@@ -283,7 +283,9 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
         save_file(oss_model_dir, "exported_path")
     else:
         if num_workers > 1:
-            save_file(oss_model_dir, "exported_path")
+            FLAGS = tf.app.flags.FLAGS
+            if FLAGS.task_index == 0:
+                save_file(oss_model_dir, "exported_path")
         else:
             save_file(oss_model_dir, "model_save")
 

@@ -52,6 +52,7 @@ def train(datasource,
           pai_table="",
           pai_val_table="",
           feature_columns_code="",
+          model_params_code_map={},
           model_repo_image="",
           original_sql="",
           feature_column_names_map=None):
@@ -119,7 +120,7 @@ def train(datasource,
         oss_model_dir = FLAGS.sqlflow_oss_modeldir
         oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
                            feature_column_names, feature_column_names_map,
-                           feature_metas, label_meta, model_params,
+                           feature_metas, label_meta, model_params_code_map,
                            feature_columns_code, num_workers)
         print("Model saved to oss: %s" % oss_model_dir)
     print("Done training")
