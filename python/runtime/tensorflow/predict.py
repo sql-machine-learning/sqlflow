@@ -87,9 +87,7 @@ def keras_predict(estimator, model_params, save, result_table,
         del column_names[train_label_index]
     column_names.append(result_col_name)
 
-    with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
-                               hdfs_namenode_addr, hive_location, hdfs_user,
-                               hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, column_names, 100) as w:
         for features in pred_dataset:
             if hasattr(classifier, 'sqlflow_predict_one'):
                 result = classifier.sqlflow_predict_one(features)
@@ -225,9 +223,7 @@ def estimator_predict(estimator, model_params, save, result_table,
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 
-    with db.buffered_db_writer(driver, conn, result_table, write_cols, 100,
-                               hdfs_namenode_addr, hive_location, hdfs_user,
-                               hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, write_cols, 100) as w:
         for row, _ in predict_generator():
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,

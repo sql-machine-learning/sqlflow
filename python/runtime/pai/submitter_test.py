@@ -17,6 +17,7 @@ from unittest import TestCase
 
 import runtime.testing as testing
 import runtime.xgboost as xgboost_extended  # noqa: F401
+import tensorflow as tf  # noqa: F401
 from runtime.pai import submitter
 from runtime.pai.cluster_conf import get_cluster_config
 

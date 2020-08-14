@@ -33,7 +33,8 @@ def get_mysql_dsn():
 
 
 def get_hive_dsn():
-    return "root:root@localhost:10000/iris"
+    return ("root:root@localhost:10000/iris?"
+            "hdfs_namenode_addr=localhost:8020&hive_location=/sqlflow")
 
 
 def get_maxcompute_dsn():

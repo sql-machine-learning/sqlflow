@@ -10,11 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-try:
-    import sqlflow_models  # noqa: F401
-except:  # noqa: E722
-    pass
+from __future__ import absolute_import
 
 from tensorflow.estimator import BoostedTreesClassifier  # noqa: F401
 from tensorflow.estimator import BoostedTreesRegressor  # noqa: F401
@@ -24,6 +20,11 @@ from tensorflow.estimator import DNNLinearCombinedRegressor  # noqa: F401
 from tensorflow.estimator import DNNRegressor  # noqa: F401
 from tensorflow.estimator import LinearClassifier  # noqa: F401
 from tensorflow.estimator import LinearRegressor  # noqa: F401
+
+try:
+    import sqlflow_models  # noqa: F401
+except:  # noqa: E722
+    pass
 
 
 def import_model_package(model, namespace):
