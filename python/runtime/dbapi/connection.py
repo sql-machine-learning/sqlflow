@@ -151,8 +151,8 @@ class Connection(object):
 
         if s.startswith("SELECT") and s.find("INTO") == -1:
             return True
-        if s.startswith("SHOW") and s.find("CREATE") >= 0 and s.find(
-                "DATABASES") >= 0 and s.find("TABLES"):
+        if s.startswith("SHOW") and s.find("CREATE") >= 0 or s.find(
+                "DATABASES") >= 0 or s.find("TABLES") >= 0:
             return True
         if s.startswith("DESC") or s.startswith("EXPLAIN"):
             return True
