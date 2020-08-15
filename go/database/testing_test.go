@@ -28,7 +28,7 @@ func TestDatabaseGetTestingDBSingleton(t *testing.T) {
 	case "mysql":
 		a.Equal(GetTestingMySQLURL(), db.URL())
 	case "hive":
-		a.Equal(testingHiveURL(), db.URL())
+		a.Equal(GetTestingHiveURL(), db.URL())
 	case "maxcompute":
 		a.Equal(testingMaxComputeURL(), db.URL())
 	default:
@@ -46,7 +46,7 @@ func TestDatabaseTestingMySQLURL(t *testing.T) {
 func TestDatabaseTestingHiveURL(t *testing.T) {
 	a := assert.New(t)
 	if db := GetTestingDBSingleton(); db.DriverName == "hive" {
-		a.Equal(testingHiveURL(), db.URL())
+		a.Equal(GetTestingHiveURL(), db.URL())
 	}
 }
 

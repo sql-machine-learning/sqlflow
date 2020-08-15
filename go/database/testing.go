@@ -95,16 +95,17 @@ func createTestingMySQLDB() *DB {
 	return db
 }
 
-func testingHiveURL() string {
+// GetTestingHiveURL reutrns Hive connection URL
+func GetTestingHiveURL() string {
 	// NOTE: sample dataset is written in
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
 	namenodeAddr := os.Getenv("SQLFLOW_TEST_HDFS_NAMENODE_ADDR")
 	return fmt.Sprintf("hive://root:root@localhost:10000/churn?"+
-		"hdfs_namenode_addr=%s&hive_location=/hivepath", namenodeAddr)
+		"hdfs_namenode_addr=%s&hive_location=/sqlflow", namenodeAddr)
 }
 
 func createTestingHiveDB() *DB {
-	db, e := OpenAndConnectDB(testingHiveURL())
+	db, e := OpenAndConnectDB(GetTestingHiveURL())
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
