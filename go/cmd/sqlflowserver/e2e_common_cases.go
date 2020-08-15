@@ -656,6 +656,9 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 
 	executeSQLFunc := func(sql string) {
 		_, _, _, err := connectAndRunSQL(sql)
+		if err != nil {
+			fmt.Printf("==================%v\n", err)
+		}
 		a.NoError(err, fmt.Sprintf("SQL execution failure\n%s", sql))
 	}
 
@@ -699,6 +702,14 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	predictSQLWithOriginalLabel := fmt.Sprintf(predictSQLTemplate, dbName, trainTable, predictTable, "new_label_col", trainedModel)
 	executeSQLFunc(predictSQLWithOriginalLabel)
 	columns, rows, _, err := connectAndRunSQL(fmt.Sprintf(`SELECT * FROM %s.%s;`, dbName, predictTable))
+	if err != nil {
+		fmt.Printf("========Err:%v\n", err)
+	}
+	fmt.Println(columns)
+	for i, r := range rows {
+		fmt.Printf("%d = %v\n", i, r)
+	}
+
 	a.NoError(err)
 	a.Equal(3, len(rows))
 	if isPai {

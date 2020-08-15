@@ -100,8 +100,12 @@ func GetTestingHiveURL() string {
 	// NOTE: sample dataset is written in
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
 	namenodeAddr := os.Getenv("SQLFLOW_TEST_HDFS_NAMENODE_ADDR")
-	return fmt.Sprintf("hive://root:root@localhost:10000/churn?"+
-		"hdfs_namenode_addr=%s&hive_location=/sqlflow", namenodeAddr)
+	hiveLocation := os.Getenv("SQLFLOW_HIVE_LOCATION")
+	if hiveLocation == "" {
+		hiveLocation = "/sqlflow"
+	}
+	return fmt.Sprintf("hive://root:root@localhost:10000/iris?"+
+		"hdfs_namenode_addr=%s&hive_location=%s", namenodeAddr, hiveLocation)
 }
 
 func createTestingHiveDB() *DB {

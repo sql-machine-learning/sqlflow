@@ -191,6 +191,7 @@ func untarBuf(buf bytes.Buffer, dst string) error {
 // SQLFlow working directory, which contains the TensorFlow working
 // directory and the trained TensorFlow model.
 func (m *Model) saveDB(connStr, table string, session *pb.Session) (e error) {
+	fmt.Printf("----------------------------%s\n%v\n", connStr, session)
 	db, err := database.OpenAndConnectDB(connStr)
 	if err != nil {
 		return err
