@@ -149,6 +149,27 @@ def read_features_from_row(row, select_cols, feature_column_names,
     return tuple(features)
 
 
+def to_db_field_type(driver, dtype):
+    """
+    This method converts the dtype to a field type that the CREATE
+    TABLE statement accepts.
+
+    Args:
+        driver (str): the DBMS driver type.
+        dtype (str): the data type.
+
+    Returns:
+        A field type that the CREATE TABLE statement accepts.
+    """
+    if dtype in ["VARCHAR", "CHAR"]:
+        if driver == "mysql":
+            return dtype + "(255)"
+        else:
+            return "STRING"
+    else:
+        return dtype
+
+
 def db_generator(conn, statement, label_meta=None):
     def reader():
         rs = conn.query(statement)
