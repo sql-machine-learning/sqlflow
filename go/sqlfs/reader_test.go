@@ -35,7 +35,7 @@ func TestSQLFSWriteAndRead(t *testing.T) {
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
 
-	w, e := Create(db.DB, db.DriverName, tbl, database.GetSessionFromTestingDB())
+	w, e := Create(db, tbl, database.GetSessionFromTestingDB())
 	a.NoError(e)
 	a.NotNil(w)
 

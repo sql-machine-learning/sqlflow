@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -47,7 +46,7 @@ func TestSQLFSNewHiveWriter(t *testing.T) {
 	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
-	w, e := newHiveWriter(db.DB, "/hivepath", tbl, "", "", os.Getenv("SQLFLOW_TEST_HDFS_NAMENODE_ADDR"), bufSize)
+	w, e := newHiveWriter(db, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 
@@ -71,7 +70,7 @@ func TestSQLFSHiveWriterWriteAndRead(t *testing.T) {
 	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
-	w, e := newHiveWriter(db.DB, "/hivepath", tbl, "", "", os.Getenv("SQLFLOW_TEST_HDFS_NAMENODE_ADDR"), bufSize)
+	w, e := newHiveWriter(db, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 

@@ -18,6 +18,7 @@ import (
 	"os"
 	"testing"
 
+	"sqlflow.org/sqlflow/go/database"
 	server "sqlflow.org/sqlflow/go/sqlflowserver"
 )
 
@@ -33,7 +34,7 @@ func TestEnd2EndHive(t *testing.T) {
 	if testDBDriver != "hive" {
 		t.Skip("Skipping hive tests")
 	}
-	dbConnStr = "hive://root:root@127.0.0.1:10000/iris?auth=NOSASL"
+	dbConnStr = database.GetTestingHiveURL()
 	go start(modelDir, caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
