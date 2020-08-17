@@ -42,6 +42,8 @@ require (
 	github.com/spf13/cobra v0.0.5 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
+	github.com/topicai/candy v0.0.0-20160816022300-1b9030d056fa // indirect
+	github.com/wangkuiyi/ipynb v0.0.0-20190916115031-f33fb706ed27 // indirect
 	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550

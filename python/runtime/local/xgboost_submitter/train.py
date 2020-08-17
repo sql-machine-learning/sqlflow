@@ -23,14 +23,14 @@ import xgboost as xgb
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import (get_ordered_field_descs,
                                         infer_feature_columns)
-from runtime.local.xgboost.save import save_model_to_local_file
+from runtime.local.xgboost_submitter.save import save_model_to_local_file
 from runtime.model import EstimatorType, Model, collect_metadata
 from runtime.xgboost.dataset import xgb_dataset
 
 
 def train(original_sql,
           model_image,
-          estimator,
+          estimator_string,
           datasource,
           select,
           validation_select,
@@ -39,10 +39,7 @@ def train(original_sql,
           feature_column_map,
           label_column,
           save,
-          load=None,
-          disk_cache=False,
-          batch_size=None,
-          epoch=1):
+          load=None):
     """
     Train, evaluate and save the XGBoost model locally.
 
@@ -54,14 +51,12 @@ def train(original_sql,
         select (str): the SQL statement for training.
         validation_select (str): the SQL statement for evaluation.
         model_params (dict): the XGBoost model parameters.
-        train_params (dict): the training parameters.
+        train_params (dict): the training parameters, can have disk_cache(bool),
+                             batch_size(int), epoch(int) settings in the dict.
         feature_column_map (dict): the feature column map to do derivation.
         label_column (FeatureColumn): the label column.
         save (str): the table name to save the trained model and meta.
         load (str): the table name to load the pretrained model.
-        disk_cache (bool): whether to cache the dataset on disk.
-        batch_size (int): the batch size.
-        epoch (int): the epoch number to train.
 
     Returns:
         A dict which indicates the evaluation result.
@@ -85,6 +80,16 @@ def train(original_sql,
     # of dumping the original data into DMatrix SVM file.
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *feature_column_list)
+
+    disk_cache = False
+    batch_size = None
+    epoch = 1
+    if "disk_cache" in train_params:
+        disk_cache = train_params.pop("disk_cache")
+    if "batch_size" in train_params:
+        batch_size = train_params.pop("batch_size")
+    if "epoch" in train_params:
+        epoch = train_params.pop("epoch")
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,
@@ -139,7 +144,7 @@ def train(original_sql,
                             select=select,
                             validation_select=validation_select,
                             model_repo_image=model_image,
-                            class_name=estimator,
+                            class_name=estimator_string,
                             attributes=model_params,
                             features=fc_map_ir,
                             label=fc_label_ir,

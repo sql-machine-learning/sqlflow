@@ -380,8 +380,7 @@ def save_model_to_sqlfs(datasource, model_oss_path, model_name):
 
 # (TODO: lhw) adapt this interface after we do feature derivation in Python
 def submit_pai_train(datasource, estimator_string, select, validation_select,
-                     model_params, model_name, pre_trained_model,
-                     **train_params):
+                     model_params, save, load, **train_params):
     """This function submit PAI-TF train task to PAI platform
 
     Args:
@@ -396,7 +395,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
             Ths SQL statement for selecting data for validation
         model_params: dict
             Params for training, crossponding to WITH clause
-        pre_trained_model: string
+        load: string
             The pre-trained model name to load
         train_params: dict
             Extra train params, they will be passed to runtime.tensorflow.train
@@ -421,8 +420,8 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     params["pai_table"], params["pai_val_table"] = train_table, val_table
 
     # clean target dir
-    path_to_save = get_oss_model_save_path(datasource, model_name)
-    path_to_load = get_oss_model_save_path(datasource, pre_trained_model)
+    path_to_save = get_oss_model_save_path(datasource, save)
+    path_to_load = get_oss_model_save_path(datasource, load)
     project = get_project(datasource)
     params["oss_model_dir"] = path_to_save
 
@@ -430,29 +429,29 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
         clean_oss_model_path(path_to_save + "/")
 
     # zip all required resource to a tarball
-    prepare_archive(cwd, conf, project, estimator_string, model_name,
-                    train_table, val_table, path_to_save, params)
+    prepare_archive(cwd, conf, project, estimator_string, save, train_table,
+                    val_table, path_to_save, params)
 
     # submit pai task to execute the training
     if estimator_string.lower() == "randomforests":
         cmd = get_train_random_forest_pai_cmd(
-            model_name, train_table, model_params,
+            save, train_table, model_params,
             train_params["feature_column_names"],
             train_params["label_meta"]["feature_name"])
     elif estimator_string.lower() == "kmeans":
-        cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
+        cmd = get_train_kmeans_pai_cmd(datasource, save, train_table,
                                        model_params,
                                        train_params["feature_column_names"])
     else:
         cmd = get_pai_tf_cmd(conf,
                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                              "file://" + path.join(cwd, PARAMS_FILE),
-                             ENTRY_FILE, model_name, path_to_save, train_table,
+                             ENTRY_FILE, save, path_to_save, train_table,
                              val_table, "", project)
     submit_pai_task(cmd, datasource)
 
     # save trained model to sqlfs
-    save_model_to_sqlfs(datasource, path_to_save, model_name)
+    save_model_to_sqlfs(datasource, path_to_save, save)
     drop_tables([train_table, val_table], datasource)
 
 
