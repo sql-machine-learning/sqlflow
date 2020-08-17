@@ -15,6 +15,8 @@ package experimental
 
 import (
 	"fmt"
+	"net/url"
+	"sqlflow.org/sqlflow/go/database"
 	"strings"
 
 	"sqlflow.org/sqlflow/go/ir"
@@ -58,4 +60,34 @@ func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
 func InitializeAttributes(trainStmt *ir.TrainStmt) error {
 	attributeDictionary.ExportDefaults(trainStmt.Attributes)
 	return fullAttrValidator.Validate(trainStmt.Attributes)
+}
+
+// GeneratePyDbConnStr generates the db connection string for the Python dbapi.
+func GeneratePyDbConnStr(session *pb.Session) (string, error) {
+	dialect, _, err := database.ParseURL(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+
+	if dialect != "hive" {
+		return session.DbConnStr, nil
+	}
+
+	u, err := url.Parse(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+
+	query, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return "", err
+	}
+
+	query.Set("hdfs_namenode_addr", session.HdfsNamenodeAddr)
+	query.Set("hive_location", session.HiveLocation)
+	query.Set("hdfs_user", session.HdfsUser)
+	query.Set("hdfs_pass", session.HdfsPass)
+
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }

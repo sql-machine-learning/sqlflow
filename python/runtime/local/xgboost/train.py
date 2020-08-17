@@ -13,7 +13,6 @@
 """ XGBoost Local Training.
 This module launches a XGBoost training task on host.
 """
-import json
 import os
 import tempfile
 import types
@@ -74,13 +73,12 @@ def train(original_sql,
                                                    label_column,
                                                    n=1000)
     fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
+
     feature_column_list = fc_map["feature_columns"]
-    feature_metas_obj_list = get_ordered_field_descs(fc_map_ir)
-    feature_metas = dict()
-    for fd in feature_metas_obj_list:
-        feature_metas[fd.name] = json.loads(fd.to_json())
-    label_meta = json.loads(label_column.get_field_desc()[0].to_json())
-    feature_column_names = [fd.name for fd in feature_metas_obj_list]
+    field_descs = get_ordered_field_descs(fc_map_ir)
+    feature_column_names = [fd.name for fd in field_descs]
+    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    label_meta = label_column.get_field_desc()[0].to_dict()
 
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
