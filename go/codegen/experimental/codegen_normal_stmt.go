@@ -24,11 +24,14 @@ var normalStmtStepTmpl = `
 def step_entry_{{.StepIndex}}():
     import runtime
     import runtime.dbapi
+    from runtime.dbapi import table_writer
+
     conn = runtime.dbapi.connect("{{.DataSource}}")
     stmt = """{{.Stmt}}"""
     if conn.is_query(stmt):
         rs = conn.query(stmt)
-        lines = rs.dump_to_protobuf()
+        tw = table_writer.ProtobufWriter(rs)
+        lines = tw.dump_strings()
         for l in lines:
             print(l)
     else:
