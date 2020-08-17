@@ -11,12 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import json
-import os
-
 import runtime.xgboost as xgboost_extended
-from runtime import oss
-from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.model import oss
+from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.explain import explain as explain_xgb
 
 FLAGS = define_tf_flags()
@@ -35,7 +32,8 @@ def explain(datasource, select, data_table, result_table, label_column,
         label_column: name of the label column
         oss_model_path: path to the model to be explained
     """
-    # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
+    # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
+    # in xgboost/train.py
     oss.load_file(oss_model_path, "my_model")
 
     (estimator, model_params, train_params, feature_field_meta,

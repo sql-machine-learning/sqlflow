@@ -47,7 +47,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 "{{.}}",
 {{end}}]
 
-transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
+feature_column_list = [{{.FeatureColumnCode}}]
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_list)
 
 pred(datasource='''{{.DataSource}}''',
      select='''{{.PredSelect}}''',
@@ -56,10 +57,6 @@ pred(datasource='''{{.DataSource}}''',
      train_label_meta=train_label_meta,
      pred_label_meta=pred_label_meta,
      result_table='''{{.ResultTable}}''',
-     hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
-     hive_location='''{{.HiveLocation}}''',
-     hdfs_user='''{{.HDFSUser}}''',
-     hdfs_pass='''{{.HDFSPass}}''',
      is_pai="{{.IsPAI}}" == "true",
      pai_table="{{.PAITable}}",
      transform_fn=transform_fn,

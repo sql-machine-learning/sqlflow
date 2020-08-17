@@ -12,11 +12,10 @@
 # limitations under the License
 
 import copy
-import json
 
 import runtime.xgboost as xgboost_extended
-from runtime import oss
-from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.model import oss
+from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.predict import pred
 
 FLAGS = define_tf_flags()
@@ -25,8 +24,8 @@ FLAGS = define_tf_flags()
 def predict(datasource, select, data_table, result_table, label_column,
             oss_model_path):
     """PAI XGBoost prediction wrapper
-    This function do some preparation for the local prediction, say, download the
-    model from OSS, extract metadata and so on.
+    This function do some preparation for the local prediction, say,
+    download the model from OSS, extract metadata and so on.
 
     Args:
         datasource: the datasource from which to get data
@@ -36,7 +35,8 @@ def predict(datasource, select, data_table, result_table, label_column,
         label_column: prediction label column
         oss_model_path: the model path on OSS
     """
-    # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
+    # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
+    # in xgboost/train.py
     oss.load_file(oss_model_path, "my_model")
     (estimator, model_params, train_params, feature_metas,
      feature_column_names, label_meta,

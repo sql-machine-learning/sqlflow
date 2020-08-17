@@ -98,6 +98,7 @@ func StartModelZooServer(port int, dbConnStr string) {
 
 	pb.RegisterModelZooServerServer(grpcServer, &modelZooServer{DB: mysqlConn})
 
+	logger.Infof("SQLFlow Model Zoo started at: %d", port)
 	grpcServer.Serve(lis)
 }
 
@@ -394,7 +395,7 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		return nil, fmt.Errorf("model repo image should be format of [domain.com/group/]image[:tag]")
 	}
 	// FIXME(typhoonzero): only hive need to pass session
-	sqlf, err := sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
+	sqlf, err := sqlfs.Create(s.DB, modelTableName, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create sqlfs file %s: %v", modelTableName, err)
 	}
@@ -481,7 +482,7 @@ func (s *modelZooServer) ReleaseModelFromLocal(stream pb.ModelZooServer_ReleaseM
 		if sqlf == nil {
 			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
 			// FIXME(typhoonzero): only hive need to pass session
-			sqlf, err = sqlfs.Create(s.DB.DB, s.DB.DriverName, modelTableName, nil)
+			sqlf, err = sqlfs.Create(s.DB, modelTableName, nil)
 			if err != nil {
 				return fmt.Errorf("cannot create sqlfs file %s: %v", modelTableName, err)
 			}

@@ -13,8 +13,10 @@
 """This module saves or loads the SQLFlow model.
 """
 import os
+import tempfile
 from enum import Enum
 
+from runtime.model import oss
 from runtime.model.db import read_with_generator, write_with_generator
 from runtime.model.tar import unzip_dir, zip_dir
 
@@ -24,10 +26,10 @@ except ModuleNotFoundError:
     import pickle
 
 # archive the current work director into a tarball
-tarball = "model.tar.gz"
+TARBALL_NAME = "model.tar.gz"
 
 # serialize the Model object into file
-model_obj_file = "sqlflow_model.pkl"
+MODEL_OBJ_FILE_NAME = "sqlflow_model.pkl"
 
 
 class EstimatorType(Enum):
@@ -36,11 +38,12 @@ class EstimatorType(Enum):
     # To stay compitable with old models, we start at 0
     TENSORFLOW = 0
     XGBOOST = 1
-    # PAIML is the model type that trained by PAI machine learning algorithm toolkit
+    # PAIML is the model type that trained by PAI machine learning algorithm
+    # toolkit
     PAIML = 2
 
 
-class Model:
+class Model(object):
     """Model module represents a SQLFlow trained model, which includes
     three parts:
     1. the estimator type indicates which SQLFlow estimator comes from.
@@ -51,8 +54,7 @@ class Model:
 
     Usage:
 
-        meta = runtime.collect_model_metadata(train_params={...},
-                                              model_params={...})
+        meta = runtime.model.collect_metadata(attributes={...}, ...)
         m = runtime.model.Model(ModelType.XGBOOST, meta)
         m.save(datasource="mysql://", "sqlflow_models.my_model")
 
@@ -67,67 +69,157 @@ class Model:
         """
         self._typ = typ
         self._meta = meta
-        self._dump_file = "sqlflow_model.pkl"
 
-    def save(self, datasource, table, cwd="./"):
-        """This save function would archive all the files on work director
-        into a tarball, and saved it into DBMS with the specified table name.
+    def _zip(self, local_dir, tarball):
+        """
+        Zip the model information and all files in local_dir into a tarball.
 
         Args:
-            datasource: string
-                the connection string to DBMS.
-            table: string
-                the saved table name.
+            local_dir (str): the local directory.
+            tarball (str): the tarball path.
+
+        Returns:
+            None.
         """
+        model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
         _dump_pkl(self, model_obj_file)
-        zip_dir(cwd, tarball)
+        zip_dir(local_dir, tarball, arcname="./")
+        os.remove(model_obj_file)
 
-        def _bytes_reader(filename, buf_size=8 * 32):
-            def _gen():
-                with open(filename, "rb") as f:
-                    while True:
-                        data = f.read(buf_size)
-                        if data:
-                            yield data
-                        else:
-                            break
+    @staticmethod
+    def _unzip(local_dir, tarball):
+        """
+        Unzip the tarball into local_dir and deserialize the model
+        information.
 
-            return _gen
+        Args:
+            local_dir (str): the local directory.
+            tarball (str): the tarball path.
 
-        write_with_generator(datasource, table, _bytes_reader(tarball))
+        Returns:
+            Model: a Model object represent the model type and meta
+            information.
+        """
+        model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
+        unzip_dir(tarball, local_dir)
+        model = _load_pkl(model_obj_file)
+        os.remove(model_obj_file)
+        return model
 
+    def save_to_db(self, datasource, table, local_dir=None):
+        """
+        This save function would archive all the files on local_dir
+        into a tarball, and save it into DBMS with the specified table
+        name.
 
-def load(datasource, table, cwd="./"):
-    """Load the saved model from DBMS and unzip it on the work director.
+        Args:
+            datasource (str): the connection string to DBMS.
+            table (str): the saved table name.
+            local_dir (str): the local directory to save.
 
-    Args:
-        datasource: string
-            The connection string to DBMS
+        Returns:
+            None.
+        """
+        if local_dir is None:
+            local_dir = os.getcwd()
 
-        table: string
-            The table name which saved in DBMS
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tarball = os.path.join(tmp_dir, TARBALL_NAME)
+            self._zip(local_dir, tarball)
 
-    Returns:
-        Model: a Model object represent the model type and meta information.
-    """
-    gen = read_with_generator(datasource, table)
-    with open(tarball, "wb") as f:
-        for data in gen():
-            f.write(bytes(data))
+            def _bytes_reader(filename, buf_size=8 * 32):
+                def _gen():
+                    with open(filename, "rb") as f:
+                        while True:
+                            data = f.read(buf_size)
+                            if data:
+                                yield data
+                            else:
+                                break
 
-    unzip_dir(tarball, cwd)
-    return _load_pkl(os.path.join(cwd, model_obj_file))
+                return _gen
+
+            write_with_generator(datasource, table, _bytes_reader(tarball))
+
+    @staticmethod
+    def load_from_db(datasource, table, local_dir=None):
+        """
+        Load the saved model from DBMS and unzip it on local_dir.
+
+        Args:
+            datasource (str): the connection string to DBMS
+            table (str): the table name which saved in DBMS
+            local_dir (str): the local directory to load.
+
+        Returns:
+            Model: a Model object represent the model type and meta
+            information.
+        """
+        if local_dir is None:
+            local_dir = os.getcwd()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tarball = os.path.join(tmp_dir, TARBALL_NAME)
+            gen = read_with_generator(datasource, table)
+            with open(tarball, "wb") as f:
+                for data in gen():
+                    f.write(bytes(data))
+
+            return Model._unzip(local_dir, tarball)
+
+    def save_to_oss(self, oss_model_dir, local_dir=None):
+        """
+        This save function would archive all the files on local_dir
+        into a tarball, and save it into OSS model directory.
+
+        Args:
+            oss_model_dir (str): the OSS model directory to save.
+                It is in the format of oss://bucket/path/to/dir/.
+            local_dir (str): the local directory to save.
+
+        Returns:
+            None.
+        """
+        if local_dir is None:
+            local_dir = os.getcwd()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tarball = os.path.join(tmp_dir, TARBALL_NAME)
+            self._zip(local_dir, tarball)
+            oss.save_file(oss_model_dir, tarball, TARBALL_NAME)
+
+    @staticmethod
+    def load_from_oss(oss_model_dir, local_dir=None):
+        """
+        Load the saved model from OSS and unzip it on local_dir.
+
+        Args:
+            oss_model_dir (str): the OSS model directory to load.
+                It is in the format of oss://bucket/path/to/dir/.
+            local_dir (str): the local directory to load.
+
+        Returns:
+            Model: a Model object represent the model type and meta
+            information.
+        """
+        if local_dir is None:
+            local_dir = os.getcwd()
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tarball = os.path.join(tmp_dir, TARBALL_NAME)
+            oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
+            return Model._unzip(local_dir, tarball)
 
 
 def _dump_pkl(obj, to_file):
     """Dump the Python object to file with Pickle.
     """
     with open(to_file, "wb") as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(obj, f, protocol=2)
 
 
-def _load_pkl(filename):
+def _load_pkl(from_file):
     """Load the Python object from a file with Pickle.
     """
-    with open(filename, "rb") as f:
+    with open(from_file, "rb") as f:
         return pickle.load(f)

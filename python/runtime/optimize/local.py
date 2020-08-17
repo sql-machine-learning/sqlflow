@@ -19,14 +19,8 @@ import pyomo.environ as pyomo_env
 import runtime.db as db
 import runtime.verifier as verifier
 import six
-from pyomo.environ import (Binary, Integers, NegativeIntegers, NegativeReals,
-                           NonNegativeIntegers, NonNegativeReals,
-                           NonPositiveIntegers, NonPositiveReals,
-                           PositiveIntegers, PositiveReals, Reals, maximize,
-                           minimize)
 from runtime.optimize.model_generation import (
-    generate_objective_and_constraint_expression,
-    generate_unique_result_value_name)
+    generate_objective_and_constraint_expr, generate_unique_result_value_name)
 
 # FIXME(sneaxiy): do not know why Pyomo requires that the data frame must be
 # a global variable
@@ -47,25 +41,35 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
         result_value_name (str): the result value name to be optimized.
         objective (list[str]): the objective string token list.
         direction (str): "maximize" or "minimize".
-        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        constraints (dict): the constraint expression containing the token list
+            and GROUP BY column name.
 
     Returns:
         A Pyomo ConcreteModel.
     """
     direction = direction.lower()
-    if direction not in ['maximize', 'minimize']:
+    if direction == 'maximize':
+        direction = pyomo_env.maximize
+    elif direction == 'minimize':
+        direction = pyomo_env.minimize
+    else:
         raise ValueError("direction must be one of 'maximize' or 'minimize'")
+
+    if not hasattr(pyomo_env, variable_type):
+        raise ValueError("cannot find variable type %s" % variable_type)
+
+    variable_type = getattr(pyomo_env, variable_type)
 
     model = pyomo_env.ConcreteModel()
     var_num = len(data_frame)
-    model.x = pyomo_env.Var(list(range(var_num)), within=eval(variable_type))
+    model.x = pyomo_env.Var(list(range(var_num)), within=variable_type)
 
     columns = data_frame.columns
 
     variable_str = "model.x"
     data_str = "DATA_FRAME"
 
-    obj_expr, c_exprs = generate_objective_and_constraint_expression(
+    obj_expr, c_exprs = generate_objective_and_constraint_expr(
         columns=columns,
         objective=objective,
         constraints=constraints,
@@ -79,21 +83,23 @@ def generate_model_with_data_frame(data_frame, variables, variable_type,
         global DATA_FRAME
         DATA_FRAME = data_frame
         obj_func = eval("lambda model: %s" % obj_expr)
-        model.objective = pyomo_env.Objective(rule=obj_func,
-                                              sense=eval(direction))
+        model.objective = pyomo_env.Objective(rule=obj_func, sense=direction)
 
         for i, (expr, for_range, iter_vars) in enumerate(c_exprs):
             attr_name = "constraint_%d" % i
 
             if for_range:
-                assert iter_vars, "for_range and iter_vars must be both non-empty"
+                assert iter_vars, "for_range and iter_vars must be " \
+                                  "both non-empty"
                 setattr(model, attr_name, pyomo_env.ConstraintList())
                 constraint_list = getattr(model, attr_name)
-                add_constraint_str = "lambda model, constraint_list: [constraint_list.add(%s) for %s in %s]" % (
-                    expr, ",".join(iter_vars), for_range)
+                template = "lambda model, constraint_list: [constraint_list.add(%s) for %s in %s]"  # noqa: E501
+                add_constraint_str = template % (expr, ",".join(iter_vars),
+                                                 for_range)
                 eval(add_constraint_str)(model, constraint_list)
             else:
-                assert not iter_vars, "for_range and iter_vars must be both empty"
+                assert not iter_vars, \
+                    "for_range and iter_vars must be both empty"
                 func = eval('lambda model: %s' % expr)
                 constraint = pyomo_env.Constraint(rule=func)
                 setattr(model, attr_name, constraint)
@@ -112,7 +118,9 @@ def solve_model(model, solver):
         solver (str): the solver used to solve the model.
 
     Returns:
-        A numpy array which is the solved result of the model.
+        A tuple of (np.ndarray, float), where the numpy array is
+        the solved x of the model and the float value is the solved
+        objective function value of the model.
 
     Raises:
         ValueError if the solving process fails.
@@ -137,8 +145,8 @@ def solve_model(model, solver):
         if pyomo_dtype is None:
             pyomo_dtype = type(model.x[idx])
 
-        assert pyomo_dtype == type(
-            model.x[idx]), "all variables must be of the same data type"
+        assert isinstance(model.x[idx], pyomo_dtype), \
+            "all variables must be of the same data type"
 
     if has_error:
         msg = 'Solve model error. Termination condition: {}.'\
@@ -146,7 +154,9 @@ def solve_model(model, solver):
         raise ValueError(msg)
 
     np_dtype = np.int64 if model.x[0].is_integer() else np.float64
-    return np.array(result_values, dtype=np_dtype)
+    x = np.array(result_values, dtype=np_dtype)
+    y = model.objective()
+    return x, y
 
 
 def load_db_data_to_data_frame(datasource, select):
@@ -187,7 +197,9 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     Save the solved result of the Pyomo model into the database.
 
     Args:
-        solved_result (numpy.ndarray): a numpy array which indicates the solved result.
+        solved_result (tuple(numpy.ndarray, float)): a numpy array
+            which indicates the solved x, and a float value which
+            indicates the objective function value.
         data_frame (panda.DataFrame): the input table data.
         variables (list[str]): the variable names to be optimized.
         result_value_name (str): the result value name to be optimized.
@@ -216,11 +228,10 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
         variables=variables)
 
     column_names.append(result_value_name)
-    data_frame[result_value_name] = solved_result
+    data_frame[result_value_name] = solved_result[0]
 
     conn = db.connect_with_data_source(datasource)
-    with db.buffered_db_writer(conn.driver, conn, result_table,
-                               column_names) as w:
+    with db.buffered_db_writer(conn, result_table, column_names) as w:
         for i in six.moves.range(len(data_frame)):
             rows = list(data_frame.loc[i])
             w.write(rows)
@@ -228,6 +239,7 @@ def save_solved_result_in_db(solved_result, data_frame, variables,
     print('Solved result is:')
     print(data_frame)
     print('Saved in {}.'.format(result_table))
+    print('Objective value is {}'.format(solved_result[1]))
 
 
 def run_optimize_locally(datasource, select, variables, variable_type,
@@ -244,7 +256,8 @@ def run_optimize_locally(datasource, select, variables, variable_type,
         result_value_name (str): the result value name to be optimized.
         objective (list[str]): the objective string token list.
         direction (str): "maximize" or "minimize".
-        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        constraints (dict): the constraint expression containing the token list
+            and GROUP BY column name.
         solver (str): the solver used to solve the model.
         result_table (str): the table name to save the solved results.
 
@@ -261,8 +274,8 @@ def run_optimize_locally(datasource, select, variables, variable_type,
                                            objective=objective,
                                            direction=direction,
                                            constraints=constraints)
-    solved_result = solve_model(model, solver)
-    save_solved_result_in_db(solved_result=solved_result,
+    solved_x, solved_y = solve_model(model, solver)
+    save_solved_result_in_db(solved_result=[solved_x, solved_y],
                              data_frame=data_frame,
                              variables=variables,
                              result_value_name=result_value_name,

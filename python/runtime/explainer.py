@@ -16,9 +16,10 @@ import sys
 import matplotlib
 # The default backend
 import matplotlib.pyplot as plt
-from runtime.oss import copyfileobj
+from runtime.model.oss import copyfileobj
 
-# TODO(shendiaomo): extract common code from tensorflow/explain.py and xgboost/explain.py
+# TODO(shendiaomo): extract common code from tensorflow/explain.py
+# and xgboost/explain.py
 # TODO(shendiaomo): add a unit test for this file later
 
 

@@ -52,7 +52,7 @@ def get_train_kmeans_pai_cmd(datasource, model_name, data_table, model_attrs,
     ]
 
     conn = db.connect_with_data_source(datasource)
-    db.execute(conn, "DROP TABLE IF EXISTS %s" % idx_table_name)
+    conn.execute("DROP TABLE IF EXISTS %s" % idx_table_name)
 
     return (
         """pai -name kmeans -project algo_public """

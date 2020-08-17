@@ -11,11 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import json
-
 import runtime.xgboost as xgboost_extended
-from runtime import oss
-from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
+from runtime.model import oss
+from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.evaluate import evaluate as _evaluate
 
 FLAGS = define_tf_flags()
@@ -24,8 +22,8 @@ FLAGS = define_tf_flags()
 def evaluate(datasource, select, data_table, result_table, oss_model_path,
              metrics):
     """PAI XGBoost evaluate wrapper
-    This function do some preparation for the local evaluation, say, download the
-    model from OSS, extract metadata and so on.
+    This function do some preparation for the local evaluation, say,
+    download the model from OSS, extract metadata and so on.
 
     Args:
         datasource: the datasource from which to get data
@@ -36,7 +34,8 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
         metrics: metrics to evaluate
     """
 
-    # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded in xgboost/train.py
+    # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
+    # in xgboost/train.py
     oss.load_file(oss_model_path, "my_model")
     (estimator, model_params, train_params, feature_metas,
      feature_column_names, label_meta,

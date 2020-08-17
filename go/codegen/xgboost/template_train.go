@@ -50,7 +50,7 @@ if "{{.IsPAI}}" == "true":
     set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
-    from runtime import oss
+    from runtime.model import oss
     oss.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')
@@ -64,7 +64,8 @@ feature_column_names = [{{range .FeatureColumnNames}}
 
 # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
 # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
-transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, {{.FeatureColumnCode}})
+feature_column_list = [{{.FeatureColumnCode}}]
+transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_list)
 
 train(datasource='''{{.DataSource}}''',
       select='''{{.TrainSelect}}''',
@@ -98,7 +99,7 @@ FLAGS = define_tf_flags()
 set_oss_environs(FLAGS)
 
 if "{{.IsPAI}}" == "true" and "{{.LoadPreTrainedModel}}" == "true":
-	from runtime import oss
+	from runtime.model import oss
 	oss.load_file("{{.OSSModelDirToLoad}}", "my_model")
 
 model_params = json.loads('''{{.ModelParamsJSON}}''')

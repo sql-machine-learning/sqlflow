@@ -142,7 +142,8 @@ func TestStringInStringSQL(t *testing.T) {
 	yaml, e := cg.GenYAML(code)
 	a.NoError(e)
 	println(yaml)
-	expect := `validation.select=\"select * from iris.train where name like \\\"Versicolor\\\";\"`
+	expect := `validation.select=\\\"select * from iris.train where\
+            \ name like \\\\\\\"Versicolor\\\\\\\";\\\"`
 	a.True(strings.Contains(yaml, expect))
 }
 

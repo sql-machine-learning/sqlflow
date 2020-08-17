@@ -80,7 +80,8 @@ label_meta = {
 }
 
 if __name__ == "__main__":
-    # tf.python.training.basic_session_run_hooks.LoggingTensorHook = runtime.tensorflow.train.PrintTensorsHook
+    # tf.python.training.basic_session_run_hooks.LoggingTensorHook
+    # = runtime.tensorflow.train.PrintTensorsHook
     train(datasource=datasource,
           estimator_string="DNNClassifier",
           select=select,

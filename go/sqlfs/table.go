@@ -16,23 +16,25 @@ package sqlfs
 import (
 	"database/sql"
 	"fmt"
+
+	"sqlflow.org/sqlflow/go/database"
 )
 
 // createTable creates a table, if it doesn't exist.  If the table
 // name includes the database name, e.g., "db.tbl", it creates the
 // database if necessary.
-func createTable(db *sql.DB, dbms, table string) error {
+func createTable(db *database.DB, table string) error {
 	// HIVE and ODPS don't support AUTO_INCREMENT
 	// Hive and ODPS don't support BLOB, use BINARY instead
 	var stmt string
-	if dbms == "mysql" {
+	if db.DriverName == "mysql" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT, PRIMARY KEY (id))", table)
-	} else if dbms == "hive" {
+	} else if db.DriverName == "hive" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE", table)
-	} else if dbms == "maxcompute" {
+	} else if db.DriverName == "maxcompute" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING)", table)
 	} else {
-		return fmt.Errorf("createTable doesn't recognize dbms %s", dbms)
+		return fmt.Errorf("createTable doesn't recognize dbms %s", db.DriverName)
 	}
 	if _, e := db.Exec(stmt); e != nil {
 		return fmt.Errorf("exec:[%s] failed: %v", stmt, e)
@@ -41,7 +43,7 @@ func createTable(db *sql.DB, dbms, table string) error {
 	// NOTE: a double-check of hasTable is necessary. For example,
 	// MySQL doesn't allow '-' in table names; however, if there
 	// is, the db.Exec wouldn't return any error.
-	has, e := hasTable(db, table)
+	has, e := hasTable(db.DB, table)
 	if e != nil {
 		return fmt.Errorf("createTable cannot verify the creation: %v", e)
 	}

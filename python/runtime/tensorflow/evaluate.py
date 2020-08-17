@@ -11,25 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
-import types
 
-import runtime
-import tensorflow as tf
 from runtime.db import buffered_db_writer, connect_with_data_source
-from runtime.import_model import import_model
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
 from runtime.tensorflow.set_log_level import set_log_level
-
-try:
-    import sqlflow_models
-except:
-    pass
 
 
 def evaluate(datasource,
@@ -69,7 +60,8 @@ def evaluate(datasource,
         result_metrics = estimator_evaluate(estimator, eval_dataset,
                                             validation_metrics)
     else:
-        keras_model = init_model_with_feature_column(estimator, model_params)
+        keras_model = init_model_with_feature_column(estimator_cls,
+                                                     model_params)
         keras_model_pkg = sys.modules[estimator_cls.__module__]
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)
@@ -100,11 +92,12 @@ def estimator_evaluate(estimator, eval_dataset, validation_metrics):
         if val:
             result_metrics[m] = val
         else:
-            # NOTE: estimator automatically append metrics for the current evaluation job,
-            # if user specified metrics not appear in estimator's result dict, fill None.
+            # NOTE: estimator automatically append metrics for the current
+            # evaluation job, if user specified metrics not appear in
+            # estimator's result dict, fill None.
             print(
-                "specified metric %s not calculated by estimator, fill empty value."
-                % m)
+                "specified metric %s not calculated by estimator, fill empty "
+                "value." % m)
             result_metrics[m] = None
 
     return result_metrics
@@ -127,27 +120,31 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
         else:
             # default
             keras_metrics = metrics.get_keras_metrics(["Accuracy"])
+    has_custom_evaluate_func = hasattr(keras_model, 'sqlflow_evaluate_loop')
 
-    # compile the model with default arguments only for evaluation (run forward only).
-    keras_model.compile(loss=keras_model_pkg.loss, metrics=keras_metrics)
+    if not has_custom_evaluate_func:
+        # compile the model with default arguments only for evaluation
+        # (run forward only).
+        keras_model.compile(loss=keras_model_pkg.loss, metrics=keras_metrics)
 
     eval_dataset = eval_dataset_fn()
 
     def get_features(sample, label):
         return sample
 
-    def get_label(sample, label):
-        return label
-
     eval_dataset_x = eval_dataset.map(get_features)
-    eval_dataset_y = eval_dataset.map(get_label)
 
-    one_batch = next(iter(eval_dataset_x))
-    # NOTE: must run predict one batch to initialize parameters
-    # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models
-    keras_model.predict_on_batch(one_batch)
-    keras_model.load_weights(save)
-    result = keras_model.evaluate(eval_dataset)
+    if has_custom_evaluate_func:
+        result = keras_model.sqlflow_evaluate_loop(eval_dataset,
+                                                   validation_metrics)
+    else:
+        one_batch = next(iter(eval_dataset_x))
+        # NOTE: must run predict one batch to initialize parameters
+        # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models # noqa: E501
+        keras_model.predict_on_batch(one_batch)
+        keras_model.load_weights(save)
+        result = keras_model.evaluate(eval_dataset)
+
     assert (len(result) == len(validation_metrics) + 1)
     result_metrics = dict()
     for idx, m in enumerate(["loss"] + validation_metrics):
@@ -161,9 +158,7 @@ def write_result_metrics(result_metrics, metric_name_list, result_table,
     # NOTE: assume that the result table is already created with columns:
     # loss | metric_names ...
     column_names = metric_name_list
-    with buffered_db_writer(driver, conn, result_table, column_names, 100,
-                            hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with buffered_db_writer(conn, result_table, column_names, 100) as w:
         row = []
         for key in metric_name_list:
             row.append(result_metrics[key])

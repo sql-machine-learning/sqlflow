@@ -20,9 +20,10 @@ import subprocess
 import tempfile
 from os import path
 
-from runtime import db, oss
+from runtime import db
+from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.model import EstimatorType
+from runtime.model import EstimatorType, oss
 from runtime.pai import cluster_conf
 from runtime.pai.kmeans import get_train_kmeans_pai_cmd
 from runtime.pai.random_forest import get_train_random_forest_pai_cmd
@@ -47,6 +48,7 @@ tensorflow-datasets==3.0.0
 XGB_REQUIREMENT = TF_REQUIREMENT + """
 xgboost==0.82
 sklearn2pmml==0.56.0
+sklearn_pandas==1.6.0
 """
 
 
@@ -93,7 +95,7 @@ def create_tmp_table_from_select(select, datasource):
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
     # (NOTE: lhw) maxcompute conn doesn't support close
     # we should unify db interface
-    if not db.execute(conn, create_sql):
+    if not conn.execute(create_sql):
         raise SQLFlowDiagnostic("Can't crate tmp table for %s" % select)
     return "%s.%s" % (project, tmp_tb_name)
 
@@ -105,8 +107,8 @@ def drop_tables(tables, datasource):
         for table in tables:
             if table != "":
                 drop_sql = "DROP TABLE IF EXISTS %s" % table
-                db.execute(conn, drop_sql)
-    except:
+                conn.execute(drop_sql)
+    except:  # noqa: E722
         # odps will clear table itself, so even fail here, we do
         # not need to raise error
         print("Encounter error on drop tmp table")
@@ -130,6 +132,10 @@ def get_oss_model_url(model_full_path):
     return "oss://%s/%s" % (oss.SQLFLOW_MODELS_BUCKET, model_full_path)
 
 
+def parse_maxcompute_dsn(datasource):
+    return MaxComputeConnection.get_uri_parts(datasource)
+
+
 def drop_pai_model(datasource, model_name):
     """Drop PAI model
 
@@ -137,8 +143,7 @@ def drop_pai_model(datasource, model_name):
         datasource: current datasource
         model_name: name of the model to drop
     """
-    dsn = get_datasource_dsn(datasource)
-    user, passwd, address, database = db.parseMaxComputeDSN(dsn)
+    user, passwd, address, database = parse_maxcompute_dsn(datasource)
     cmd = "drop offlinemodel if exists %s" % model_name
     subprocess.run([
         "odpscmd", "-u", user, "-p", passwd, "--project", database,
@@ -215,8 +220,7 @@ def submit_pai_task(pai_cmd, datasource):
         pai_cmd: The command to submit
         datasource: The datasource this cmd will manipulate
     """
-    dsn = get_datasource_dsn(datasource)
-    user, passwd, address, project = db.parseMaxComputeDSN(dsn)
+    user, passwd, address, project = parse_maxcompute_dsn(datasource)
     cmd = [
         "odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
         "--project", project, "--endpoint", address, "-e", pai_cmd
@@ -230,8 +234,7 @@ def submit_pai_task(pai_cmd, datasource):
 def get_oss_model_save_path(datasource, model_name):
     if not model_name:
         return None
-    dsn = get_datasource_dsn(datasource)
-    user, _, _, project = db.parseMaxComputeDSN(dsn)
+    user, _, _, project = parse_maxcompute_dsn(datasource)
     user = user or "unknown"
     return "/".join([project, user, model_name])
 
@@ -246,38 +249,13 @@ def get_project(datasource):
     Args:
         datasource: The odps url to extract project
     """
-    dsn = get_datasource_dsn(datasource)
-    _, _, _, project = db.parseMaxComputeDSN(dsn)
+    _, _, _, project = parse_maxcompute_dsn(datasource)
     return project
-
-
-def delete_oss_dir_recursive(bucket, directory):
-    """Recursively delete a directory on the OSS
-
-    Args:
-        bucket: bucket on OSS
-        directory: the directory to delete
-    """
-    if not directory.endswith("/"):
-        raise SQLFlowDiagnostic("dir to delete must end with /")
-
-    loc = bucket.list_objects(prefix=directory, delimiter="/")
-    object_path_list = []
-    for obj in loc.object_list:
-        object_path_list.append(obj.key)
-
-    # delete sub dir first
-    if len(loc.prefix_list) > 0:
-        for sub_prefix in loc.prefix_list:
-            delete_oss_dir_recursive(bucket, sub_prefix)
-    # empty list param will raise error
-    if len(object_path_list) > 0:
-        bucket.batch_delete_objects(object_path_list)
 
 
 def clean_oss_model_path(oss_path):
     bucket = oss.get_models_bucket()
-    delete_oss_dir_recursive(bucket, oss_path)
+    oss.delete_oss_dir_recursive(bucket, oss_path)
 
 
 def max_compute_table_url(table):
@@ -311,7 +289,8 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     job_name = "_".join(["sqlflow", model_name]).replace(".", "_")
     cf_quote = json.dumps(cluster_config).replace("\"", "\\\"")
 
-    # submit table should format as: odps://<project>/tables/<table >,odps://<project>/tables/<table > ...
+    # submit table should format as: odps://<project>/tables/<table >,
+    # odps://<project>/tables/<table > ...
     submit_tables = max_compute_table_url(train_table)
     if train_table != val_table and val_table:
         val_table = max_compute_table_url(val_table)
@@ -321,7 +300,8 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
         table = max_compute_table_url(res_table)
         output_tables = "-Doutputs=%s" % table
 
-    # NOTE(typhoonzero): use - DhyperParameters to define flags passing OSS credentials.
+    # NOTE(typhoonzero): use - DhyperParameters to define flags passing
+    # OSS credentials.
     # TODO(typhoonzero): need to find a more secure way to pass credentials.
     cmd = ("pai -name tensorflow1150 -project algo_public_dev "
            "-DmaxHungTimeBeforeGCInSeconds=0 -DjobName=%s -Dtags=dnn "
@@ -333,8 +313,8 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
     oss_checkpoint_configs = os.getenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
     if not oss_checkpoint_configs:
         raise SQLFlowDiagnostic(
-            "need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when submitting to PAI"
-        )
+            "need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when "
+            "submitting to PAI")
     ckpt_conf = json.loads(oss_checkpoint_configs)
     model_url = get_oss_model_url(oss_model_path)
     role_name = get_project_role_name(project)
@@ -446,9 +426,10 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
 
     Args:
         datasource: string
-            Like: odps://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
+            Like: odps://access_id:access_key@service.com/api?
+                         curr_project=test_ci&scheme=http
         estimator_string: string
-            Tensorflow estimator name, Keras class name, or XGBoost
+            TensorFlow estimator name, Keras class name, or XGBoost
         select: string
             The SQL statement for selecting data for train
         validation_select: string
@@ -517,8 +498,9 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
         If model is TensorFlow model, return type and estimator name
         If model is XGBoost, or other PAI model, just return model type
     """
-    # FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
-    # should use a general method to fetch the model and see the model type.
+    # FIXME(typhoonzero): if the model not exist on OSS, assume it's a random
+    # forest model should use a general method to fetch the model and see the
+    # model type.
     bucket = oss.get_models_bucket()
     tf = bucket.object_exists(model_name + "/tensorflow_model_desc")
     if tf:
@@ -593,17 +575,17 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         label_column: name of the label column, if not exist in select
             result, we will add a int column in the result table
         train_label_column: name of the label column when training
-        model_type: type of model defined in runtime.oss
+        model_type: type of model defined in runtime.model.oss
     """
     conn = db.connect_with_data_source(datasource)
-    db.execute(conn, "DROP TABLE IF EXISTS %s" % result_table)
+    conn.execute("DROP TABLE IF EXISTS %s" % result_table)
     # PAI ml will create result table itself
     if model_type == EstimatorType.PAIML:
         return
 
     create_table_sql = "CREATE TABLE %s AS SELECT * FROM %s LIMIT 0" % (
         result_table, select)
-    db.execute(conn, create_table_sql)
+    conn.execute(create_table_sql)
 
     # if label is not in data table, add a int column for it
     schema = db.get_table_schema(conn, result_table)
@@ -614,11 +596,11 @@ def create_predict_result_table(datasource, select, result_table, label_column,
             break
     col_names = [col[0] for col in schema]
     if label_column not in col_names:
-        db.execute(
+        conn.execute(
             conn, "ALTER TABLE %s ADD %s %s" %
             (result_table, label_column, col_type))
     if train_label_column != label_column and train_label_column in col_names:
-        db.execute(
+        conn.execute(
             conn, "ALTER TABLE %s DROP COLUMN %s" %
             (result_table, train_label_column))
 
@@ -651,13 +633,13 @@ def submit_pai_predict(datasource, select, result_table, label_column,
     params = dict(locals())
 
     cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
-    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-    # "SELECT fields,... FROM table"
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
+    # is like: "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a submitting
-    # argument of format "odps://project/tables/table_name"
+    # format resultTable name to "db.table" to let the codegen form a
+    # submitting argument of format "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
@@ -717,7 +699,7 @@ def create_explain_result_table(datasource, data_table, result_table,
     """
     conn = db.connect_with_data_source(datasource)
     drop_stmt = "DROP TABLE IF EXISTS %s" % result_table
-    db.execute(conn, drop_stmt)
+    conn.execute(drop_stmt)
 
     create_stmt = ""
     if model_type == EstimatorType.PAIML:
@@ -752,7 +734,7 @@ def create_explain_result_table(datasource, data_table, result_table,
             "not supported modelType %d for creating Explain result table" %
             model_type)
 
-    if not db.execute(conn, create_stmt):
+    if not conn.execute(create_stmt):
         raise SQLFlowDiagnostic("Can't create explain result table")
 
 
@@ -770,23 +752,25 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
     Returns:
         a PAI cmd to explain the data using given model
     """
-    # NOTE(typhoonzero): for PAI random forests predicting, we can not load the TrainStmt
-    # since the model saving is fully done by PAI. We directly use the columns in SELECT
-    # statement for prediction, error will be reported by PAI job if the columns not match.
+    # NOTE(typhoonzero): for PAI random forests predicting, we can not load
+    # the TrainStmt since the model saving is fully done by PAI. We directly
+    # use the columns in SELECT statement for prediction, error will be
+    # reported by PAI job if the columns not match.
     if not label_column:
         raise SQLFlowDiagnostic("must specify WITH label_column when using "
                                 "pai random forest to explain models")
 
     conn = db.connect_with_data_source(datasource)
     # drop result table if exists
-    db.execute(conn, "DROP TABLE IF EXISTS %s;" % result_table)
+    conn.execute("DROP TABLE IF EXISTS %s;" % result_table)
     schema = db.get_table_schema(conn, data_table)
     fields = [f[0] for f in schema if f[0] != label_column]
-    return (
-        '''pai -name feature_importance -project algo_public '''
-        '''-DmodelName="%s" -DinputTableName="%s"  '''
-        '''-DoutputTableName="%s" -DlabelColName="%s" -DfeatureColNames="%s" '''
-    ) % (model_name, data_table, result_table, label_column, ",".join(fields))
+    return ('''pai -name feature_importance -project algo_public '''
+            '''-DmodelName="%s" -DinputTableName="%s"  '''
+            '''-DoutputTableName="%s" -DlabelColName="%s" '''
+            '''-DfeatureColNames="%s" ''') % (model_name, data_table,
+                                              result_table, label_column,
+                                              ",".join(fields))
 
 
 def setup_explain_entry(params, model_type):
@@ -852,13 +836,13 @@ def submit_pai_explain(datasource, select, result_table, model_name,
     params = dict(locals())
 
     cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
-    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-    # "SELECT fields,... FROM table"
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
+    # is like: "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a submitting
-    # argument of format "odps://project/tables/table_name"
+    # format resultTable name to "db.table" to let the codegen form a
+    # submitting argument of format "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
@@ -933,7 +917,7 @@ def create_evaluate_result_table(datasource, result_table, metrics):
     sql = "CREATE TABLE IF NOT EXISTS %s (%s);" % (result_table,
                                                    ",".join(fields))
     conn = db.connect_with_data_source(datasource)
-    db.execute(conn, sql)
+    conn.execute(sql)
 
 
 def submit_pai_evaluate(datasource, model_name, select, result_table,

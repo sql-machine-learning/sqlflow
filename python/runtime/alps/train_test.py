@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import subprocess
 import unittest
 from unittest import TestCase
@@ -20,8 +19,11 @@ import runtime.testing as testing
 
 
 class TestALPSTrain(TestCase):
-    '''NOTE: we must test tensorflow training and predicting in separated processes, or
-    TensorFlow will raise error "Graph is finalized.'''
+    '''
+    NOTE: we must test tensorflow training and predicting
+    in separated processes, or TensorFlow will raise error
+    "Graph is finalized.
+    '''
     @unittest.skipUnless(testing.get_submitter() == "alps",
                          "skip non alps tests")
     def test_train(self):
@@ -33,7 +35,7 @@ class TestALPSTrain(TestCase):
                                  env={"PYTHONPATH": "python"},
                                  check=True)
             self.assertEqual(ret.returncode, 0)
-        except:
+        except:  # noqa: E722
             self.fail("%s" % ret.stderr)
 
 

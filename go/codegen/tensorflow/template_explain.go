@@ -96,9 +96,5 @@ explain.explain(datasource="{{.DataSource}}",
                 model_params=model_params,
                 save="{{.Save}}",
                 result_table="{{.ResultTable}}",
-                hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
-                hive_location="{{.HiveLocation}}",
-                hdfs_user="{{.HDFSUser}}",
-                hdfs_pass="{{.HDFSPass}}",
                 **summaryAttrs)
 `

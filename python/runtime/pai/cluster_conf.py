@@ -64,6 +64,6 @@ def get_cluster_config(attrs):
     else:
         raise SQLFlowDiagnostic("train.num_evaluator should only be 1 or 0")
     conf = {"ps": ps, "worker": worker}
-    if evaluator != None:
+    if evaluator is not None:
         conf["evaluator"] = evaluator
     return conf

@@ -10,12 +10,12 @@ In this design, we'll only have `codegen_couler.go` to generate programs to run 
 
 For example, to run the training steps, we intend to use couler API call: `couler.{xgboost,tensorflow,elasticdl}.train(model_def, data)` to generate a training step. The `train` function must take lots of parameters to run the training job as the SQLFlow statement describes, see [here](https://github.com/sql-machine-learning/sqlflow/blob/develop/python/runtime/tensorflow/train.py#L52) as an example.
 
-To implement the single `codegen_couler.go` to support generate code that can run either Tensorflow/XGBoost/ElasticDL/ALPS programs, we have below two choices:
+To implement the single `codegen_couler.go` to support generate code that can run either TensorFlow/XGBoost/ElasticDL/ALPS programs, we have below two choices:
 
 1. `couler.{tensorflow/xgboost/elasticdl}.train` have different arguments defined, so we can do:
 
     ```go
-        if ir.ModelType == "Tensorflow":
+        if ir.ModelType == "TensorFlow":
             tfFiller := TFFiller{
                 Estimator: generateTFEstimatorCode(ir),
                 FeatureColumns: generateFeatureColumnsCode(ir),
@@ -55,6 +55,6 @@ To implement the single `codegen_couler.go` to support generate code that can ru
 
 We intend to use the solution **No.2** described above for these reasons.
 
-1. If a data scientist needs to add a new type of engine (SVM, SKLearn, PyTorch, etc.) other than Tensorflow/XGBoost/ElasticDL, he/she can use python only to define a `couler.{new_engine}.train` function without modifying the Go code in SQLFlow.
+1. If a data scientist needs to add a new type of engine (SVM, SKLearn, PyTorch, etc.) other than TensorFlow/XGBoost/ElasticDL, he/she can use python only to define a `couler.{new_engine}.train` function without modifying the Go code in SQLFlow.
 1. `codegen_couler.go` have less code.
 1. All submitter unit tests can run in couler.

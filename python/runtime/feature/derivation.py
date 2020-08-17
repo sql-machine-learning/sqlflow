@@ -11,17 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    'infer_feature_columns',
-]
+__all__ = ['infer_feature_columns', 'get_ordered_field_descs']
 
 import re
 
 import numpy as np
 import six
 from runtime.feature.column import (CategoryIDColumn, EmbeddingColumn,
-                                    FeatureColumn, IndicatorColumn,
-                                    NumericColumn)
+                                    IndicatorColumn, NumericColumn)
 from runtime.feature.field_desc import DataFormat, DataType, FieldDesc
 from runtime.verifier import fetch_samples
 
@@ -38,8 +35,8 @@ def init_column_map(target_fc_map, fc):
     Returns:
         None.
     """
-    if isinstance(fc, (EmbeddingColumn, IndicatorColumn)) and \
-        len(fc.get_field_desc()) == 0:
+    if isinstance(fc, (EmbeddingColumn, IndicatorColumn)) \
+            and len(fc.get_field_desc()) == 0:
         if fc.name not in target_fc_map:
             target_fc_map[fc.name] = []
 
@@ -110,7 +107,7 @@ def new_default_field_desc(name):
         A FieldDesc object whose name is the given name,
         and the data type is INT.
     """
-    return FieldDesc(name=name, dtype=DataType.INT)
+    return FieldDesc(name=name, dtype=DataType.INT64)
 
 
 # A regular expression to match any real number
@@ -129,7 +126,7 @@ KV_PATTERN = re.compile("([0-9]+:(%s)\\s*)+" % REAL_NUMBER_PATTERN.pattern)
 BLANK_PATTERN = re.compile("\\s+")
 
 # The Python 2/3 int64 type
-INT64_TYPE = long if six.PY2 else int
+INT64_TYPE = long if six.PY2 else int  # noqa: F821
 
 
 def infer_string_data_format(str_data):
@@ -165,7 +162,8 @@ def fill_csv_field_desc(cell, field_desc):
     """
     values = cell.split(",")
     if field_desc.is_sparse:
-        assert field_desc.shape is not None, "the shape of CSV format data must be given"
+        assert field_desc.shape is not None, \
+            "the shape of CSV format data must be given"
     else:
         if field_desc.shape is None:
             field_desc.shape = [len(values)]
@@ -174,8 +172,8 @@ def fill_csv_field_desc(cell, field_desc):
         if np.prod(field_desc.shape) != len(values):
             if size > 1:
                 raise ValueError(
-                    "column %s should be csv format dense tensor of %d element(s), but got %d element(s)"
-                    %
+                    "column %s should be csv format dense tensor "
+                    "of %d element(s), but got %d element(s)" %
                     (field_desc.name, np.prod(field_desc.shape), len(values)))
 
             field_desc.shape = [len(values)]
@@ -189,15 +187,15 @@ def fill_csv_field_desc(cell, field_desc):
     # sparse tensor in CSV format is "Int". We should remove this constraint
     # if we will support other data formats in the future.
     if field_desc.is_sparse:
-        field_desc.dtype = DataType.INT
+        field_desc.dtype = DataType.INT64
 
     field_desc.delimiter = ","
     for v in values:
-        if field_desc.dtype == DataType.INT:
+        if field_desc.dtype == DataType.INT64:
             try:
                 int_value = INT64_TYPE(v)
             except ValueError:
-                field_desc.dtype = DataType.FLOAT
+                field_desc.dtype = DataType.FLOAT32
                 field_desc.max_id = 0  # clear the max id
                 continue
         else:
@@ -266,7 +264,7 @@ def fill_plain_field_desc(cell, field_desc):
         # Build vocabulary from the sample data
         field_desc.vocabulary.add(cell)
     else:
-        field_desc.dtype = DataType.FLOAT
+        field_desc.dtype = DataType.FLOAT32
         field_desc.shape = [1]
 
 
@@ -290,10 +288,10 @@ def fill_field_descs(generator, fd_map):
     for idx, dtype in enumerate(dtypes):
         dtype = dtype.upper()
         if dtype in ["INT", "TINYINT", "DECIMAL", "BIGINT"]:
-            fd_map[names[idx]].dtype = DataType.INT
+            fd_map[names[idx]].dtype = DataType.INT64
             fd_map[names[idx]].shape = [1]
         elif dtype in ["FLOAT", "DOUBLE"]:
-            fd_map[names[idx]].dtype = DataType.FLOAT
+            fd_map[names[idx]].dtype = DataType.FLOAT32
             fd_map[names[idx]].shape = [1]
         elif dtype in ["CHAR", "VARCHAR", "TEXT", "STRING"]:
             str_column_indices.append(idx)
@@ -356,10 +354,13 @@ def update_feature_column(fc, fd_map):
             raise ValueError("column not found or inferred: %s" % fc.name)
 
         # FIXME(typhoonzero): when to use sequence_category_id_column?
-        # if column fieldDesc is SPARSE, the sparse shape should be in cs.Shape[0]
+        # if column fieldDesc is SPARSE, the sparse shape should
+        # be in cs.Shape[0]
         bucket_size = field_desc.shape[0]
         if not field_desc.is_sparse:
-            assert field_desc.max_id > 0, "use dense column on embedding column but did not got a correct MaxID"
+            assert field_desc.max_id > 0, \
+                "use dense column on embedding column " \
+                "but did not got a correct MaxID"
             bucket_size = field_desc.max_id + 1
 
         fc.category_column = CategoryIDColumn(field_desc, bucket_size)
@@ -370,8 +371,10 @@ def update_feature_column(fc, fd_map):
         if field_desc is None:
             raise ValueError("column not found or inferred: %s" % fc.name)
 
-        assert field_desc.is_sparse, "cannot use sparse column with indicator column"
-        assert field_desc.max_id > 0, "use indicator column but did not got a correct MaxID"
+        assert field_desc.is_sparse, \
+            "cannot use sparse column with indicator column"
+        assert field_desc.max_id > 0, \
+            "use indicator column but did not got a correct MaxID"
         bucket_size = field_desc.max_id + 1
         fc.category_column = CategoryIDColumn(field_desc, bucket_size)
 
@@ -392,7 +395,8 @@ def new_feature_column(field_desc):
     else:
         category_column = CategoryIDColumn(field_desc,
                                            len(field_desc.vocabulary))
-        # NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
+        # NOTE(typhoonzero): a default embedding size of 128 is enough
+        # for most cases.
         embedding = EmbeddingColumn(category_column=category_column,
                                     dimension=128,
                                     combiner="sum")
@@ -406,7 +410,8 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
     Derive the FeatureColumn.
 
     Args:
-        targets (list[str]): the feature column targets, e.g. "feature_columns".
+        targets (list[str]): the feature column targets,
+            e.g. "feature_columns".
         fc_map (dict[str -> dict[str -> list[FeatureColumn]]]): a FeatureColumn
             map, where the key of the outer dict is the target name, e.g.
             "feature_columns", and the key of the inner dict is the field name.
@@ -439,7 +444,8 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
             match_field_name = None
             for selected_field_name in selected_field_names:
                 if field_pattern.fullmatch(selected_field_name):
-                    assert match_field_name is None, "%s matches duplicate fields" % field_name
+                    assert match_field_name is None, \
+                        "%s matches duplicate fields" % field_name
                     match_field_name = selected_field_name
 
             if match_field_name is None:
@@ -464,8 +470,8 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
                     update_feature_column(fc, fd_map)
             else:
                 if len(fc_map) > 1:
-                    # if column clause have more than one target, each target should specify the
-                    # full list of the columns to use.
+                    # if column clause have more than one target, each target
+                    # should specify the full list of the columns to use.
                     continue
 
                 field_desc = fd_map[selected_field_name]
@@ -479,13 +485,13 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
         fc_target_map.update(new_fc_target_map)
 
 
-def update_ir_feature_column_map_by_derived_feature_column_map(
-    features, fc_map, selected_field_names, label_name):
+def update_ir_feature_columns(features, fc_map, selected_field_names,
+                              label_name):
     """
     Update the IR FeatureColumn map `features` by the derived FeatureColumn map
-    `fc_map` . If any FeatureColumn inside `fc_map` does not exist in `features`,
-    it would be added to `features` . Notice that `features` is not updated
-    in-place, and we would return a new updated IR FeatureColumn map in
+    `fc_map` . If any FeatureColumn inside `fc_map` does not exist in
+    `features`, it would be added to `features` . Notice that `features` is not
+    updated in-place, and we would return a new updated IR FeatureColumn map in
     this method.
 
     Args:
@@ -542,9 +548,8 @@ def update_ir_feature_column_map_by_derived_feature_column_map(
                         break
 
                 if not found:
-                    raise ValueError(
-                        "some feature column is missing in the derivation stage"
-                    )
+                    raise ValueError("some feature column is missing in the "
+                                     "derivation stage")
 
             sorted_pos = sorted(range(len(indices)), key=lambda k: indices[k])
             multi_fd_fcs = [multi_fd_fcs[i] for i in sorted_pos]
@@ -572,9 +577,11 @@ def derive_label(label, fd_map):
         return  # NOTE: clustering model may not specify Label
 
     label_field_desc = fd_map[label_name]
-    assert label_field_desc is not None, "deriveLabel: LABEL COLUMN '%s' not found" % label_name
+    assert label_field_desc is not None, \
+        "deriveLabel: LABEL COLUMN '%s' not found" % label_name
 
-    # use shape [] if label shape is [1] for Tensorflow scalar label shape should be [].
+    # use shape [] if label shape is [1] for TensorFlow scalar label
+    # shape should be [].
     shape = label_field_desc.shape
     if shape is None or (len(shape) == 1 and shape[0] == 1):
         label_field_desc.shape = []
@@ -626,7 +633,17 @@ def infer_feature_columns(conn, select, features, label, n=1000):
 
     derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
                            label_name)
-    features = update_ir_feature_column_map_by_derived_feature_column_map(
-        features, fc_map, selected_field_names, label_name)
+    features = update_ir_feature_columns(features, fc_map,
+                                         selected_field_names, label_name)
     label = derive_label(label, fd_map)
     return features, label
+
+
+def get_ordered_field_descs(features):
+    assert isinstance(features, dict)
+    fd_list = []
+    for target in features:
+        for fc in features[target]:
+            for fd in fc.get_field_desc():
+                fd_list.append(fd)
+    return fd_list

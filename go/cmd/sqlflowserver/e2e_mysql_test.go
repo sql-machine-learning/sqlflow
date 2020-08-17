@@ -26,6 +26,34 @@ import (
 	server "sqlflow.org/sqlflow/go/sqlflowserver"
 )
 
+func caseCustomLoopModel(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN sqlflow_models.CustomClassifier
+LABEL class
+INTO sqlflow_models.custom_loop_model;`, caseTrainTable)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	predSQL := fmt.Sprintf(`SELECT * FROM %s
+TO PREDICT sqlflow_models.custom_loop_model_pred_result.class
+USING sqlflow_models.custom_loop_model;`, caseTrainTable)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+	evalSQL := fmt.Sprintf(`SELECT * FROM %s
+TO EVALUATE sqlflow_models.custom_loop_model
+WITH validation.metrics="Accuracy"
+LABEL class
+INTO sqlflow_models.custom_loop_model_eval_result;`, caseTrainTable)
+	_, _, _, err = connectAndRunSQL(evalSQL)
+	if err != nil {
+		a.Fail("Run trainSQL error: %v", err)
+	}
+}
+
 func TestEnd2EndMySQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
@@ -54,6 +82,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseCoverage", CaseCoverageMysql)
 	t.Run("CaseTrainWithCommaSeparatedLabel", CaseTrainWithCommaSeparatedLabel)
 	t.Run("CaseTrainCustomModelFunctional", CaseTrainCustomModelFunctional)
+	t.Run("CaseCustomLoopModel", caseCustomLoopModel)
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", caseTrainRegression)
 
@@ -83,6 +112,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTestOptimizeClauseWithoutGroupBy", caseTestOptimizeClauseWithoutGroupBy)
 	t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
 	t.Run("CaseTestOptimizeClauseWithBinaryVarType", caseTestOptimizeClauseWithBinaryVarType)
+	t.Run("CaseTestOptimizeClauseWithoutConstraint", caseTestOptimizeClauseWithoutConstraint)
 }
 
 func CaseShouldError(t *testing.T) {

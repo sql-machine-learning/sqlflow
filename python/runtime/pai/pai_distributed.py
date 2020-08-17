@@ -20,11 +20,11 @@ from runtime.seeding import get_tf_random_seed
 
 try:
     import tensorflow.compat.v1 as tf
-except:
+except:  # noqa: E722
     import tensorflow as tf
 
 # This module contain utilities for PAI distributed training.
-# Note that currently PAI only support Tensorflow 1.x versions
+# Note that currently PAI only support TensorFlow 1.x versions
 # importing this module should make sure that currently installed
 # tensorflow is version 1.x.
 
@@ -104,7 +104,7 @@ def make_estimator_distributed_runconfig(FLAGS,
                                          is_distributed,
                                          save_checkpoints_steps=100):
     if is_distributed:
-        cluster, task_type, task_index = make_distributed_info_without_evaluator(
+        cluster, task_type, task_index = make_distributed_info_without_evaluator(  # noqa: E501
             FLAGS)
         dump_into_tf_config(cluster, task_type, task_index)
         device_filters = None

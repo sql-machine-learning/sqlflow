@@ -19,9 +19,11 @@ import uuid
 import oss2
 import requests
 import six
-from runtime.optimize.model_generation import \
-    generate_objective_and_constraint_expression
-from runtime.oss import get_bucket
+from runtime.model.oss import get_bucket
+from runtime.optimize.model_generation import (
+    assert_are_valid_tokens, find_matched_aggregation_function_brackets,
+    generate_objective_and_constraint_expr, try_convert_comparision_token,
+    try_convert_to_aggregation_function, update_by_column_names)
 
 __all__ = [
     'run_optimize_on_optflow',
@@ -70,8 +72,8 @@ def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
         start_line_num: the start line number of the logs.
 
     Returns:
-        A tuple of (logs, end_line_num), where logs are the queried results, and
-        end_line_num is the line number of the last queried logs.
+        A tuple of (logs, end_line_num), where logs are the queried results,
+        and end_line_num is the line number of the last queried logs.
     """
     url = "{}?userNumber={}&recordId={}&token={}".format(
         url, user_number, record_id, token)
@@ -112,7 +114,7 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
         for _ in six.moves.range(times - 1):
             try:
                 return func()
-            except:
+            except:  # noqa: E722
                 pass
 
         return func()
@@ -120,10 +122,15 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
     status = None
     line_num = 0
     while True:
-        query_status = lambda: query_optflow_job_status(
-            status_url, record_id, user_number, token)
-        query_log = lambda: query_optflow_job_log(log_url, record_id,
-                                                  user_number, token, line_num)
+
+        def query_status():
+            return query_optflow_job_status(status_url, record_id, user_number,
+                                            token)
+
+        def query_log():
+            return query_optflow_job_log(log_url, record_id, user_number,
+                                         token, line_num)
+
         status = call_func_with_retry(query_status, 3)
         logs, line_num = call_func_with_retry(query_log, 3)
 
@@ -228,7 +235,7 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
                     result_table))
             else:
                 print("Job fails.")
-        except:
+        except:  # noqa: E722
             # FIXME(sneaxiy): we should not delete object if there is any
             # network error when querying job status and logs. But when
             # should we clean the object?
@@ -237,6 +244,159 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
     finally:
         if should_delete_object:
             bucket.delete_object(fsl_file_id)
+
+
+def generate_optflow_fsl_token_when_two_vars(token, columns, result_value_name,
+                                             group_by, non_aggregation_index,
+                                             is_aggregation_part):
+    """
+    Generate the token which is accepted by the OptFlow FSL expression
+    when the variable number is 2.
+
+    Args:
+        token (str): the string token.
+        columns (list[str]): the column names of the source table.
+        result_value_name (str): the result value name to be optimized.
+        group_by (str): the column name to be grouped.
+        non_aggregation_index (str): the index string inside the non
+            aggregation part of the result expression.
+        is_aggregation_part (bool): whether the token is inside the
+            aggregation part of the result expression.
+
+    Returns:
+        A token which OptFlow FSL expression accepts.
+    """
+    if try_convert_to_aggregation_function(token):
+        return try_convert_to_aggregation_function(token)
+
+    if try_convert_comparision_token(token):
+        return try_convert_comparision_token(token)
+
+    if is_aggregation_part:
+        if token == result_value_name:
+            return '@X[i,j]'
+
+        if token in columns:
+            return '@input["%s"][i,j]' % token
+
+        return token
+    else:
+        if token == result_value_name:
+            raise ValueError("result value name %s should not appear "
+                             "in non aggregation expression" % token)
+
+        if token in columns:
+            if not group_by:
+                raise ValueError(
+                    "column %s should not appear in non aggregation expression"
+                    % token)
+
+            return '@input["%s"][%s]' % (token, non_aggregation_index)
+
+        return token
+
+
+def generate_optflow_fsl_expr_when_two_vars(columns,
+                                            tokens,
+                                            variables,
+                                            result_value_name,
+                                            group_by=None):
+    """
+    Generate the OptFlow FSL expression when the variable number is 2.
+
+    Args:
+        columns (list[str]): the column names of the source table.
+        tokens (list[str]): the objective or constraint string token list.
+        variables (list[str]): the variable names to be optimized.
+        result_value_name (str): the result value name to be optimized.
+        group_by (str): the column name to be grouped.
+
+    Returns:
+        An OptFlow FSL expression.
+    """
+    assert len(variables) == 2
+    has_aggregation_function = False
+    for token in tokens:
+        if try_convert_to_aggregation_function(token):
+            has_aggregation_function = True
+            break
+
+    assert has_aggregation_function, "OptFlow only supports the aggregation " \
+                                     "expression when there are 2 variables"
+
+    tokens, variables, result_value_name, group_by = update_by_column_names(
+        columns=columns,
+        tokens=tokens,
+        variables=variables,
+        result_value_name=result_value_name,
+        group_by=group_by)
+
+    assert_are_valid_tokens(columns=columns,
+                            tokens=tokens,
+                            result_value_name=result_value_name,
+                            group_by=group_by)
+
+    if group_by and group_by not in variables:
+        raise ValueError("GROUP BY column %s should be inside variables" %
+                         group_by)
+
+    if group_by == variables[0]:
+        outer_range = "for i in @I"
+        inner_range = "for j in @J"
+        non_aggregation_index = "i,@J[0]"
+    elif group_by == variables[1]:
+        outer_range = "for j in @J"
+        inner_range = "for i in @I"
+        non_aggregation_index = "@I[0],j"
+    else:
+        outer_range = None
+        inner_range = "for i in @I for j in @J"
+        non_aggregation_index = None
+
+    def generate_token(token, is_aggregation_part):
+        return generate_optflow_fsl_token_when_two_vars(
+            token=token,
+            columns=columns,
+            result_value_name=result_value_name,
+            group_by=group_by,
+            non_aggregation_index=non_aggregation_index,
+            is_aggregation_part=is_aggregation_part)
+
+    result_tokens = []
+    idx = 0
+    while idx < len(tokens):
+        left_indices, right_indices, next_idx = \
+            find_matched_aggregation_function_brackets(tokens, idx)
+        assert len(left_indices) <= 1, \
+            "OptFlow does not support nested aggregation calls"
+        left_idx = left_indices[0] if left_indices else next_idx
+        right_idx = right_indices[0] if right_indices else next_idx
+
+        while idx < left_idx:
+            result_tokens.append(generate_token(tokens[idx], False))
+            idx += 1
+
+        if left_idx == right_idx:
+            continue
+
+        while idx <= right_idx:
+            if idx == left_idx:
+                result_tokens.extend(['(', '['])
+            elif idx == right_idx:
+                result_tokens.extend([' ', inner_range, ']', ')'])
+            else:
+                result_tokens.append(generate_token(tokens[idx], True))
+            idx += 1
+
+        while idx < next_idx:
+            result_tokens.append(generate_token(tokens[idx], False))
+            idx += 1
+
+    expr = "".join(result_tokens)
+    if outer_range:
+        return "%s: %s" % (outer_range, expr)
+    else:
+        return expr
 
 
 def run_optimize_on_optflow(train_table, columns, variables, variable_type,
@@ -253,7 +413,8 @@ def run_optimize_on_optflow(train_table, columns, variables, variable_type,
         result_value_name (str): the result value name to be optimized.
         objective (list[str]): the objective string token list.
         direction (str): "maximize" or "minimize".
-        constraints (dict): the constraint expression containing the token list and GROUP BY column name.
+        constraints (dict): the constraint expression containing the token list
+            and GROUP BY column name.
         solver (str): the solver used to solve the model.
         result_table (str): the table name to save the solved results.
         user_number (str): the user id.
@@ -269,24 +430,42 @@ def run_optimize_on_optflow(train_table, columns, variables, variable_type,
     else:
         raise ValueError("direction must be maximize or minimize")
 
-    obj_expr, c_exprs = generate_objective_and_constraint_expression(
-        columns=columns,
-        objective=objective,
-        constraints=constraints,
-        variables=variables,
-        result_value_name=result_value_name,
-        variable_str="@X",
-        data_str="@input")
+    if len(variables) == 2:
+        obj_expr = generate_optflow_fsl_expr_when_two_vars(
+            columns=columns,
+            tokens=objective,
+            variables=variables,
+            result_value_name=result_value_name)
+        constraint_expressions = []
+        for c in constraints:
+            tokens = c.get("tokens")
+            group_by = c.get("group_by")
+            c_expr = generate_optflow_fsl_expr_when_two_vars(
+                columns=columns,
+                tokens=tokens,
+                variables=variables,
+                result_value_name=result_value_name,
+                group_by=group_by)
+            constraint_expressions.append(c_expr)
+    else:
+        obj_expr, c_exprs = generate_objective_and_constraint_expr(
+            columns=columns,
+            objective=objective,
+            constraints=constraints,
+            variables=variables,
+            result_value_name=result_value_name,
+            variable_str="@X",
+            data_str="@input")
 
-    constraint_expressions = []
-    for expr, for_range, iter_vars in c_exprs:
-        if for_range:
-            c_expr_str = "for %s in %s: %s" % (",".join(iter_vars), for_range,
-                                               expr)
-        else:
-            c_expr_str = expr
+        constraint_expressions = []
+        for expr, for_range, iter_vars in c_exprs:
+            if for_range:
+                c_expr_str = "for %s in %s: %s" % (",".join(iter_vars),
+                                                   for_range, expr)
+            else:
+                c_expr_str = expr
 
-        constraint_expressions.append(c_expr_str)
+            constraint_expressions.append(c_expr_str)
 
     fsl_file_content = '''
 variables: {}

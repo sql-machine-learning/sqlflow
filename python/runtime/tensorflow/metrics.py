@@ -24,7 +24,9 @@ metric_names_use_predictions = [
     "MeanAbsoluteError", "MeanAbsolutePercentageError", "MeanSquaredError",
     "RootMeanSquaredError"
 ]
-supported_metrics = metric_names_use_class_id + metric_names_use_probabilities + metric_names_use_predictions
+supported_metrics = metric_names_use_class_id \
+                    + metric_names_use_probabilities \
+                    + metric_names_use_predictions
 supported_metrics += ["AUC"]
 
 

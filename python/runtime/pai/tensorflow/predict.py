@@ -11,31 +11,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
-import traceback
-import types
-
-import runtime
 import tensorflow as tf
-from runtime import db, oss
-from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.import_model import import_model
-from runtime.pai.pai_distributed import define_tf_flags
+from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
+from runtime.model import oss
 from runtime.tensorflow import is_tf_estimator
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.predict import estimator_predict, keras_predict
-
-try:
-    import sqlflow_models
-except Exception as e:
-    print("error importing sqlflow_models: %s" % e)
-    traceback.print_exc()
 
 
 def predict(datasource, select, data_table, result_table, label_column,
             oss_model_path):
-    """PAI Tensorflow prediction wrapper
-    This function do some preparation for the local prediction, say, download the
-    model from OSS, extract metadata and so on.
+    """PAI TensorFlow prediction wrapper
+    This function do some preparation for the local prediction, say,
+    download the model from OSS, extract metadata and so on.
 
     Args:
         datasource: the datasource from which to get data
@@ -48,7 +37,7 @@ def predict(datasource, select, data_table, result_table, label_column,
 
     try:
         tf.enable_eager_execution()
-    except:
+    except:  # noqa: E722
         pass
 
     (estimator, feature_column_names, feature_column_names_map, feature_metas,
@@ -58,16 +47,18 @@ def predict(datasource, select, data_table, result_table, label_column,
 
     feature_columns = eval(feature_columns_code)
 
-    # NOTE(typhoonzero): No need to eval model_params["optimizer"] and model_params["loss"]
-    # because predicting do not need these parameters.
+    # NOTE(typhoonzero): No need to eval model_params["optimizer"] and
+    # model_params["loss"] because predicting do not need these parameters.
 
     is_estimator = is_tf_estimator(import_model(estimator))
 
-    # Keras single node is using h5 format to save the model, no need to deal with export model format.
-    # Keras distributed mode will use estimator, so this is also needed.
+    # Keras single node is using h5 format to save the model, no need to deal
+    # with export model format. Keras distributed mode will use estimator, so
+    # this is also needed.
     if is_estimator:
         oss.load_file(oss_model_path, "exported_path")
-        # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+        # NOTE(typhoonzero): directory "model_save" is hardcoded in
+        # codegen/tensorflow/codegen.go
         oss.load_dir("%s/model_save" % oss_model_path)
     else:
         oss.load_file(oss_model_path, "model_save")
@@ -106,13 +97,10 @@ def _predict(datasource,
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
-    conn = None
-    driver = "pai_maxcompute"
-    pai_table_parts = pai_table.split(".")
-    formatted_pai_table = "odps://%s/tables/%s" % (pai_table_parts[0],
-                                                   pai_table_parts[1])
-    selected_cols = db.pai_selected_cols(formatted_pai_table)
-    predict_generator = db.pai_maxcompute_db_generator(formatted_pai_table)
+    driver = "paiio"
+    conn = PaiIOConnection.from_table(pai_table)
+    selected_cols = db.selected_cols(conn, None)
+    predict_generator = db.db_generator(conn, None)
 
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):

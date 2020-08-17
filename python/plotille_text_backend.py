@@ -14,8 +14,7 @@
 import io
 
 from matplotlib._pylab_helpers import Gcf
-from matplotlib.backend_bases import (FigureCanvasBase, FigureManagerBase,
-                                      RendererBase, _Backend)
+from matplotlib.backend_bases import FigureManagerBase
 from matplotlib.backends.backend_agg import FigureCanvasAgg, RendererAgg
 from PIL import Image
 from plotille import Canvas
@@ -89,7 +88,8 @@ class FigureCanvasPlotille(FigureCanvasAgg):
                 if center == (255, 255, 255):
                     continue
                 if x in range(1, w - 1) and y in range(1, h - 1):
-                    # Use the most deepest color in a 3x3 area as the center color
+                    # Use the most deepest color in a 3x3 area as
+                    # the center color
                     surrounding = i.getpixel((x, y - 1))  # upper
                     center = surrounding if grayscale(center) > grayscale(
                         surrounding) else center
@@ -140,7 +140,8 @@ class FigureCanvasPlotille(FigureCanvasAgg):
 color_map = {}
 
 
-# Convert RGB to grayscale, see https://www.tutorialspoint.com/dip/grayscale_to_rgb_conversion.htm
+# Convert RGB to grayscale, see
+# https://www.tutorialspoint.com/dip/grayscale_to_rgb_conversion.htm
 def grayscale(rgb):
     return 0.3 * rgb[0] + 0.59 * rgb[1] + 0.11 * rgb[2]
 

@@ -206,7 +206,7 @@ TBD
 
 TBD
 
-## Tensorflow Parameters
+## TensorFlow Parameters
 
 ### TRAIN
 

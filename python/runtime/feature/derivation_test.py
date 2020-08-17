@@ -11,13 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import unittest
 
+import runtime.feature.column as fc
 import runtime.feature.derivation as fd
 import runtime.testing as testing
 from runtime.feature.column import (CategoryIDColumn, CrossColumn,
-                                    EmbeddingColumn, IndicatorColumn,
-                                    NumericColumn)
+                                    EmbeddingColumn, NumericColumn)
 from runtime.feature.field_desc import DataFormat, DataType, FieldDesc
 
 
@@ -83,13 +84,21 @@ class TestGetMaxIndexOfKeyValueString(unittest.TestCase):
 @unittest.skipUnless(testing.get_driver() in ["mysql", "hive"],
                      "skip non MySQL and Hive tests")
 class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
+    def check_json_dump(self, features):
+        dump_json = json.dumps(features, cls=fc.JSONEncoderWithFeatureColumn)
+        new_features = json.loads(dump_json,
+                                  cls=fc.JSONDecoderWithFeatureColumn)
+        new_dump_json = json.dumps(new_features,
+                                   cls=fc.JSONEncoderWithFeatureColumn)
+        self.assertEqual(dump_json, new_dump_json)
+
     def test_without_cross(self):
         features = {
             'feature_columns': [
                 EmbeddingColumn(dimension=256, combiner="mean", name="c3"),
                 EmbeddingColumn(category_column=CategoryIDColumn(
                     FieldDesc(name="c5",
-                              dtype=DataType.INT,
+                              dtype=DataType.INT64,
                               shape=[10000],
                               delimiter=",",
                               is_sparse=True),
@@ -101,12 +110,16 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         }
 
         label = NumericColumn(
-            FieldDesc(name="class", dtype=DataType.INT, shape=[1]))
+            FieldDesc(name="class", dtype=DataType.INT64, shape=[1]))
 
-        select = "select c1, c2, c3, c4, c5, c6, class from feature_derivation_case.train"
+        select = "select c1, c2, c3, c4, c5, c6, class " \
+                 "from feature_derivation_case.train"
         conn = testing.get_singleton_db_connection()
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
+
+        self.check_json_dump(features)
+        self.check_json_dump(label)
 
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
@@ -118,7 +131,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc1.get_field_desc()), 1)
         field_desc = fc1.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c1")
-        self.assertEqual(field_desc.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [1])
@@ -128,7 +141,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc2.get_field_desc()), 1)
         field_desc = fc2.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c2")
-        self.assertEqual(field_desc.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [1])
@@ -138,7 +151,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc3.get_field_desc()), 1)
         field_desc = fc3.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c3")
-        self.assertEqual(field_desc.dtype, DataType.INT)
+        self.assertEqual(field_desc.dtype, DataType.INT64)
         self.assertEqual(field_desc.format, DataFormat.CSV)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [4])
@@ -153,7 +166,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc4.get_field_desc()), 1)
         field_desc = fc4.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c4")
-        self.assertEqual(field_desc.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc.format, DataFormat.CSV)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [4])
@@ -163,7 +176,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc5.get_field_desc()), 1)
         field_desc = fc5.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c5")
-        self.assertEqual(field_desc.dtype, DataType.INT)
+        self.assertEqual(field_desc.dtype, DataType.INT64)
         self.assertEqual(field_desc.format, DataFormat.CSV)
         self.assertTrue(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [10000])
@@ -194,17 +207,22 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(label.get_field_desc()), 1)
         field_desc = label.get_field_desc()[0]
         self.assertEqual(field_desc.name, "class")
-        self.assertEqual(field_desc.dtype, DataType.INT)
+        self.assertEqual(field_desc.dtype, DataType.INT64)
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [])
 
     def test_with_cross(self):
-        c1 = NumericColumn(FieldDesc(name='c1', dtype=DataType.INT, shape=[1]))
-        c2 = NumericColumn(FieldDesc(name='c2', dtype=DataType.INT, shape=[1]))
-        c4 = NumericColumn(FieldDesc(name='c4', dtype=DataType.INT, shape=[1]))
+        c1 = NumericColumn(
+            FieldDesc(name='c1', dtype=DataType.INT64, shape=[1]))
+        c2 = NumericColumn(
+            FieldDesc(name='c2', dtype=DataType.INT64, shape=[1]))
+        c4 = NumericColumn(
+            FieldDesc(name='c4', dtype=DataType.INT64, shape=[1]))
         c5 = NumericColumn(
-            FieldDesc(name='c5', dtype=DataType.INT, shape=[1],
+            FieldDesc(name='c5',
+                      dtype=DataType.INT64,
+                      shape=[1],
                       is_sparse=True))
 
         features = {
@@ -217,12 +235,16 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         }
 
         label = NumericColumn(
-            FieldDesc(name='class', dtype=DataType.INT, shape=[1]))
-        select = "select c1, c2, c3, c4, c5, class from feature_derivation_case.train"
+            FieldDesc(name='class', dtype=DataType.INT64, shape=[1]))
+        select = "select c1, c2, c3, c4, c5, class " \
+                 "from feature_derivation_case.train"
 
         conn = testing.get_singleton_db_connection()
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
+
+        self.check_json_dump(features)
+        self.check_json_dump(label)
 
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
@@ -234,7 +256,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc1.get_field_desc()), 1)
         field_desc = fc1.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c1")
-        self.assertEqual(field_desc.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [1])
@@ -244,7 +266,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc2.get_field_desc()), 1)
         field_desc = fc2.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c2")
-        self.assertEqual(field_desc.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [1])
@@ -254,7 +276,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc3.get_field_desc()), 1)
         field_desc = fc3.get_field_desc()[0]
         self.assertEqual(field_desc.name, "c3")
-        self.assertEqual(field_desc.dtype, DataType.INT)
+        self.assertEqual(field_desc.dtype, DataType.INT64)
         self.assertEqual(field_desc.format, DataFormat.CSV)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [4])
@@ -264,13 +286,13 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc4.get_field_desc()), 2)
         field_desc1 = fc4.get_field_desc()[0]
         self.assertEqual(field_desc1.name, "c4")
-        self.assertEqual(field_desc1.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc1.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc1.format, DataFormat.CSV)
         self.assertEqual(field_desc1.shape, [4])
         self.assertFalse(field_desc1.is_sparse)
         field_desc2 = fc4.get_field_desc()[1]
         self.assertEqual(field_desc2.name, "c5")
-        self.assertEqual(field_desc2.dtype, DataType.INT)
+        self.assertEqual(field_desc2.dtype, DataType.INT64)
         self.assertEqual(field_desc2.format, DataFormat.CSV)
         self.assertTrue(field_desc2.is_sparse)
 
@@ -279,13 +301,13 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(fc4.get_field_desc()), 2)
         field_desc1 = fc5.get_field_desc()[0]
         self.assertEqual(field_desc1.name, "c1")
-        self.assertEqual(field_desc1.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc1.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc1.format, DataFormat.PLAIN)
         self.assertEqual(field_desc1.shape, [1])
         self.assertFalse(field_desc1.is_sparse)
         field_desc2 = fc5.get_field_desc()[1]
         self.assertEqual(field_desc2.name, "c2")
-        self.assertEqual(field_desc2.dtype, DataType.FLOAT)
+        self.assertEqual(field_desc2.dtype, DataType.FLOAT32)
         self.assertEqual(field_desc2.format, DataFormat.PLAIN)
         self.assertEqual(field_desc2.shape, [1])
         self.assertFalse(field_desc2.is_sparse)
@@ -294,7 +316,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(label.get_field_desc()), 1)
         field_desc = label.get_field_desc()[0]
         self.assertEqual(field_desc.name, "class")
-        self.assertEqual(field_desc.dtype, DataType.INT)
+        self.assertEqual(field_desc.dtype, DataType.INT64)
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [])
@@ -312,9 +334,12 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         conn = testing.get_singleton_db_connection()
         features = None
         label = NumericColumn(
-            FieldDesc(name='class', dtype=DataType.INT, shape=[1]))
+            FieldDesc(name='class', dtype=DataType.INT64, shape=[1]))
         features, label = fd.infer_feature_columns(conn, select, features,
                                                    label)
+
+        self.check_json_dump(features)
+        self.check_json_dump(label)
 
         self.assertEqual(len(features), 1)
         self.assertTrue("feature_columns" in features)
@@ -326,7 +351,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
             self.assertEqual(len(f.get_field_desc()), 1)
             field_desc = f.get_field_desc()[0]
             self.assertEqual(field_desc.name, columns[i])
-            self.assertEqual(field_desc.dtype, DataType.FLOAT)
+            self.assertEqual(field_desc.dtype, DataType.FLOAT32)
             self.assertEqual(field_desc.format, DataFormat.PLAIN)
             self.assertFalse(field_desc.is_sparse)
             self.assertEqual(field_desc.shape, [1])
@@ -335,7 +360,7 @@ class TestFeatureDerivationWithMockedFeatures(unittest.TestCase):
         self.assertEqual(len(label.get_field_desc()), 1)
         field_desc = label.get_field_desc()[0]
         self.assertEqual(field_desc.name, "class")
-        self.assertEqual(field_desc.dtype, DataType.INT)
+        self.assertEqual(field_desc.dtype, DataType.INT64)
         self.assertEqual(field_desc.format, DataFormat.PLAIN)
         self.assertFalse(field_desc.is_sparse)
         self.assertEqual(field_desc.shape, [])

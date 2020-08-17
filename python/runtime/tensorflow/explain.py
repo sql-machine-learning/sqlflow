@@ -13,34 +13,27 @@
 
 import os
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import runtime
 import seaborn as sns
 import shap
 import tensorflow as tf
 from runtime import explainer
 from runtime.db import buffered_db_writer, connect_with_data_source
-from runtime.import_model import import_model
 from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
 
 sns_colors = sns.color_palette('colorblind')
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # Use non-interactive background
 plt.switch_backend('agg')
 
-try:
-    import sqlflow_models
-except:
-    pass
-
-# Disable Tensorflow INFO and WARNING logs
+# Disable TensorFlow INFO and WARNING logs
 if tf_is_version2():
     import logging
     tf.get_logger().setLevel(logging.ERROR)
@@ -182,9 +175,7 @@ def create_explain_result_table(conn, result_table):
 def write_shap_values(shap_values, driver, conn, result_table,
                       feature_column_names, hdfs_namenode_addr, hive_location,
                       hdfs_user, hdfs_pass):
-    with buffered_db_writer(driver, conn, result_table, feature_column_names,
-                            100, hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with buffered_db_writer(conn, result_table, feature_column_names) as w:
         for row in shap_values[0]:
             w.write(list(row))
 
@@ -192,10 +183,8 @@ def write_shap_values(shap_values, driver, conn, result_table,
 def write_dfc_result(dfc_mean, gain, result_table, driver, conn,
                      feature_column_names, hdfs_namenode_addr, hive_location,
                      hdfs_user, hdfs_pass):
-    with buffered_db_writer(driver, conn, result_table,
-                            ["feature", "dfc", "gain"], 100,
-                            hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with buffered_db_writer(conn, result_table, ["feature", "dfc", "gain"],
+                            100) as w:
         for row_name in feature_column_names:
             w.write([row_name, dfc_mean.loc[row_name], gain[row_name]])
 

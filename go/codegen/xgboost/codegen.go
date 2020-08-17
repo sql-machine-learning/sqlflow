@@ -186,7 +186,7 @@ type FieldMeta struct {
 func resolveFieldMeta(desc *ir.FieldDesc) FieldMeta {
 	return FieldMeta{
 		FeatureName: desc.Name,
-		DType:       tf.DTypeToString(desc.DType),
+		DType:       ir.DTypeToString(desc.DType),
 		Delimiter:   desc.Delimiter,
 		Format:      desc.Format,
 		Shap:        desc.Shape,
@@ -228,7 +228,7 @@ func deriveFeatureColumnCodeAndFieldDescs(fcs []ir.FeatureColumn, labelFc ir.Fea
 		}
 	}
 
-	featureColumnsCode = strings.Join(fcCodes, ",")
+	featureColumnsCode = strings.Join(fcCodes, ",\n")
 
 	switch c := labelFc.(type) {
 	case *ir.NumericColumn:

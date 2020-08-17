@@ -11,13 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from os import path
-
 import tensorflow as tf
 from runtime.diagnostics import init_model, load_pretrained_model_estimator
-from runtime.model_metadata import save_model_metadata
+from runtime.model import save_metadata
 from runtime.tensorflow.get_tf_version import tf_is_version2
-from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.metrics import get_tf_metrics
 
 
@@ -34,9 +31,10 @@ def estimator_train_and_save(estimator, model_params, save, train_dataset_fn,
         load_pretrained_model_estimator(estimator, model_params)
     classifier = init_model(estimator, model_params)
 
-    # do not add default Accuracy metric when using estimator to train, it will fail
-    # when the estimator is a regressor, and estimator seems automatically add some
-    # metrics. Only add additional metrics when user specified with `WITH`.
+    # do not add default Accuracy metric when using estimator to train, it will
+    # fail when the estimator is a regressor, and estimator seems automatically
+    # add some metrics. Only add additional metrics when user specified with
+    # `WITH`.
     if tf_is_version2() and metric_names != ["Accuracy"]:
         classifier = tf.estimator.add_metrics(classifier,
                                               get_tf_metrics(metric_names))
@@ -51,13 +49,14 @@ def estimator_save(classifier, save, model_params, model_meta):
     # export saved model for prediction
     if "feature_columns" in model_params:
         all_feature_columns = model_params["feature_columns"]
-    elif "linear_feature_columns" in model_params and "dnn_feature_columns" in model_params:
+    elif "linear_feature_columns" in model_params \
+            and "dnn_feature_columns" in model_params:
         import copy
         all_feature_columns = copy.copy(model_params["linear_feature_columns"])
         all_feature_columns.extend(model_params["dnn_feature_columns"])
     else:
         raise Exception("No expected feature columns in model params")
-    serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+    serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(  # noqa: E501
         tf.feature_column.make_parse_example_spec(all_feature_columns))
     export_path = classifier.export_saved_model(save, serving_input_fn)
     # write the path under current directory
@@ -65,14 +64,14 @@ def estimator_save(classifier, save, model_params, model_meta):
     with open("exported_path", "w") as fn:
         fn.write(export_path_str)
     # write model metadata to model_meta.json
-    save_model_metadata("model_meta.json", model_meta)
+    save_metadata("model_meta.json", model_meta)
     print("Done training, model exported to: %s" % export_path_str)
 
 
 def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
                              log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs):
-    if val_dataset_fn != None:
+    if val_dataset_fn is not None:
         train_spec = tf.estimator.TrainSpec(
             input_fn=lambda: train_dataset_fn(), max_steps=None)
         eval_spec = tf.estimator.EvalSpec(
@@ -84,5 +83,6 @@ def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
         if result:
             print(result[0])
     else:
-        # NOTE(typhoonzero): if only do training, no validation result will be printed.
+        # NOTE(typhoonzero): if only do training, no validation result will be
+        # printed.
         estimator.train(lambda: train_dataset_fn(), max_steps=train_max_steps)

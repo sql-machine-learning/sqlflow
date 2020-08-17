@@ -64,3 +64,33 @@ spec:
         - /work/mysql-inited
       initialDelaySeconds: 5
       periodSeconds: 5
+  - name: model-zoo
+    image: sqlflow/sqlflow:model_zoo
+    imagePullPolicy: IfNotPresent
+    ports:
+    - containerPort: 50055
+      protocol: TCP
+    env:
+    - name: MYSQL_ADDR
+      value: 127.0.0.1:3306
+    volumeMounts:
+    # bind to host's docker.sock to build image
+    - mountPath: /var/run/docker.sock
+      name: docker-socket-volume
+    securityContext:
+      privileged: true
+    command: [ "/bin/bash", "-c" ]
+    args:
+    - |
+      while ! nc -z -w 1 ${MYSQL_ADDR/:/ }; do
+        sleep 3
+        echo "Waiting for mysql..."
+      done 
+      echo "Starting SQLFlow Model Zoo server ..."
+      modelzooserver --mysql-addr="mysql://root:root@tcp(${MYSQL_ADDR})/"
+  volumes:
+  - name: docker-socket-volume
+    hostPath:
+      path: /var/run/docker.sock
+      type: File
+

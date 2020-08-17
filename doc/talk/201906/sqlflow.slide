@@ -81,7 +81,7 @@ TensorFlow model inputs are dense tensors, which are normally high-dimensional m
 - Hash the name string into a 64-bit integer, then bucketizing hashed value into 100 dimension columns.
 .image column_fea2.png _ 600
 
-Generated code using Tensorflow "Feature Column" should look like:
+Generated code using TensorFlow "Feature Column" should look like:
 .code feature_column_code.pysample
 
 * Design: Feature Derivation

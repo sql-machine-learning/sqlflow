@@ -14,10 +14,10 @@
 package codegen
 
 import (
-	"encoding/json"
 	"fmt"
-	"sqlflow.org/sqlflow/go/ir"
 	"strings"
+
+	"sqlflow.org/sqlflow/go/ir"
 )
 
 func toModuleDataType(dtype int, module string) (string, error) {
@@ -40,17 +40,11 @@ func isXGBoostModule(module string) bool {
 	return strings.HasPrefix(module, "xgboost")
 }
 
-// MarshalToJSONString converts any data to JSON string.
-func MarshalToJSONString(in interface{}) (string, error) {
-	bytes, err := json.Marshal(in)
-	return string(bytes), err
-}
-
 // GenerateFeatureColumnCode generates feature column code for both TensorFlow and XGBoost models
 func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, error) {
 	switch c := fc.(type) {
 	case *ir.NumericColumn:
-		shapeStr, err := MarshalToJSONString(c.FieldDesc.Shape)
+		shapeStr, err := ir.MarshalToJSONString(c.FieldDesc.Shape)
 		if err != nil {
 			return "", err
 		}
@@ -63,7 +57,7 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		if err != nil {
 			return "", err
 		}
-		boundariesStr, err := MarshalToJSONString(c.Boundaries)
+		boundariesStr, err := ir.MarshalToJSONString(c.Boundaries)
 		if err != nil {
 			return "", nil
 		}

@@ -20,7 +20,7 @@ import pyomo.environ as pyomo_env
 from runtime.optimize.local import generate_model_with_data_frame, solve_model
 from runtime.optimize.model_generation import (
     IDENTIFIER_REGEX, assert_are_valid_tokens,
-    generate_objective_and_constraint_expression)
+    generate_objective_and_constraint_expr)
 
 
 class TestAssertValidTokens(unittest.TestCase):
@@ -84,7 +84,7 @@ class TestAssertValidTokens(unittest.TestCase):
 
 class TestModelGenerationBase(unittest.TestCase):
     def generate_objective(self, tokens, result_value_name):
-        obj_expr, _ = generate_objective_and_constraint_expression(
+        obj_expr, _ = generate_objective_and_constraint_expr(
             columns=self.data_frame.columns,
             objective=tokens,
             constraints=None,
@@ -95,7 +95,7 @@ class TestModelGenerationBase(unittest.TestCase):
         return obj_expr
 
     def generate_constraints(self, constraint, result_value_name):
-        _, c_expr = generate_objective_and_constraint_expression(
+        _, c_expr = generate_objective_and_constraint_expr(
             columns=self.data_frame.columns,
             objective=None,
             constraints=[constraint],
@@ -168,8 +168,8 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
 
         self.assertEqual(
             c0,
-            'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0]+sum([model.x[i_1] for i_1 in model.x]) for i_0 in model.x])<=100'
-        )
+            'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0]+sum([model.x[i_1] '
+            'for i_1 in model.x]) for i_0 in model.x])<=100')
 
     def test_model_generation(self):
         objective = [
@@ -198,8 +198,8 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         self.assertEqual(obj_str1, obj_str2)
         self.assertEqual(
             obj_str1,
-            'sum([(DATA_FRAME["price"][i_0]-DATA_FRAME["materials_cost"][i_0]-DATA_FRAME["other_cost"][i_0])*model.x[i_0] for i_0 in model.x])'
-        )
+            'sum([(DATA_FRAME["price"][i_0]-DATA_FRAME["materials_cost"][i_0]-'
+            'DATA_FRAME["other_cost"][i_0])*model.x[i_0] for i_0 in model.x])')
 
         const_01, range_01, vars_01 = self.generate_constraints(
             self.replace_constraint_token(constraints[0], "product",
@@ -214,9 +214,8 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         self.assertTrue(vars_01 is None)
 
         self.assertEqual(
-            const_01,
-            'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0] for i_0 in model.x])<=100'
-        )
+            const_01, 'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0] '
+            'for i_0 in model.x])<=100')
 
         const_11, range_11, vars_11 = self.generate_constraints(
             self.replace_constraint_token(constraints[1], "product",
@@ -231,9 +230,8 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         self.assertTrue(vars_11 is None)
 
         self.assertEqual(
-            const_11,
-            'sum([DATA_FRAME["carpentry"][i_0]*model.x[i_0] for i_0 in model.x])<=80'
-        )
+            const_11, 'sum([DATA_FRAME["carpentry"][i_0]*model.x[i_0] '
+            'for i_0 in model.x])<=80')
 
         const_21, range_21, vars_21 = self.generate_constraints(
             self.replace_constraint_token(constraints[2], "product",
@@ -258,9 +256,10 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
                                                 direction="maximize",
                                                 constraints=constraints)
         self.assertTrue(isinstance(model1, pyomo_env.ConcreteModel))
-        result = solve_model(model1, 'glpk')
+        result_x, result_y = solve_model(model1, 'glpk')
         self.assertTrue(
-            np.array_equal(result, np.array([20, 60], dtype='int64')))
+            np.array_equal(result_x, np.array([20, 60], dtype='int64')))
+        self.assertEqual(result_y, 180)
 
         model2 = generate_model_with_data_frame(
             data_frame=self.data_frame,
@@ -314,33 +313,30 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
 
         obj_func = self.generate_objective(objective, self.result_value_name)
         self.assertEqual(
-            obj_func,
-            'sum([DATA_FRAME["distance"][i_0]*model.x[i_0]*90/1000 for i_0 in model.x])'
-        )
+            obj_func, 'sum([DATA_FRAME["distance"][i_0]*model.x[i_0]*90/1000 '
+            'for i_0 in model.x])')
 
         const_0, range_0, vars_0 = self.generate_constraints(
             constraints[0], self.result_value_name)
         self.assertEqual(
-            const_0,
-            'sum([model.x[i_0] for i_0 in __import__("numpy").where(DATA_FRAME["plants"] == __value)[0]])<=DATA_FRAME["capacity"][__index]'
-        )
+            const_0, 'sum([model.x[i_0] for i_0 in __import__("numpy")'
+            '.where(DATA_FRAME["plants"] == __value)[0]])'
+            '<=DATA_FRAME["capacity"][__index]')
         self.assertEqual(
-            range_0,
-            'zip(*__import__("numpy").unique(DATA_FRAME["plants"], return_index=True))'
-        )
+            range_0, 'zip(*__import__("numpy").unique(DATA_FRAME["plants"], '
+            'return_index=True))')
         self.assertEqual(vars_0, ["__value", "__index"])
 
         const_1, range_1, vars_1 = self.generate_constraints(
             constraints[1], self.result_value_name)
 
         self.assertEqual(
-            const_1,
-            'sum([model.x[i_0] for i_0 in __import__("numpy").where(DATA_FRAME["markets"] == __value)[0]])>=DATA_FRAME["demand"][__index]'
-        )
+            const_1, 'sum([model.x[i_0] for i_0 in __import__("numpy").'
+            'where(DATA_FRAME["markets"] == __value)[0]])>='
+            'DATA_FRAME["demand"][__index]')
         self.assertEqual(
-            range_1,
-            'zip(*__import__("numpy").unique(DATA_FRAME["markets"], return_index=True))'
-        )
+            range_1, 'zip(*__import__("numpy").unique(DATA_FRAME["markets"], '
+            'return_index=True))')
         self.assertEqual(vars_1, ["__value", "__index"])
 
         const_2, range_2, vars_2 = self.generate_constraints(
@@ -360,9 +356,10 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
             constraints=constraints)
         self.assertTrue(isinstance(model, pyomo_env.ConcreteModel))
 
-        result = solve_model(model, 'glpk')
+        result_x, result_y = solve_model(model, 'baron')
         self.assertTrue(
-            np.array_equal(result, np.array([99, 1, 31, 59], dtype='int64')))
+            np.array_equal(result_x, np.array([99, 1, 31, 59], dtype='int64')))
+        self.assertAlmostEqual(result_y, 2581.2)
 
 
 if __name__ == '__main__':

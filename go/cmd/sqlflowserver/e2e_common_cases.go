@@ -857,6 +857,50 @@ INTO ` + resultTable + `;`
 	a.True(reflect.DeepEqual(decodedRows[1], []interface{}{"train", int64(1)}))
 }
 
+func caseTestOptimizeClauseWithoutConstraint(t *testing.T) {
+	a := assert.New(t)
+
+	dbName := "optimize_test_db"
+	resultTable := fmt.Sprintf("%s.%s", dbName, "woodcarving_result")
+
+	woodCarvingSQL := `SELECT * FROM optimize_test_db.woodcarving
+TO MINIMIZE SUM((price - materials_cost - other_cost) * amount)
+WITH 
+	variables="amount(product)",
+	var_type="PositiveIntegers"
+USING glpk
+INTO ` + resultTable + `;`
+
+	_, _, _, err := connectAndRunSQL(woodCarvingSQL)
+	a.NoError(err)
+
+	queryResultSQL := fmt.Sprintf("SELECT product, amount FROM %s;", resultTable)
+
+	header, rows, _, err := connectAndRunSQL(queryResultSQL)
+	header = removeColumnNamePrefix(header)
+	a.NoError(err)
+	a.Equal(2, len(header))
+
+	a.Equal("product", header[0])
+	a.Equal("amount", header[1])
+	a.Equal(2, len(rows))
+	decodedRows, err := decodeAnyTypedRowData(rows)
+	a.NoError(err)
+	a.Equal(len(rows), len(decodedRows))
+	for i := 0; i < len(decodedRows); i++ {
+		a.Equal(2, len(decodedRows[i]))
+		a.IsType("", decodedRows[i][0])
+		a.IsType(int64(0), decodedRows[i][1])
+	}
+
+	sort.Slice(decodedRows, func(i int, j int) bool {
+		return decodedRows[i][0].(string) < decodedRows[j][0].(string)
+	})
+
+	a.True(reflect.DeepEqual(decodedRows[0], []interface{}{"soldier", int64(1)}))
+	a.True(reflect.DeepEqual(decodedRows[1], []interface{}{"train", int64(1)}))
+}
+
 func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
 	a := assert.New(t)
 
