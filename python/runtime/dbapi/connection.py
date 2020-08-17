@@ -14,6 +14,7 @@
 from abc import ABCMeta, abstractmethod
 
 import six
+from runtime.dbapi import table_writer
 from six.moves.urllib.parse import parse_qs, urlparse
 
 
@@ -52,6 +53,10 @@ class ResultSet(six.Iterator):
             represent a row in the result set
         """
         pass
+
+    def dump_to_protobuf(self):
+        tw = table_writer.ProtobufWriter(self)
+        return tw.dump_strings()
 
     @abstractmethod
     def column_info(self):

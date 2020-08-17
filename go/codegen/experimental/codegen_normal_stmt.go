@@ -28,7 +28,9 @@ def step_entry_{{.StepIndex}}():
     stmt = """{{.Stmt}}"""
     if conn.is_query(stmt):
         rs = conn.query(stmt)
-        # write rs to stdout using protobuf table writer
+        lines = rs.dump_to_protobuf()
+        for l in lines:
+            print(l)
     else:
         success = conn.execute(stmt)
         if not success:
