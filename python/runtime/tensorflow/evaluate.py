@@ -66,7 +66,8 @@ def evaluate(datasource,
     conn = connect_with_data_source(datasource)
     if result_table:
         metric_name_list = ["loss"] + validation_metrics
-        write_result_metrics(result_metrics, metric_name_list, result_table, conn)
+        write_result_metrics(result_metrics, metric_name_list, result_table,
+                             conn)
 
 
 def estimator_evaluate(estimator, eval_dataset, validation_metrics):
