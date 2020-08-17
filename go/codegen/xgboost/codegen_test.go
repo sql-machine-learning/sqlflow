@@ -14,6 +14,7 @@
 package xgboost
 
 import (
+	"os"
 	"reflect"
 	"regexp"
 	"testing"
@@ -42,6 +43,7 @@ func mockSession() *pb.Session {
 }
 
 func TestTrainAndPredict(t *testing.T) {
+	driver := os.Getenv("SQLFLOW_TEST_DB")
 	a := assert.New(t)
 	tir := ir.MockTrainStmt(true)
 	a.NoError(InitializeAttributes(tir))
@@ -50,23 +52,27 @@ func TestTrainAndPredict(t *testing.T) {
 
 	pir := ir.MockPredStmt(tir)
 	sess := &pb.Session{
-		Token:            "",
-		DbConnStr:        "",
-		ExitOnSubmit:     false,
-		UserId:           "",
-		HiveLocation:     "/sqlflowtmp",
-		HdfsNamenodeAddr: "192.168.1.1:8020",
-		HdfsUser:         "sqlflow_admin",
-		HdfsPass:         "sqlflow_pass",
+		Token:        "",
+		DbConnStr:    "",
+		ExitOnSubmit: false,
+		UserId:       "",
+	}
+	if driver == "hive" {
+		sess.DbConnStr = database.GetTestingHiveURL()
 	}
 	code, err := Pred(pir, sess)
-
-	r, _ := regexp.Compile(`hdfs_user='''(.*)'''`)
-	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_admin")
-	r, _ = regexp.Compile(`hdfs_pass='''(.*)'''`)
-	a.Equal(r.FindStringSubmatch(code)[1], "sqlflow_pass")
-
 	a.NoError(err)
+
+	if driver == "hive" {
+		r, _ := regexp.Compile(`hive_location=(.*)`)
+		a.Contains(r.FindStringSubmatch(code)[1], "/sqlflow")
+		r, _ = regexp.Compile(`hdfs_namenode_addr=(.*)&`)
+		a.Equal(r.FindStringSubmatch(code)[1], "")
+	} else {
+		r, _ := regexp.Compile(`hive_location=(.*)`)
+		a.Equal(0, len(r.FindStringSubmatch(code)))
+	}
+
 }
 
 func TestResolveModelParams(t *testing.T) {

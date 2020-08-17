@@ -16,6 +16,7 @@ package database
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"sync"
 
@@ -94,14 +95,21 @@ func createTestingMySQLDB() *DB {
 	return db
 }
 
-func testingHiveURL() string {
+// GetTestingHiveURL reutrns Hive connection URL
+func GetTestingHiveURL() string {
 	// NOTE: sample dataset is written in
 	// https://github.com/sql-machine-learning/gohive/blob/develop/docker/entrypoint.sh#L123
-	return "hive://root:root@localhost:10000/churn"
+	namenodeAddr := os.Getenv("SQLFLOW_TEST_HDFS_NAMENODE_ADDR")
+	hiveLocation := os.Getenv("SQLFLOW_HIVE_LOCATION")
+	if hiveLocation == "" {
+		hiveLocation = "/sqlflow"
+	}
+	return fmt.Sprintf("hive://root:root@localhost:10000/iris?"+
+		"hdfs_namenode_addr=%s&hive_location=%s", namenodeAddr, hiveLocation)
 }
 
 func createTestingHiveDB() *DB {
-	db, e := OpenAndConnectDB(testingHiveURL())
+	db, e := OpenAndConnectDB(GetTestingHiveURL())
 	assertNoErr(e)
 	_, e = db.Exec("CREATE DATABASE IF NOT EXISTS sqlflow_models;")
 	assertNoErr(e)
@@ -165,8 +173,5 @@ func assertNoErr(e error) {
 func GetSessionFromTestingDB() *proto.Session {
 	db := GetTestingDBSingleton()
 	return &proto.Session{
-		DbConnStr:    db.URL(),
-		HiveLocation: "/sqlflow",
-		HdfsUser:     "",
-		HdfsPass:     ""}
+		DbConnStr: db.URL()}
 }

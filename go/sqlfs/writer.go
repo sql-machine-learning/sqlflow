@@ -14,9 +14,9 @@
 package sqlfs
 
 import (
-	"database/sql"
 	"io"
 
+	"sqlflow.org/sqlflow/go/database"
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
@@ -24,9 +24,9 @@ const bufSize = 32 * 1024
 
 // Create creates a new table or truncates an existing table and
 // returns a writer.
-func Create(db *sql.DB, dbms, table string, session *pb.Session) (io.WriteCloser, error) {
-	if dbms == "hive" {
-		return newHiveWriter(db, session.HiveLocation, table, session.HdfsUser, session.HdfsPass, session.HdfsNamenodeAddr, bufSize)
+func Create(db *database.DB, table string, session *pb.Session) (io.WriteCloser, error) {
+	if db.DriverName == "hive" {
+		return newHiveWriter(db, table, bufSize)
 	}
-	return newSQLWriter(db, dbms, table, bufSize)
+	return newSQLWriter(db, table, bufSize)
 }

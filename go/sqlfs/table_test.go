@@ -29,7 +29,7 @@ func TestSQLFSCreateHasDropTable(t *testing.T) {
 	a := assert.New(t)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	a.NoError(createTable(db.DB, db.DriverName, tbl))
+	a.NoError(createTable(db, tbl))
 	has, e := hasTable(db.DB, tbl)
 	a.NoError(e)
 	a.True(has)

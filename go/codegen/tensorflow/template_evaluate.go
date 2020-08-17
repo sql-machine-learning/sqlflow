@@ -100,9 +100,5 @@ evaluate(datasource="{{.DataSource}}",
          save="{{.Save}}",
          batch_size=1,
          validation_steps=None,
-         verbose=0,
-         hdfs_namenode_addr="{{.HDFSNameNodeAddr}}",
-         hive_location="{{.HiveLocation}}",
-         hdfs_user="{{.HDFSUser}}",
-         hdfs_pass="{{.HDFSPass}}")
+         verbose=0)
 `

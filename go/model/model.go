@@ -197,7 +197,7 @@ func (m *Model) saveDB(connStr, table string, session *pb.Session) (e error) {
 	}
 	defer db.Close()
 
-	sqlf, e := sqlfs.Create(db.DB, db.DriverName, table, session)
+	sqlf, e := sqlfs.Create(db, table, session)
 	if e != nil {
 		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
 	}
