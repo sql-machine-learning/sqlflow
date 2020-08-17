@@ -15,10 +15,10 @@ import os
 import tempfile
 from os import path
 
-from runtime import oss
 from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.model import EstimatorType
+from runtime.model import EstimatorType, oss
 from runtime.pai import cluster_conf
+# yapf: disable
 from runtime.pai.submitter import (ENTRY_FILE, JOB_ARCHIVE_FILE, PARAMS_FILE,
                                    clean_oss_model_path,
                                    create_evaluate_result_table,
@@ -27,17 +27,16 @@ from runtime.pai.submitter import (ENTRY_FILE, JOB_ARCHIVE_FILE, PARAMS_FILE,
                                    create_tmp_table_from_select,
                                    create_train_and_eval_tmp_table,
                                    drop_tables, gen_rand_string,
-                                   get_create_shap_result_sql,
                                    get_evaluate_metrics,
                                    get_oss_model_save_path,
                                    get_oss_saved_model_type_and_estimator,
                                    get_pai_explain_cmd, get_pai_predict_cmd,
                                    get_pai_tf_cmd, get_pai_train_cmd,
-                                   get_project, get_train_kmeans_pai_cmd,
-                                   get_train_random_forest_pai_cmd,
-                                   prepare_archive, save_model_to_sqlfs,
-                                   setup_explain_entry, setup_predict_entry,
-                                   submit_pai_task)
+                                   get_project, prepare_archive,
+                                   save_model_to_sqlfs, setup_explain_entry,
+                                   setup_predict_entry)
+
+# yapf: enable
 
 AlisaTaskTypePAI = 0
 # AlisaTaskTypePyODPS is PyODPS task in the Alisa task enumeration
@@ -93,7 +92,7 @@ def parse_alisa_config(datasource):
 
 
 # (TODO: lhw) This is a placeholder, we should use alisa db api
-def alisa_execute(submit_code, cfg):
+def alisa_execute(submit_code, cfg):  # noqa W0613 C0116
     pass
 
 
@@ -122,7 +121,7 @@ def submit_alisa_task(datasource, task_type, submit_code, args):
     elif task_type == AlisaTaskTypePyODPS:
         alisa_execute(submit_code, args)
     else:
-        return SQLFlowDiagnostic("Unknown AlisaTaskType %d" % task_type)
+        raise SQLFlowDiagnostic("Unknown AlisaTaskType %d" % task_type)
 
 
 def upload_resource_and_submit_alisa_task(datasource, job_file, params_file,
@@ -162,7 +161,8 @@ def submit_alisa_train(datasource, estimator_string, select, validation_select,
 
     Args:
         datasource: string
-            Like: odps://access_id:access_key@service.com/api?curr_project=test_ci&scheme=http
+            Like: odps://access_id:access_key@service.com/api?
+                curr_project=test_ci&scheme=http
         estimator_string: string
             Tensorflow estimator name, Keras class name, or XGBoost
         select: string
@@ -238,8 +238,9 @@ def submit_alisa_predict(datasource, select, result_table, label_column,
     data_table = create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a submitting
-    # argument of format "odps://project/tables/table_name"
+    # format resultTable name to "db.table" to let the
+    # codegen form a submitting argument of format
+    # "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
@@ -283,13 +284,14 @@ def submit_alisa_explain(datasource, select, result_table, model_name,
     params = dict(locals())
 
     cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
-    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
-    # "SELECT fields,... FROM table"
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select
+    # statement is like: "SELECT fields,... FROM table"
     data_table = create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a submitting
-    # argument of format "odps://project/tables/table_name"
+    # format resultTable name to "db.table" to let the codegen
+    # form a submitting argument of format
+    # "odps://project/tables/table_name"
     project = get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)

@@ -541,10 +541,10 @@ def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
     Returns:
         The command to submit PAI prediction task
     """
-    # NOTE(typhoonzero): for PAI machine learning toolkit predicting, we can not load the TrainStmt
-    # since the model saving is fully done by PAI. We directly use the columns in SELECT
-    # statement for prediction, error will be reported by PAI job if the columns not match.
-
+    # NOTE(typhoonzero): for PAI machine learning toolkit predicting, we can
+    # not load the TrainStmt since the model saving is fully done by PAI.
+    # We directly use the columns in SELECT statement for prediction, error
+    # will be reported by PAI job if the columns not match.
     conf = cluster_conf.get_cluster_config(model_params)
     conn = db.connect_with_data_source(datasource)
     if model_type == EstimatorType.PAIML:
