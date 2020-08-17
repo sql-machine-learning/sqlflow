@@ -55,6 +55,7 @@ class TestXGBoostTrain(unittest.TestCase):
         save_name = "iris.xgboost_train_model_test"
         class_name = "class"
 
+        old_dir_name = os.getcwd()
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             os.chdir(tmp_dir_name)
             eval_result = train(original_sql=original_sql,
@@ -95,6 +96,8 @@ class TestXGBoostTrain(unittest.TestCase):
 
             diff_schema = schema2.keys() - schema1.keys()
             self.assertEqual(len(diff_schema), 0)
+
+        os.chdir(old_dir_name)
 
 
 if __name__ == '__main__':
