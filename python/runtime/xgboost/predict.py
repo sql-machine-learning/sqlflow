@@ -28,10 +28,6 @@ def pred(datasource,
          pred_label_meta,
          result_table,
          is_pai=False,
-         hdfs_namenode_addr="",
-         hive_location="",
-         hdfs_user="",
-         hdfs_pass="",
          pai_table="",
          model_params=None,
          train_params=None,
@@ -69,9 +65,7 @@ def pred(datasource,
         predict_and_store_result(bst, pred_dmatrix, feature_file_id,
                                  model_params, selected_cols, train_label_name,
                                  pred_label_name, feature_column_names,
-                                 feature_metas, is_pai, conn, result_table,
-                                 hdfs_namenode_addr, hive_location, hdfs_user,
-                                 hdfs_pass)
+                                 feature_metas, is_pai, conn, result_table)
         feature_file_id += 1
     print("Done predicting. Predict table : %s" % result_table)
 
@@ -79,8 +73,7 @@ def pred(datasource,
 def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                              selected_cols, train_label_name, pred_label_name,
                              feature_column_names, feature_metas, is_pai, conn,
-                             result_table, hdfs_namenode_addr, hive_location,
-                             hdfs_user, hdfs_pass):
+                             result_table):
     preds = bst.predict(dpred)
 
     # TODO(yancey1989): should save train_params and model_params

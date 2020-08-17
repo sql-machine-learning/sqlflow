@@ -82,7 +82,8 @@ class HiveConnection(Connection):
                                   if k.startswith("session.")])
 
     def _get_result_set(self, statement):
-        cursor = self._conn.cursor(configuration=self._session_cfg)
+        cursor = self._conn.cursor(user=self.uripts.username,
+                                   configuration=self._session_cfg)
         try:
             cursor.execute(statement.rstrip(";"))
             return HiveResultSet(cursor)

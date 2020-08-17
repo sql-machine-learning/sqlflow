@@ -199,15 +199,7 @@ def buffered_db_writer(conn, table_name, table_schema, buff_size=100):
     elif driver == "mysql":
         w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":
-        w = db_writer.HiveDBWriter(
-            conn,
-            table_name,
-            table_schema,
-            buff_size,
-            hdfs_namenode_addr=conn.param("hdfs_namenode_addr", ""),
-            hive_location=conn.param("hive_location", ""),
-            hdfs_user=conn.param("hdfs_user", ""),
-            hdfs_pass=conn.param("hdfs_pass", ""))
+        w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "paiio":
         w = db_writer.PAIMaxComputeDBWriter(table_name, table_schema,
                                             buff_size)

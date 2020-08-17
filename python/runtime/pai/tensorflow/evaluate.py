@@ -14,6 +14,7 @@
 import sys
 
 import tensorflow as tf
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.tensorflow import is_tf_estimator
@@ -131,12 +132,5 @@ def _evaluate(datasource,
 
     if result_table:
         metric_name_list = ["loss"] + validation_metrics
-        write_result_metrics(result_metrics,
-                             metric_name_list,
-                             result_table,
-                             "paiio",
-                             None,
-                             hdfs_namenode_addr="",
-                             hive_location="",
-                             hdfs_user="",
-                             hdfs_pass="")
+        write_result_metrics(result_metrics, metric_name_list, result_table,
+                             PaiIOConnection.from_table(result_table))

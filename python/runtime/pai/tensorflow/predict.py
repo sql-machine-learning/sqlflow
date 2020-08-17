@@ -97,7 +97,6 @@ def _predict(datasource,
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
-    driver = "paiio"
     conn = PaiIOConnection.from_table(pai_table)
     selected_cols = db.selected_cols(conn, None)
     predict_generator = db.db_generator(conn, None)
@@ -107,42 +106,16 @@ def _predict(datasource,
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
         print("Start predicting using keras model...")
-        keras_predict(estimator,
-                      model_params,
-                      save,
-                      result_table,
-                      feature_column_names,
-                      feature_metas,
-                      train_label_name,
-                      result_col_name,
-                      driver,
-                      conn,
-                      predict_generator,
-                      selected_cols,
-                      hdfs_namenode_addr="",
-                      hive_location="",
-                      hdfs_user="",
-                      hdfs_pass="")
+        keras_predict(estimator, model_params, save, result_table,
+                      feature_column_names, feature_metas, train_label_name,
+                      result_col_name, conn, predict_generator, selected_cols)
     else:
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
-        estimator_predict(estimator,
-                          model_params,
-                          save,
-                          result_table,
-                          feature_column_names,
-                          feature_column_names_map,
-                          feature_columns,
-                          feature_metas,
-                          train_label_name,
-                          result_col_name,
-                          driver,
-                          conn,
-                          predict_generator,
-                          selected_cols,
-                          hdfs_namenode_addr="",
-                          hive_location="",
-                          hdfs_user="",
-                          hdfs_pass="")
+        estimator_predict(estimator, model_params, save, result_table,
+                          feature_column_names, feature_column_names_map,
+                          feature_columns, feature_metas, train_label_name,
+                          result_col_name, conn, predict_generator,
+                          selected_cols)
 
     print("Done predicting. Predict table : %s" % result_table)
