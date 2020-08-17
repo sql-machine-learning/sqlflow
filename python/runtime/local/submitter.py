@@ -33,10 +33,10 @@ def submit_local_train(datasource, estimator_string, select, validation_select,
         load: string
             The pre-trained model name to load
         train_params: dict
-            Extra train params, they will be passed to runtime.tensorflow.train or
-            runtime.xgboost.train, required fields: original_sql, model_image,
-            feature_column_map, label_column; optional fields: disk_cache, batch_size,
-            epoch.
+            Extra train params, will be passed to runtime.tensorflow.train
+            or runtime.xgboost.train, required fields: original_sql,
+            model_image, feature_column_map, label_column; optional fields:
+            disk_cache, batch_size, epoch.
     """
     if estimator_string.lower().startswith("xgboost"):
         # pop required params from train_params

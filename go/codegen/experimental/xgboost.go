@@ -157,23 +157,23 @@ def step_entry_{{.StepIndex}}():
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
     with tempfile.TemporaryDirectory() as temp_dir:
-		os.chdir(temp_dir)
-		train_params["original_sql"] = '''{{.OriginalSQL}}'''
-		train_params["model_image"] = '''{{.ModelImage}}'''
-		train_params["feature_column_map"] = feature_column_map
-		train_params["label_column"] = label_column
-		train_params["disk_cache"] = "{{.DiskCache}}"=="true"
-		train_params["batch_size"] = {{.BatchSize}}
-		train_params["epoch"] = {{.Epoch}}
+        os.chdir(temp_dir)
+        train_params["original_sql"] = '''{{.OriginalSQL}}'''
+        train_params["model_image"] = '''{{.ModelImage}}'''
+        train_params["feature_column_map"] = feature_column_map
+        train_params["label_column"] = label_column
+        train_params["disk_cache"] = "{{.DiskCache}}"=="true"
+        train_params["batch_size"] = {{.BatchSize}}
+        train_params["epoch"] = {{.Epoch}}
 
-		train(datasource='''{{.DataSource}}''',
-			  estimator='''{{.Estimator}}''',
-			  select='''{{.Select}}''',
-			  validation_select='''{{.ValidationSelect}}''',
-			  model_params=model_params,
-			  save='''{{.Save}}''',
-			  load='''{{.Load}}''',
-			  train_params=train_params)
+        train(datasource='''{{.DataSource}}''',
+              estimator='''{{.Estimator}}''',
+              select='''{{.Select}}''',
+              validation_select='''{{.ValidationSelect}}''',
+              model_params=model_params,
+              save='''{{.Save}}''',
+              load='''{{.Load}}''',
+              train_params=train_params)
 `
 
 func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {

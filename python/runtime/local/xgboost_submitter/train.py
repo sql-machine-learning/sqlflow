@@ -51,8 +51,9 @@ def train(original_sql,
         select (str): the SQL statement for training.
         validation_select (str): the SQL statement for evaluation.
         model_params (dict): the XGBoost model parameters.
-        train_params (dict): the training parameters, can have disk_cache(bool),
-                             batch_size(int), epoch(int) settings in the dict.
+        train_params (dict): the training parameters, can have
+                             disk_cache(bool), batch_size(int), epoch(int)
+                             settings in the dict.
         feature_column_map (dict): the feature column map to do derivation.
         label_column (FeatureColumn): the label column.
         save (str): the table name to save the trained model and meta.
