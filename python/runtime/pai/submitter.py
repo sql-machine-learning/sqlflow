@@ -470,8 +470,8 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     prepare_archive(cwd, estimator_string, path_to_save, params)
 
     # submit pai task to execute the training
-    cmd = get_pai_train_cmd(datasource, estimator_string, model_name,
-                            train_table, val_table, model_params, train_params,
+    cmd = get_pai_train_cmd(datasource, estimator_string, save, train_table,
+                            val_table, model_params, train_params,
                             path_to_save,
                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                             "file://" + path.join(cwd, PARAMS_FILE), cwd)
