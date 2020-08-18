@@ -48,6 +48,8 @@ git clone https://github.com/sql-machine-learning/models.git
 git checkout v0.0.6 -b v0.0.6 && \
 python setup.py install)
 
+protoc --python_out=python/runtime/dbapi/table_writer/ -I go/proto sqlflow.proto
+
 # 3. install java parser
 echo "Build parser gRPC servers in Java ..."
 
