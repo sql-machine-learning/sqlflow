@@ -99,10 +99,6 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 	if err != nil {
 		return "", err
 	}
-	submitter := os.Getenv("SQLFLOW_submitter")
-	if submitter == "" {
-		submitter = "local"
-	}
 
 	dbConnStr, err := GeneratePyDbConnStr(session)
 	if err != nil {
@@ -126,7 +122,7 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 		DiskCache:         diskCache,
 		BatchSize:         batchSize,
 		Epoch:             epoch,
-		Submitter:         submitter,
+		Submitter:         getSubmitter(session, "local"),
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Parse(xgbTrainTemplate))
@@ -174,6 +170,69 @@ def step_entry_{{.StepIndex}}():
                                 batch_size={{.BatchSize}},
                                 epoch={{.Epoch}})
 `
+
+type xgbPredFiller struct {
+	StepIndex     int
+	DataSource    string
+	Select        string
+	PredLabelName string
+	ResultTable   string
+	Load          string
+	Submitter     string
+}
+
+// XGBoostGeneratePredict generates the XGBoost prediction code
+func XGBoostGeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
+	dbConnStr, err := GeneratePyDbConnStr(session)
+	if err != nil {
+		return "", err
+	}
+
+	filler := &xgbPredFiller{
+		StepIndex:     stepIndex,
+		DataSource:    dbConnStr,
+		Select:        replaceNewLineRuneAndTrimSpace(predStmt.Select),
+		PredLabelName: predStmt.ResultColumn,
+		ResultTable:   predStmt.ResultTable,
+		Load:          predStmt.Using,
+		Submitter:     getSubmitter(session, "local"),
+	}
+
+	var program bytes.Buffer
+	predTmpl := template.Must(template.New("Train").Parse(xgbPredTemplate))
+	err = predTmpl.Execute(&program, filler)
+	if err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+const xgbPredTemplate = `
+def step_entry_{{.StepIndex}}():
+    import os
+    import tempfile
+    import runtime.{{.Submitter}}.xgboost as xgboost_submitter
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        os.chdir(temp_dir)
+        xgboost_submitter.pred(datasource='''{{.DataSource}}''', 
+                               select='''{{.Select}}''', 
+                               result_table='''{{.ResultTable}}''', 
+                               pred_label_name='''{{.PredLabelName}}''', 
+                               load='''{{.Load}}''')
+`
+
+func getSubmitter(session *pb.Session, defaultValue string) string {
+	if session.Submitter != "" {
+		return session.Submitter
+	}
+
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter != "" {
+		return submitter
+	}
+	return defaultValue
+}
 
 func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 	fcCodes := make([]string, 0, len(fcList))

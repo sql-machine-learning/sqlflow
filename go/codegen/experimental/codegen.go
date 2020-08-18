@@ -23,16 +23,25 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-func generateStepCode(stmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (string, error) {
-	switch stmt.(type) {
+// TODO(sneaxiy): implement this method to distinguish whether
+// a model is a XGBoost model.
+func isTrainedXBoostModel(modelName string) bool {
+	return true
+}
+
+func generateStepCode(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (string, error) {
+	switch stmt := sqlStmt.(type) {
 	case *ir.TrainStmt:
-		trainStmt := stmt.(*ir.TrainStmt)
-		if strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST.") {
-			return XGBoostGenerateTrain(trainStmt, stepIndex, session)
+		if strings.HasPrefix(strings.ToUpper(stmt.Estimator), "XGBOOST.") {
+			return XGBoostGenerateTrain(stmt, stepIndex, session)
 		}
-		return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+		return "", fmt.Errorf("not implemented estimator type %s", stmt.Estimator)
+	case *ir.PredictStmt:
+		if isTrainedXBoostModel(stmt.Using) {
+			return XGBoostGeneratePredict(stmt, stepIndex, session)
+		}
+		return "", fmt.Errorf("not implemented model type")
 	case *ir.NormalStmt:
-		stmt := stmt.(*ir.NormalStmt)
 		return GenerateNormalStmtStep(string(*stmt), session, stepIndex)
 	default:
 		return "", fmt.Errorf("not implemented stmt execution type %v", stmt)
