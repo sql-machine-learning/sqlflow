@@ -156,8 +156,7 @@ def step_entry_{{.StepIndex}}():
     model_params = json.loads('''{{.ModelParamsJSON}}''')
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
-<<<<<<< HEAD
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
         os.chdir(temp_dir)
         train_params["original_sql"] = '''{{.OriginalSQL}}'''
         train_params["model_image"] = '''{{.ModelImage}}'''
@@ -175,24 +174,6 @@ def step_entry_{{.StepIndex}}():
               save='''{{.Save}}''',
               load='''{{.Load}}''',
               train_params=train_params)
-=======
-    with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
-        xgboost_submitter.train(original_sql='''{{.OriginalSQL}}''',
-                                model_image='''{{.ModelImage}}''',
-                                estimator='''{{.Estimator}}''',
-                                datasource='''{{.DataSource}}''',
-                                select='''{{.Select}}''',
-                                validation_select='''{{.ValidationSelect}}''',
-                                model_params=model_params,
-                                train_params=train_params,
-                                feature_column_map=feature_column_map,
-                                label_column=label_column,
-                                save='''{{.Save}}''',
-                                load='''{{.Load}}''',
-                                disk_cache="{{.DiskCache}}"=="true",
-                                batch_size={{.BatchSize}},
-                                epoch={{.Epoch}})
->>>>>>> e9b5f7b68be4b88cce44cea407c15adb54c56114
 `
 
 func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
