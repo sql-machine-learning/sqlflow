@@ -152,7 +152,7 @@ def step_entry_{{.StepIndex}}():
     model_params = json.loads('''{{.ModelParamsJSON}}''')
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
-    with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
+    with temp_file.TemporaryDirectory(as_cwd=True):
         xgboost_submitter.train(original_sql='''{{.OriginalSQL}}''',
                                 model_image='''{{.ModelImage}}''',
                                 estimator='''{{.Estimator}}''',
@@ -209,11 +209,10 @@ func XGBoostGeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb
 const xgbPredTemplate = `
 def step_entry_{{.StepIndex}}():
     import os
-    import tempfile
+    import runtime.temp_file as temp_file
     import runtime.{{.Submitter}}.xgboost as xgboost_submitter
     
-    with tempfile.TemporaryDirectory() as temp_dir:
-        os.chdir(temp_dir)
+    with temp_file.TemporaryDirectory(as_cwd=True):
         xgboost_submitter.pred(datasource='''{{.DataSource}}''', 
                                select='''{{.Select}}''', 
                                result_table='''{{.ResultTable}}''', 
