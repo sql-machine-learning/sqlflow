@@ -167,7 +167,7 @@ def step_entry_{{.StepIndex}}():
         train_params["epoch"] = {{.Epoch}}
 
         train(datasource='''{{.DataSource}}''',
-              estimator='''{{.Estimator}}''',
+              estimator_string='''{{.Estimator}}''',
               select='''{{.Select}}''',
               validation_select='''{{.ValidationSelect}}''',
               model_params=model_params,
