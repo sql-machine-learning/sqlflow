@@ -40,7 +40,7 @@ class TestXGBoostTrain(unittest.TestCase):
         model_params = {"num_class": 3, "objective": "multi:softmax"}
         eval_result = train(original_sql=original_sql,
                             model_image="sqlflow:step",
-                            estimator="xgboost.gbtree",
+                            estimator_string="xgboost.gbtree",
                             datasource=ds,
                             select=select,
                             validation_select=val_select,
