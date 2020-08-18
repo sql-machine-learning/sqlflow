@@ -131,6 +131,7 @@ INTO %s;
 
 SELECT * FROM %s
 TO EVALUATE %s
+WITH validation.metrics="Accuracy"
 LABEL class
 INTO %s.sqlflow_iris_eval_result;
 
