@@ -12,9 +12,9 @@
 # limitations under the License.
 
 import os
-import tempfile
 
 import numpy as np
+import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
 import sklearn.metrics
 import xgboost as xgb
@@ -95,7 +95,7 @@ def evaluate(datasource,
     result_column_names = _create_evaluate_table(conn, result_table,
                                                  validation_metrics)
 
-    with tempfile.TemporaryDirectory() as tmp_dir_name:
+    with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
 
         dpred = xgb_dataset(datasource=datasource,

@@ -12,9 +12,9 @@
 # limitations under the License.
 
 import os
-import tempfile
 
 import numpy as np
+import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
 import xgboost as xgb
 from runtime import db
@@ -62,7 +62,7 @@ def pred(datasource, select, result_table, pred_label_name, load):
     result_column_names, train_label_idx = _create_predict_table(
         conn, select, result_table, train_label_desc, pred_label_name)
 
-    with tempfile.TemporaryDirectory() as tmp_dir_name:
+    with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
         raw_data_dir = os.path.join(tmp_dir_name, "predict_raw_dir")
 
