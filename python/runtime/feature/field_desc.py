@@ -27,6 +27,32 @@ class DataType(object):
     FLOAT32 = 1
     STRING = 2
 
+    @staticmethod
+    def to_db_field_type(driver, dtype):
+        """
+        This method converts the dtype to a field type that the CREATE
+        TABLE statement accepts.
+
+        Args:
+            driver (str): the DBMS driver type.
+            dtype (enum): the data type. One of FLOAT32, INT64 and STRING.
+
+        Returns:
+            A field type that the CREATE TABLE statement accepts.
+        """
+        if dtype == DataType.INT64:
+            return "BIGINT"
+
+        if dtype == DataType.FLOAT32:
+            return "DOUBLE"
+
+        if dtype == DataType.STRING:
+            if driver == "mysql":
+                return "VARCHAR(255)"
+            return "STRING"
+
+        raise ValueError("unsupported data type {}".format(dtype))
+
 
 # DataFormat is used in FieldDesc to represent the data format
 # of a database field.
