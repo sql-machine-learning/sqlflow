@@ -70,6 +70,26 @@ class Model(object):
         self._typ = typ
         self._meta = meta
 
+    def get_type(self):
+        """
+        Returns the model type.
+        """
+        return self._typ
+
+    def get_meta(self, name, default=None):
+        """
+        Get the metadata by name.
+
+        Args:
+            name (str): the metadata name.
+            default: the default value if the name does not exist.
+
+        Returns:
+            Return the metadata with the given name if exists.
+            Otherwise, return the default value.
+        """
+        return self._meta.get(name, default)
+
     def _zip(self, local_dir, tarball):
         """
         Zip the model information and all files in local_dir into a tarball.
