@@ -12,21 +12,15 @@
 # limitations under the License.
 
 import os
-import tempfile
 import unittest
 
 import runtime.model.oss as oss
+import runtime.temp_file as temp_file
 from runtime.model import EstimatorType, Model
 from runtime.testing import get_datasource
 
 
 class TestModel(unittest.TestCase):
-    def setUp(self):
-        self.cur_dir = os.getcwd()
-
-    def tearDown(self):
-        os.chdir(self.cur_dir)
-
     def test_save_load_db(self):
         table = "sqlflow_models.test_model"
         meta = {"model_params": {"n_classes": 3}}
@@ -34,11 +28,11 @@ class TestModel(unittest.TestCase):
         datasource = get_datasource()
 
         # save mode
-        with tempfile.TemporaryDirectory() as d:
+        with temp_file.TemporaryDirectory() as d:
             m.save_to_db(datasource, table, d)
 
         # load model
-        with tempfile.TemporaryDirectory() as d:
+        with temp_file.TemporaryDirectory() as d:
             m = Model.load_from_db(datasource, table, d)
             self.assertEqual(m._meta, meta)
 
@@ -57,12 +51,12 @@ class TestModel(unittest.TestCase):
 
         # save model
         def save_to_oss():
-            with tempfile.TemporaryDirectory() as d:
+            with temp_file.TemporaryDirectory() as d:
                 m.save_to_oss(oss_model_path, d)
 
         # load model
         def load_from_oss():
-            with tempfile.TemporaryDirectory() as d:
+            with temp_file.TemporaryDirectory() as d:
                 return Model.load_from_oss(oss_model_path, d)
 
         with self.assertRaises(Exception):

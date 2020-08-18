@@ -14,10 +14,10 @@
 This module launches a XGBoost training task on host.
 """
 import os
-import tempfile
 import types
 
 import runtime.db as db
+import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
 import xgboost as xgb
 from runtime.feature.compile import compile_ir_feature_columns
@@ -106,7 +106,7 @@ def train(original_sql,
     else:
         bst = None
 
-    with tempfile.TemporaryDirectory() as tmp_dir_name:
+    with temp_file.TemporaryDirectory() as tmp_dir_name:
         train_fn = os.path.join(tmp_dir_name, 'train.txt')
         val_fn = os.path.join(tmp_dir_name, 'val.txt')
         train_dataset = build_dataset(train_fn, select)
