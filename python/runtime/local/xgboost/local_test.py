@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import runtime.db as db
@@ -55,7 +54,6 @@ class TestXGBoostTrain(unittest.TestCase):
         save_name = "iris.xgboost_train_model_test"
         class_name = "class"
 
-        old_dir_name = os.getcwd()
         with temp_file.TemporaryDirectory(as_cwd=True):
             eval_result = train(original_sql=original_sql,
                                 model_image="sqlflow:step",
@@ -102,8 +100,6 @@ class TestXGBoostTrain(unittest.TestCase):
                                                 "iris.evaluate_result_table")
             self.assertEqual(eval_schema.keys(),
                              set(['loss', 'accuracy_score']))
-
-        os.chdir(old_dir_name)
 
 
 if __name__ == '__main__':
