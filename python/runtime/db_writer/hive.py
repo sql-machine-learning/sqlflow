@@ -21,23 +21,15 @@ CSV_DELIMITER = '\001'
 
 
 class HiveDBWriter(BufferedDBWriter):
-    def __init__(self,
-                 conn,
-                 table_name,
-                 table_schema,
-                 buff_size=10000,
-                 hdfs_namenode_addr="",
-                 hive_location="",
-                 hdfs_user="",
-                 hdfs_pass=""):
+    def __init__(self, conn, table_name, table_schema, buff_size=10000):
         super().__init__(conn, table_name, table_schema, buff_size)
         self.tmp_f = tempfile.NamedTemporaryFile(dir="./")
         self.f = open(self.tmp_f.name, "w")
         self.schema_idx = self._indexing_table_schema(table_schema)
-        self.hdfs_namenode_addr = hdfs_namenode_addr
-        self.hive_location = hive_location
-        self.hdfs_user = hdfs_user
-        self.hdfs_pass = hdfs_pass
+        self.hdfs_namenode_addr = conn.param("hdfs_namenode_addr")
+        self.hive_location = conn.param("hive_location")
+        self.hdfs_user = conn.uripts.username
+        self.hdfs_pass = conn.uripts.password
 
     def _indexing_table_schema(self, table_schema):
         column_list = self.conn.get_table_schema(self.table_name)

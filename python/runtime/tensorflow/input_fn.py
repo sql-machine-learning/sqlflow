@@ -96,7 +96,6 @@ def input_fn(select,
                            feature_metas,
                            slice_id=worker_id,
                            slice_count=num_workers)
-        selected_cols = db.pai_selected_cols(pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
         gen = db.db_generator(conn, select, label_meta)
