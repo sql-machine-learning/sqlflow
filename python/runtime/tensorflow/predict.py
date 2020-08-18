@@ -39,9 +39,7 @@ else:
 
 def keras_predict(estimator, model_params, save, result_table,
                   feature_column_names, feature_metas, train_label_name,
-                  result_col_name, driver, conn, predict_generator,
-                  selected_cols, hdfs_namenode_addr, hive_location, hdfs_user,
-                  hdfs_pass):
+                  result_col_name, conn, predict_generator, selected_cols):
 
     classifier = init_model_with_feature_column(estimator, model_params)
 
@@ -140,9 +138,7 @@ def write_cols_from_selected(result_col_name, selected_cols):
 def estimator_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_column_names_map,
                       feature_columns, feature_metas, train_label_name,
-                      result_col_name, driver, conn, predict_generator,
-                      selected_cols, hdfs_namenode_addr, hive_location,
-                      hdfs_user, hdfs_pass):
+                      result_col_name, conn, predict_generator, selected_cols):
     write_cols = selected_cols[:]
     try:
         train_label_index = selected_cols.index(train_label_name)
@@ -251,17 +247,12 @@ def pred(datasource,
          feature_metas={},
          model_params={},
          save="",
-         batch_size=1,
-         hdfs_namenode_addr="",
-         hive_location="",
-         hdfs_user="",
-         hdfs_pass=""):
+         batch_size=1):
     estimator = import_model(estimator_string)
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
     conn = db.connect_with_data_source(datasource)
-    driver = conn.driver
     predict_generator = db.db_generator(conn, select)
     selected_cols = db.selected_cols(conn, select)
 
@@ -272,17 +263,14 @@ def pred(datasource,
         print("Start predicting using keras model...")
         keras_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, train_label_name,
-                      result_col_name, driver, conn, predict_generator,
-                      selected_cols, hdfs_namenode_addr, hive_location,
-                      hdfs_user, hdfs_pass)
+                      result_col_name, conn, predict_generator, selected_cols)
     else:
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(estimator, model_params, save, result_table,
                           feature_column_names, feature_column_names_map,
                           feature_columns, feature_metas, train_label_name,
-                          result_col_name, driver, conn, predict_generator,
-                          selected_cols, hdfs_namenode_addr, hive_location,
-                          hdfs_user, hdfs_pass)
+                          result_col_name, conn, predict_generator,
+                          selected_cols)
 
     print("Done predicting. Predict table : %s" % result_table)

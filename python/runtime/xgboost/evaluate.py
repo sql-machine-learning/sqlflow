@@ -51,10 +51,6 @@ def evaluate(datasource,
              result_table,
              validation_metrics=["accuracy_score"],
              is_pai=False,
-             hdfs_namenode_addr="",
-             hive_location="",
-             hdfs_user="",
-             hdfs_pass="",
              pai_table="",
              model_params=None,
              transform_fn=None,
@@ -85,16 +81,14 @@ def evaluate(datasource,
         evaluate_and_store_result(bst, pred_dmatrix, feature_file_id,
                                   validation_metrics, model_params,
                                   feature_column_names, label_meta, is_pai,
-                                  conn, result_table, hdfs_namenode_addr,
-                                  hive_location, hdfs_user, hdfs_pass)
+                                  conn, result_table)
         feature_file_id += 1
     print("Done evaluating. Result table : %s" % result_table)
 
 
 def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
                               model_params, feature_column_names, label_meta,
-                              is_pai, conn, result_table, hdfs_namenode_addr,
-                              hive_location, hdfs_user, hdfs_pass):
+                              is_pai, conn, result_table):
     preds = bst.predict(dpred)
     # FIXME(typhoonzero): copied from predict.py
     if model_params:

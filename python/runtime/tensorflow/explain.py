@@ -53,10 +53,6 @@ def explain(datasource,
             pai_table="",
             plot_type='bar',
             result_table="",
-            hdfs_namenode_addr="",
-            hive_location="",
-            hdfs_user="",
-            hdfs_pass="",
             oss_dest=None,
             oss_ak=None,
             oss_sk=None,
@@ -77,10 +73,9 @@ def explain(datasource,
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
-                              result_table, feature_column_names, conn.driver,
-                              conn, hdfs_namenode_addr, hive_location,
-                              hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
-                              oss_endpoint, oss_bucket_name)
+                              result_table, feature_column_names, conn,
+                              oss_dest, oss_ak, oss_sk, oss_endpoint,
+                              oss_bucket_name)
     else:
         shap_dataset = pd.DataFrame(columns=feature_column_names)
         for i, (features, label) in enumerate(_input_fn()):
@@ -88,32 +83,27 @@ def explain(datasource,
                 item.numpy()[0][0] for item in features.values()
             ]
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
-                     result_table, feature_column_names, conn.driver, conn,
-                     hdfs_namenode_addr, hive_location, hdfs_user, hdfs_pass,
-                     oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+                     result_table, feature_column_names, conn, oss_dest,
+                     oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
-                          result_table, feature_column_names, driver, conn,
-                          hdfs_namenode_addr, hive_location, hdfs_user,
-                          hdfs_pass, oss_dest, oss_ak, oss_sk, oss_endpoint,
-                          oss_bucket_name):
+                          result_table, feature_column_names, conn, oss_dest,
+                          oss_ak, oss_sk, oss_endpoint, oss_bucket_name):
     result = estimator.experimental_predict_with_explanations(input_fn)
     pred_dicts = list(result)
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
     gain = estimator.experimental_feature_importances(normalize=True)
     if result_table != "":
-        write_dfc_result(dfc_mean, gain, result_table, driver, conn,
-                         feature_column_names, hdfs_namenode_addr,
-                         hive_location, hdfs_user, hdfs_pass)
+        write_dfc_result(dfc_mean, gain, result_table, conn,
+                         feature_column_names)
     explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), oss_dest, oss_ak,
                             oss_sk, oss_endpoint, oss_bucket_name)
 
 
 def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
-                 feature_column_names, driver, conn, hdfs_namenode_addr,
-                 hive_location, hdfs_user, hdfs_pass, oss_dest, oss_ak, oss_sk,
+                 feature_column_names, conn, oss_dest, oss_ak, oss_sk,
                  oss_endpoint, oss_bucket_name):
     def predict(d):
         if len(d) == 1:
@@ -147,9 +137,8 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
     shap_values = shap.KernelExplainer(
         predict, shap_dataset_summary).shap_values(shap_dataset, l1_reg="aic")
     if result_table != "":
-        write_shap_values(shap_values, driver, conn, result_table,
-                          feature_column_names, hdfs_namenode_addr,
-                          hive_location, hdfs_user, hdfs_pass)
+        write_shap_values(shap_values, conn, result_table,
+                          feature_column_names)
     explainer.plot_and_save(
         lambda: shap.summary_plot(
             shap_values, shap_dataset, show=False, plot_type=plot_type),
@@ -172,17 +161,13 @@ def create_explain_result_table(conn, result_table):
         cursor.close()
 
 
-def write_shap_values(shap_values, driver, conn, result_table,
-                      feature_column_names, hdfs_namenode_addr, hive_location,
-                      hdfs_user, hdfs_pass):
+def write_shap_values(shap_values, conn, result_table, feature_column_names):
     with buffered_db_writer(conn, result_table, feature_column_names) as w:
         for row in shap_values[0]:
             w.write(list(row))
 
 
-def write_dfc_result(dfc_mean, gain, result_table, driver, conn,
-                     feature_column_names, hdfs_namenode_addr, hive_location,
-                     hdfs_user, hdfs_pass):
+def write_dfc_result(dfc_mean, gain, result_table, conn, feature_column_names):
     with buffered_db_writer(conn, result_table, ["feature", "dfc", "gain"],
                             100) as w:
         for row_name in feature_column_names:

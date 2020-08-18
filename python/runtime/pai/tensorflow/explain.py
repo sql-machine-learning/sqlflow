@@ -113,14 +113,13 @@ def _explain(datasource,
         return dataset.batch(1).cache()
 
     estimator = init_model_with_feature_column(estimator_cls, model_params)
-    driver = "paiio"
     conn = PaiIOConnection.from_table(result_table) if result_table else None
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
         explain_boosted_trees(datasource, estimator, _input_fn, plot_type,
-                              result_table, feature_column_names, driver, conn,
-                              "", "", "", "", oss_dest, oss_ak, oss_sk,
-                              oss_endpoint, oss_bucket_name)
+                              result_table, feature_column_names, conn,
+                              oss_dest, oss_ak, oss_sk, oss_endpoint,
+                              oss_bucket_name)
     else:
         shap_dataset = pd.DataFrame(columns=feature_column_names)
         for i, (features, label) in enumerate(_input_fn()):
@@ -128,6 +127,5 @@ def _explain(datasource,
                 item.numpy()[0][0] for item in features.values()
             ]
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
-                     result_table, feature_column_names, driver, conn, "", "",
-                     "", "", oss_dest, oss_ak, oss_sk, oss_endpoint,
-                     oss_bucket_name)
+                     result_table, feature_column_names, conn, oss_dest,
+                     oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
