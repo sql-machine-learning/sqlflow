@@ -12,7 +12,6 @@
 # limitations under the License.
 
 import os
-import tempfile
 
 import numpy as np
 import runtime.temp_file as temp_file
