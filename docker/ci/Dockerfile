@@ -41,6 +41,25 @@ RUN pip install --quiet /build/*.whl \
         && mkdir -p $SQLFLOW_PARSER_SERVER_LOADING_PATH \
         && mv /build/*.jar $SQLFLOW_PARSER_SERVER_LOADING_PATH
 
+# Install Jupyter Notebook
+COPY /docker/jupyter/js /jupyter/js/
+COPY build/tutorial /workspace
+COPY docker/ci/install-jupyter-ci.sh /jupyter/install-jupyter-ci.sh
+RUN /bin/sh /jupyter/install-jupyter-ci.sh
+ARG SQLFLOW_SERVER="localhost:50051"
+ENV SQLFLOW_SERVER=${SQLFLOW_SERVER}
+ARG SQLFLOW_DATASOURCE="mysql://root:root@tcp(127.0.0.1:3306)/?maxAllowedPacket=0"
+ENV SQLFLOW_DATASOURCE=${SQLFLOW_DATASOURCE}
+
+WORKDIR /workspace
+EXPOSE 8888
+
+# Install MySQL and sample datasets.
+RUN apt-get install -y mysql mysql-client
+ARG MYSQL_PORT="3306"
+ENV MYSQL_PORT=$MYSQL_PORT
+EXPOSE $MYSQL_PORT
+
 # Expose SQLFlow gRPC server port.
 EXPOSE 50051 
 
