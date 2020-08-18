@@ -19,7 +19,7 @@ import runtime.db as db
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.xgboost import pred, train
+from runtime.local.xgboost import evaluate, pred, train
 
 
 class TestXGBoostTrain(unittest.TestCase):
@@ -36,7 +36,7 @@ class TestXGBoostTrain(unittest.TestCase):
 
     @unittest.skipUnless(testing.get_driver() == "mysql",
                          "skip non mysql tests")
-    def test_train_and_predict(self):
+    def test_main(self):
         ds = testing.get_datasource()
         original_sql = """SELECT * FROM iris.train
         TO TRAIN xgboost.gbtree
@@ -96,6 +96,13 @@ class TestXGBoostTrain(unittest.TestCase):
 
             diff_schema = schema2.keys() - schema1.keys()
             self.assertEqual(len(diff_schema), 0)
+
+            evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
+                     'class', ['accuracy_score'])
+            eval_schema = self.get_table_schema(conn,
+                                                "iris.evaluate_result_table")
+            self.assertEqual(eval_schema.keys(),
+                             set(['loss', 'accuracy_score']))
 
         os.chdir(old_dir_name)
 

@@ -11,5 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.local.xgboost.evaluate import evaluate  # noqa: F401
 from runtime.local.xgboost.predict import pred  # noqa: F401
 from runtime.local.xgboost.train import train  # noqa: F401
