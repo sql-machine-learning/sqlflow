@@ -120,25 +120,29 @@ func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
 	sqlProgram := fmt.Sprintf(`
 SELECT * FROM %s LIMIT 10;
 
-SELECT *
-FROM %s
+SELECT * FROM %s
 TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 3,
 	model.hidden_units = [10, 20],
 	validation.select = "SELECT * FROM %s"
-COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO %s;
 
-SELECT *
-FROM %s
+SELECT * FROM %s
+TO EVALUATE %s
+LABEL class
+INTO %s.sqlflow_iris_eval_result;
+
+SELECT * FROM %s
 TO PREDICT %s.class
 USING %s;
 
 SELECT *
 FROM %s LIMIT 5;
-	`, caseTrainTable, caseTrainTable, caseTestTable, caseInto, caseTestTable, casePredictTable, caseInto, casePredictTable)
+	`, caseTrainTable, caseTrainTable, caseTestTable, caseInto,
+		caseTestTable, caseInto, caseDB,
+		caseTestTable, casePredictTable, caseInto, casePredictTable)
 
 	conn, err := createRPCConn()
 	if err != nil {
