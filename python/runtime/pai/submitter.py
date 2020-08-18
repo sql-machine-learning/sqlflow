@@ -346,8 +346,7 @@ def get_project_role_name(project):
                                if x in string.ascii_lowercase + string.digits)
 
 
-def prepare_archive(cwd, conf, project, estimator, model_name, train_tbl,
-                    val_tbl, model_save_path, train_params):
+def prepare_archive(cwd, estimator, model_save_path, train_params):
     """package needed resource into a tarball"""
     create_pai_hyper_param_file(cwd, PARAMS_FILE, model_save_path)
 
@@ -378,7 +377,48 @@ def save_model_to_sqlfs(datasource, model_oss_path, model_name):
     pass
 
 
+def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
+                      val_table, model_params, train_params, path_to_save,
+                      job_file, params_file, cwd):
+    """Get train model comman for PAI
+
+    Args:
+        datasource: current datasource
+        estimator_string: estimator name, Keras class name, or XGBoost
+        model_name: the model name to train
+        train_table: data table from which to load train data
+        val_table: data table from which to load evaluate data
+        model_params: params for training, crossponding to WITH clause
+        train_params: parmas for the trainning process
+        path_to_save: path to save the model
+        job_file: tar file incldue code and libs to execute on PAI
+        params_file: extra params file
+        cwd: current working dir
+
+    Returns:
+        The command to submit a PAI train task
+    """
+    project = get_project(datasource)
+    conf = cluster_conf.get_cluster_config(model_params)
+    if estimator_string.lower() == "randomforests":
+        cmd = get_train_random_forest_pai_cmd(
+            model_name, train_table, model_params,
+            train_params["feature_column_names"],
+            train_params["label_meta"]["feature_name"])
+    elif estimator_string.lower() == "kmeans":
+        cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
+                                       model_params,
+                                       train_params["feature_column_names"])
+    else:
+        cmd = get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
+                             model_name, path_to_save, train_table, val_table,
+                             "", project)
+    return cmd
+
+
 # (TODO: lhw) adapt this interface after we do feature derivation in Python
+
+
 def submit_pai_train(datasource, estimator_string, select, validation_select,
                      model_params, model_name, pre_trained_model,
                      **train_params):
@@ -414,7 +454,6 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
         params["entry_type"] = "train_tf"
 
     cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
-    conf = cluster_conf.get_cluster_config(model_params)
 
     train_table, val_table = create_train_and_eval_tmp_table(
         select, validation_select, datasource)
@@ -423,32 +462,21 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     # clean target dir
     path_to_save = get_oss_model_save_path(datasource, model_name)
     path_to_load = get_oss_model_save_path(datasource, pre_trained_model)
-    project = get_project(datasource)
     params["oss_model_dir"] = path_to_save
 
     if path_to_load == "" or path_to_load != path_to_save:
         clean_oss_model_path(path_to_save + "/")
 
     # zip all required resource to a tarball
-    prepare_archive(cwd, conf, project, estimator_string, model_name,
-                    train_table, val_table, path_to_save, params)
+    prepare_archive(cwd, estimator_string, path_to_save, params)
 
     # submit pai task to execute the training
-    if estimator_string.lower() == "randomforests":
-        cmd = get_train_random_forest_pai_cmd(
-            model_name, train_table, model_params,
-            train_params["feature_column_names"],
-            train_params["label_meta"]["feature_name"])
-    elif estimator_string.lower() == "kmeans":
-        cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
-                                       model_params,
-                                       train_params["feature_column_names"])
-    else:
-        cmd = get_pai_tf_cmd(conf,
-                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                             "file://" + path.join(cwd, PARAMS_FILE),
-                             ENTRY_FILE, model_name, path_to_save, train_table,
-                             val_table, "", project)
+    cmd = get_pai_train_cmd(datasource, estimator_string, model_name,
+                            train_table, val_table, model_params, train_params,
+                            path_to_save,
+                            "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                            "file://" + path.join(cwd, PARAMS_FILE), cwd)
+
     submit_pai_task(cmd, datasource)
 
     # save trained model to sqlfs
@@ -492,13 +520,12 @@ def get_oss_saved_model_type_and_estimator(model_name, project):
     return EstimatorType.PAIML, ""
 
 
-def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
-                        model_name, predict_table, result_table, model_type,
-                        cwd):
+def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
+                        predict_table, result_table, model_type, model_params,
+                        job_file, params_file, cwd):
     """Get predict command for PAI task
 
     Args:
-        cluster_conf: PAI cluster configuration
         datasource: current datasource
         project: current project
         oss_model_path: the place to load model
@@ -506,6 +533,9 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
         predict_table: where to store the tmp prediction data set
         result_table: prediction result
         model_type: type of th model, see also get_oss_saved_model_type
+        model_params: parameters specified by WITH clause
+        job_file: tar file incldue code and libs to execute on PAI
+        params_file: extra params file
         cwd: current working dir
 
     Returns:
@@ -515,6 +545,7 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
     # not load the TrainStmt since the model saving is fully done by PAI.
     # We directly use the columns in SELECT statement for prediction, error
     # will be reported by PAI job if the columns not match.
+    conf = cluster_conf.get_cluster_config(model_params)
     conn = db.connect_with_data_source(datasource)
     if model_type == EstimatorType.PAIML:
         schema = db.get_table_schema(conn, predict_table)
@@ -528,11 +559,9 @@ def get_pai_predict_cmd(cluster_conf, datasource, project, oss_model_path,
         schema = db.get_table_schema(conn, result_table)
         result_fields = [col[0] for col in schema]
         # For TensorFlow and XGBoost, we build a pai-tf cmd to submit the task
-        return get_pai_tf_cmd(cluster_conf,
-                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                              "file://" + path.join(cwd, PARAMS_FILE),
-                              ENTRY_FILE, model_name, oss_model_path,
-                              predict_table, "", result_table, project)
+        return get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
+                              model_name, oss_model_path, predict_table, "",
+                              result_table, project)
 
 
 def create_predict_result_table(datasource, select, result_table, label_column,
@@ -589,7 +618,7 @@ def setup_predict_entry(params, model_type):
 
 
 def submit_pai_predict(datasource, select, result_table, label_column,
-                       model_name, model_attrs):
+                       model_name, model_params):
     """This function pack needed params and resource to a tarball
     and submit a prediction task to PAI
 
@@ -625,13 +654,13 @@ def submit_pai_predict(datasource, select, result_table, label_column,
     create_predict_result_table(datasource, data_table, result_table,
                                 label_column, None, model_type)
 
-    conf = cluster_conf.get_cluster_config(model_attrs)
-    prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
-                    oss_model_path, params)
+    prepare_archive(cwd, estimator, oss_model_path, params)
 
-    cmd = get_pai_predict_cmd(conf, datasource, project, oss_model_path,
-                              model_name, data_table, result_table, model_type,
-                              cwd)
+    cmd = get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
+                              data_table, result_table, model_type,
+                              model_params,
+                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                              "file://" + path.join(cwd, PARAMS_FILE), cwd)
     submit_pai_task(cmd, datasource)
     drop_tables([data_table], datasource)
 
@@ -744,8 +773,56 @@ def get_explain_random_forests_cmd(datasource, model_name, data_table,
                                               ",".join(fields))
 
 
+def setup_explain_entry(params, model_type):
+    """Setup PAI prediction entry function according to model type"""
+    if model_type == EstimatorType.TENSORFLOW:
+        params["entry_type"] = "explain_tf"
+    elif model_type == EstimatorType.PAIML:
+        params["entry_type"] = ""
+    elif model_type == EstimatorType.XGBOOST:
+        params["entry_type"] = "explain_xgb"
+    else:
+        raise SQLFlowDiagnostic("unsupported model type: %d" % model_type)
+
+
+def get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
+                        data_table, result_table, model_type, model_params,
+                        job_file, params_file, label_column, cwd):
+    """Get command to submit explain task to PAI
+
+    Args:
+        datasource: current datasource
+        project: current project
+        oss_model_path: the place to load model
+        model_name: model used to do prediction
+        data_table: data table from which to load explain data
+        result_table: table to store prediction result
+        model_type: type of th model, see also get_oss_saved_model_type
+        model_params: parameters specified by WITH clause
+        job_file: tar file incldue code and libs to execute on PAI
+        params_file: extra params file
+        lable_column: name of the label
+        cwd: current working dir
+
+    Returns:
+        The command to submit a PAI explain task
+    """
+    if model_type == EstimatorType.PAIML:
+        cmd = get_explain_random_forests_cmd(datasource, model_name,
+                                             data_table, result_table,
+                                             label_column)
+    else:
+        conf = cluster_conf.get_cluster_config(model_params)
+        cmd = get_pai_tf_cmd(conf,
+                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                             "file://" + path.join(cwd, PARAMS_FILE),
+                             ENTRY_FILE, model_name, oss_model_path,
+                             data_table, "", result_table, project)
+    return cmd
+
+
 def submit_pai_explain(datasource, select, result_table, model_name,
-                       model_attrs):
+                       model_params):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
 
@@ -775,29 +852,21 @@ def submit_pai_explain(datasource, select, result_table, model_name,
         oss_model_path, project)
     params["oss_model_path"] = oss_model_path
 
-    label_column = model_attrs.get("label_col")
+    label_column = model_params.get("label_col")
     params["label_column"] = label_column
     create_explain_result_table(datasource, data_table, result_table,
                                 model_type, estimator, label_column)
 
-    conf = cluster_conf.get_cluster_config(model_attrs)
+    setup_explain_entry(params, model_type)
+    prepare_archive(cwd, estimator, oss_model_path, params)
 
-    if model_type == EstimatorType.PAIML:
-        cmd = get_explain_random_forests_cmd(datasource, model_name,
-                                             data_table, result_table,
-                                             label_column)
-    else:
-        if model_type == EstimatorType.XGBOOST:
-            params["entry_type"] = "explain_xgb"
-        else:
-            params["entry_type"] = "explain_tf"
-        prepare_archive(cwd, conf, project, estimator, model_name, data_table,
-                        "", oss_model_path, params)
-        cmd = get_pai_tf_cmd(conf,
-                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                             "file://" + path.join(cwd, PARAMS_FILE),
-                             ENTRY_FILE, model_name, oss_model_path,
-                             data_table, "", result_table, project)
+    cmd = get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
+                              data_table, result_table, model_type,
+                              model_params,
+                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
+                              "file://" + path.join(cwd, PARAMS_FILE),
+                              label_column, cwd)
+
     submit_pai_task(cmd, datasource)
     drop_tables([data_table], datasource)
 
@@ -890,8 +959,7 @@ def submit_pai_evaluate(datasource, model_name, select, result_table,
         params["entry_type"] = "evaluate_xgb"
     else:
         params["entry_type"] = "evaluate_tf"
-    prepare_archive(cwd, conf, project, estimator, model_name, data_table, "",
-                    oss_model_path, params)
+    prepare_archive(cwd, estimator, oss_model_path, params)
     cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                          "file://" + path.join(cwd, PARAMS_FILE), ENTRY_FILE,
                          model_name, oss_model_path, data_table, "",

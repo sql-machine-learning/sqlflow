@@ -13,9 +13,9 @@
 """This module saves or loads the SQLFlow model.
 """
 import os
-import tempfile
 from enum import Enum
 
+import runtime.temp_file as temp_file
 from runtime.model import oss
 from runtime.model.db import read_with_generator, write_with_generator
 from runtime.model.tar import unzip_dir, zip_dir
@@ -70,6 +70,26 @@ class Model(object):
         self._typ = typ
         self._meta = meta
 
+    def get_type(self):
+        """
+        Returns the model type.
+        """
+        return self._typ
+
+    def get_meta(self, name, default=None):
+        """
+        Get the metadata by name.
+
+        Args:
+            name (str): the metadata name.
+            default: the default value if the name does not exist.
+
+        Returns:
+            Return the metadata with the given name if exists.
+            Otherwise, return the default value.
+        """
+        return self._meta.get(name, default)
+
     def _zip(self, local_dir, tarball):
         """
         Zip the model information and all files in local_dir into a tarball.
@@ -123,7 +143,7 @@ class Model(object):
         if local_dir is None:
             local_dir = os.getcwd()
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             self._zip(local_dir, tarball)
 
@@ -158,7 +178,7 @@ class Model(object):
         if local_dir is None:
             local_dir = os.getcwd()
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             gen = read_with_generator(datasource, table)
             with open(tarball, "wb") as f:
@@ -183,7 +203,7 @@ class Model(object):
         if local_dir is None:
             local_dir = os.getcwd()
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             self._zip(local_dir, tarball)
             oss.save_file(oss_model_dir, tarball, TARBALL_NAME)
@@ -205,7 +225,7 @@ class Model(object):
         if local_dir is None:
             local_dir = os.getcwd()
 
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
             return Model._unzip(local_dir, tarball)
