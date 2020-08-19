@@ -22,7 +22,7 @@ from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
-from runtime.local.xgboost.predict import _calc_predict_result
+from runtime.local.xgboost_submitter.predict import _calc_predict_result
 from runtime.model.model import Model
 from runtime.xgboost.dataset import xgb_dataset
 
@@ -179,6 +179,7 @@ def _store_evaluate_result(preds, feature_file_name, label_desc, result_table,
 
     evaluate_results = dict()
     for metric_name in validation_metrics:
+        metric_name = metric_name.strip()
         if metric_name not in SKLEARN_METRICS:
             raise ValueError("unsupported metrics %s" % metric_name)
         metric_func = getattr(sklearn.metrics, metric_name)

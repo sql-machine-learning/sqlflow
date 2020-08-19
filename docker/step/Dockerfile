@@ -36,7 +36,7 @@ RUN apt-get update && \
   unzip -qq odpscmd_public.zip -d /install/local/odpscmd && \
   rm -rf odpscmd_public.zip
 
-RUN wget -q https://minlp.com/downloads/xecs/baron/current/baron-lin64.zip && \
+RUN wget -q https://sqlflow-models.oss-cn-zhangjiakou.aliyuncs.com/baron-lin64.zip && \
     unzip -qq baron-lin64.zip -d /install && \
     mv /install/baron-lin64/baron /usr/bin && \
     rm -rf /install/baron-lin64 && \
