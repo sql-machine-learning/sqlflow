@@ -1,17 +1,17 @@
 # Quick Start
 
-It's quite simple to try out SQLFlow using [Docker](https://docs.docker.com/).
+It's quite simple to try out SQLFlow using [SQLFlowPlayground On the Cloud](http://playground.sqlflow.tech/).
 
-1. Install [Docker Community Edition](https://docs.docker.com/install/).
-1. Run SQLflow by typing the command `docker run -it -p 8888:8888 sqlflow/sqlflow`.
-1. Access localhost:8888 in your Web browser.
-1. Open the notebook `iris-dnn.ipynb`.
+1. Click [here](http://playground.sqlflow.tech/) to open our playgorund website
+1. Input any user/password to create a Jupyter Notebook environment
+1. Select some project to try out SQLFlow
+1. If you want to try SQLFLow on your own computer, please refer to [Deploy SQLFlow on Kubernetes](run/kubernetes.md), or [Run SQLFlow in a VM Playground](https://github.com/sql-machine-learning/playground/blob/master/dev.md#for-end-users)
 
 
 For advanced usage, you might want to go on reading
 
 - [Language Guide](language_guide.md)
-- [Run Locally with Docker](run/docker.md)
-- [Run on Google Cloud](run/gcp.md)
+- [SQLFlow Playground](https://github.com/sql-machine-learning/playground/blob/master/dev.md#for-end-users)
 - [Run on Kubernetes](run/kubernetes.md)
 - [Run with command-line tool](run/cli.md)
+- Run SQLFlow with Different DataSources (comming soon)
