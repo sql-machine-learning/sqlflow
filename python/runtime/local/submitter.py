@@ -11,7 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.local.xgboost_submitter.predict import pred as xgboost_pred
 from runtime.local.xgboost_submitter.train import train as xgboost_train
+from runtime.model.model import EstimatorType, Model
 
 
 def submit_local_train(datasource, estimator_string, select, validation_select,
@@ -60,3 +62,12 @@ def submit_local_train(datasource, estimator_string, select, validation_select,
     else:
         raise NotImplementedError("not implemented model type: %s" %
                                   estimator_string)
+
+
+def submit_local_pred(datasource, select, result_table, pred_label_name, load):
+    model = Model.load_from_db(datasource, load)
+    if model.get_type() == EstimatorType.XGBOOST:
+        xgboost_pred(datasource, select, result_table, pred_label_name, model)
+    else:
+        raise NotImplementedError("not implemented model type: %s" %
+                                  model.get_type())
