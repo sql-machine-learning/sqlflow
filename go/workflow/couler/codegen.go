@@ -137,7 +137,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 
 	for _, sqlIR := range programIR {
 		switch i := sqlIR.(type) {
-		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt:
+		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt, *ir.EvaluateStmt:
 			// TODO(typhoonzero): get model image used when training.
 			sqlStmt := &sqlStatement{
 				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
