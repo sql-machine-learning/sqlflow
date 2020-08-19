@@ -19,7 +19,8 @@ import runtime.db as db
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.xgboost import pred, train
+from runtime.local.xgboost_submitter.predict import pred
+from runtime.local.xgboost_submitter.train import train
 
 
 class TestXGBoostTrain(unittest.TestCase):
@@ -60,7 +61,7 @@ class TestXGBoostTrain(unittest.TestCase):
             os.chdir(tmp_dir_name)
             eval_result = train(original_sql=original_sql,
                                 model_image="sqlflow:step",
-                                estimator="xgboost.gbtree",
+                                estimator_string="xgboost.gbtree",
                                 datasource=ds,
                                 select=select,
                                 validation_select=val_select,

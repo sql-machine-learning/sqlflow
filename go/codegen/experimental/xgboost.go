@@ -144,7 +144,7 @@ def step_entry_{{.StepIndex}}():
     import runtime.temp_file as temp_file
     import runtime.feature.column as fc
     import runtime.feature.field_desc as fd
-    import runtime.{{.Submitter}}.xgboost as xgboost_submitter
+    from runtime.{{.Submitter}} import train
 
     {{ if .FeatureColumnCode }}
     feature_column_map = {"feature_columns": [{{.FeatureColumnCode}}]}
@@ -157,21 +157,23 @@ def step_entry_{{.StepIndex}}():
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
     with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
-        xgboost_submitter.train(original_sql='''{{.OriginalSQL}}''',
-                                model_image='''{{.ModelImage}}''',
-                                estimator='''{{.Estimator}}''',
-                                datasource='''{{.DataSource}}''',
-                                select='''{{.Select}}''',
-                                validation_select='''{{.ValidationSelect}}''',
-                                model_params=model_params,
-                                train_params=train_params,
-                                feature_column_map=feature_column_map,
-                                label_column=label_column,
-                                save='''{{.Save}}''',
-                                load='''{{.Load}}''',
-                                disk_cache="{{.DiskCache}}"=="true",
-                                batch_size={{.BatchSize}},
-                                epoch={{.Epoch}})
+        os.chdir(temp_dir)
+        train_params["original_sql"] = '''{{.OriginalSQL}}'''
+        train_params["model_image"] = '''{{.ModelImage}}'''
+        train_params["feature_column_map"] = feature_column_map
+        train_params["label_column"] = label_column
+        train_params["disk_cache"] = "{{.DiskCache}}"=="true"
+        train_params["batch_size"] = {{.BatchSize}}
+        train_params["epoch"] = {{.Epoch}}
+
+        train(datasource='''{{.DataSource}}''',
+              estimator_string='''{{.Estimator}}''',
+              select='''{{.Select}}''',
+              validation_select='''{{.ValidationSelect}}''',
+              model_params=model_params,
+              save='''{{.Save}}''',
+              load='''{{.Load}}''',
+              train_params=train_params)
 `
 
 func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {

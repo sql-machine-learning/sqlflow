@@ -420,8 +420,7 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
 
 
 def submit_pai_train(datasource, estimator_string, select, validation_select,
-                     model_params, model_name, pre_trained_model,
-                     **train_params):
+                     model_params, save, load, **train_params):
     """This function submit PAI-TF train task to PAI platform
 
     Args:
@@ -436,7 +435,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
             Ths SQL statement for selecting data for validation
         model_params: dict
             Params for training, crossponding to WITH clause
-        pre_trained_model: string
+        load: string
             The pre-trained model name to load
         train_params: dict
             Extra train params, they will be passed to runtime.tensorflow.train
@@ -460,8 +459,8 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     params["pai_table"], params["pai_val_table"] = train_table, val_table
 
     # clean target dir
-    path_to_save = get_oss_model_save_path(datasource, model_name)
-    path_to_load = get_oss_model_save_path(datasource, pre_trained_model)
+    path_to_save = get_oss_model_save_path(datasource, save)
+    path_to_load = get_oss_model_save_path(datasource, load)
     params["oss_model_dir"] = path_to_save
 
     if path_to_load == "" or path_to_load != path_to_save:
@@ -471,8 +470,8 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     prepare_archive(cwd, estimator_string, path_to_save, params)
 
     # submit pai task to execute the training
-    cmd = get_pai_train_cmd(datasource, estimator_string, model_name,
-                            train_table, val_table, model_params, train_params,
+    cmd = get_pai_train_cmd(datasource, estimator_string, save, train_table,
+                            val_table, model_params, train_params,
                             path_to_save,
                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
                             "file://" + path.join(cwd, PARAMS_FILE), cwd)
@@ -480,7 +479,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     submit_pai_task(cmd, datasource)
 
     # save trained model to sqlfs
-    save_model_to_sqlfs(datasource, path_to_save, model_name)
+    save_model_to_sqlfs(datasource, path_to_save, save)
     drop_tables([train_table, val_table], datasource)
 
 
