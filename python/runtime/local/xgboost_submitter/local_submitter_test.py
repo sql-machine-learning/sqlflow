@@ -12,10 +12,10 @@
 # limitations under the License.
 
 import os
-import tempfile
 import unittest
 
 import runtime.db as db
+import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
@@ -57,8 +57,7 @@ class TestXGBoostTrain(unittest.TestCase):
         class_name = "class"
 
         old_dir_name = os.getcwd()
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            os.chdir(tmp_dir_name)
+        with temp_file.TemporaryDirectory(as_cwd=True):
             eval_result = train(original_sql=original_sql,
                                 model_image="sqlflow:step",
                                 estimator_string="xgboost.gbtree",
