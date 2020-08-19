@@ -16,27 +16,45 @@ package experimental
 import (
 	"fmt"
 	"net/url"
-	"sqlflow.org/sqlflow/go/database"
 	"strings"
+
+	"sqlflow.org/sqlflow/go/database"
 
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-func generateStepCode(stmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (string, error) {
-	switch stmt.(type) {
+// TODO(sneaxiy): implement this method to distinguish whether
+// a model is a XGBoost model.
+func isTrainedXBoostModel(modelName string) bool {
+	return true
+}
+
+func generateStepCode(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (string, error) {
+	switch stmt := sqlStmt.(type) {
 	case *ir.TrainStmt:
-		trainStmt := stmt.(*ir.TrainStmt)
-		if strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST.") {
-			return XGBoostGenerateTrain(trainStmt, stepIndex, session)
-		}
-		return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+		return generateTrainCode(stmt, stepIndex, session)
+	case *ir.PredictStmt:
+		return generatePredictCode(stmt, stepIndex, session)
 	case *ir.NormalStmt:
-		stmt := stmt.(*ir.NormalStmt)
 		return GenerateNormalStmtStep(string(*stmt), session, stepIndex)
 	default:
 		return "", fmt.Errorf("not implemented stmt execution type %v", stmt)
 	}
+}
+
+func generateTrainCode(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, error) {
+	if strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST.") {
+		return XGBoostGenerateTrain(trainStmt, stepIndex, session)
+	}
+	return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+}
+
+func generatePredictCode(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
+	if isTrainedXBoostModel(predStmt.Using) {
+		return XGBoostGeneratePredict(predStmt, stepIndex, session)
+	}
+	return "", fmt.Errorf("not implemented model type")
 }
 
 func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {

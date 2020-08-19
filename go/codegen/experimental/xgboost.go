@@ -99,10 +99,6 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 	if err != nil {
 		return "", err
 	}
-	submitter := os.Getenv("SQLFLOW_submitter")
-	if submitter == "" {
-		submitter = "local"
-	}
 
 	dbConnStr, err := GeneratePyDbConnStr(session)
 	if err != nil {
@@ -126,7 +122,7 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 		DiskCache:         diskCache,
 		BatchSize:         batchSize,
 		Epoch:             epoch,
-		Submitter:         submitter,
+		Submitter:         getSubmitter(session, "local"),
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Parse(xgbTrainTemplate))
@@ -140,11 +136,10 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 const xgbTrainTemplate = `
 def step_entry_{{.StepIndex}}():
     import json
-    import os
     import runtime.temp_file as temp_file
     import runtime.feature.column as fc
     import runtime.feature.field_desc as fd
-    import runtime.{{.Submitter}}.xgboost as xgboost_submitter
+    from runtime.{{.Submitter}} import train
 
     {{ if .FeatureColumnCode }}
     feature_column_map = {"feature_columns": [{{.FeatureColumnCode}}]}
@@ -157,22 +152,84 @@ def step_entry_{{.StepIndex}}():
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
     with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
-        xgboost_submitter.train(original_sql='''{{.OriginalSQL}}''',
-                                model_image='''{{.ModelImage}}''',
-                                estimator='''{{.Estimator}}''',
-                                datasource='''{{.DataSource}}''',
-                                select='''{{.Select}}''',
-                                validation_select='''{{.ValidationSelect}}''',
-                                model_params=model_params,
-                                train_params=train_params,
-                                feature_column_map=feature_column_map,
-                                label_column=label_column,
-                                save='''{{.Save}}''',
-                                load='''{{.Load}}''',
-                                disk_cache="{{.DiskCache}}"=="true",
-                                batch_size={{.BatchSize}},
-                                epoch={{.Epoch}})
+        train_params["original_sql"] = '''{{.OriginalSQL}}'''
+        train_params["model_image"] = '''{{.ModelImage}}'''
+        train_params["feature_column_map"] = feature_column_map
+        train_params["label_column"] = label_column
+        train_params["disk_cache"] = "{{.DiskCache}}"=="true"
+        train_params["batch_size"] = {{.BatchSize}}
+        train_params["epoch"] = {{.Epoch}}
+
+        train(datasource='''{{.DataSource}}''',
+              estimator_string='''{{.Estimator}}''',
+              select='''{{.Select}}''',
+              validation_select='''{{.ValidationSelect}}''',
+              model_params=model_params,
+              save='''{{.Save}}''',
+              load='''{{.Load}}''',
+              train_params=train_params)
 `
+
+type xgbPredFiller struct {
+	StepIndex     int
+	DataSource    string
+	Select        string
+	PredLabelName string
+	ResultTable   string
+	Load          string
+	Submitter     string
+}
+
+// XGBoostGeneratePredict generates the XGBoost prediction code
+func XGBoostGeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
+	dbConnStr, err := GeneratePyDbConnStr(session)
+	if err != nil {
+		return "", err
+	}
+
+	filler := &xgbPredFiller{
+		StepIndex:     stepIndex,
+		DataSource:    dbConnStr,
+		Select:        replaceNewLineRuneAndTrimSpace(predStmt.Select),
+		PredLabelName: predStmt.ResultColumn,
+		ResultTable:   predStmt.ResultTable,
+		Load:          predStmt.Using,
+		Submitter:     getSubmitter(session, "local"),
+	}
+
+	var program bytes.Buffer
+	predTmpl := template.Must(template.New("Train").Parse(xgbPredTemplate))
+	err = predTmpl.Execute(&program, filler)
+	if err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+const xgbPredTemplate = `
+def step_entry_{{.StepIndex}}():
+    import runtime.temp_file as temp_file
+    from runtime.{{.Submitter}} import pred
+    
+    with temp_file.TemporaryDirectory(as_cwd=True):
+        pred(datasource='''{{.DataSource}}''', 
+             select='''{{.Select}}''', 
+             result_table='''{{.ResultTable}}''', 
+             pred_label_name='''{{.PredLabelName}}''', 
+             load='''{{.Load}}''')
+`
+
+func getSubmitter(session *pb.Session, defaultValue string) string {
+	if session.Submitter != "" {
+		return session.Submitter
+	}
+
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter != "" {
+		return submitter
+	}
+	return defaultValue
+}
 
 func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 	fcCodes := make([]string, 0, len(fcList))

@@ -62,5 +62,5 @@ def import_model(model):
     Returns:
         An imported model class or function.
     """
-    import_model_package(model, globals())
+    import_model_package(model, locals())
     return eval(model)
