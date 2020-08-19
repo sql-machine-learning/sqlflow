@@ -161,7 +161,7 @@ def submit_alisa_train(datasource, estimator_string, select, validation_select,
 
     Args:
         datasource: string
-            Like: odps://access_id:access_key@service.com/api?
+            Like: alisa://access_id:access_key@service.com/api?
                 curr_project=test_ci&scheme=http
         estimator_string: string
             Tensorflow estimator name, Keras class name, or XGBoost
