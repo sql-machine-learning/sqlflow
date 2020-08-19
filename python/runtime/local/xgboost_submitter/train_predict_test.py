@@ -19,7 +19,8 @@ import runtime.db as db
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.xgboost import pred, train
+from runtime.local.xgboost_submitter.predict import pred
+from runtime.local.xgboost_submitter.train import train
 
 
 class TestXGBoostTrain(unittest.TestCase):
