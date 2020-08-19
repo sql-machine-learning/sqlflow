@@ -51,9 +51,10 @@ def xgb_shap_dataset(datasource,
         # (TODO: lhw) we may specify pai_explain_table in datasoure
         # and discard the condition statement here
         conn = PaiIOConnection.from_table(pai_explain_table)
+        stream = db.db_generator(conn, None, label_meta)
     else:
         conn = db.connect_with_data_source(datasource)
-    stream = db.db_generator(conn, select, label_meta)
+        stream = db.db_generator(conn, select, label_meta)
     selected_cols = db.selected_cols(conn, select)
 
     if transform_fn:
