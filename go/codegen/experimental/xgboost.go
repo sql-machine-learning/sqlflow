@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"text/template"
 
@@ -82,14 +81,8 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 		return "", fmt.Errorf("xgboost only support 0 or 1 feature column set, received %d", len(trainStmt.Features))
 	}
 	// featureColumnCode is a python map definition code like fc_map = {"feature_columns": [...]}
-	featureColumnCode := ""
-	if len(trainStmt.Features) == 1 {
-		featureColumnCode, err = generateFeatureColumnCode(trainStmt.Features["feature_columns"])
-		if err != nil {
-			return "", err
-		}
-	}
-	labelColumnCode, err := generateFeatureColumnCode([]ir.FeatureColumn{trainStmt.Label})
+	featureColumnCode := generateFeatureColumnCode(trainStmt.Features)
+	labelColumnCode := trainStmt.Label.GenPythonCode()
 
 	mp, err := json.Marshal(params[""])
 	if err != nil {
@@ -140,24 +133,18 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 const xgbTrainTemplate = `
 def step_entry_{{.StepIndex}}():
     import json
-    import os
     import runtime.temp_file as temp_file
-    import runtime.feature.column as fc
-    import runtime.feature.field_desc as fd
+    import runtime.feature.column
+    import runtime.feature.field_desc
     from runtime.{{.Submitter}} import train
 
-    {{ if .FeatureColumnCode }}
-    feature_column_map = {"feature_columns": [{{.FeatureColumnCode}}]}
-    {{ else }}
-    feature_column_map = None
-    {{ end }}
+    feature_column_map = {{.FeatureColumnCode}}
     label_column = {{.LabelColumnCode}}
 
     model_params = json.loads('''{{.ModelParamsJSON}}''')
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
     with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
-        os.chdir(temp_dir)
         train_params["original_sql"] = '''{{.OriginalSQL}}'''
         train_params["model_image"] = '''{{.ModelImage}}'''
         train_params["feature_column_map"] = feature_column_map
@@ -176,37 +163,20 @@ def step_entry_{{.StepIndex}}():
               train_params=train_params)
 `
 
-func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
-	fcCodes := make([]string, 0, len(fcList))
-	for _, fc := range fcList {
-		// xgboost have no cross feature column, just get the first field desc
-		fd := fc.GetFieldDesc()[0]
-		// pass format = "" to let runtime feature derivation to fill it in.
-		tmpl := `fc.%s(fd.FieldDesc(name="%s", dtype=fd.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s))`
-		fcTypeName := reflect.TypeOf(fc).Elem().Name()
-		isSparseStr := "False"
-		if fd.IsSparse {
-			isSparseStr = "True"
+func generateFeatureColumnCode(fcMap map[string][]ir.FeatureColumn) string {
+	allFCCodes := make([]string, 0)
+	for target, fcList := range fcMap {
+		if len(fcList) == 0 {
+			continue
 		}
-		vocabList := []string{}
-		for k := range fd.Vocabulary {
-			vocabList = append(vocabList, k)
+		codeList := make([]string, 0)
+		for _, fc := range fcList {
+			codeList = append(codeList, fc.GenPythonCode())
 		}
-		shape := []int{1}
-		if len(fd.Shape) != 0 {
-			shape = fd.Shape
-		}
-
-		code := fmt.Sprintf(tmpl, fcTypeName, fd.Name,
-			strings.ToUpper(ir.DTypeToString(fd.DType)),
-			fd.Delimiter,
-			ir.AttrToPythonValue(shape),
-			isSparseStr,
-			ir.AttrToPythonValue(vocabList))
-		fcCodes = append(fcCodes, code)
+		code := fmt.Sprintf(`"%s":[%s]`, target, strings.Join(codeList, ","))
+		allFCCodes = append(allFCCodes, code)
 	}
-
-	return strings.Join(fcCodes, ",\n"), nil
+	return fmt.Sprintf("{%s}", strings.Join(allFCCodes, ","))
 }
 
 // TODO(typhoonzero): below functions are copied from codegen/xgboost/codegen.go

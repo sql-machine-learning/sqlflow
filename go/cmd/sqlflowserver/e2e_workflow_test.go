@@ -373,6 +373,13 @@ SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
 WITH objective="multi:softmax",num_class=3
 LABEL class
+INTO sqlflow_models.xgb_classification;
+
+SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH objective="multi:softmax",num_class=3
+COLUMN sepal_length, DENSE(sepal_width)
+LABEL class
 INTO sqlflow_models.xgb_classification;`
 
 	conn, err := createRPCConn()

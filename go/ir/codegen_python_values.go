@@ -35,33 +35,40 @@ func DTypeToString(dt int) string {
 
 // AttrToPythonValue format the WITH attributes to corresponding Python code.
 func AttrToPythonValue(attr interface{}) string {
-	switch attr.(type) {
+	switch a := attr.(type) {
 	case bool:
-		return strings.Title(fmt.Sprintf("%v", attr.(bool)))
+		return strings.Title(fmt.Sprintf("%v", a))
 	case int:
-		return fmt.Sprintf("%d", attr.(int))
+		return fmt.Sprintf("%d", a)
 	case int64:
-		return fmt.Sprintf("%d", attr.(int64))
+		return fmt.Sprintf("%d", a)
 	case float32:
-		return fmt.Sprintf("%f", attr.(float32))
+		return fmt.Sprintf("%f", a)
 	case float64: // FIXME(typhoonzero): may never use
 		return fmt.Sprintf("%f", attr.(float64))
 	case []int:
-		intArrayAttrStr, _ := MarshalToJSONString(attr.([]int))
+		if a == nil {
+			return "None"
+		}
+		intArrayAttrStr, _ := MarshalToJSONString(a)
 		return intArrayAttrStr
 	case []string:
-		l := attr.([]string)
-		if len(l) == 0 {
+		if a == nil {
+			return "None"
+		}
+		if len(a) == 0 {
 			return "[]"
 		}
-		stringListStr, _ := MarshalToJSONString(l)
+		stringListStr, _ := MarshalToJSONString(a)
 		return stringListStr
 	case []interface{}:
-		tmplist := attr.([]interface{})
-		if len(tmplist) > 0 {
-			if _, ok := tmplist[0].(int); ok {
+		if a == nil {
+			return "None"
+		}
+		if len(a) > 0 {
+			if _, ok := a[0].(int); ok {
 				intlist := []int{}
-				for _, v := range tmplist {
+				for _, v := range a {
 					intlist = append(intlist, v.(int))
 				}
 				intlistStr, _ := MarshalToJSONString(intlist)
@@ -71,7 +78,7 @@ func AttrToPythonValue(attr interface{}) string {
 		// TODO(typhoonzero): support []float etc.
 		return "[]"
 	case string:
-		return fmt.Sprintf("\"%s\"", attr.(string))
+		return fmt.Sprintf(`"%s"`, a)
 	default:
 		return ""
 	}
