@@ -162,7 +162,6 @@ class SubmitPAITrainTask(TestCase):
             feature_metas=iris_feature_metas,
             label_meta=iris_label_meta,
             validation_metrics="Accuracy".split(","),
-            save="model_save",
             batch_size=1,
             epoch=1,
             validation_steps=1,
