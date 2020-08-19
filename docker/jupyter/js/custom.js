@@ -33,3 +33,11 @@ require(['notebook/js/codecell', "codemirror/lib/codemirror"], function(codecell
         });
     });
 });
+
+window.document.title = "SQLFlow - " + window.document.title;
+
+document.__defineSetter__('title', function(val) {
+    // document.title = val + " ... Jupyter Notebook";   // WARNING Would be recursive!
+    console.log("Setting window's title to:", val);
+    document.querySelector('title').childNodes[0].nodeValue = "SQLFlow - " + val;
+});
