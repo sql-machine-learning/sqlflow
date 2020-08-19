@@ -208,16 +208,15 @@ func XGBoostGeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb
 
 const xgbPredTemplate = `
 def step_entry_{{.StepIndex}}():
-    import os
     import runtime.temp_file as temp_file
-    import runtime.{{.Submitter}}.xgboost as xgboost_submitter
+    from runtime.{{.Submitter}} import pred
     
     with temp_file.TemporaryDirectory(as_cwd=True):
-        xgboost_submitter.pred(datasource='''{{.DataSource}}''', 
-                               select='''{{.Select}}''', 
-                               result_table='''{{.ResultTable}}''', 
-                               pred_label_name='''{{.PredLabelName}}''', 
-                               load='''{{.Load}}''')
+        pred(datasource='''{{.DataSource}}''', 
+             select='''{{.Select}}''', 
+             result_table='''{{.ResultTable}}''', 
+             pred_label_name='''{{.PredLabelName}}''', 
+             load='''{{.Load}}''')
 `
 
 func getSubmitter(session *pb.Session, defaultValue string) string {

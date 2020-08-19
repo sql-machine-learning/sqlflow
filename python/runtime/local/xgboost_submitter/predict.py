@@ -16,6 +16,7 @@ import os
 import numpy as np
 import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
+import six
 import xgboost as xgb
 from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
@@ -25,7 +26,7 @@ from runtime.model.model import Model
 from runtime.xgboost.dataset import xgb_dataset
 
 
-def pred(datasource, select, result_table, pred_label_name, load):
+def pred(datasource, select, result_table, pred_label_name, model):
     """
     Do prediction using a trained model.
 
@@ -34,12 +35,17 @@ def pred(datasource, select, result_table, pred_label_name, load):
         select (str): the input data to predict.
         result_table (str): the output data table.
         pred_label_name (str): the output label name to predict.
-        load (str): where the trained model stores.
+        model (Model|str): the model object or where to load the model.
 
     Returns:
         None.
     """
-    model = Model.load_from_db(datasource, load)
+    if isinstance(model, six.string_types):
+        model = Model.load_from_db(datasource, model)
+    else:
+        assert isinstance(model,
+                          Model), "not supported model type %s" % type(model)
+
     model_params = model.get_meta("attributes")
     train_fc_map = model.get_meta("features")
     train_label_desc = model.get_meta("label").get_field_desc()[0]
