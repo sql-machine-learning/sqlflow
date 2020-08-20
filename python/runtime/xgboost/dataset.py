@@ -252,20 +252,15 @@ def pai_dataset(filename,
     from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
-
     dname = filename
     if single_file:
         dname = filename + '.dir'
-
     if os.path.exists(dname):
         shutil.rmtree(dname, ignore_errors=True)
 
     os.mkdir(dname)
-
     slice_count = get_pai_table_slice_count(pai_table, nworkers, batch_size)
-
     thread_num = min(int(slice_count / nworkers), 128)
-
     pool = Pool(thread_num)
     complete_queue = queue.Queue()
 
@@ -337,7 +332,7 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
         feature_column_names, *feature_column_transformers)
 
     conn = PaiIOConnection.from_table(pai_table, slice_id, slice_count)
-    gen = db.db_generator(conn, None)()
+    gen = db.db_generator(conn, None, label_meta=label_meta)()
     selected_cols = db.selected_cols(conn, None)
     filename = "{}/{}.txt".format(dname, slice_id)
     dump_dmatrix(filename,

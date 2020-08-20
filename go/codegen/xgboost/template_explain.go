@@ -25,6 +25,7 @@ type explainFiller struct {
 	FeatureColumnNames   []string
 	FeatureColumnCode    string
 	LabelJSON            string
+	ResultTable          string
 	IsPAI                bool
 	PAIExplainTable      string
 }
@@ -48,10 +49,11 @@ transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature
 explain(
     datasource='''{{.DataSource}}''',
     select='''{{.DatasetSQL}}''',
-	feature_field_meta=feature_field_meta,
-	feature_column_names=feature_column_names,
+    feature_field_meta=feature_field_meta,
+    feature_column_names=feature_column_names,
     label_meta=label_meta,
     summary_params=summary_params,
+    result_table="{{.ResultTable}}",
     is_pai="{{.IsPAI}}" == "true",
     pai_explain_table="{{.PAIExplainTable}}",
     transform_fn=transform_fn,

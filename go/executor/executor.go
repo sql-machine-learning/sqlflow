@@ -271,16 +271,20 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 		return err
 	}
 	defer db.Close()
+
+	var modelType int
 	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		code, err = xgboost.Explain(cl, s.Session)
-		// TODO(typhoonzero): deal with XGBoost model explain result table creation.
+		modelType = model.XGBOOST
 	} else {
 		code, err = tensorflow.Explain(cl, s.Session)
-		if cl.Into != "" {
-			err := createExplainResultTable(db, cl, cl.Into, model.TENSORFLOW, cl.TrainStmt.Estimator)
-			if err != nil {
-				return err
-			}
+		modelType = model.TENSORFLOW
+	}
+
+	if cl.Into != "" {
+		err := createExplainResultTable(db, cl, cl.Into, modelType, cl.TrainStmt.Estimator)
+		if err != nil {
+			return err
 		}
 	}
 
