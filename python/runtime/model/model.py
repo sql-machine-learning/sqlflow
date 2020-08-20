@@ -12,7 +12,6 @@
 # limitations under the License.
 """This module saves or loads the SQLFlow model.
 """
-import copy
 import json
 import os
 
@@ -23,11 +22,6 @@ from runtime.model import oss
 from runtime.model.db import (read_metadata_from_db, read_with_generator,
                               write_with_generator)
 from runtime.model.tar import unzip_dir, zip_dir
-
-try:
-    import cPickle as pickle
-except ModuleNotFoundError:
-    import pickle
 
 # archive the current work director into a tarball
 TARBALL_NAME = "model.tar.gz"
