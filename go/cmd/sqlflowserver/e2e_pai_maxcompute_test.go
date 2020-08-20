@@ -410,7 +410,7 @@ TO TRAIN xgboost.gbtree
 WITH objective="binary:logistic"
 LABEL survived
 INTO e2etest_xgb_titanic;`, caseDB)
-	_, _, _, err := connectAndRunSQL(titanicTrain)
+	_, _, _, err = connectAndRunSQL(titanicTrain)
 	a.NoError(err, "Run titanicTrain error.")
 
 	titanicExplain := fmt.Sprintf(`SELECT * FROM %s.sqlflow_titanic_train
