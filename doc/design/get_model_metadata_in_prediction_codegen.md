@@ -1,6 +1,6 @@
-# Save the Model Metadata After Training
+# Get the Model Metadata When Generating Prediction Workflow Codes
 
-## Background: Why to Save the Model Metadata
+## Background
 
 Currently, we have saved the model structure and weights after training in the SQLFlow. However, there are some requirements that we have to save the model metadata too.
 
