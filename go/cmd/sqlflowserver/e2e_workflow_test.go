@@ -385,7 +385,7 @@ func CaseWorkflowTrainXgboost(t *testing.T) {
 		a.NoError(checkWorkflow(ctx, cli, stream))
 	}
 
-	sqlProgram := `SELECT * FROM iris.train LIMIT 100;
+	extraTrainSQLProgram := `SELECT * FROM iris.train LIMIT 100;
 
 SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
@@ -394,22 +394,15 @@ LABEL class
 INTO sqlflow_models.xgb_classification;
 
 SELECT * FROM sqlflow_models.xgb_classification;
+`
 
+	sqlProgram := `
 SELECT * FROM iris.test
 TO PREDICT iris.test_result_table.class
 USING sqlflow_models.xgb_classification;
 
 SELECT * FROM iris.test_result_table;
 `
-	testMain(sqlProgram)
-
-	sqlProgram = `
-SELECT * FROM iris.test
-TO PREDICT iris.test_result_table.class
-USING sqlflow_models.xgb_classification;
-
-SELECT * FROM iris.test_result_table;
-`
-
+	testMain(extraTrainSQLProgram + sqlProgram)
 	testMain(sqlProgram)
 }

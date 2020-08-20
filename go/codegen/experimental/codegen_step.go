@@ -26,22 +26,6 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-func isXGBoostModel(modelName string, session *pb.Session, trainStmt *ir.TrainStmt) (bool, error) {
-	if trainStmt != nil {
-		return strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST."), nil
-	}
-
-	submitter := getSubmitter(session, "local")
-	if submitter == "local" {
-		meta, err := getModelMetadataFromDB(session.DbConnStr, modelName)
-		if err != nil {
-			return false, err
-		}
-		return meta.Get("model_type").MustInt() == model.XGBOOST, nil
-	}
-	return false, fmt.Errorf("unsupported submitter %s", submitter)
-}
-
 func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	switch stmt := sqlStmt.(type) {
 	case *ir.TrainStmt:
@@ -57,7 +41,7 @@ func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 }
 
 func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, string, error) {
-	isXGBoost, err := isXGBoostModel(trainStmt.Into, session, trainStmt)
+	image, isXGBoost, err := getImageAndIsXGBoostModel(trainStmt.Into, session, trainStmt)
 	if err != nil {
 		return "", "", err
 	}
@@ -67,14 +51,14 @@ func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *
 		if err != nil {
 			return "", "", err
 		}
-		return code, trainStmt.ModelImage, nil
+		return code, image, nil
 	}
 	return "", "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
 }
 
 func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
-	isXGBoost, err := isXGBoostModel(predStmt.Using, session, trainStmt)
+	image, isXGBoost, err := getImageAndIsXGBoostModel(predStmt.Using, session, trainStmt)
 	if err != nil {
 		return "", "", err
 	}
@@ -83,11 +67,6 @@ func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, sessio
 		code, err := XGBoostGeneratePredict(predStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
-		}
-
-		image := ""
-		if trainStmt != nil {
-			image = trainStmt.ModelImage
 		}
 		return code, image, nil
 	}
@@ -106,6 +85,30 @@ func findModelGenerationTrainStmt(modelName string, idx int, sqlStmts []ir.SQLFl
 		idx--
 	}
 	return nil
+}
+
+func getImageAndIsXGBoostModel(modelName string, session *pb.Session, trainStmt *ir.TrainStmt) (string, bool, error) {
+	if trainStmt != nil {
+		return trainStmt.ModelImage, strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST."), nil
+	}
+
+	submitter := getSubmitter(session)
+	var meta *simplejson.Json = nil
+	if submitter == "local" {
+		m, err := getModelMetadataFromDB(session.DbConnStr, modelName)
+		if err != nil {
+			return "", false, err
+		}
+		meta = m
+	}
+
+	if meta == nil {
+		return "", false, fmt.Errorf("unsupported submitter %s", submitter)
+	}
+
+	image := meta.Get("model_repo_image").MustString()
+	isXGBoost := meta.Get("model_type").MustInt() == model.XGBOOST
+	return image, isXGBoost, nil
 }
 
 func getModelMetadataFromDB(dbConnStr, table string) (*simplejson.Json, error) {
