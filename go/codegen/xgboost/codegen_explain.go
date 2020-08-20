@@ -57,6 +57,7 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		FeatureColumnNames:   fs,
 		FeatureColumnCode:    featureColumnCode,
 		LabelJSON:            string(l),
+		ResultTable:          explainStmt.Into,
 		IsPAI:                tf.IsPAI(),
 		PAIExplainTable:      explainStmt.TmpExplainTable,
 	}

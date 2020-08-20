@@ -23,8 +23,9 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sqlflow.org/sqlflow/go/verifier"
 	"strings"
+
+	"sqlflow.org/sqlflow/go/verifier"
 
 	"sqlflow.org/sqlflow/go/codegen/optimize"
 
@@ -636,9 +637,13 @@ func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string
 		return "", err
 	}
 	columnDefList := []string{}
+	columnType := "STRING"
+	if db.DriverName == "mysql" {
+		columnType = "VARCHAR(255)"
+	}
 	for _, fieldName := range flds {
 		if fieldName != labelCol {
-			columnDefList = append(columnDefList, fmt.Sprintf("%s STRING", fieldName))
+			columnDefList = append(columnDefList, fmt.Sprintf("%s %s", fieldName, columnType))
 		}
 	}
 	createStmt := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (%s);`, tableName, strings.Join(columnDefList, ","))
