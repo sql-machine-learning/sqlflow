@@ -365,9 +365,9 @@ func (s *paiExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
-	// ModelTypePAIML do not need to create explain result manually, PAI will
+	// PAIML do not need to create explain result manually, PAI will
 	// create the result table.
-	if cl.Into != "" && modelType != pai.ModelTypePAIML {
+	if cl.Into != "" && modelType != model.PAIML {
 		resultTableParts := strings.Split(cl.Into, ".")
 		if len(resultTableParts) == 1 {
 			cl.Into = fmt.Sprintf("%s.%s", currProject, cl.Into)
@@ -426,9 +426,9 @@ func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
-	// ModelTypePAIML do not need to create explain result manually, PAI will
+	// PAIML do not need to create explain result manually, PAI will
 	// create the result table.
-	if cl.Into != "" && modelType != pai.ModelTypePAIML {
+	if cl.Into != "" && modelType != model.PAIML {
 		resultTableParts := strings.Split(cl.Into, ".")
 		if len(resultTableParts) == 1 {
 			cl.Into = fmt.Sprintf("%s.%s", currProject, cl.Into)
@@ -576,7 +576,7 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 		return
 	}
 	if ret {
-		modelType = pai.ModelTypeTF
+		modelType = model.TENSORFLOW
 		var buf []byte
 		err = bucket.GetObjectToFile(modelName+"/tensorflow_model_desc_estimator", "tmp_estimator_name")
 		if err != nil {
@@ -591,10 +591,10 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 		return
 	}
 	if ret {
-		modelType = pai.ModelTypeXGBoost
+		modelType = model.XGBOOST
 		return
 	}
-	modelType = pai.ModelTypePAIML
+	modelType = model.PAIML
 	return
 }
 
@@ -652,7 +652,7 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
 	}
 	createStmt := ""
-	if modelType == pai.ModelTypeTF {
+	if modelType == model.TENSORFLOW {
 		if strings.HasPrefix(estimator, "BoostedTrees") {
 			columnDef := ""
 			if db.DriverName == "mysql" {
@@ -672,7 +672,7 @@ func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName str
 				return e
 			}
 		}
-	} else if modelType == pai.ModelTypeXGBoost {
+	} else if modelType == model.XGBOOST {
 		labelCol, ok := ir.Attributes["label_col"]
 		if !ok {
 			return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining xgboost models")

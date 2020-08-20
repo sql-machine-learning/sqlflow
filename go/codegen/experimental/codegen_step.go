@@ -15,7 +15,9 @@ package experimental
 
 import (
 	"fmt"
+	"github.com/bitly/go-simplejson"
 	"net/url"
+	"sqlflow.org/sqlflow/go/model"
 	"strings"
 
 	"sqlflow.org/sqlflow/go/database"
@@ -24,37 +26,118 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-// TODO(sneaxiy): implement this method to distinguish whether
-// a model is a XGBoost model.
-func isTrainedXBoostModel(modelName string) bool {
-	return true
+func isXGBoostModel(modelName string, session *pb.Session, trainStmt *ir.TrainStmt) (bool, error) {
+	if trainStmt != nil {
+		return strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST."), nil
+	}
+
+	submitter := getSubmitter(session, "local")
+	if submitter == "local" {
+		meta, err := getModelMetadataFromDB(session.DbConnStr, modelName)
+		if err != nil {
+			return false, err
+		}
+		return meta.Get("model_type").MustInt() == model.XGBOOST, nil
+	}
+	return false, fmt.Errorf("unsupported submitter %s", submitter)
 }
 
-func generateStepCode(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (string, error) {
+func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	switch stmt := sqlStmt.(type) {
 	case *ir.TrainStmt:
-		return generateTrainCode(stmt, stepIndex, session)
+		return generateTrainCodeAndImage(stmt, stepIndex, session)
 	case *ir.PredictStmt:
-		return generatePredictCode(stmt, stepIndex, session)
+		return generatePredictCodeAndImage(stmt, stepIndex, session, sqlStmts)
 	case *ir.NormalStmt:
-		return GenerateNormalStmtStep(string(*stmt), session, stepIndex)
+		code, err := generateNormalStmtStep(string(*stmt), stepIndex, session)
+		return code, "", err
 	default:
-		return "", fmt.Errorf("not implemented stmt execution type %v", stmt)
+		return "", "", fmt.Errorf("not implemented stmt execution type %v", stmt)
 	}
 }
 
-func generateTrainCode(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, error) {
-	if strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST.") {
-		return XGBoostGenerateTrain(trainStmt, stepIndex, session)
+func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, string, error) {
+	isXGBoost, err := isXGBoostModel(trainStmt.Into, session, trainStmt)
+	if err != nil {
+		return "", "", err
 	}
-	return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+
+	if isXGBoost {
+		code, err := XGBoostGenerateTrain(trainStmt, stepIndex, session)
+		if err != nil {
+			return "", "", err
+		}
+		return code, trainStmt.ModelImage, nil
+	}
+	return "", "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
 }
 
-func generatePredictCode(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
-	if isTrainedXBoostModel(predStmt.Using) {
-		return XGBoostGeneratePredict(predStmt, stepIndex, session)
+func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
+	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
+	isXGBoost, err := isXGBoostModel(predStmt.Using, session, trainStmt)
+	if err != nil {
+		return "", "", err
 	}
-	return "", fmt.Errorf("not implemented model type")
+
+	if isXGBoost {
+		code, err := XGBoostGeneratePredict(predStmt, stepIndex, session)
+		if err != nil {
+			return "", "", err
+		}
+
+		image := ""
+		if trainStmt != nil {
+			image = trainStmt.ModelImage
+		}
+		return code, image, nil
+	}
+	return "", "", fmt.Errorf("not implemented model type")
+}
+
+// findModelGenerationTrainStmt finds the *ir.TrainStmt that generates the model named `modelName`.
+// TODO(sneaxiy): find a better way to do this when we have a well designed dependency analysis.
+func findModelGenerationTrainStmt(modelName string, idx int, sqlStmts []ir.SQLFlowStmt) *ir.TrainStmt {
+	idx--
+	for idx >= 0 {
+		trainStmt, ok := sqlStmts[idx].(*ir.TrainStmt)
+		if ok && trainStmt.Into == modelName {
+			return trainStmt
+		}
+		idx--
+	}
+	return nil
+}
+
+func getModelMetadataFromDB(dbConnStr, table string) (*simplejson.Json, error) {
+	db, err := database.OpenAndConnectDB(dbConnStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	query := fmt.Sprintf(`SELECT block FROM %s WHERE id = 0;`, table)
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	rowNum := 0
+	jsonStr := ""
+	for rows.Next() {
+		if rowNum >= 1 {
+			return nil, fmt.Errorf("more than 1 rows are queried")
+		}
+
+		if err := rows.Scan(&jsonStr); err != nil {
+			return nil, err
+		}
+		rowNum++
+	}
+
+	if rowNum != 1 {
+		return nil, fmt.Errorf("no metadata is found")
+	}
+
+	return simplejson.NewJson([]byte(jsonStr))
 }
 
 func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {

@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"text/template"
 
-	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/workflow/couler"
 )
@@ -53,17 +52,14 @@ func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	stepList := []*stepContext{}
+	stepList := make([]*stepContext, 0)
 	for idx, stmt := range stmts {
-		stepCode, err := generateStepCode(stmt, idx, session)
+		stepCode, image, err := generateStepCodeAndImage(stmt, idx, session, stmts)
 		if err != nil {
 			return "", err
 		}
-		image := defaultDockerImage
-		if trainStmt, ok := stmt.(*ir.TrainStmt); ok {
-			if trainStmt.ModelImage != "" {
-				image = trainStmt.ModelImage
-			}
+		if image == "" {
+			image = defaultDockerImage
 		}
 		// TODO(typhoonzero): find out the image that should be used by the predict statements.
 		step := &stepContext{

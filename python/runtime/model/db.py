@@ -12,9 +12,12 @@
 # limitations under the License.
 
 import base64
+import json
 
 from runtime.db import buffered_db_writer, connect_with_data_source
 from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.feature.column import (JSONDecoderWithFeatureColumn,
+                                    JSONEncoderWithFeatureColumn)
 
 
 def _create_table(conn, table):
@@ -42,7 +45,7 @@ def _drop_table_if_exists(conn, table):
     cursor.execute(sql)
 
 
-def write_with_generator(datasource, table, gen):
+def write_with_generator(datasource, table, gen, metadata):
     """Write data into a table, the written data
     comes from the input generator.
 
@@ -52,15 +55,19 @@ def write_with_generator(datasource, table, gen):
         table: string
             The table name written.
         gen: Generator
-            The generator to generte the data to insert
+            The generator to generate the data to insert
             into table.
+        metadata: dict
+            The metadata to be saved into the table. It would
+            save in the row 0.
     """
     conn = connect_with_data_source(datasource)
     _drop_table_if_exists(conn, table)
     _create_table(conn, table)
-    idx = 0
 
     with buffered_db_writer(conn, table, ["id", "block"]) as w:
+        w.write([0, json.dumps(metadata, cls=JSONEncoderWithFeatureColumn)])
+        idx = 1
         for d in gen():
             block = base64.b64encode(d)
             row = [idx, block]
@@ -68,6 +75,25 @@ def write_with_generator(datasource, table, gen):
             idx += 1
 
     conn.close()
+
+
+def read_metadata_from_db(datasource, table):
+    """
+    Read the metadata stored in the DBMS table.
+
+    Args:
+        datasource: string
+            The connection string to connect DBMS.
+        table: string
+            The table name read.
+
+    Returns: dict
+        The metadata dict.
+    """
+    conn = connect_with_data_source(datasource)
+    sql = "SELECT block FROM {0} WHERE id = 0".format(table)
+    rs = conn.query(sql)
+    return json.loads(list(rs)[0][0], cls=JSONDecoderWithFeatureColumn)
 
 
 def read_with_generator(datasource, table):
@@ -83,18 +109,12 @@ def read_with_generator(datasource, table):
         the generator yield row data of the table.
     """
     conn = connect_with_data_source(datasource)
-    sql = "SELECT id, block FROM {0} ORDER BY id".format(table)
-    cursor = conn.cursor()
-    cursor.execute(sql)
-    fetch_size = 100
+    sql = "SELECT block FROM {0} WHERE id > 0 ORDER BY id".format(table)
+    rs = conn.query(sql)
 
     def reader():
-        while True:
-            rows = cursor.fetchmany(size=fetch_size)
-            if not rows:
-                break
-            for r in rows:
-                yield base64.b64decode(r[1])
+        for r in rs:
+            yield base64.b64decode(r[0])
         conn.close()
 
     return reader

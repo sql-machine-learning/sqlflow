@@ -32,7 +32,6 @@ import (
 
 	"sqlflow.org/sqlflow/go/codegen/optimize"
 
-	"sqlflow.org/sqlflow/go/codegen/pai"
 	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"sqlflow.org/sqlflow/go/codegen/xgboost"
 	"sqlflow.org/sqlflow/go/database"
@@ -278,7 +277,7 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	} else {
 		code, err = tensorflow.Explain(cl, s.Session)
 		if cl.Into != "" {
-			err := createExplainResultTable(db, cl, cl.Into, pai.ModelTypeTF, cl.TrainStmt.Estimator)
+			err := createExplainResultTable(db, cl, cl.Into, model.TENSORFLOW, cl.TrainStmt.Estimator)
 			if err != nil {
 				return err
 			}
