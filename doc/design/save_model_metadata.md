@@ -57,7 +57,7 @@ In the current implementation, we had saved model structure and weights in the f
 +-----+-----------------------------+
 ```
 
-The model structure and weights were deserialized into byte stream and saved in multiple lines inside the DBMS table.
+The model structure and weights were deserialized into byte stream and saved in multiple rows inside the DBMS table.
 
 In the new design, we propose the saved data in the DBMS table is in the format of:
 
@@ -85,3 +85,39 @@ INTO my_pai_trained_dnn_model;
 ```
 
 We propose to save the model metadata in the OSS bucket `oss://sqlflow-models/user_id/my_pai_trained_dnn_model/metadata.json`, and to save the model structure and weights in the OSS bucket `oss://sqlflow-models/user_id/my_pai_trained_dnn_model/model_save`.
+
+## How to Get the Model Metadata in Prediction Workflow Codegen
+
+There are 2 situations when we do prediction:
+
+- Case 1: we have trained a model beforehand, and we only run one `TO PREDICT` statement. That is to say, the total SQL statements to run contain only one SQL statement:
+
+  ```sql
+  SELECT * FROM my_db.test_table
+  TO PREDICT my_db.test_table_prediction.class
+  USING my_model;
+  ```
+
+  Since we have trained the model `my_model` beforehand, we can get the metadata from the DBMS table or OSS bucket when running these statements above.
+
+- Case 2: the `TO PREDICT` statement uses the trained model from the previous workflow step. That is to say, the total SQL statements to run contain two SQL statements:
+
+  ```sql
+  SELECT * FROM my_db.train_table
+  TO TRAIN my_docker_registry/my_docker_image:latest/MyDNNClassifier
+  ...
+  LABEL class
+  INTO my_model;
+    
+  SELECT * FROM my_db.test_table
+  TO PREDICT my_db.test_table_prediction.class
+  USING my_model;
+  ```
+
+  Since the the trained model `my_model` will be only generated after the first workflow step runs, we cannot get the model metadata from the DBMS or OSS when we generate the workflow codes for the `TO PREDICT` statement. In this case, we should do some dependency analysis for the SQL statements. That is to say, we should check if there is any `TO TRAIN` statement that will generates the trained model, and get the model metadata from that `TO TRAIN` statement.
+
+In conclusion, the way we try to get the model metadata when generating the workflow codes for the `TO PREDICT` statement is:
+
+- Check if there is any `TO TRAIN` statement that generates the trained model used by the `TO PREDICT` statement.
+- If yes, use the metadata from the `TO TRAIN` statement directly.
+- If no, try to get the model metadata from the DBMS table or OSS bucket. 
