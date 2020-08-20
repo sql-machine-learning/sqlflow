@@ -12,6 +12,8 @@
 # limitations under the License.
 '''This Module implements SQLFlow Step in Couler'''
 
+from os import path
+
 import couler.argo as couler
 
 
@@ -25,10 +27,18 @@ def sqlflow(sql,
             image="sqlflow/sqlflow",
             env=None,
             secret=None,
-            resources=None):
+            resources=None,
+            log_file="/home/admin/logs/step.log"):
     '''sqlflow step call run_container to append a workflow step.
     '''
-    couler.run_container(command='''step -e "%s"''' % escape_sql(sql),
+    if not log_file:
+        command = '''step -e "%s"''' % escape_sql(sql)
+    else:
+        log_dir = path.dirname(log_file)
+        command = '''(mkdir -p "%s" && step -e "%s") 2>&1 | tee %s''' % (
+            log_dir, escape_sql(sql), log_file)
+
+    couler.run_container(command=command,
                          image=image,
                          env=env,
                          secret=secret,
