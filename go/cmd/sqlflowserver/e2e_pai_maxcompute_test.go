@@ -404,6 +404,21 @@ LABEL class
 INTO %s.e2etest_xgb_evaluate_result;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(evalSQL)
 	a.NoError(err, "Run evalSQL error.")
+
+	titanicTrain := fmt.Sprintf(`SELECT * FROM %s.sqlflow_titanic_train
+TO TRAIN xgboost.gbtree
+WITH objective="binary:logistic"
+LABEL survived
+INTO e2etest_xgb_titanic;`, caseDB)
+	_, _, _, err = connectAndRunSQL(titanicTrain)
+	a.NoError(err, "Run titanicTrain error.")
+
+	titanicExplain := fmt.Sprintf(`SELECT * FROM %s.sqlflow_titanic_train
+TO EXPLAIN e2etest_xgb_titanic
+WITH label_col=survived
+INTO %s.e2etest_xgb_explain_result_wuyi;`, caseDB, caseDB)
+	_, _, _, err = connectAndRunSQL(titanicExplain)
+	a.NoError(err, "Run titanicExplain error.")
 }
 
 func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
