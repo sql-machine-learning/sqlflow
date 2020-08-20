@@ -173,9 +173,7 @@ def explain(datasource,
                          pai_explain_table,
                          transform_fn=transform_fn,
                          feature_column_code=feature_column_code)
-
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
-
     if result_table != "":
         if is_pai:
             from runtime.dbapi.paiio import PaiIOConnection
@@ -192,7 +190,6 @@ def explain(datasource,
         else:
             to_write = shap_values
         write_shap_values(to_write, conn, result_table, feature_column_names)
-        return
 
     if summary_params.get("plot_type") == "decision":
         explainer.plot_and_save(

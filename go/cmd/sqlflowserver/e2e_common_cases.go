@@ -286,6 +286,30 @@ INTO sqlflow_models.my_xgb_regression_model_eval_result;
 	}
 }
 
+func casePredictXGBoostExplain(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM titanic.train
+TO TRAIN xgboost.gbtree
+WITH
+    objective="binary:logistic",
+    train.num_boost_round = 30,
+    eta = 0.4
+LABEL survived
+INTO sqlflow_models.titanic_explain;`)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+	explainSQL := fmt.Sprintf(`SELECT * FROM titanic.train
+TO EXPLAIN sqlflow_models.titanic_explain
+WITH label_col=survived, summary.sort=True
+INTO titanic.titanic_explain_result;`)
+	_, _, _, err = connectAndRunSQL(explainSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+}
+
 func casePredictXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
 	predSQL := fmt.Sprintf(`SELECT *

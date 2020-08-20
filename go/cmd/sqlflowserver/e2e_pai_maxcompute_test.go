@@ -378,16 +378,16 @@ func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	a := assert.New(t)
 
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
-	TO TRAIN xgboost.gbtree
-	WITH
-		objective="multi:softprob",
-		train.num_boost_round = 30,
-		eta = 0.4,
-		num_class = 3,
-		train.batch_size=10,
-		validation.select="select * from %s"
-	LABEL class
-	INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
+TO TRAIN xgboost.gbtree
+WITH
+	objective="multi:softprob",
+	train.num_boost_round = 30,
+	eta = 0.4,
+	num_class = 3,
+	train.batch_size=10,
+	validation.select="select * from %s"
+LABEL class
+INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err, "Run trainSQL error.")
 
@@ -404,14 +404,6 @@ LABEL class
 INTO %s.e2etest_xgb_evaluate_result;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(evalSQL)
 	a.NoError(err, "Run evalSQL error.")
-
-	explainSQL := fmt.Sprintf(`SELECT * FROM %s
-TO EXPLAIN e2etest_xgb_classi_model
-WITH label_col=class
-USING TreeExplainer
-INTO %s.e2etest_xgb_explain_result;`, caseTrainTable, caseDB)
-	_, _, _, err = connectAndRunSQL(explainSQL)
-	a.NoError(err, "Run explainSQL error.")
 }
 
 func CasePAIMaxComputeTrainCustomModel(t *testing.T) {
