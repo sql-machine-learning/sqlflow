@@ -180,15 +180,18 @@ def explain(datasource,
         if is_pai:
             from runtime.dbapi.paiio import PaiIOConnection
             conn = PaiIOConnection.from_table(result_table)
-            # TODO(typhoonzero): the shape of shap_values is
-            # (3, num_samples, num_features), use the first
-            # dimension here, should find out how to use
-            # the other two.
         else:
             conn = db.connect_with_data_source(datasource)
-
-        write_shap_values(shap_values[0], conn, result_table,
-                          feature_column_names)
+        # TODO(typhoonzero): the shap_values is may be a
+        # list of shape [3, num_samples, num_features],
+        # use the first dimension here, should find out
+        # when to use the other two. When shap_values is
+        # not a list it can be directly used.
+        if isinstance(shap_values, list):
+            to_write = shap_values[0]
+        else:
+            to_write = shap_values
+        write_shap_values(to_write, conn, result_table, feature_column_names)
         return
 
     if summary_params.get("plot_type") == "decision":
