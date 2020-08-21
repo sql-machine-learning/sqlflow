@@ -487,3 +487,39 @@ INTO iris.cross_tf_e2e_test_model;
 		a.NoError(err)
 	}
 }
+
+func caseEnd2EndXGBoostDenseFeatureColumn(t *testing.T) {
+	sqls := []string{`SELECT c3, class FROM feature_derivation_case.train
+TO TRAIN xgboost.gbtree
+WITH objective="binary:logistic", 
+    validation.select="SELECT c3, class FROM feature_derivation_case.train", 
+    train.num_boost_round=100,
+    eta=0.3,
+    max_depth=5
+column DENSE(c3, 4)
+LABEL class
+INTO feature_derivation_case.my_xgb_dense_column_model;`,
+		`SELECT * FROM feature_derivation_case.my_xgb_dense_column_model;`,
+		`SELECT c3 FROM feature_derivation_case.train
+TO PREDICT feature_derivation_case.my_xgb_dense_column_predict_table.class
+USING feature_derivation_case.my_xgb_dense_column_model;`,
+
+		`SELECT * FROM feature_derivation_case.my_xgb_dense_column_predict_table;`,
+
+		`SELECT c3, class FROM feature_derivation_case.train
+TO EVALUATE feature_derivation_case.my_xgb_dense_column_model
+WITH
+	validation.metrics="accuracy_score,f1_score"
+LABEL class
+INTO feature_derivation_case.xgb_dense_column_evaluate_table;
+`,
+
+		`SELECT * FROM feature_derivation_case.xgb_dense_column_evaluate_table;`,
+	}
+
+	a := assert.New(t)
+	for _, sql := range sqls {
+		_, _, _, err := connectAndRunSQL(sql)
+		a.NoError(err)
+	}
+}

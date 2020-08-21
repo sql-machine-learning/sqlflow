@@ -27,6 +27,11 @@ func TestCSVRegex(t *testing.T) {
 		"1,2,3,4",
 		"1.3,-3.2,132,32",
 		"33,-33",
+		"33,-33,",
+		" 33 , -70 , 80 , ",
+		" 33 , -70 , 80 ,",
+		" 33 , -70 , 80, ",
+		" 33 , -70 , 80,",
 	}
 	for _, s := range csvStings {
 		if inferStringDataFormat(s) != csv {

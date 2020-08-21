@@ -51,11 +51,11 @@ def read_feature(raw_val, feature_spec, feature_name):
         if feature_spec["dtype"] == "float32":
             return np.fromstring(raw_val,
                                  dtype=np.float32,
-                                 sep=feature_spec["delimiter"])
+                                 sep=feature_spec["delimiter"]),
         elif feature_spec["dtype"] == "int64":
             return np.fromstring(raw_val,
                                  dtype=np.int64,
-                                 sep=feature_spec["delimiter"])
+                                 sep=feature_spec["delimiter"]),
         else:
             raise ValueError('unrecognize dtype {}'.format(
                 feature_spec[feature_name]["dtype"]))

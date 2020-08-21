@@ -15,6 +15,7 @@ import numpy as np
 import sklearn.metrics
 import xgboost as xgb
 from runtime import db
+from runtime.model.metadata import load_metadata
 from runtime.xgboost.dataset import xgb_dataset
 
 SKLEARN_METRICS = [
@@ -75,6 +76,8 @@ def evaluate(datasource,
                         )  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load model
+    if not model_params:
+        model_params = load_metadata("model_meta.json")["attributes"]
     print("Start evaluating XGBoost model...")
     feature_file_id = 0
     for pred_dmatrix in dpred:
