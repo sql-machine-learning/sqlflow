@@ -81,8 +81,13 @@ def setup_predict_entry(params, model_type):
         raise SQLFlowDiagnostic("unsupported model type: %d" % model_type)
 
 
-def submit_pai_predict(datasource, select, result_table, label_column,
-                       model_name, model_params):
+def submit_pai_predict(datasource,
+                       select,
+                       result_table,
+                       label_column,
+                       model_name,
+                       model_params,
+                       user=""):
     """This function pack needed params and resource to a tarball
     and submit a prediction task to PAI
 
@@ -108,7 +113,9 @@ def submit_pai_predict(datasource, select, result_table, label_column,
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
 
-    oss_model_path = pai_model.get_oss_model_save_path(datasource, model_name)
+    oss_model_path = pai_model.get_oss_model_save_path(datasource,
+                                                       model_name,
+                                                       user=user)
     params["oss_model_path"] = oss_model_path
     model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
         oss_model_path, project)

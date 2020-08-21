@@ -108,8 +108,12 @@ def get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
     return cmd
 
 
-def submit_pai_explain(datasource, select, result_table, model_name,
-                       model_params):
+def submit_pai_explain(datasource,
+                       select,
+                       result_table,
+                       model_name,
+                       model_params,
+                       user=""):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
 
@@ -134,7 +138,9 @@ def submit_pai_explain(datasource, select, result_table, model_name,
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
 
-    oss_model_path = pai_model.get_oss_model_save_path(datasource, model_name)
+    oss_model_path = pai_model.get_oss_model_save_path(datasource,
+                                                       model_name,
+                                                       user=user)
     model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
     params["oss_model_path"] = oss_model_path

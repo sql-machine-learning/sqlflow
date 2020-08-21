@@ -17,6 +17,7 @@ import tempfile
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
+from runtime.pai.pai_ml.kmeans import get_train_kmeans_pai_cmd
 from runtime.pai.pai_ml.random_forest import get_train_random_forest_pai_cmd
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
@@ -81,7 +82,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
         load: string
             The pre-trained model name to load
         train_params: dict
-            Extra train params, they will be passed to runtime.tensorflow.train.
+            Extra train params, will be passed to runtime.tensorflow.train.
     """
     # prepare params for tensorflow train,
     # the params will be pickled into train_params.pkl
@@ -100,9 +101,18 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
         select, validation_select, datasource)
     params["pai_table"], params["pai_val_table"] = train_table, val_table
 
+    # FIXME(typhoonzero): get user from session
+    user = ""
+    if "user" in params:
+        user = params["user"]
+
     # clean target dir
-    path_to_save = pai_model.get_oss_model_save_path(datasource, save)
-    path_to_load = pai_model.get_oss_model_save_path(datasource, load)
+    path_to_save = pai_model.get_oss_model_save_path(datasource,
+                                                     save,
+                                                     user=user)
+    path_to_load = pai_model.get_oss_model_save_path(datasource,
+                                                     load,
+                                                     user=user)
     params["oss_model_dir"] = path_to_save
 
     if path_to_load == "" or path_to_load != path_to_save:

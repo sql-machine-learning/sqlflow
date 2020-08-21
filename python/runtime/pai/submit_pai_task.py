@@ -12,9 +12,7 @@
 # limitations under the License.
 
 import subprocess
-import tempfile
 
-from runtime import db
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic
 

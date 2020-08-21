@@ -14,7 +14,6 @@
 import os
 import tempfile
 
-from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
 from runtime.pai import cluster_conf, pai_model, table_ops
@@ -54,8 +53,12 @@ def get_evaluate_metrics(model_type, model_attrs):
     return metrics
 
 
-def submit_pai_evaluate(datasource, model_name, select, result_table,
-                        model_attrs):
+def submit_pai_evaluate(datasource,
+                        model_name,
+                        select,
+                        result_table,
+                        model_attrs,
+                        user=""):
     """Submit a PAI evaluation task
 
     Args:
@@ -72,7 +75,9 @@ def submit_pai_evaluate(datasource, model_name, select, result_table,
     project = table_ops.get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
-    oss_model_path = pai_model.get_oss_model_save_path(datasource, model_name)
+    oss_model_path = pai_model.get_oss_model_save_path(datasource,
+                                                       model_name,
+                                                       user=user)
     params["oss_model_path"] = oss_model_path
 
     model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(

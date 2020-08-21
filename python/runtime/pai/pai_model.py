@@ -46,11 +46,12 @@ def drop_pai_model(datasource, model_name):
                    check=True)
 
 
-def get_oss_model_save_path(datasource, model_name):
+def get_oss_model_save_path(datasource, model_name, user=""):
     if not model_name:
         return None
-    user, _, _, project = MaxComputeConnection.get_uri_parts(datasource)
-    user = user or "unknown"
+    _, _, _, project = MaxComputeConnection.get_uri_parts(datasource)
+    if user == "":
+        user = "unknown"
     return "/".join([project, user, model_name])
 
 

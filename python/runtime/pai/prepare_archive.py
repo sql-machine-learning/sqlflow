@@ -17,6 +17,7 @@ import shutil
 import subprocess
 from os import path
 
+from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai import pai_model
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE)
