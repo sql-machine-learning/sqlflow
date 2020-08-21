@@ -15,6 +15,7 @@ import numpy as np
 import sklearn.metrics
 import xgboost as xgb
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.xgboost.dataset import xgb_dataset
 
 SKLEARN_METRICS = [
@@ -58,7 +59,7 @@ def evaluate(datasource,
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
-        conn = None
+        conn = PaiIOConnection.from_table(pai_table)
     dpred = xgb_dataset(datasource,
                         'predict.txt',
                         select,
