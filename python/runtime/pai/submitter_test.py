@@ -27,16 +27,6 @@ class SubmitterTestCase(TestCase):
         url = submitter.get_oss_model_url("user_a/model")
         self.assertEqual("oss://sqlflow-models/user_a/model", url)
 
-    def test_get_datasource_dsn(self):
-        ds = "odps://access_id:access_key@service.com/api?" \
-             "curr_project=test_ci&scheme=http"
-        expected_dsn = "access_id:access_key@service.com/api?" \
-                       "curr_project=test_ci&scheme=http"
-        dsn = submitter.get_datasource_dsn(ds)
-        self.assertEqual(expected_dsn, dsn)
-        project = "test_ci"
-        self.assertEqual(project, submitter.get_project(ds))
-
     def test_get_pai_tf_cmd(self):
         conf = get_cluster_config({})
         os.environ[
@@ -172,7 +162,6 @@ class SubmitPAITrainTask(TestCase):
             feature_metas=iris_feature_metas,
             label_meta=iris_label_meta,
             validation_metrics="Accuracy".split(","),
-            save="model_save",
             batch_size=1,
             epoch=1,
             validation_steps=1,

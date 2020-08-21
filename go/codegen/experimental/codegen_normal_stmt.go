@@ -20,7 +20,7 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-var normalStmtStepTmpl = `
+const normalStmtStepTmpl = `
 def step_entry_{{.StepIndex}}():
     import runtime
     import runtime.dbapi

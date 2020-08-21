@@ -11,14 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import tempfile
 import unittest
 
 import runtime.db as db
+import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
+from runtime.local.xgboost_submitter.evaluate import evaluate
 from runtime.local.xgboost_submitter.predict import pred
 from runtime.local.xgboost_submitter.train import train
 
@@ -37,7 +37,7 @@ class TestXGBoostTrain(unittest.TestCase):
 
     @unittest.skipUnless(testing.get_driver() == "mysql",
                          "skip non mysql tests")
-    def test_train_and_predict(self):
+    def test_main(self):
         ds = testing.get_datasource()
         original_sql = """SELECT * FROM iris.train
         TO TRAIN xgboost.gbtree
@@ -56,9 +56,7 @@ class TestXGBoostTrain(unittest.TestCase):
         save_name = "iris.xgboost_train_model_test"
         class_name = "class"
 
-        old_dir_name = os.getcwd()
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            os.chdir(tmp_dir_name)
+        with temp_file.TemporaryDirectory(as_cwd=True):
             eval_result = train(original_sql=original_sql,
                                 model_image="sqlflow:step",
                                 estimator_string="xgboost.gbtree",
@@ -98,7 +96,12 @@ class TestXGBoostTrain(unittest.TestCase):
             diff_schema = schema2.keys() - schema1.keys()
             self.assertEqual(len(diff_schema), 0)
 
-        os.chdir(old_dir_name)
+            evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
+                     'class', ['accuracy_score'])
+            eval_schema = self.get_table_schema(conn,
+                                                "iris.evaluate_result_table")
+            self.assertEqual(eval_schema.keys(),
+                             set(['loss', 'accuracy_score']))
 
 
 if __name__ == '__main__':

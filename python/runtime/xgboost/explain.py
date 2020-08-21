@@ -51,9 +51,10 @@ def xgb_shap_dataset(datasource,
         # (TODO: lhw) we may specify pai_explain_table in datasoure
         # and discard the condition statement here
         conn = PaiIOConnection.from_table(pai_explain_table)
+        stream = db.db_generator(conn, None, label_meta)
     else:
         conn = db.connect_with_data_source(datasource)
-    stream = db.db_generator(conn, select, label_meta)
+        stream = db.db_generator(conn, select, label_meta)
     selected_cols = db.selected_cols(conn, select)
 
     if transform_fn:
@@ -172,23 +173,23 @@ def explain(datasource,
                          pai_explain_table,
                          transform_fn=transform_fn,
                          feature_column_code=feature_column_code)
-
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
-
     if result_table != "":
         if is_pai:
             from runtime.dbapi.paiio import PaiIOConnection
             conn = PaiIOConnection.from_table(result_table)
-            # TODO(typhoonzero): the shape of shap_values is
-            # (3, num_samples, num_features), use the first
-            # dimension here, should find out how to use
-            # the other two.
         else:
             conn = db.connect_with_data_source(datasource)
-
-        write_shap_values(shap_values[0], conn, result_table,
-                          feature_column_names)
-        return
+        # TODO(typhoonzero): the shap_values is may be a
+        # list of shape [3, num_samples, num_features],
+        # use the first dimension here, should find out
+        # when to use the other two. When shap_values is
+        # not a list it can be directly used.
+        if isinstance(shap_values, list):
+            to_write = shap_values[0]
+        else:
+            to_write = shap_values
+        write_shap_values(to_write, conn, result_table, feature_column_names)
 
     if summary_params.get("plot_type") == "decision":
         explainer.plot_and_save(

@@ -132,10 +132,6 @@ def get_oss_model_url(model_full_path):
     return "oss://%s/%s" % (oss.SQLFLOW_MODELS_BUCKET, model_full_path)
 
 
-def parse_maxcompute_dsn(datasource):
-    return MaxComputeConnection.get_uri_parts(datasource)
-
-
 def drop_pai_model(datasource, model_name):
     """Drop PAI model
 
@@ -143,7 +139,8 @@ def drop_pai_model(datasource, model_name):
         datasource: current datasource
         model_name: name of the model to drop
     """
-    user, passwd, address, database = parse_maxcompute_dsn(datasource)
+    user, passwd, address, database = MaxComputeConnection.get_uri_parts(
+        datasource)
     cmd = "drop offlinemodel if exists %s" % model_name
     subprocess.run([
         "odpscmd", "-u", user, "-p", passwd, "--project", database,
@@ -220,7 +217,8 @@ def submit_pai_task(pai_cmd, datasource):
         pai_cmd: The command to submit
         datasource: The datasource this cmd will manipulate
     """
-    user, passwd, address, project = parse_maxcompute_dsn(datasource)
+    user, passwd, address, project = MaxComputeConnection.get_uri_parts(
+        datasource)
     cmd = [
         "odpscmd", "--instance-priority", "9", "-u", user, "-p", passwd,
         "--project", project, "--endpoint", address, "-e", pai_cmd
@@ -234,13 +232,9 @@ def submit_pai_task(pai_cmd, datasource):
 def get_oss_model_save_path(datasource, model_name):
     if not model_name:
         return None
-    user, _, _, project = parse_maxcompute_dsn(datasource)
+    user, _, _, project = MaxComputeConnection.get_uri_parts(datasource)
     user = user or "unknown"
     return "/".join([project, user, model_name])
-
-
-def get_datasource_dsn(datasource):
-    return datasource.split("://")[1]
 
 
 def get_project(datasource):
@@ -249,7 +243,7 @@ def get_project(datasource):
     Args:
         datasource: The odps url to extract project
     """
-    _, _, _, project = parse_maxcompute_dsn(datasource)
+    _, _, _, project = MaxComputeConnection.get_uri_parts(datasource)
     return project
 
 
