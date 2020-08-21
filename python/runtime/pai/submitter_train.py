@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
+
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
@@ -58,9 +61,9 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
     return cmd
 
 
-# (TODO: lhw) adapt this interface after we do feature derivation in Python
+# TODO(lhw): adapt this interface after we do feature derivation in Python
 def submit_pai_train(datasource, estimator_string, select, validation_select,
-                     model_params, save, load, train_params):
+                     model_params, save, load, **train_params):
     """This function submit PAI-TF train task to PAI platform
 
     Args:
@@ -112,8 +115,8 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     cmd = get_pai_train_cmd(datasource, estimator_string, save, train_table,
                             val_table, model_params, train_params,
                             path_to_save,
-                            "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                            "file://" + path.join(cwd, PARAMS_FILE), cwd)
+                            "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                            "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
 
     submit_pai_task(cmd, datasource)
 

@@ -42,7 +42,7 @@ import traceback
 import tensorflow as tf
 import runtime
 {{ if .IsPAI }}
-from runtime.pai.tensorflow.train import train
+from runtime.pai.tensorflow_submitter.train import train
 {{ else }}
 from runtime.tensorflow.train import train
 {{ end }}

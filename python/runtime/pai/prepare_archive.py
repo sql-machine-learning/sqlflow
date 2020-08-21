@@ -11,9 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import pickle
 import shutil
 import subprocess
+from os import path
+
+from runtime.pai import pai_model
+from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
+                                        PARAMS_FILE)
 
 TRAIN_PARAMS_FILE = "train_params.pkl"
 
@@ -102,6 +108,6 @@ def _create_pai_hyper_param_file(cwd, filename, model_path):
         file.write("sqlflow_oss_ak=\"%s\"\n" % oss_ak)
         file.write("sqlflow_oss_sk=\"%s\"\n" % oss_sk)
         file.write("sqlflow_oss_ep=\"%s\"\n" % oss_ep)
-        oss_model_url = get_oss_model_url(model_path)
+        oss_model_url = pai_model.get_oss_model_url(model_path)
         file.write("sqlflow_oss_modeldir=\"%s\"\n" % oss_model_url)
         file.flush()

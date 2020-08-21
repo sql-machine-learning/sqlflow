@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import tempfile
 
 from runtime import db
@@ -93,9 +94,9 @@ def submit_pai_evaluate(datasource, model_name, select, result_table,
     else:
         params["entry_type"] = "evaluate_tf"
     prepare_archive(cwd, estimator, oss_model_path, params)
-    cmd = get_pai_tf_cmd(conf, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                         "file://" + path.join(cwd, PARAMS_FILE), ENTRY_FILE,
-                         model_name, oss_model_path, data_table, "",
-                         result_table, project)
+    cmd = get_pai_tf_cmd(conf, "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                         "file://" + os.path.join(cwd, PARAMS_FILE),
+                         ENTRY_FILE, model_name, oss_model_path, data_table,
+                         "", result_table, project)
     submit_pai_task(cmd, datasource)
     table_ops.drop_tables([data_table], datasource)

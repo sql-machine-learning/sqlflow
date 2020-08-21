@@ -11,12 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import tempfile
 
 from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
 from runtime.pai import cluster_conf, pai_model, table_ops
+from runtime.pai.create_result_table import create_predict_result_table
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
 from runtime.pai.prepare_archive import prepare_archive
@@ -113,15 +115,15 @@ def submit_pai_predict(datasource, select, result_table, label_column,
     setup_predict_entry(params, model_type)
 
     # (TODO:lhw) get train label column from model meta
-    table_ops.create_predict_result_table(datasource, data_table, result_table,
-                                          label_column, None, model_type)
+    create_predict_result_table(datasource, data_table, result_table,
+                                label_column, None, model_type)
 
     prepare_archive(cwd, estimator, oss_model_path, params)
 
     cmd = get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
                               data_table, result_table, model_type,
                               model_params,
-                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                              "file://" + path.join(cwd, PARAMS_FILE), cwd)
+                              "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                              "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
     submit_pai_task(cmd, datasource)
     table_ops.drop_tables([data_table], datasource)

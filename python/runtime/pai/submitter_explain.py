@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import tempfile
 
 from runtime import db
@@ -100,8 +101,8 @@ def get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
     else:
         conf = cluster_conf.get_cluster_config(model_params)
         cmd = get_pai_tf_cmd(conf,
-                             "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                             "file://" + path.join(cwd, PARAMS_FILE),
+                             "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                             "file://" + os.path.join(cwd, PARAMS_FILE),
                              ENTRY_FILE, model_name, oss_model_path,
                              data_table, "", result_table, project)
     return cmd
@@ -149,8 +150,8 @@ def submit_pai_explain(datasource, select, result_table, model_name,
     cmd = get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
                               data_table, result_table, model_type,
                               model_params,
-                              "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
-                              "file://" + path.join(cwd, PARAMS_FILE),
+                              "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                              "file://" + os.path.join(cwd, PARAMS_FILE),
                               label_column, cwd)
 
     submit_pai_task(cmd, datasource)

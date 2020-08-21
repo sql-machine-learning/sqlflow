@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import random
+import string
 
 from runtime import db
 from runtime.dbapi.maxcompute import MaxComputeConnection
@@ -53,7 +54,7 @@ def create_tmp_table_from_select(select, datasource):
     # (NOTE: lhw) maxcompute conn doesn't support close
     # we should unify db interface
     if not conn.execute(create_sql):
-        raise SQLFlowDiagnostic("Can't crate tmp table for %s" % select)
+        raise SQLFlowDiagnostic("Can't create tmp table for %s" % select)
     return "%s.%s" % (project, tmp_tb_name)
 
 
