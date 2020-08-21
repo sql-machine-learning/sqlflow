@@ -28,14 +28,14 @@ def sqlflow(sql,
             env=None,
             secret=None,
             resources=None,
-            log_file="/home/admin/logs/step.log"):
+            log_file=None):
     '''sqlflow step call run_container to append a workflow step.
     '''
     if not log_file:
         command = '''step -e "%s"''' % escape_sql(sql)
     else:
         log_dir = path.dirname(log_file)
-        command = '''(mkdir -p "%s" && step -e "%s") 2>&1 | tee %s''' % (
+        command = '''(mkdir -p %s && step -e "%s") 2>&1 | tee %s''' % (
             log_dir, escape_sql(sql), log_file)
 
     couler.run_container(command=command,

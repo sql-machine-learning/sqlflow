@@ -110,6 +110,26 @@ func TestCoulerCodegen(t *testing.T) {
 	a.NoError(e)
 	a.Equal("SELECT * FROM iris.train limit 10", r.FindStringSubmatch(yaml)[1])
 	a.NoError(e)
+
+	os.Setenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE", "/home/admin/logs/step.log")
+	defer os.Unsetenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE")
+	code, err = cg.GenCode(sqlIR, &pb.Session{})
+	a.NoError(err)
+	r, e = regexp.Compile(`step_log_file = "(.*)"`)
+	a.True(strings.Contains(code, `step_log_file = "/home/admin/logs/step.log"`))
+	a.True(strings.Contains(code, "log_file=step_log_file"))
+
+	yaml, e = cg.GenYAML(code)
+	a.NoError(e)
+	r, e = regexp.Compile(`\(mkdir -p (.*) && step -e "([^|]|\n)*[|] tee (.*)'`)
+	a.NoError(e)
+	a.Equal("/home/admin/logs", r.FindStringSubmatch(yaml)[1])
+	a.Equal("/home/admin/logs/step.log", r.FindStringSubmatch(yaml)[3])
+	a.NoError(e)
+
+	r, e = regexp.Compile("- name: SQLFLOW_WORKFLOW_STEP_LOG_FILE\n.*value: '(.*)'")
+	a.NoError(e)
+	a.Equal("/home/admin/logs/step.log", r.FindStringSubmatch(yaml)[1])
 }
 
 func TestCoulerCodegenSpecialChars(t *testing.T) {
