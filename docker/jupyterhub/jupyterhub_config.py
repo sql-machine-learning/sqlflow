@@ -11,6 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable-all
+# flake8: noqa
+
 # Configuration file for jupyterhub.
 # shutdown the server after no activity for an hour
 import os
@@ -25,6 +28,12 @@ c.JupyterHub.spawner_class = 'kubespawner.KubeSpawner'
 
 c.JupyterHub.ip = '0.0.0.0'
 c.JupyterHub.hub_ip = '0.0.0.0'
+
+ssl_key_path = os.getenv("SQLFLOW_JUPYTER_SSL_KEY")
+ssl_cert_path = os.getenv("SQLFLOW_JUPYTER_SSL_CERT")
+if ssl_key_path != "" and ssl_cert_path != "":
+    c.JupyterHub.ssl_key = ssl_key_path
+    c.JupyterHub.ssl_cert = ssl_cert_path
 
 # Don't try to cleanup servers on exit - since in general for k8s, we want
 # the hub to be able to restart without losing user containers
