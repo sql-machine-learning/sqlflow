@@ -160,12 +160,9 @@ def estimator_predict(estimator, model_params, save, result_table,
         feature_name = feature_column_names[i]
         dtype_str = feature_metas[feature_name]["dtype"]
         if feature_metas[feature_name]["delimiter"] != "":
-            if feature_metas[feature_name]["is_sparse"]:
-                # NOTE(typhoonzero): sparse feature will get
-                # (indices,values,shape) here, use indices only
-                values = x[0][i][0].flatten()
-            else:
-                values = x[0][i].flatten()
+            # NOTE(typhoonzero): sparse feature will get
+            # (indices,values,shape) here, use indices only
+            values = x[0][i][0].flatten()
             if dtype_str == "float32" or dtype_str == "float64":
                 example.features.feature[feature_name].float_list.value.extend(
                     list(values))

@@ -1002,14 +1002,19 @@ SELECT * FROM %[4]s;`
 		sqlTemplate += selectTrainTableSQL
 	}
 
-	sql := fmt.Sprintf(sqlTemplate, trainTableName, modelName, predictTableName, evaluateTableName)
+	sqls := fmt.Sprintf(sqlTemplate, trainTableName, modelName, predictTableName, evaluateTableName)
 
 	a := assert.New(t)
-	for _, sql := range strings.Split(sql, ";") {
+	for _, sql := range strings.Split(sqls, ";") {
+		sql := strings.TrimSpace(sql)
+		if sql == "" {
+			continue
+		}
+
 		sql += ";"
 		_, _, _, err := connectAndRunSQL(sql)
 		if err != nil {
-			a.Fail("Run SQL failure:\n%s\n%s", sql, err.Error())
+			a.Fail(fmt.Sprintf("Run SQL failure:\n%s\n%s", sql, err.Error()))
 		}
 	}
 }
