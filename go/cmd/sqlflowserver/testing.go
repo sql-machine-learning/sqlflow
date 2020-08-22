@@ -237,7 +237,8 @@ func prepareTestData(dbStr string) error {
 		datasets = append(datasets,
 			fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
 			fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB),
-			fmt.Sprintf(testdata.XGBoostMaxComputeSparseDataCaseSQL, caseDB))
+			fmt.Sprintf(testdata.XGBoostMaxComputeSparseDataCaseSQL, caseDB),
+			fmt.Sprintf(testdata.FeatureDerivationCaseSQLMaxCompute, caseDB))
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
 	}

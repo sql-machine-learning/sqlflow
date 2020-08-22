@@ -116,7 +116,7 @@ REAL_NUMBER_PATTERN = re.compile(
 
 # A regular expression to match the form of "3,5,7"
 CSV_PATTERN = re.compile(
-    "((%s)\\,)+(%s)" %
+    "\\s*((%s)\\s*\\,\\s*)+(%s)\\s*(\\,?)\\s*" %
     (REAL_NUMBER_PATTERN.pattern, REAL_NUMBER_PATTERN.pattern))
 
 # A regular expression to match the form of "0:3.2 7:-2.3"
@@ -160,7 +160,13 @@ def fill_csv_field_desc(cell, field_desc):
     Returns:
         None.
     """
-    values = cell.split(",")
+    raw_values = cell.split(",")
+    values = []
+    for v in raw_values:
+        v = v.strip()
+        if v:
+            values.append(v)
+
     if field_desc.is_sparse:
         assert field_desc.shape is not None, \
             "the shape of CSV format data must be given"

@@ -49,16 +49,19 @@ def read_feature(raw_val, feature_spec, feature_name):
     elif feature_spec["delimiter"] != "":
         # Dense string vector
         if feature_spec["dtype"] == "float32":
-            return np.fromstring(raw_val,
-                                 dtype=np.float32,
-                                 sep=feature_spec["delimiter"])
+            vec = np.fromstring(raw_val,
+                                dtype=np.float32,
+                                sep=feature_spec["delimiter"])
         elif feature_spec["dtype"] == "int64":
-            return np.fromstring(raw_val,
-                                 dtype=np.int64,
-                                 sep=feature_spec["delimiter"])
+            vec = np.fromstring(raw_val,
+                                dtype=np.int64,
+                                sep=feature_spec["delimiter"])
         else:
             raise ValueError('unrecognize dtype {}'.format(
-                feature_spec[feature_name]["dtype"]))
+                feature_spec["dtype"]))
+
+        vec = vec.reshape(list(feature_spec["shape"]))
+        return vec,
     elif feature_spec["dtype"] == "float32":
         return float(raw_val),
     elif feature_spec["dtype"] == "int64":

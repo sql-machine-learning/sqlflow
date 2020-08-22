@@ -958,3 +958,63 @@ func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
 	a.True(reflect.DeepEqual(decodedRows[2], []interface{}{"plantB", "marketA", int64(30)}))
 	a.True(reflect.DeepEqual(decodedRows[3], []interface{}{"plantB", "marketB", int64(60)}))
 }
+
+func caseEnd2EndXGBoostDenseFeatureColumn(t *testing.T, isPai bool) {
+	trainTableName := "feature_derivation_case.train"
+	modelName := "feature_derivation_case.xgb_dense_column_model"
+	predictTableName := "feature_derivation_case.xgb_dense_column_predict_table"
+	evaluateTableName := "feature_derivation_case.xgb_dense_column_evaluate_table"
+
+	if isPai {
+		trainTableName = caseDB + ".feature_derivation_train"
+		modelName = "my_xgb_dense_column_model"
+		predictTableName = caseDB + ".xgb_dense_column_predict_table"
+		evaluateTableName = caseDB + ".xgb_dense_column_evaluate_table"
+	}
+
+	sqlTemplate := `SELECT c3, class FROM %[1]s
+TO TRAIN xgboost.gbtree
+WITH objective="binary:logistic", 
+    validation.select="SELECT c3, class FROM %[1]s", 
+    train.num_boost_round=100,
+    eta=0.3,
+    max_depth=5
+column DENSE(c3, 4)
+LABEL class
+INTO %[2]s;
+
+SELECT c3 FROM %[1]s TO PREDICT %[3]s.class USING %[2]s;
+
+SELECT * FROM %[3]s;
+
+SELECT c3, class FROM %[1]s
+TO EVALUATE %[2]s
+WITH
+	validation.metrics="accuracy_score,f1_score"
+LABEL class
+INTO %[4]s; 
+
+SELECT * FROM %[4]s;`
+
+	const selectTrainTableSQL = `SELECT * FROM %[2]s;`
+
+	if !isPai {
+		sqlTemplate += selectTrainTableSQL
+	}
+
+	sqls := fmt.Sprintf(sqlTemplate, trainTableName, modelName, predictTableName, evaluateTableName)
+
+	a := assert.New(t)
+	for _, sql := range strings.Split(sqls, ";") {
+		sql := strings.TrimSpace(sql)
+		if sql == "" {
+			continue
+		}
+
+		sql += ";"
+		_, _, _, err := connectAndRunSQL(sql)
+		if err != nil {
+			a.Fail(fmt.Sprintf("Run SQL failure:\n%s\n%s", sql, err.Error()))
+		}
+	}
+}
