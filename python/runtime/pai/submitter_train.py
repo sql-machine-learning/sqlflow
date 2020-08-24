@@ -141,6 +141,4 @@ def submit_pai_train(datasource, original_sql, select, validation_select,
 
     submit_pai_task(cmd, datasource)
 
-    # save trained model to sqlfs
-    pai_model.save_model_to_sqlfs(datasource, path_to_save, save)
     table_ops.drop_tables([train_table, val_table], datasource)

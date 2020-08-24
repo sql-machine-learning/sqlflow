@@ -18,7 +18,7 @@ from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import (get_ordered_field_descs,
                                         infer_feature_columns)
-from runtime.model import collect_metadata, oss
+from runtime.model import EstimatorType, Model, collect_metadata, oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.tensorflow_submitter.train_estimator import \
     estimator_train_and_save
@@ -144,15 +144,6 @@ def train_step(original_sql,
                label_column,
                save,
                load=None):
-    # TODO(sneaxiy): collect features and label
-    model_meta = collect_metadata(original_sql=original_sql,
-                                  select=select,
-                                  validation_select=validation_select,
-                                  model_repo_image=model_image,
-                                  class_name=estimator_string,
-                                  attributes=model_params,
-                                  features=None,
-                                  label=None)
     conn = db.connect_with_data_source(datasource)
     fc_map_ir, fc_label_ir = infer_feature_columns(conn,
                                                    select,
@@ -183,6 +174,7 @@ def train_step(original_sql,
         model_params_constructed["loss"] = eval(
             model_params_constructed["loss"])
 
+    # extract params for training.
     verbose = train_params["verbose"]
     pai_table = train_params["pai_table"]
     pai_val_table = train_params["pai_val_table"]
@@ -229,6 +221,18 @@ def train_step(original_sql,
                                         label_meta, True, pai_val_table,
                                         batch_size)
 
+    model_meta = collect_metadata(original_sql=original_sql,
+                                  select=select,
+                                  validation_select=validation_select,
+                                  model_repo_image=model_image,
+                                  class_name=estimator_string,
+                                  attributes=model_params,
+                                  features=fc_map_ir,
+                                  label=label_meta)
+
+    # FIXME(typhoonzero): avoid save model_meta twice, keras_train_and_save,
+    # estimator_train_and_save also dumps model_meta to a file under cwd.
+    # should only keep the model.save_to_db part.
     if not is_estimator:
         if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
@@ -244,12 +248,9 @@ def train_step(original_sql,
             validation_start_delay_secs, validation_throttle_secs,
             save_checkpoints_steps, validation_metrics, load, model_meta)
 
-    # save model to OSS
+    # save model to DB
     if num_workers == 1 or worker_id == 0:
-        oss_model_dir = FLAGS.sqlflow_oss_modeldir
-        oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
-                           feature_column_names, feature_column_names_map,
-                           feature_metas, label_meta, model_params,
-                           feature_columns_code, num_workers)
-        print("Model saved to oss: %s" % oss_model_dir)
+        model = Model(EstimatorType.XGBOOST, model_meta)
+        model.save_to_db(datasource, save)
+        print("Model saved to db: %s" % save)
     print("Done training")
