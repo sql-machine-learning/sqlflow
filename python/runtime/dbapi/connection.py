@@ -93,6 +93,7 @@ class Connection(object):
     def __init__(self, conn_uri):
         self.uristr = conn_uri
         self.uripts = self._parse_uri()
+        self.driver = self.uripts.scheme
         self.params = parse_qs(
             self.uripts.query,
             keep_blank_values=True,

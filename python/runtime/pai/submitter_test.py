@@ -15,6 +15,8 @@ import os
 import unittest
 from unittest import TestCase
 
+import runtime.feature.column as fc
+import runtime.feature.field_desc as fd
 import runtime.testing as testing
 import runtime.xgboost as xgboost_extended  # noqa: F401
 import tensorflow as tf  # noqa: F401
@@ -139,48 +141,23 @@ class SubmitPAITrainTask(TestCase):
         model_params["hidden_units"] = [10, 20]
         model_params["n_classes"] = 3
 
-        # feature_columns_code will be used to save the training information
-        # together with the saved model.
-        feature_columns_code = """{"feature_columns": [
-            tf.feature_column.numeric_column("sepal_length", shape=[1]),
-            tf.feature_column.numeric_column("sepal_width", shape=[1]),
-            tf.feature_column.numeric_column("petal_length", shape=[1]),
-            tf.feature_column.numeric_column("petal_width", shape=[1]),
-        ]}"""
-        feature_columns = eval(feature_columns_code)
+        feature_column_map = {
+            "feature_columns":
+            [fc.NumericColumn(fd.FieldDesc(name="sepal_length"))]
+        }
+        label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
 
-        train(testing.get_datasource(),
-              "DNNClassifier",
-              "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-              "",
-              model_params,
-              "e2etest_pai_dnn",
-              None,
-              feature_columns=feature_columns,
-              feature_column_names=iris_feature_column_names,
-              feature_column_names_map=iris_feature_column_names_map,
-              feature_metas=iris_feature_metas,
-              label_meta=iris_label_meta,
-              validation_metrics="Accuracy".split(","),
-              batch_size=1,
-              epoch=1,
-              validation_steps=1,
-              verbose=0,
-              max_steps=None,
-              validation_start_delay_secs=0,
-              validation_throttle_secs=0,
-              save_checkpoints_steps=100,
-              log_every_n_iter=10,
-              load_pretrained_model=False,
-              is_pai=True,
-              feature_columns_code=feature_columns_code,
-              model_repo_image="",
-              original_sql='''
+        original_sql = '''
 SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
 TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
-INTO e2etest_pai_dnn;''')
+INTO e2etest_pai_dnn;'''
+
+        train(testing.get_datasource(), original_sql,
+              "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train", "",
+              "DNNClassifier", "", feature_column_map, label_column,
+              model_params, {}, "e2etest_pai_dnn", None)
 
     def test_submit_pai_predict_task(self):
         predict(testing.get_datasource(),

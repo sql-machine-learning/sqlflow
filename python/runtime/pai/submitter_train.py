@@ -95,7 +95,6 @@ def submit_pai_train(datasource, original_sql, select, validation_select,
             Model name to save.
         load: string
             The pre-trained model name to load before training.
-        
     """
     # prepare params for to call runtime.pai.xxx_submitter.train_step(...),
     # the params will be pickled into train_params.pkl
@@ -140,5 +139,4 @@ def submit_pai_train(datasource, original_sql, select, validation_select,
                             "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
 
     submit_pai_task(cmd, datasource)
-
     table_ops.drop_tables([train_table, val_table], datasource)

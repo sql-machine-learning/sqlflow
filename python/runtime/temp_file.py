@@ -19,7 +19,7 @@ import tempfile
 # NOTE: Python 2 does not have tempfile.TemporaryDirectory. To unify the code
 # of Python 2 and 3, we make the following class.
 class TemporaryDirectory(object):
-    def __init__(self, as_cwd=False, suffix=None, prefix=None, dir=None):
+    def __init__(self, as_cwd=False, suffix="", prefix="", dir=""):
         """
         Create a temporary directory.
 

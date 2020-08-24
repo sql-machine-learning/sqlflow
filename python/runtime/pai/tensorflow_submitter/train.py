@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import types
 
@@ -131,7 +132,8 @@ def train(datasource,
     print("Done training")
 
 
-# TODO(typhoonzero): used for codegen/experimental, called by `runtime.pai.entry`.
+# TODO(typhoonzero): used for codegen/experimental, called by
+# `runtime.pai.entry`.
 def train_step(original_sql,
                model_image,
                estimator_string,
@@ -150,16 +152,17 @@ def train_step(original_sql,
                                                    feature_column_map,
                                                    label_column,
                                                    n=1000)
-    fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
+    fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.TENSORFLOW)
     field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
     label_meta = label_column.get_field_desc()[0].to_dict()
 
     feature_column_names_map = dict()
-    for target, fclist in fc_map_ir:
+    for target in fc_map_ir:
+        fclist = fc_map_ir[target]
         feature_column_names_map[target] = [
-            fc.get_field_desc().name for fc in fclist
+            fc.get_field_desc()[0].name for fc in fclist
         ]
 
     # Construct optimizer objects to pass to model initializer.
@@ -175,7 +178,7 @@ def train_step(original_sql,
             model_params_constructed["loss"])
 
     # extract params for training.
-    verbose = train_params["verbose"]
+    verbose = train_params.get("verbose", 1)
     pai_table = train_params["pai_table"]
     pai_val_table = train_params["pai_val_table"]
     batch_size = train_params.get("batch_size", 1)
