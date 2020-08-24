@@ -62,33 +62,44 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
     return cmd
 
 
-# TODO(lhw): adapt this interface after we do feature derivation in Python
-def submit_pai_train(datasource, estimator_string, select, validation_select,
-                     model_params, save, load, **train_params):
-    """This function submit PAI-TF train task to PAI platform
+def submit_pai_train(datasource, original_sql, select, validation_select,
+                     estimator_string, model_image, feature_column_map,
+                     label_column, model_params, train_params, save, load):
+    """This function submit PAI-TF train task to the PAI platform.
 
     Args:
         datasource: string
-            Like: odps://access_id:access_key@service.com/api?
-                         curr_project=test_ci&scheme=http
-        estimator_string: string
-            TensorFlow estimator name, Keras class name, or XGBoost
+            Like: maxcompute://ak:sk@domain.com/api?
+                  curr_project=test_ci&scheme=http
+        original_sql: string
+            Original statement used for generate train code.
         select: string
-            The SQL statement for selecting data for train
+            The SQL statement for selecting data for train.
         validation_select: string
-            Ths SQL statement for selecting data for validation
+            Ths SQL statement for selecting data for validation.
+        estimator_string: string
+            TensorFlow estimator name, Keras class name, or XGBoost.
+        model_image: string
+            Docker image that is used to train the model. If it's empty,
+            use default image sqlflow/sqlflow:step
+        feature_column_map: dict
+            A dict, key is the Estimator/Keras Model param name, value
+            is runtime.feature.column.
+        label_column: runtime.feature.column.FeatureColumn
+            FeatureColumn describing the label.
         model_params: dict
-            Params for training, crossponding to WITH clause
-        load: string
-            The pre-trained model name to load
+            Params to construct the estimator/Keras Model.
         train_params: dict
-            Extra train params, will be passed to runtime.tensorflow.train.
+            Params used to run the training.
+        save: string
+            Model name to save.
+        load: string
+            The pre-trained model name to load before training.
+        
     """
-    # prepare params for tensorflow train,
+    # prepare params for to call runtime.pai.xxx_submitter.train_step(...),
     # the params will be pickled into train_params.pkl
     params = dict(locals())
-    del params["train_params"]
-    params.update(train_params)
 
     if estimator_string.lower().startswith("xgboost"):
         params["entry_type"] = "train_xgb"
@@ -99,12 +110,13 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
 
     train_table, val_table = table_ops.create_train_and_eval_tmp_table(
         select, validation_select, datasource)
-    params["pai_table"], params["pai_val_table"] = train_table, val_table
+    train_params["pai_table"], train_params[
+        "pai_val_table"] = train_table, val_table
 
     # FIXME(typhoonzero): get user from session
     user = ""
-    if "user" in params:
-        user = params["user"]
+    if "user" in train_params:
+        user = train_params["user"]
 
     # clean target dir
     path_to_save = pai_model.get_oss_model_save_path(datasource,
@@ -113,8 +125,7 @@ def submit_pai_train(datasource, estimator_string, select, validation_select,
     path_to_load = pai_model.get_oss_model_save_path(datasource,
                                                      load,
                                                      user=user)
-    params["oss_model_dir"] = path_to_save
-
+    train_params["oss_model_dir"] = path_to_save
     if path_to_load == "" or path_to_load != path_to_save:
         pai_model.clean_oss_model_path(path_to_save + "/")
 
