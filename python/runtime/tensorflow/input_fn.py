@@ -52,7 +52,7 @@ def get_dtype(type_str):
         return tf.int64
     elif type_str == "string":
         return tf.string
-    # FIXME(typhoonzero): add below types to be work with refactored code.
+    # FIXME(typhoonzero): add types to work with refactored code.
     elif type_str == DataType.INT64:
         return tf.int64
     elif type_str == DataType.FLOAT32:
@@ -190,6 +190,7 @@ def pai_dataset(table,
         if feature_metas[n]["delimiter"]:
             dtypes.append("string")
         else:
+            # FIXME(typhoonzero): add types to work with refactored code.
             if feature_metas[n]["dtype"] == DataType.INT64:
                 dtypes.append("int64")
             elif feature_metas[n]["dtype"] == DataType.FLOAT32:
@@ -204,6 +205,7 @@ def pai_dataset(table,
         if label_meta["delimiter"] != "":
             dtypes.append("string")
         else:
+            # FIXME(typhoonzero): add types to work with refactored code.
             if label_meta["dtype"] == DataType.INT64:
                 dtypes.append("int64")
             elif label_meta["dtype"] == DataType.FLOAT32:
