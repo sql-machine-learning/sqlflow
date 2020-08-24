@@ -36,9 +36,14 @@ def submit_local_train(datasource, estimator_string, select, validation_select,
             The pre-trained model name to load
         train_params: dict
             Extra train params, will be passed to runtime.tensorflow.train
-            or runtime.xgboost.train, required fields: original_sql,
-            model_image, feature_column_map, label_column; optional fields:
-            disk_cache, batch_size, epoch.
+            or runtime.xgboost.train. Required fields:
+            - original_sql: Original SQLFlow statement.
+            - model_image: Docker image used for training.
+            - feature_column_map: A map of Python feature column IR.
+            - label_column: Feature column instance describing the label.
+            - disk_cache (optional): Use dmatrix disk cache if True.
+            - batch_size (optional): Split data to batches and train.
+            - epoch (optional): Epochs to train.
     """
     if estimator_string.lower().startswith("xgboost"):
         # pop required params from train_params

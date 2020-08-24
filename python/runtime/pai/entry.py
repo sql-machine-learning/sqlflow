@@ -16,18 +16,18 @@ from inspect import getargspec
 
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
-from runtime.pai.tensorflow.evaluate import evaluate as evaluate_tf
-from runtime.pai.tensorflow.explain import explain as explain_tf
-from runtime.pai.tensorflow.predict import predict as predict_tf
-from runtime.pai.tensorflow.train import train as train_tf
+from runtime.pai.tensorflow_submitter.evaluate import evaluate as evaluate_tf
+from runtime.pai.tensorflow_submitter.explain import explain as explain_tf
+from runtime.pai.tensorflow_submitter.predict import predict as predict_tf
+from runtime.pai.tensorflow_submitter.train import train as train_tf
 
 try:
     # (TODO: lhw) split entry.py into multiple files,
     # so, we can only import needed packages
-    from runtime.pai.xgboost.predict import predict as predict_xgb
-    from runtime.pai.xgboost.train import train as train_xgb
-    from runtime.pai.xgboost.explain import explain as explain_xgb
-    from runtime.pai.xgboost.evaluate import evaluate as evaluate_xgb
+    from runtime.pai.xgboost_submitter.predict import predict as predict_xgb
+    from runtime.pai.xgboost_submitter.train import train as train_xgb
+    from runtime.pai.xgboost_submitter.explain import explain as explain_xgb
+    from runtime.pai.xgboost_submitter.evaluate import evaluate as evaluate_xgb
 except:  # noqa: E722
     pass
 

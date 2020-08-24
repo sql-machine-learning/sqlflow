@@ -113,7 +113,7 @@ const tfPredictTmplText = tfImportsText + `
 import os
 import types
 import traceback
-from runtime.pai.tensorflow import predict
+from runtime.pai.tensorflow_submitter import predict
 
 try:
     import sqlflow_models
@@ -178,7 +178,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.pai.tensorflow import explain
+from runtime.pai.tensorflow_submitter import explain
 
 try:
     tf.enable_eager_execution()
@@ -241,7 +241,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.pai.tensorflow import evaluate
+from runtime.pai.tensorflow_submitter import evaluate
 
 try:
     tf.enable_eager_execution()

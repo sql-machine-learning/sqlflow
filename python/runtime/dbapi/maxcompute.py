@@ -116,7 +116,7 @@ class MaxComputeConnection(Connection):
             instance = self._conn.execute_sql(statement)
             return MaxComputeResultSet(instance)
         except Exception as e:
-            return MaxComputeResultSet(None, str(e))
+            raise e
 
     def close(self):
         if self._conn:
