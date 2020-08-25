@@ -30,7 +30,7 @@ WORKDIR /install
 ENV PATH="${PATH}:/install/bin"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-  apt-get -qq install -y wget unzip build-essential libmysqlclient-dev && \
+  apt-get -qq install -y wget unzip build-essential libmysqlclient-dev python3-dev && \
   wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip && \
   mkdir -p /install/local/odpscmd && \
   unzip -qq odpscmd_public.zip -d /install/local/odpscmd && \
