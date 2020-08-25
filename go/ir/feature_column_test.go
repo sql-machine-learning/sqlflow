@@ -32,7 +32,7 @@ func TestFeatureColumnGenPythonCode(t *testing.T) {
 			DType: 0,
 		},
 	}
-	a.Equal("runtime.feature.column.NumericColumn(runtime.feature.field_desc.FieldDesc(name=\"testcol\", dtype=fd.DataType.INT64, delimiter=\"\", format=\"\", shape=[10], is_sparse=False, vocabulary=[]))",
+	a.Equal("runtime.feature.column.NumericColumn(runtime.feature.field_desc.FieldDesc(name=\"testcol\", dtype=runtime.feature.field_desc.DataType.INT64, delimiter=\"\", format=\"\", shape=[10], is_sparse=False, vocabulary=[]))",
 		nc.GenPythonCode())
 
 	emd := &EmbeddingColumn{

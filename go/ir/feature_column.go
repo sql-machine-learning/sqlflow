@@ -58,7 +58,7 @@ func (fd *FieldDesc) GenPythonCode() string {
 		vocabList = append(vocabList, k)
 	}
 	// pass format = "" to let runtime feature derivation to fill it in.
-	return fmt.Sprintf(`runtime.feature.field_desc.FieldDesc(name="%s", dtype=fd.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s)`,
+	return fmt.Sprintf(`runtime.feature.field_desc.FieldDesc(name="%s", dtype=runtime.feature.field_desc.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s)`,
 		fd.Name,
 		strings.ToUpper(DTypeToString(fd.DType)),
 		fd.Delimiter,

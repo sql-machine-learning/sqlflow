@@ -166,13 +166,15 @@ class Connection(object):
         Returns:
             True on success, False otherwise
         """
+        rs = None
         try:
             rs = self._get_result_set(statement)
             return rs.success()
-        except:  # noqa: E722
-            return False
+        except Exception as e:  # noqa: E722
+            raise e
         finally:
-            rs.close()
+            if rs:
+                rs.close()
 
     def get_table_schema(self, table_name):
         """Get table schema for given table

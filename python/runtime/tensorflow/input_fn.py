@@ -61,6 +61,12 @@ def tf_generator(gen, selected_cols, feature_column_names, feature_metas):
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_metas)
+            features = list(features)
+            for i, f in enumerate(features):
+                if len(f) == 1 and isinstance(f[0], np.ndarray):
+                    features[i] = f[0]
+            features = tuple(features)
+
             if label is None:
                 yield (features, )
             else:

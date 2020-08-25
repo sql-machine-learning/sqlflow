@@ -138,7 +138,15 @@ func fillCSVFieldDesc(cellData string, fieldDescMap FieldDescMap, fieldName stri
 		size *= s
 	}
 
-	values := strings.Split(cellData, ",")
+	rawValues := strings.Split(cellData, ",")
+	values := make([]string, 0, len(rawValues))
+	for _, value := range rawValues {
+		trimmedValue := strings.TrimSpace(value)
+		if trimmedValue != "" {
+			values = append(values, trimmedValue)
+		}
+	}
+
 	// set shape only when the column is "DENSE"
 	if fieldDescMap[fieldName].IsSparse == false && fieldDescMap[fieldName].Shape == nil {
 		fieldDescMap[fieldName].Shape = []int{len(values)}
@@ -224,7 +232,7 @@ func inferStringDataFormat(strData string) string {
 	const realNumberRegex = "((\\+|-)?([0-9]+)(\\.[0-9]+)?)|((\\+|-)?\\.?[0-9]+)"
 
 	// string in the form of "3,5,7"
-	csvRegex := regexp.MustCompile(fmt.Sprintf("^((%s)\\,)+(%s)$", realNumberRegex, realNumberRegex))
+	csvRegex := regexp.MustCompile(fmt.Sprintf("^\\s*((%s)\\s*\\,\\s*)+(%s)\\s*(\\,?)\\s*$", realNumberRegex, realNumberRegex))
 	if csvRegex.MatchString(strData) {
 		return csv
 	}
