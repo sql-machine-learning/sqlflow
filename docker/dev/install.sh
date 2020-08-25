@@ -143,3 +143,11 @@ axel --quiet --output /usr/local/bin/google_checks.xml \
 axel --quiet --output /usr/local/bin/checkstyle-8.29-all.jar \
     "$QINIU_BUCKET/checkstyle/checkstyle-8.29-all.jar" \
     "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar"
+
+echo "Install BARON mathematical programming solver ..."
+axel --quiet --output /tmp/baron-lin64.zip \
+    "https://minlp.com/downloads/xecs/baron/current/baron-lin64.zip"
+unzip -qq /tmp/baron-lin64.zip -d /tmp/
+mv /tmp/baron-lin64/baron /usr/bin
+rm -rf /tmp/baron-lin64
+rm -rf /tmp/baron-lin64.zip

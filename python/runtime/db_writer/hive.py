@@ -21,44 +21,18 @@ CSV_DELIMITER = '\001'
 
 
 class HiveDBWriter(BufferedDBWriter):
-    def __init__(self,
-                 conn,
-                 table_name,
-                 table_schema,
-                 buff_size=10000,
-                 hdfs_namenode_addr="",
-                 hive_location="",
-                 hdfs_user="",
-                 hdfs_pass=""):
+    def __init__(self, conn, table_name, table_schema, buff_size=10000):
         super().__init__(conn, table_name, table_schema, buff_size)
         self.tmp_f = tempfile.NamedTemporaryFile(dir="./")
         self.f = open(self.tmp_f.name, "w")
         self.schema_idx = self._indexing_table_schema(table_schema)
-        self.hdfs_namenode_addr = hdfs_namenode_addr
-        self.hive_location = hive_location
-        self.hdfs_user = hdfs_user
-        self.hdfs_pass = hdfs_pass
-
-    def _column_list(self):
-        # NOTE(yancey1989): for the tablename: mydb.tblname, if 'mydb' is
-        # a tablename in the default database, Hive describe STATEMENT would
-        # mistake 'tblname' to a column name.
-        cursor = self.conn.cursor()
-        table_parts = self.table_name.split(".")
-        if len(table_parts) == 2:
-            db, table_name = table_parts[0], table_parts[1]
-            cursor.execute("use %s" % db)
-            cursor.execute("describe %s" % table_name)
-        elif len(table_parts) == 1:
-            cursor.execute("describe %s" % self.table_name)
-        else:
-            raise ValueError("")
-        result = cursor.fetchall()
-        cursor.execute("use %s " % self.conn.default_db)
-        return result
+        self.hdfs_namenode_addr = conn.param("hdfs_namenode_addr")
+        self.hive_location = conn.param("hive_location")
+        self.hdfs_user = conn.uripts.username
+        self.hdfs_pass = conn.uripts.password
 
     def _indexing_table_schema(self, table_schema):
-        column_list = self._column_list()
+        column_list = self.conn.get_table_schema(self.table_name)
 
         schema_idx = []
         idx_map = {}
@@ -113,12 +87,9 @@ class HiveDBWriter(BufferedDBWriter):
             cmd_namenode_str, self.tmp_f.name, hdfs_path, self.table_name)
         subprocess.check_output(cmd_str.split(), env=hdfs_envs)
         # load CSV into Hive
-        cursor = self.conn.cursor()
         load_sql = "LOAD DATA INPATH '%s/%s/' OVERWRITE INTO TABLE %s" % (
             hdfs_path, self.table_name, self.table_name)
-        cursor.execute(load_sql)
-        self.conn.commit()
-        cursor.close()
+        self.conn.execute(load_sql)
 
         # remove the temporary dir on hdfs
         cmd_str = "hdfs dfs %s -rm -r -f %s/%s/" % (cmd_namenode_str,

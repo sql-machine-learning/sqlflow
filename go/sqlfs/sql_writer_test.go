@@ -35,7 +35,7 @@ func TestSQLFSNewSQLWriter(t *testing.T) {
 	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(db.DB, db.DriverName, tbl, bufSize)
+	w, e := newSQLWriter(db, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 	defer w.Close()
@@ -58,7 +58,7 @@ func TestSQLFSSQLWriterWriteAndRead(t *testing.T) {
 	t.Logf("Confirm executed with %s", db.DriverName)
 
 	tbl := fmt.Sprintf("%s.unittest%d", testDatabaseName, rand.Int())
-	w, e := newSQLWriter(db.DB, db.DriverName, tbl, bufSize)
+	w, e := newSQLWriter(db, tbl, bufSize)
 	a.NoError(e)
 	a.NotNil(w)
 

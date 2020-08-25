@@ -61,6 +61,12 @@ def tf_generator(gen, selected_cols, feature_column_names, feature_metas):
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_metas)
+            features = list(features)
+            for i, f in enumerate(features):
+                if len(f) == 1 and isinstance(f[0], np.ndarray):
+                    features[i] = f[0]
+            features = tuple(features)
+
             if label is None:
                 yield (features, )
             else:
@@ -96,7 +102,6 @@ def input_fn(select,
                            feature_metas,
                            slice_id=worker_id,
                            slice_count=num_workers)
-        selected_cols = db.pai_selected_cols(pai_table)
     else:
         conn = db.connect_with_data_source(datasource)
         gen = db.db_generator(conn, select, label_meta)
@@ -218,7 +223,9 @@ def get_dataset_fn(select,
                            pai_table=pai_table,
                            num_workers=num_workers,
                            worker_id=worker_id)
-        dataset = dataset.cache("cache_train")
+        # NOTE(typhoonzero): on PAI some times cache to a file may cause
+        # "lockfile already exists" error.
+        dataset = dataset.cache()
         if shuffle_size is not None:
             dataset = dataset.shuffle(shuffle_size)
         dataset = dataset.batch(batch_size)

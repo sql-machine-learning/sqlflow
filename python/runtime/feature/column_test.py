@@ -21,7 +21,7 @@ import runtime.feature.field_desc as fd
 class TestFeatureColumn(unittest.TestCase):
     def new_field_desc(self):
         desc = fd.FieldDesc(name="my_feature",
-                            dtype=fd.DataType.FLOAT,
+                            dtype=fd.DataType.FLOAT32,
                             delimiter=",",
                             format=fd.DataFormat.CSV,
                             shape=[10],

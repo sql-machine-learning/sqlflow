@@ -11,13 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from impala.dbapi import connect
+try:
+    from impala.dbapi import connect
+except:  # noqa E722
+    pass
 from runtime.dbapi.connection import Connection, ResultSet
 
 
 class HiveResultSet(ResultSet):
     def __init__(self, cursor, err=None):
-        super().__init__()
+        super(HiveResultSet, self).__init__()
         self._cursor = cursor
         self._column_info = None
         self._err = err
@@ -33,7 +36,7 @@ class HiveResultSet(ResultSet):
         """
 
         if self._column_info is not None:
-            return self.column_info
+            return self._column_info
 
         columns = []
         for desc in self._cursor.description:
@@ -66,7 +69,7 @@ class HiveConnection(Connection):
         configuration
     """
     def __init__(self, conn_uri):
-        super().__init__(conn_uri)
+        super(HiveConnection, self).__init__(conn_uri)
         self.driver = "hive"
         self.params["database"] = self.uripts.path.strip("/")
         self._conn = connect(user=self.uripts.username,
@@ -79,13 +82,24 @@ class HiveConnection(Connection):
                                   if k.startswith("session.")])
 
     def _get_result_set(self, statement):
-        cursor = self._conn.cursor(configuration=self._session_cfg)
+        cursor = self._conn.cursor(user=self.uripts.username,
+                                   configuration=self._session_cfg)
         try:
             cursor.execute(statement.rstrip(";"))
             return HiveResultSet(cursor)
         except Exception as e:
             cursor.close()
             return HiveResultSet(None, str(e))
+
+    def cursor(self):
+        """Get a cursor on the connection
+        We insist not to use the low level api like cursor.
+        Instead, we can directly use query/exec
+        """
+        return self._conn.cursor()
+
+    def commit(self):
+        return self._conn.commit()
 
     def close(self):
         if self._conn:

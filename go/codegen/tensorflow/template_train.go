@@ -42,7 +42,7 @@ import traceback
 import tensorflow as tf
 import runtime
 {{ if .IsPAI }}
-from runtime.pai.tensorflow.train import train
+from runtime.pai.tensorflow_submitter.train import train
 {{ else }}
 from runtime.tensorflow.train import train
 {{ end }}
@@ -149,6 +149,7 @@ train(datasource="{{.DataSource}}",
       pai_table="{{.PAITrainTable}}",
       pai_val_table="{{.PAIValidateTable}}",
       feature_columns_code=feature_columns_code,
+      model_params_code_map=model_params,
       model_repo_image="{{.ModelRepoImage}}",
       original_sql='''{{.OriginalSQL}}''')
 `

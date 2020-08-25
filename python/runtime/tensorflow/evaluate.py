@@ -14,9 +14,9 @@
 import sys
 
 from runtime.db import buffered_db_writer, connect_with_data_source
-from runtime.import_model import import_model
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
@@ -36,11 +36,7 @@ def evaluate(datasource,
              save="",
              batch_size=1,
              validation_steps=None,
-             verbose=0,
-             hdfs_namenode_addr="",
-             hive_location="",
-             hdfs_user="",
-             hdfs_pass=""):
+             verbose=0):
     estimator_cls = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator_cls)
     set_log_level(verbose, is_estimator)
@@ -68,18 +64,10 @@ def evaluate(datasource,
 
     # write result metrics to a table
     conn = connect_with_data_source(datasource)
-    driver = conn.driver
     if result_table:
         metric_name_list = ["loss"] + validation_metrics
-        write_result_metrics(result_metrics,
-                             metric_name_list,
-                             result_table,
-                             driver,
-                             conn,
-                             hdfs_namenode_addr=hdfs_namenode_addr,
-                             hive_location=hive_location,
-                             hdfs_user=hdfs_user,
-                             hdfs_pass=hdfs_pass)
+        write_result_metrics(result_metrics, metric_name_list, result_table,
+                             conn)
 
 
 def estimator_evaluate(estimator, eval_dataset, validation_metrics):
@@ -152,15 +140,11 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
     return result_metrics
 
 
-def write_result_metrics(result_metrics, metric_name_list, result_table,
-                         driver, conn, hdfs_namenode_addr, hive_location,
-                         hdfs_user, hdfs_pass):
+def write_result_metrics(result_metrics, metric_name_list, result_table, conn):
     # NOTE: assume that the result table is already created with columns:
     # loss | metric_names ...
     column_names = metric_name_list
-    with buffered_db_writer(driver, conn, result_table, column_names, 100,
-                            hdfs_namenode_addr, hive_location, hdfs_user,
-                            hdfs_pass) as w:
+    with buffered_db_writer(conn, result_table, column_names, 100) as w:
         row = []
         for key in metric_name_list:
             row.append(result_metrics[key])

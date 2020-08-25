@@ -28,6 +28,10 @@ import (
 )
 
 type xgbTrainFiller struct {
+	StepIndex         int
+	OriginalSQL       string
+	ModelImage        string
+	Estimator         string
 	DataSource        string
 	Select            string
 	ValidationSelect  string
@@ -35,14 +39,22 @@ type xgbTrainFiller struct {
 	TrainParamsJSON   string
 	FeatureColumnCode string
 	LabelColumnCode   string
+	Save              string
+	Load              string
 	DiskCache         bool
 	BatchSize         int
 	Epoch             int
 	Submitter         string
 }
 
-// XGBoostGenerateTrain returns the step code
-func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
+func replaceNewLineRuneAndTrimSpace(s string) string {
+	s = strings.ReplaceAll(s, "\r", " ")
+	s = strings.ReplaceAll(s, "\n", " ")
+	return strings.TrimSpace(s)
+}
+
+// XGBoostGenerateTrain returns the step code.
+func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, error) {
 	var err error
 	if err = resolveModelParams(trainStmt); err != nil {
 		return "", err
@@ -87,23 +99,30 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 	if err != nil {
 		return "", err
 	}
-	submitter := os.Getenv("SQLFLOW_submitter")
-	if submitter == "" {
-		submitter = "local"
+
+	dbConnStr, err := GeneratePyDbConnStr(session)
+	if err != nil {
+		return "", err
 	}
 
 	filler := xgbTrainFiller{
-		DataSource:        session.DbConnStr,
-		Select:            trainStmt.Select,
-		ValidationSelect:  trainStmt.ValidationSelect,
+		StepIndex:         stepIndex,
+		OriginalSQL:       replaceNewLineRuneAndTrimSpace(trainStmt.OriginalSQL),
+		ModelImage:        trainStmt.ModelImage,
+		Estimator:         trainStmt.Estimator,
+		DataSource:        dbConnStr,
+		Select:            replaceNewLineRuneAndTrimSpace(trainStmt.Select),
+		ValidationSelect:  replaceNewLineRuneAndTrimSpace(trainStmt.ValidationSelect),
 		ModelParamsJSON:   string(mp),
 		TrainParamsJSON:   string(tp),
 		FeatureColumnCode: featureColumnCode,
 		LabelColumnCode:   labelColumnCode,
+		Save:              trainStmt.Into,
+		Load:              trainStmt.PreTrainedModel,
 		DiskCache:         diskCache,
 		BatchSize:         batchSize,
 		Epoch:             epoch,
-		Submitter:         submitter,
+		Submitter:         getSubmitter(session, "local"),
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Parse(xgbTrainTemplate))
@@ -114,65 +133,103 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, session *pb.Session) (string,
 	return program.String(), nil
 }
 
-var xgbTrainTemplate = `
-def step_entry():
+const xgbTrainTemplate = `
+def step_entry_{{.StepIndex}}():
     import json
-    import tempfile
-    import os
-    import runtime
-    import runtime.local
-    import runtime.local.xgboost
+    import runtime.temp_file as temp_file
     import runtime.feature.column as fc
     import runtime.feature.field_desc as fd
-    from runtime.model import EstimatorType
-    from runtime.xgboost.dataset import xgb_dataset
-    import runtime.xgboost as xgboost_extended
+    from runtime.{{.Submitter}} import train
+
+    {{ if .FeatureColumnCode }}
+    feature_column_map = {"feature_columns": [{{.FeatureColumnCode}}]}
+    {{ else }}
+    feature_column_map = None
+    {{ end }}
+    label_column = {{.LabelColumnCode}}
 
     model_params = json.loads('''{{.ModelParamsJSON}}''')
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
-    ds = "{{.DataSource}}"
-    is_pai = False
-    pai_train_table = ""
-    select = "{{.Select}}"
-    val_select = "{{.ValidationSelect}}"
-    conn = runtime.db.connect_with_data_source(ds)
+    with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
+        train_params["original_sql"] = '''{{.OriginalSQL}}'''
+        train_params["model_image"] = '''{{.ModelImage}}'''
+        train_params["feature_column_map"] = feature_column_map
+        train_params["label_column"] = label_column
+        train_params["disk_cache"] = "{{.DiskCache}}"=="true"
+        train_params["batch_size"] = {{.BatchSize}}
+        train_params["epoch"] = {{.Epoch}}
 
-    {{ if .FeatureColumnCode }}
-    feature_column_map = {"featuren_columns": [{{.FeatureColumnCode}}]}
-    {{ else }}
-    feature_column_map = None
-    {{ end }}
-    label_fc = {{.LabelColumnCode}}
-    label_meta = json.loads(label_fc.get_field_desc()[0].to_json())
-
-    fc_map_ir, fc_label_ir = runtime.feature.infer_feature_columns(conn, select, feature_column_map, label_fc, n=1000)
-    fc_map = runtime.feature.compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
-    feature_column_list = fc_map["feature_columns"]
-    feature_metas_obj_list = runtime.feature.get_ordered_field_descs(fc_map_ir)
-    feature_metas = dict()
-    for fd in feature_metas_obj_list:
-        feature_metas[fd.name] = json.loads(fd.to_json())
-    feature_column_names = [fd.name for fd in feature_metas_obj_list]
-
-    # NOTE: in the current implementation, we are generating a transform_fn from COLUMN clause. 
-    # The transform_fn is executed during the process of dumping the original data into DMatrix SVM file.
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(feature_column_names, *feature_column_list)
-
-    with tempfile.TemporaryDirectory() as tmp_dir_name:
-        train_fn = os.path.join(tmp_dir_name, 'train.txt')
-        val_fn = os.path.join(tmp_dir_name, 'val.txt')
-        dtrain = xgb_dataset(ds, train_fn, select, feature_metas,
-                             feature_column_names, label_meta, is_pai,
-                             pai_train_table, transform_fn=transform_fn)
-        if val_select:
-            dval = xgb_dataset(ds, val_fn, val_select, feature_metas,
-                               feature_column_names, label_meta, is_pai,
-                               pai_train_table, transform_fn=transform_fn)
-        else:
-            dval = None
-        eval_result = runtime.{{.Submitter}}.xgboost.train(dtrain, train_params, model_params, dval)
+        train(datasource='''{{.DataSource}}''',
+              estimator_string='''{{.Estimator}}''',
+              select='''{{.Select}}''',
+              validation_select='''{{.ValidationSelect}}''',
+              model_params=model_params,
+              save='''{{.Save}}''',
+              load='''{{.Load}}''',
+              train_params=train_params)
 `
+
+type xgbPredFiller struct {
+	StepIndex     int
+	DataSource    string
+	Select        string
+	PredLabelName string
+	ResultTable   string
+	Load          string
+	Submitter     string
+}
+
+// XGBoostGeneratePredict generates the XGBoost prediction code
+func XGBoostGeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
+	dbConnStr, err := GeneratePyDbConnStr(session)
+	if err != nil {
+		return "", err
+	}
+
+	filler := &xgbPredFiller{
+		StepIndex:     stepIndex,
+		DataSource:    dbConnStr,
+		Select:        replaceNewLineRuneAndTrimSpace(predStmt.Select),
+		PredLabelName: predStmt.ResultColumn,
+		ResultTable:   predStmt.ResultTable,
+		Load:          predStmt.Using,
+		Submitter:     getSubmitter(session, "local"),
+	}
+
+	var program bytes.Buffer
+	predTmpl := template.Must(template.New("Train").Parse(xgbPredTemplate))
+	err = predTmpl.Execute(&program, filler)
+	if err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+const xgbPredTemplate = `
+def step_entry_{{.StepIndex}}():
+    import runtime.temp_file as temp_file
+    from runtime.{{.Submitter}} import pred
+    
+    with temp_file.TemporaryDirectory(as_cwd=True):
+        pred(datasource='''{{.DataSource}}''', 
+             select='''{{.Select}}''', 
+             result_table='''{{.ResultTable}}''', 
+             pred_label_name='''{{.PredLabelName}}''', 
+             load='''{{.Load}}''')
+`
+
+func getSubmitter(session *pb.Session, defaultValue string) string {
+	if session.Submitter != "" {
+		return session.Submitter
+	}
+
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter != "" {
+		return submitter
+	}
+	return defaultValue
+}
 
 func generateFeatureColumnCode(fcList []ir.FeatureColumn) (string, error) {
 	fcCodes := make([]string, 0, len(fcList))

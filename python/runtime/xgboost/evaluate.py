@@ -15,6 +15,8 @@ import numpy as np
 import sklearn.metrics
 import xgboost as xgb
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
+from runtime.model.metadata import load_metadata
 from runtime.xgboost.dataset import xgb_dataset
 
 SKLEARN_METRICS = [
@@ -51,10 +53,6 @@ def evaluate(datasource,
              result_table,
              validation_metrics=["accuracy_score"],
              is_pai=False,
-             hdfs_namenode_addr="",
-             hive_location="",
-             hdfs_user="",
-             hdfs_pass="",
              pai_table="",
              model_params=None,
              transform_fn=None,
@@ -62,7 +60,7 @@ def evaluate(datasource,
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
-        conn = None
+        conn = PaiIOConnection.from_table(pai_table)
     dpred = xgb_dataset(datasource,
                         'predict.txt',
                         select,
@@ -79,22 +77,22 @@ def evaluate(datasource,
                         )  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load model
+    if not model_params:
+        model_params = load_metadata("model_meta.json")["attributes"]
     print("Start evaluating XGBoost model...")
     feature_file_id = 0
     for pred_dmatrix in dpred:
         evaluate_and_store_result(bst, pred_dmatrix, feature_file_id,
                                   validation_metrics, model_params,
                                   feature_column_names, label_meta, is_pai,
-                                  conn, result_table, hdfs_namenode_addr,
-                                  hive_location, hdfs_user, hdfs_pass)
+                                  conn, result_table)
         feature_file_id += 1
     print("Done evaluating. Result table : %s" % result_table)
 
 
 def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
                               model_params, feature_column_names, label_meta,
-                              is_pai, conn, result_table, hdfs_namenode_addr,
-                              hive_location, hdfs_user, hdfs_pass):
+                              is_pai, conn, result_table):
     preds = bst.predict(dpred)
     # FIXME(typhoonzero): copied from predict.py
     if model_params:
@@ -141,20 +139,8 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
         evaluate_results[metric_name] = metric_value
 
     # write evaluation result to result table
-    if is_pai:
-        driver = "pai_maxcompute"
-    else:
-        driver = conn.driver
     result_columns = ["loss"] + validation_metrics
-    with db.buffered_db_writer(driver,
-                               conn,
-                               result_table,
-                               result_columns,
-                               100,
-                               hdfs_namenode_addr=hdfs_namenode_addr,
-                               hive_location=hive_location,
-                               hdfs_user=hdfs_user,
-                               hdfs_pass=hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, result_columns, 100) as w:
         row = ["0.0"]
         for mn in validation_metrics:
             row.append(str(evaluate_results[mn]))

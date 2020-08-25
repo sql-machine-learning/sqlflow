@@ -32,8 +32,8 @@ cabinalpha  int,
 family      int,
 isalone     int,
 ismother      int,
-age         double,
-realfare    double,
+age         string,
+realfare    string,
 survived    int
 );
 
@@ -951,8 +951,8 @@ cabinalpha  int,
 family      int,
 isalone     int,
 ismother      int,
-age         double,
-realfare    double,
+age         string,
+realfare    string,
 survived int
 );
 

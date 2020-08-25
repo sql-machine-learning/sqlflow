@@ -24,8 +24,34 @@ __all__ = [
 # a database field.
 class DataType(object):
     INT64 = 0
-    FLOAT = 1
+    FLOAT32 = 1
     STRING = 2
+
+    @staticmethod
+    def to_db_field_type(driver, dtype):
+        """
+        This method converts the dtype to a field type that the CREATE
+        TABLE statement accepts.
+
+        Args:
+            driver (str): the DBMS driver type.
+            dtype (enum): the data type. One of FLOAT32, INT64 and STRING.
+
+        Returns:
+            A field type that the CREATE TABLE statement accepts.
+        """
+        if dtype == DataType.INT64:
+            return "BIGINT"
+
+        if dtype == DataType.FLOAT32:
+            return "DOUBLE"
+
+        if dtype == DataType.STRING:
+            if driver == "mysql":
+                return "VARCHAR(255)"
+            return "STRING"
+
+        raise ValueError("unsupported data type {}".format(dtype))
 
 
 # DataFormat is used in FieldDesc to represent the data format
@@ -66,7 +92,7 @@ class FieldDesc(object):
                  is_sparse=False,
                  vocabulary=None,
                  max_id=0):
-        assert dtype in [DataType.INT64, DataType.FLOAT, DataType.STRING]
+        assert dtype in [DataType.INT64, DataType.FLOAT32, DataType.STRING]
         assert format in [DataFormat.CSV, DataFormat.KV, DataFormat.PLAIN]
 
         self.name = name

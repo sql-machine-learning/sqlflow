@@ -31,7 +31,7 @@ import json
 import copy
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.predict import pred
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
@@ -61,10 +61,6 @@ pred(datasource='''{{.DataSource}}''',
     pred_label_meta=label_meta,
     result_table='''{{.ResultTable}}''',
     is_pai=True,
-    hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
-    hive_location='''{{.HiveLocation}}''',
-    hdfs_user='''{{.HDFSUser}}''',
-    hdfs_pass='''{{.HDFSPass}}''',
     pai_table='''{{.PAIPredictTable}}''',
     model_params=model_params,
     train_params=train_params,
@@ -102,7 +98,7 @@ if os.environ.get('DISPLAY', '') == '':
 
 import json
 from runtime.xgboost.explain import explain
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
@@ -132,10 +128,6 @@ explain(
 	result_table='''{{.ResultTable}}''',
 	is_pai="{{.IsPAI}}" == "true",
 	pai_explain_table="{{.PAIExplainTable}}",
-	hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
-	hive_location='''{{.HiveLocation}}''',
-	hdfs_user='''{{.HDFSUser}}''',
-	hdfs_pass='''{{.HDFSPass}}''',
 	oss_dest='''{{.ResultOSSDest}}''',
 	oss_ak='''{{.ResultOSSAK}}''',
 	oss_sk='''{{.ResultOSSSK}}''',
@@ -162,7 +154,7 @@ const xgbEvalTemplateText = `
 import json
 import runtime.xgboost as xgboost_extended
 from runtime.xgboost.evaluate import evaluate
-from runtime import oss
+from runtime.model import oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 FLAGS = define_tf_flags()
@@ -188,10 +180,6 @@ evaluate(datasource='''{{.DataSource}}''',
          label_meta=label_meta,
          result_table='''{{.ResultTable}}''',
          validation_metrics="{{.MetricNames}}".split(","),
-         hdfs_namenode_addr='''{{.HDFSNameNodeAddr}}''',
-         hive_location='''{{.HiveLocation}}''',
-         hdfs_user='''{{.HDFSUser}}''',
-         hdfs_pass='''{{.HDFSPass}}''',
          is_pai=True,
          pai_table="{{.PAIEvaluateTable}}",
          model_params=model_params,

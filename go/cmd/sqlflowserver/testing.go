@@ -93,15 +93,10 @@ func connectAndRunSQL(sql string) ([]string, [][]*any.Any, []string, error) {
 }
 
 func sqlRequest(sql string) *pb.Request {
-	hiveLocation := os.Getenv("SQLFLOW_HIVE_LOCATION")
-	if hiveLocation == "" {
-		hiveLocation = "/sqlflow"
-	}
+
 	se := &pb.Session{
-		Token:            "user-unittest",
-		DbConnStr:        dbConnStr,
-		HdfsNamenodeAddr: os.Getenv("SQLFLOW_TEST_NAMENODE_ADDR"),
-		HiveLocation:     hiveLocation,
+		Token:     "user-unittest",
+		DbConnStr: dbConnStr,
 	}
 	return &pb.Request{Sql: sql, Session: se}
 }
@@ -242,7 +237,8 @@ func prepareTestData(dbStr string) error {
 		datasets = append(datasets,
 			fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
 			fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB),
-			fmt.Sprintf(testdata.XGBoostMaxComputeSparseDataCaseSQL, caseDB))
+			fmt.Sprintf(testdata.XGBoostMaxComputeSparseDataCaseSQL, caseDB),
+			fmt.Sprintf(testdata.FeatureDerivationCaseSQLMaxCompute, caseDB))
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
 	}

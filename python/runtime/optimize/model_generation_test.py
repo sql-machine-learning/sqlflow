@@ -256,9 +256,10 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
                                                 direction="maximize",
                                                 constraints=constraints)
         self.assertTrue(isinstance(model1, pyomo_env.ConcreteModel))
-        result = solve_model(model1, 'glpk')
+        result_x, result_y = solve_model(model1, 'glpk')
         self.assertTrue(
-            np.array_equal(result, np.array([20, 60], dtype='int64')))
+            np.array_equal(result_x, np.array([20, 60], dtype='int64')))
+        self.assertEqual(result_y, 180)
 
         model2 = generate_model_with_data_frame(
             data_frame=self.data_frame,
@@ -355,9 +356,10 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
             constraints=constraints)
         self.assertTrue(isinstance(model, pyomo_env.ConcreteModel))
 
-        result = solve_model(model, 'glpk')
+        result_x, result_y = solve_model(model, 'baron')
         self.assertTrue(
-            np.array_equal(result, np.array([99, 1, 31, 59], dtype='int64')))
+            np.array_equal(result_x, np.array([99, 1, 31, 59], dtype='int64')))
+        self.assertAlmostEqual(result_y, 2581.2)
 
 
 if __name__ == '__main__':

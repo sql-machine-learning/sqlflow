@@ -12,13 +12,12 @@
 # limitations under the License
 
 from abc import ABCMeta, abstractmethod
-from urllib.parse import parse_qs, urlparse
 
 import six
+from six.moves.urllib.parse import parse_qs, urlparse
 
 
-@six.add_metaclass(ABCMeta)
-class ResultSet(object):
+class ResultSet(six.Iterator):
     """Base class for DB query result, caller can iteratable this object
     to get all result rows"""
     def __init__(self):
@@ -102,6 +101,11 @@ class Connection(object):
             if len(l) == 1:
                 self.params[k] = l[0]
 
+    def param(self, param_name, default_value=""):
+        if not self.params:
+            return default_value
+        return self.params.get(param_name, default_value)
+
     def _parse_uri(self):
         """Parse the connection string into URI parts
         Returns:
@@ -139,7 +143,21 @@ class Connection(object):
         """
         return self._get_result_set(statement)
 
-    def exec(self, statement):
+    def is_query(self, statement):
+        """Return true if the statement is a query SQL statement."""
+        s = statement.strip()
+        s = s.upper()
+
+        if s.startswith("SELECT") and s.find("INTO") == -1:
+            return True
+        if s.startswith("SHOW") and s.find("CREATE") >= 0 or s.find(
+                "DATABASES") >= 0 or s.find("TABLES") >= 0:
+            return True
+        if s.startswith("DESC") or s.startswith("EXPLAIN"):
+            return True
+        return False
+
+    def execute(self, statement):
         """Execute given statement and return True on success
 
         Args:
@@ -148,13 +166,15 @@ class Connection(object):
         Returns:
             True on success, False otherwise
         """
+        rs = None
         try:
             rs = self._get_result_set(statement)
             return rs.success()
-        except:  # noqa: E722
-            return False
+        except Exception as e:  # noqa: E722
+            raise e
         finally:
-            rs.close()
+            if rs:
+                rs.close()
 
     def get_table_schema(self, table_name):
         """Get table schema for given table

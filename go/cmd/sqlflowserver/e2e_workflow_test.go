@@ -76,6 +76,10 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
 	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
 	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+	// test experimental workflow generation
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
+	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
 }
 
 func CaseWorkflowStepErrorMessage(t *testing.T) {
@@ -116,25 +120,30 @@ func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
 	sqlProgram := fmt.Sprintf(`
 SELECT * FROM %s LIMIT 10;
 
-SELECT *
-FROM %s
+SELECT * FROM %s
 TO TRAIN DNNClassifier
 WITH
 	model.n_classes = 3,
 	model.hidden_units = [10, 20],
 	validation.select = "SELECT * FROM %s"
-COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO %s;
 
-SELECT *
-FROM %s
+SELECT * FROM %s
+TO EVALUATE %s
+WITH validation.metrics="Accuracy"
+LABEL class
+INTO %s.sqlflow_iris_eval_result;
+
+SELECT * FROM %s
 TO PREDICT %s.class
 USING %s;
 
 SELECT *
 FROM %s LIMIT 5;
-	`, caseTrainTable, caseTrainTable, caseTestTable, caseInto, caseTestTable, casePredictTable, caseInto, casePredictTable)
+	`, caseTrainTable, caseTrainTable, caseTestTable, caseInto,
+		caseTestTable, caseInto, caseDB,
+		caseTestTable, casePredictTable, caseInto, casePredictTable)
 
 	conn, err := createRPCConn()
 	if err != nil {
@@ -353,4 +362,39 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+}
+
+func CaseWorkflowTrainXgboost(t *testing.T) {
+	a := assert.New(t)
+
+	sqlProgram := `SELECT * FROM iris.train LIMIT 100;
+
+SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH objective="multi:softmax",num_class=3
+LABEL class
+INTO sqlflow_models.xgb_classification;
+
+SELECT * FROM iris.test
+TO PREDICT iris.test_result_table.class
+USING sqlflow_models.xgb_classification;
+
+SELECT * FROM iris.test_result_table;
+`
+
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	defer conn.Close()
+
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
 }

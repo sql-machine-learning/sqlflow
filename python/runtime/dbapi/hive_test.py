@@ -51,15 +51,15 @@ class TestHiveConnection(TestCase):
 
     def test_exec(self):
         conn = HiveConnection(testing.get_datasource())
-        rs = conn.exec("create table test_exec(a int)")
+        rs = conn.execute("create table test_exec(a int)")
         self.assertTrue(rs)
-        rs = conn.exec("insert into test_exec values(1), (2)")
+        rs = conn.execute("insert into test_exec values(1), (2)")
         self.assertTrue(rs)
         rs = conn.query("select * from test_exec")
         self.assertTrue(rs.success())
         rows = [r for r in rs]
         self.assertTrue(2, len(rows))
-        rs = conn.exec("drop table test_exec")
+        rs = conn.execute("drop table test_exec")
         self.assertTrue(rs)
 
     def test_get_table_schema(self):

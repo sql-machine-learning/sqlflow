@@ -11,14 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import sys
 
 import runtime.pai.pai_distributed as pai_dist
 import six
 import xgboost as xgb
-from runtime import oss as pai_model_store
-from runtime.model_metadata import collect_model_metadata, save_model_metadata
+from runtime.local.xgboost_submitter.save import save_model_to_local_file
+from runtime.model import collect_metadata
+from runtime.model import oss as pai_model_store
+from runtime.model import save_metadata
 from runtime.xgboost.dataset import xgb_dataset
 from runtime.xgboost.pai_rabit import PaiXGBoostTracker, PaiXGBoostWorker
 
@@ -167,6 +168,7 @@ def train(datasource,
     else:
         bst = None
 
+    re = None
     for per_batch_dmatrix in dtrain:
         watchlist = [(per_batch_dmatrix, "train")]
         if len(validation_select.strip()) > 0:
@@ -182,71 +184,22 @@ def train(datasource,
         print("Evaluation result: %s" % re)
 
     if rank == 0:
-        metadata = collect_model_metadata(original_sql, select,
-                                          validation_select, "XGBoost",
-                                          model_params, train_params,
-                                          feature_metas, label_meta, re,
-                                          model_repo_image)
-        save_model_to_local_file(bst, model_params, metadata, filename)
-
+        # TODO(sneaxiy): collect features and label
+        metadata = collect_metadata(original_sql=original_sql,
+                                    select=select,
+                                    validation_select=validation_select,
+                                    model_repo_image=model_repo_image,
+                                    class_name=model_params.get("booster"),
+                                    attributes=model_params,
+                                    features=None,
+                                    label=None,
+                                    evaluation=re)
+        save_model_to_local_file(bst, model_params, filename)
+        save_metadata("model_meta.json", metadata)
         if is_pai and len(oss_model_dir) > 0:
             save_model(oss_model_dir, filename, model_params, train_params,
                        feature_metas, feature_column_names, label_meta,
                        feature_column_code)
-
-
-def save_model_to_local_file(booster, model_params, meta, filename):
-    from sklearn2pmml import PMMLPipeline, sklearn2pmml
-    try:
-        from xgboost.compat import XGBoostLabelEncoder
-    except:  # noqa: E722
-        # xgboost==0.82.0 does not have XGBoostLabelEncoder
-        # in xgboost.compat.py
-        from xgboost.sklearn import XGBLabelEncoder as XGBoostLabelEncoder
-
-    objective = model_params.get("objective")
-    bst_meta = dict()
-
-    if objective.startswith("binary:") or objective.startswith("multi:"):
-        if objective.startswith("binary:"):
-            num_class = 2
-        else:
-            num_class = model_params.get("num_class")
-            assert num_class is not None and num_class > 0, \
-                "num_class should not be None"
-
-        # To fake a trained XGBClassifier, there must be "_le", "classes_",
-        # inside XGBClassifier. See here:
-        # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
-        model = xgb.XGBClassifier()
-        label_encoder = XGBoostLabelEncoder()
-        label_encoder.fit(list(range(num_class)))
-        model._le = label_encoder
-        model.classes_ = model._le.classes_
-
-        bst_meta["_le"] = {"classes_": model.classes_.tolist()}
-        bst_meta["classes_"] = model.classes_.tolist()
-    elif objective.startswith("reg:"):
-        model = xgb.XGBRegressor()
-    elif objective.startswith("rank:"):
-        model = xgb.XGBRanker()
-    else:
-        raise ValueError(
-            "Not supported objective {} for saving PMML".format(objective))
-
-    model_type = type(model).__name__
-    bst_meta["type"] = model_type
-
-    # Meta data is needed for saving sklearn pipeline. See here:
-    # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
-    booster.set_attr(scikit_learn=json.dumps(bst_meta))
-    booster.save_model(filename)
-    save_model_metadata("model_meta.json", meta)
-    booster.set_attr(scikit_learn=None)
-    model.load_model(filename)
-
-    pipeline = PMMLPipeline([(model_type, model)])
-    sklearn2pmml(pipeline, "{}.pmml".format(filename))
 
 
 def save_model(model_dir, filename, model_params, train_params, feature_metas,

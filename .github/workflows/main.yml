@@ -52,15 +52,17 @@ jobs:
         docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
         PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
         # bash scripts/travis/upload_codecov.sh
-    - name: maxcompute unit test
-      env:
-        SQLFLOW_TEST_DB_MAXCOMPUTE_AK: ${{ secrets.MAXCOMPUTE_AK }}
-        SQLFLOW_TEST_DB_MAXCOMPUTE_SK: ${{ secrets.MAXCOMPUTE_SK }}
-      run: |
-        set -e
-        source build/env/bin/activate
-        PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
-        # bash scripts/travis/upload_codecov.sh
+    # FIXME(typhoonzero): maxcompute test often fails because connection timeout, we can add a
+    # maxcompute service close to the CI server and add this test back.
+    # - name: maxcompute unit test
+    #   env:
+    #     SQLFLOW_TEST_DB_MAXCOMPUTE_AK: ${{ secrets.MAXCOMPUTE_AK }}
+    #     SQLFLOW_TEST_DB_MAXCOMPUTE_SK: ${{ secrets.MAXCOMPUTE_SK }}
+    #   run: |
+    #     set -e
+    #     source build/env/bin/activate
+    #     PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
+    #     # bash scripts/travis/upload_codecov.sh
     - name: java unit test
       run: |
         set -e
@@ -79,6 +81,10 @@ jobs:
         set -e
         bash scripts/test/prepare.sh
         source build/env/bin/activate
+        # build sqlflow binaries under build/
+        bash docker/dev/build.sh
+        docker pull sqlflow/sqlflow:step
+        docker build --cache-from sqlflow/sqlflow:step -t sqlflow/sqlflow:step --build-arg FIND_FASTED_MIRROR="false" -f docker/step/Dockerfile .
         bash scripts/test/workflow.sh
         # bash scripts/travis/upload_codecov.sh
   push-images:

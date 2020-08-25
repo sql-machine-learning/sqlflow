@@ -116,7 +116,7 @@ REAL_NUMBER_PATTERN = re.compile(
 
 # A regular expression to match the form of "3,5,7"
 CSV_PATTERN = re.compile(
-    "((%s)\\,)+(%s)" %
+    "\\s*((%s)\\s*\\,\\s*)+(%s)\\s*(\\,?)\\s*" %
     (REAL_NUMBER_PATTERN.pattern, REAL_NUMBER_PATTERN.pattern))
 
 # A regular expression to match the form of "0:3.2 7:-2.3"
@@ -160,7 +160,13 @@ def fill_csv_field_desc(cell, field_desc):
     Returns:
         None.
     """
-    values = cell.split(",")
+    raw_values = cell.split(",")
+    values = []
+    for v in raw_values:
+        v = v.strip()
+        if v:
+            values.append(v)
+
     if field_desc.is_sparse:
         assert field_desc.shape is not None, \
             "the shape of CSV format data must be given"
@@ -195,7 +201,7 @@ def fill_csv_field_desc(cell, field_desc):
             try:
                 int_value = INT64_TYPE(v)
             except ValueError:
-                field_desc.dtype = DataType.FLOAT
+                field_desc.dtype = DataType.FLOAT32
                 field_desc.max_id = 0  # clear the max id
                 continue
         else:
@@ -264,7 +270,7 @@ def fill_plain_field_desc(cell, field_desc):
         # Build vocabulary from the sample data
         field_desc.vocabulary.add(cell)
     else:
-        field_desc.dtype = DataType.FLOAT
+        field_desc.dtype = DataType.FLOAT32
         field_desc.shape = [1]
 
 
@@ -291,7 +297,7 @@ def fill_field_descs(generator, fd_map):
             fd_map[names[idx]].dtype = DataType.INT64
             fd_map[names[idx]].shape = [1]
         elif dtype in ["FLOAT", "DOUBLE"]:
-            fd_map[names[idx]].dtype = DataType.FLOAT
+            fd_map[names[idx]].dtype = DataType.FLOAT32
             fd_map[names[idx]].shape = [1]
         elif dtype in ["CHAR", "VARCHAR", "TEXT", "STRING"]:
             str_column_indices.append(idx)

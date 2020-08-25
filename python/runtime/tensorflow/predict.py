@@ -17,9 +17,9 @@ import os
 import numpy as np
 import tensorflow as tf
 from runtime import db
-from runtime.import_model import import_model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
+from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import (get_dtype,
                                          parse_sparse_feature_predict,
                                          tf_generator)
@@ -39,9 +39,7 @@ else:
 
 def keras_predict(estimator, model_params, save, result_table,
                   feature_column_names, feature_metas, train_label_name,
-                  result_col_name, driver, conn, predict_generator,
-                  selected_cols, hdfs_namenode_addr, hive_location, hdfs_user,
-                  hdfs_pass):
+                  result_col_name, conn, predict_generator, selected_cols):
 
     classifier = init_model_with_feature_column(estimator, model_params)
 
@@ -87,9 +85,7 @@ def keras_predict(estimator, model_params, save, result_table,
         del column_names[train_label_index]
     column_names.append(result_col_name)
 
-    with db.buffered_db_writer(driver, conn, result_table, column_names, 100,
-                               hdfs_namenode_addr, hive_location, hdfs_user,
-                               hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, column_names, 100) as w:
         for features in pred_dataset:
             if hasattr(classifier, 'sqlflow_predict_one'):
                 result = classifier.sqlflow_predict_one(features)
@@ -142,9 +138,7 @@ def write_cols_from_selected(result_col_name, selected_cols):
 def estimator_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_column_names_map,
                       feature_columns, feature_metas, train_label_name,
-                      result_col_name, driver, conn, predict_generator,
-                      selected_cols, hdfs_namenode_addr, hive_location,
-                      hdfs_user, hdfs_pass):
+                      result_col_name, conn, predict_generator, selected_cols):
     write_cols = selected_cols[:]
     try:
         train_label_index = selected_cols.index(train_label_name)
@@ -166,12 +160,9 @@ def estimator_predict(estimator, model_params, save, result_table,
         feature_name = feature_column_names[i]
         dtype_str = feature_metas[feature_name]["dtype"]
         if feature_metas[feature_name]["delimiter"] != "":
-            if feature_metas[feature_name]["is_sparse"]:
-                # NOTE(typhoonzero): sparse feature will get
-                # (indices,values,shape) here, use indices only
-                values = x[0][i][0].flatten()
-            else:
-                values = x[0][i].flatten()
+            # NOTE(typhoonzero): sparse feature will get
+            # (indices,values,shape) here, use indices only
+            values = x[0][i][0].flatten()
             if dtype_str == "float32" or dtype_str == "float64":
                 example.features.feature[feature_name].float_list.value.extend(
                     list(values))
@@ -225,9 +216,7 @@ def estimator_predict(estimator, model_params, save, result_table,
         return imported.signatures["predict"](
             examples=tf.constant([example.SerializeToString()]))
 
-    with db.buffered_db_writer(driver, conn, result_table, write_cols, 100,
-                               hdfs_namenode_addr, hive_location, hdfs_user,
-                               hdfs_pass) as w:
+    with db.buffered_db_writer(conn, result_table, write_cols, 100) as w:
         for row, _ in predict_generator():
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
@@ -255,17 +244,12 @@ def pred(datasource,
          feature_metas={},
          model_params={},
          save="",
-         batch_size=1,
-         hdfs_namenode_addr="",
-         hive_location="",
-         hdfs_user="",
-         hdfs_pass=""):
+         batch_size=1):
     estimator = import_model(estimator_string)
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
     conn = db.connect_with_data_source(datasource)
-    driver = conn.driver
     predict_generator = db.db_generator(conn, select)
     selected_cols = db.selected_cols(conn, select)
 
@@ -276,17 +260,14 @@ def pred(datasource,
         print("Start predicting using keras model...")
         keras_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, train_label_name,
-                      result_col_name, driver, conn, predict_generator,
-                      selected_cols, hdfs_namenode_addr, hive_location,
-                      hdfs_user, hdfs_pass)
+                      result_col_name, conn, predict_generator, selected_cols)
     else:
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(estimator, model_params, save, result_table,
                           feature_column_names, feature_column_names_map,
                           feature_columns, feature_metas, train_label_name,
-                          result_col_name, driver, conn, predict_generator,
-                          selected_cols, hdfs_namenode_addr, hive_location,
-                          hdfs_user, hdfs_pass)
+                          result_col_name, conn, predict_generator,
+                          selected_cols)
 
     print("Done predicting. Predict table : %s" % result_table)
