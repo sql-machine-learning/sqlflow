@@ -14,10 +14,12 @@
 package experimental
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/bitly/go-simplejson"
 	"net/url"
 	"sqlflow.org/sqlflow/go/model"
+	"sqlflow.org/sqlflow/go/sqlfs"
 	"strings"
 
 	"sqlflow.org/sqlflow/go/database"
@@ -41,26 +43,31 @@ func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 }
 
 func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, string, error) {
-	image, isXGBoost, err := getImageAndIsXGBoostModel(trainStmt.Into, session, trainStmt)
-	if err != nil {
-		return "", "", err
-	}
-
+	isXGBoost := isXGBoostEstimator(trainStmt.Estimator)
 	if isXGBoost {
 		code, err := XGBoostGenerateTrain(trainStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
 		}
-		return code, image, nil
+		return code, trainStmt.ModelImage, nil
 	}
 	return "", "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
 }
 
 func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
-	image, isXGBoost, err := getImageAndIsXGBoostModel(predStmt.Using, session, trainStmt)
-	if err != nil {
-		return "", "", err
+	image := ""
+	isXGBoost := false
+	if trainStmt != nil {
+		image = trainStmt.ModelImage
+		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
+	} else {
+		meta, err := getModelMetadata(session, predStmt.Using)
+		if err != nil {
+			return "", "", err
+		}
+		image = meta.imageName()
+		isXGBoost = meta.isXGBoostModel()
 	}
 
 	if isXGBoost {
@@ -87,60 +94,64 @@ func findModelGenerationTrainStmt(modelName string, idx int, sqlStmts []ir.SQLFl
 	return nil
 }
 
-func getImageAndIsXGBoostModel(modelName string, session *pb.Session, trainStmt *ir.TrainStmt) (string, bool, error) {
-	if trainStmt != nil {
-		return trainStmt.ModelImage, strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST."), nil
-	}
-
-	submitter := getSubmitter(session)
-	var meta *simplejson.Json = nil
-	if submitter == "local" {
-		m, err := getModelMetadataFromDB(session.DbConnStr, modelName)
-		if err != nil {
-			return "", false, err
-		}
-		meta = m
-	}
-
-	if meta == nil {
-		return "", false, fmt.Errorf("unsupported submitter %s", submitter)
-	}
-
-	image := meta.Get("model_repo_image").MustString()
-	isXGBoost := meta.Get("model_type").MustInt() == model.XGBOOST
-	return image, isXGBoost, nil
+func isXGBoostEstimator(estimator string) bool {
+	return strings.HasPrefix(strings.ToUpper(estimator), "XGBOOST.")
 }
 
-func getModelMetadataFromDB(dbConnStr, table string) (*simplejson.Json, error) {
+type metadata simplejson.Json
+
+func (m *metadata) imageName() string {
+	return (*simplejson.Json)(m).Get("model_repo_image").MustString()
+}
+
+func (m *metadata) isXGBoostModel() bool {
+	return (*simplejson.Json)(m).Get("model_type").MustInt() == model.XGBOOST
+}
+
+func getModelMetadata(session *pb.Session, table string) (*metadata, error) {
+	submitter := getSubmitter(session)
+	if submitter == "local" {
+		return getModelMetadataFromDB(session.DbConnStr, table)
+	}
+	return nil, fmt.Errorf("not supported submitter %s", submitter)
+}
+
+func getModelMetadataFromDB(dbConnStr, table string) (*metadata, error) {
 	db, err := database.OpenAndConnectDB(dbConnStr)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
-	query := fmt.Sprintf(`SELECT block FROM %s WHERE id = 0;`, table)
-	rows, err := db.Query(query)
+
+	fs, err := sqlfs.Open(db.DB, table)
 	if err != nil {
 		return nil, err
 	}
+	defer fs.Close()
 
-	rowNum := 0
-	jsonStr := ""
-	for rows.Next() {
-		if rowNum >= 1 {
-			return nil, fmt.Errorf("more than 1 rows are queried")
-		}
-
-		if err := rows.Scan(&jsonStr); err != nil {
-			return nil, err
-		}
-		rowNum++
+	lengthBytes := make([]byte, 8)
+	readCnt, err := fs.Read(lengthBytes)
+	if err != nil {
+		return nil, err
+	}
+	if readCnt != 8 {
+		return nil, fmt.Errorf("invalid model table")
 	}
 
-	if rowNum != 1 {
-		return nil, fmt.Errorf("no metadata is found")
+	length := binary.LittleEndian.Uint64(lengthBytes)
+	jsonBytes := make([]byte, length)
+	readCnt, err = fs.Read(jsonBytes)
+	if err != nil {
+		return nil, err
 	}
-
-	return simplejson.NewJson([]byte(jsonStr))
+	if readCnt != int(length) {
+		return nil, fmt.Errorf("invalid model metadata")
+	}
+	json, err := simplejson.NewJson(jsonBytes)
+	if err != nil {
+		return nil, err
+	}
+	return (*metadata)(json), nil
 }
 
 func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
