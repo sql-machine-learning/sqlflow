@@ -19,8 +19,8 @@ import runtime.temp_file as temp_file
 from runtime.feature.column import (JSONDecoderWithFeatureColumn,
                                     JSONEncoderWithFeatureColumn)
 from runtime.model import oss
-from runtime.model.db import (read_metadata_from_db, read_with_generator,
-                              write_with_generator)
+from runtime.model.db import (read_with_generator_and_metadata,
+                              write_with_generator_and_metadata)
 from runtime.model.tar import unzip_dir, zip_dir
 
 # archive the current work director into a tarball
@@ -177,8 +177,9 @@ class Model(object):
 
                 return _gen
 
-            write_with_generator(datasource, table, _bytes_reader(tarball),
-                                 self._to_dict())
+            write_with_generator_and_metadata(datasource, table,
+                                              _bytes_reader(tarball),
+                                              self._to_dict())
 
     @staticmethod
     def load_from_db(datasource, table, local_dir=None):
@@ -199,14 +200,14 @@ class Model(object):
 
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
-            gen = read_with_generator(datasource, table)
+            gen, metadata = read_with_generator_and_metadata(datasource, table)
             with open(tarball, "wb") as f:
                 for data in gen():
                     f.write(bytes(data))
 
             Model._unzip(local_dir, tarball, load_from_db=True)
 
-        return Model._from_dict(read_metadata_from_db(datasource, table))
+        return Model._from_dict(metadata)
 
     def save_to_oss(self, oss_model_dir, local_dir=None):
         """

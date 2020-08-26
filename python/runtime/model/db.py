@@ -128,9 +128,9 @@ def _read_metadata(reader):
     return json.loads(metadata_json, cls=JSONDecoderWithFeatureColumn)
 
 
-def write_with_generator(datasource, table, gen, metadata):
+def write_with_generator_and_metadata(datasource, table, gen, metadata):
     """Write data into a table, the written data
-    comes from the input generator.
+    comes from the input generator and metadata.
 
     Args:
         datasource: string
@@ -176,9 +176,9 @@ def read_metadata_from_db(datasource, table):
     return metadata
 
 
-def read_with_generator(datasource, table, buff_size=256):
+def read_with_generator_and_metadata(datasource, table, buff_size=256):
     """Read data from a table, this function returns
-    a generator to yield the data.
+    a generator to yield the data, and the metadata dict.
 
     Args:
         datasource: string
@@ -188,20 +188,23 @@ def read_with_generator(datasource, table, buff_size=256):
         buff_size: int
             The buffer size to read data.
 
-    Returns: Generator
-        the generator yield row data of the table.
+    Returns: tuple(Generator, dict)
+        the generator yield row data of the table,
+        and the model metadata dict.
     """
+    conn = connect_with_data_source(datasource)
+    r = SQLFSReader(conn, table)
+    metadata = _read_metadata(r)
+
     def reader():
-        conn = connect_with_data_source(datasource)
-        with SQLFSReader(conn, table) as r:
-            _read_metadata(r)
-            while True:
-                buffer = r.read(buff_size)
-                if not buffer:
-                    break
+        while True:
+            buffer = r.read(buff_size)
+            if not buffer:
+                break
 
-                yield buffer
+            yield buffer
 
+        r.close()
         conn.close()
 
-    return reader
+    return reader, metadata
