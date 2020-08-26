@@ -409,6 +409,15 @@ TO PREDICT iris.test_result_table.class
 USING sqlflow_models.xgb_classification;
 
 SELECT * FROM iris.test_result_table;
+
+SELECT * FROM iris.test
+TO EVALUATE sqlflow_models.xgb_classification
+WITH
+	validation.metrics="accuracy_score"
+LABEL class
+INTO iris.evaluate_result_table;
+
+SELECT * FROM iris.evaluate_result_table;
 `
 	testMain(extraTrainSQLProgram + sqlProgram)
 	testMain(sqlProgram)

@@ -52,7 +52,7 @@ func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	stepList := make([]*stepContext, 0)
+	var stepList []*stepContext
 	for idx, stmt := range stmts {
 		stepCode, image, err := generateStepCodeAndImage(stmt, idx, session, stmts)
 		if err != nil {
