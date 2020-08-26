@@ -208,6 +208,77 @@ def step_entry_{{.StepIndex}}():
              load='''{{.Load}}''')
 `
 
+type xgbEvaluateFiller struct {
+	StepIndex         int
+	DataSource        string
+	Select            string
+	ResultTable       string
+	PredLabelName     string
+	Load              string
+	ValidationMetrics string
+	Submitter         string
+}
+
+// XGBoostGenerateEvaluation generates the XGBoost evaluation code
+func XGBoostGenerateEvaluation(evalStmt *ir.EvaluateStmt, stepIndex int, session *pb.Session) (string, error) {
+	ds, err := GeneratePyDbConnStr(session)
+	if err != nil {
+		return "", err
+	}
+
+	labelName := ""
+	if nc, ok := evalStmt.Label.(*ir.NumericColumn); ok {
+		labelName = nc.FieldDesc.Name
+	} else {
+		return "", fmt.Errorf("unsupported label type %T", evalStmt.Label)
+	}
+
+	metricList := []string{"accuracy_score"}
+	if m, ok := evalStmt.Attributes["validation.metrics"]; ok {
+		if metricStr, ok := m.(string); ok {
+			metricList = []string{}
+			for _, s := range strings.Split(metricStr, ",") {
+				metricList = append(metricList, strings.TrimSpace(s))
+			}
+		} else {
+			return "", fmt.Errorf("validation.metrics must be of type string")
+		}
+	}
+	metricPyStr := ir.AttrToPythonValue(metricList)
+
+	filler := &xgbEvaluateFiller{
+		StepIndex:         stepIndex,
+		DataSource:        ds,
+		Select:            replaceNewLineRuneAndTrimSpace(evalStmt.Select),
+		ResultTable:       evalStmt.Into,
+		PredLabelName:     labelName,
+		Load:              evalStmt.ModelName,
+		ValidationMetrics: metricPyStr,
+		Submitter:         getSubmitter(session),
+	}
+
+	var program bytes.Buffer
+	tpl := template.Must(template.New("Evaluate").Parse(xgbEvaluateTemplate))
+	if err := tpl.Execute(&program, filler); err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+const xgbEvaluateTemplate = `
+def step_entry_{{.StepIndex}}():
+    import runtime.temp_file as temp_file
+    from runtime.{{.Submitter}} import evaluate
+    
+    with temp_file.TemporaryDirectory(as_cwd=True):
+        evaluate(datasource='''{{.DataSource}}''', 
+                 select='''{{.Select}}''', 
+                 result_table='''{{.ResultTable}}''', 
+                 pred_label_name='''{{.PredLabelName}}''', 
+                 load='''{{.Load}}''',
+                 validation_metrics={{.ValidationMetrics}})
+`
+
 func getSubmitter(session *pb.Session) string {
 	if session.Submitter != "" {
 		return session.Submitter

@@ -34,6 +34,8 @@ func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 		return generateTrainCodeAndImage(stmt, stepIndex, session)
 	case *ir.PredictStmt:
 		return generatePredictCodeAndImage(stmt, stepIndex, session, sqlStmts)
+	case *ir.EvaluateStmt:
+		return generateEvaluationCodeAndImage(stmt, stepIndex, session, sqlStmts)
 	case *ir.NormalStmt:
 		code, err := generateNormalStmtStep(string(*stmt), stepIndex, session)
 		return code, "", err
@@ -55,9 +57,9 @@ func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *
 }
 
 func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
-	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
 	image := ""
 	isXGBoost := false
+	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
 	if trainStmt != nil {
 		image = trainStmt.ModelImage
 		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
@@ -72,6 +74,32 @@ func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, sessio
 
 	if isXGBoost {
 		code, err := XGBoostGeneratePredict(predStmt, stepIndex, session)
+		if err != nil {
+			return "", "", err
+		}
+		return code, image, nil
+	}
+	return "", "", fmt.Errorf("not implemented model type")
+}
+
+func generateEvaluationCodeAndImage(evalStmt *ir.EvaluateStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
+	image := ""
+	isXGBoost := false
+	trainStmt := findModelGenerationTrainStmt(evalStmt.ModelName, stepIndex, sqlStmts)
+	if trainStmt != nil {
+		image = trainStmt.ModelImage
+		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
+	} else {
+		meta, err := getModelMetadata(session, evalStmt.ModelName)
+		if err != nil {
+			return "", "", err
+		}
+		image = meta.imageName()
+		isXGBoost = meta.isXGBoostModel()
+	}
+
+	if isXGBoost {
+		code, err := XGBoostGenerateEvaluation(evalStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
 		}
