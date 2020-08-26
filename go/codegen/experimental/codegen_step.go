@@ -172,7 +172,7 @@ func getModelMetadataFromDB(dbConnStr, table string) (*metadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	if readCnt != int(length) {
+	if uint64(readCnt) != length {
 		return nil, fmt.Errorf("invalid model metadata")
 	}
 	json, err := simplejson.NewJson(jsonBytes)
