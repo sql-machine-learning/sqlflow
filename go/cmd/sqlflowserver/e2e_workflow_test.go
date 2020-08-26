@@ -367,7 +367,25 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 func CaseWorkflowTrainXgboost(t *testing.T) {
 	a := assert.New(t)
 
-	sqlProgram := `SELECT * FROM iris.train LIMIT 100;
+	testMain := func(sqlProgram string) {
+		conn, err := createRPCConn()
+		if err != nil {
+			a.Fail("Create gRPC client error: %v", err)
+		}
+		defer conn.Close()
+
+		cli := pb.NewSQLFlowClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+		defer cancel()
+
+		stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+		if err != nil {
+			a.Fail("Create gRPC client error: %v", err)
+		}
+		a.NoError(checkWorkflow(ctx, cli, stream))
+	}
+
+	extraTrainSQLProgram := `SELECT * FROM iris.train LIMIT 100;
 
 SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
@@ -382,26 +400,16 @@ COLUMN sepal_length, DENSE(sepal_width)
 LABEL class
 INTO sqlflow_models.xgb_classification;
 
+SELECT * FROM sqlflow_models.xgb_classification;
+`
+
+	sqlProgram := `
 SELECT * FROM iris.test
 TO PREDICT iris.test_result_table.class
 USING sqlflow_models.xgb_classification;
 
 SELECT * FROM iris.test_result_table;
 `
-
-	conn, err := createRPCConn()
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-	defer conn.Close()
-
-	cli := pb.NewSQLFlowClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
-	defer cancel()
-
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-	a.NoError(checkWorkflow(ctx, cli, stream))
+	testMain(extraTrainSQLProgram + sqlProgram)
+	testMain(sqlProgram)
 }

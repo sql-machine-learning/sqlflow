@@ -12,27 +12,25 @@
 # limitations under the License.
 """This module saves or loads the SQLFlow model.
 """
+import json
 import os
-from enum import Enum
 
 import runtime.temp_file as temp_file
+from runtime.feature.column import (JSONDecoderWithFeatureColumn,
+                                    JSONEncoderWithFeatureColumn)
 from runtime.model import oss
-from runtime.model.db import read_with_generator, write_with_generator
+from runtime.model.db import (read_metadata_from_db, read_with_generator,
+                              write_with_generator)
 from runtime.model.tar import unzip_dir, zip_dir
-
-try:
-    import cPickle as pickle
-except ModuleNotFoundError:
-    import pickle
 
 # archive the current work director into a tarball
 TARBALL_NAME = "model.tar.gz"
 
 # serialize the Model object into file
-MODEL_OBJ_FILE_NAME = "sqlflow_model.pkl"
+MODEL_OBJ_FILE_NAME = "metadata.json"
 
 
-class EstimatorType(Enum):
+class EstimatorType(object):
     """The enum type for various SQLFlow estimator.
     """
     # To stay compitable with old models, we start at 0
@@ -90,7 +88,17 @@ class Model(object):
         """
         return self._meta.get(name, default)
 
-    def _zip(self, local_dir, tarball):
+    def _to_dict(self):
+        meta = dict(self._meta)
+        meta["model_type"] = self._typ
+        return meta
+
+    @staticmethod
+    def _from_dict(d):
+        typ = d.pop("model_type")
+        return Model(typ, d)
+
+    def _zip(self, local_dir, tarball, save_to_db=False):
         """
         Zip the model information and all files in local_dir into a tarball.
 
@@ -101,13 +109,20 @@ class Model(object):
         Returns:
             None.
         """
-        model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
-        _dump_pkl(self, model_obj_file)
+        if not save_to_db:
+            model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
+            with open(model_obj_file, "w") as f:
+                d = self._to_dict()
+                f.write(json.dumps(d, cls=JSONEncoderWithFeatureColumn))
+        else:
+            model_obj_file = None
+
         zip_dir(local_dir, tarball, arcname="./")
-        os.remove(model_obj_file)
+        if model_obj_file:
+            os.remove(model_obj_file)
 
     @staticmethod
-    def _unzip(local_dir, tarball):
+    def _unzip(local_dir, tarball, load_from_db=False):
         """
         Unzip the tarball into local_dir and deserialize the model
         information.
@@ -120,11 +135,14 @@ class Model(object):
             Model: a Model object represent the model type and meta
             information.
         """
-        model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
         unzip_dir(tarball, local_dir)
-        model = _load_pkl(model_obj_file)
-        os.remove(model_obj_file)
-        return model
+        if not load_from_db:
+            model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
+            with open(model_obj_file, "r") as f:
+                d = json.loads(f.read(), cls=JSONDecoderWithFeatureColumn)
+                model = Model._from_dict(d)
+            os.remove(model_obj_file)
+            return model
 
     def save_to_db(self, datasource, table, local_dir=None):
         """
@@ -145,7 +163,7 @@ class Model(object):
 
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
-            self._zip(local_dir, tarball)
+            self._zip(local_dir, tarball, save_to_db=True)
 
             def _bytes_reader(filename, buf_size=8 * 32):
                 def _gen():
@@ -159,7 +177,8 @@ class Model(object):
 
                 return _gen
 
-            write_with_generator(datasource, table, _bytes_reader(tarball))
+            write_with_generator(datasource, table, _bytes_reader(tarball),
+                                 self._to_dict())
 
     @staticmethod
     def load_from_db(datasource, table, local_dir=None):
@@ -185,7 +204,9 @@ class Model(object):
                 for data in gen():
                     f.write(bytes(data))
 
-            return Model._unzip(local_dir, tarball)
+            Model._unzip(local_dir, tarball, load_from_db=True)
+
+        return Model._from_dict(read_metadata_from_db(datasource, table))
 
     def save_to_oss(self, oss_model_dir, local_dir=None):
         """
@@ -229,17 +250,3 @@ class Model(object):
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
             return Model._unzip(local_dir, tarball)
-
-
-def _dump_pkl(obj, to_file):
-    """Dump the Python object to file with Pickle.
-    """
-    with open(to_file, "wb") as f:
-        pickle.dump(obj, f, protocol=2)
-
-
-def _load_pkl(from_file):
-    """Load the Python object from a file with Pickle.
-    """
-    with open(from_file, "rb") as f:
-        return pickle.load(f)

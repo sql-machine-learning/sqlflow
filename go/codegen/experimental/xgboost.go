@@ -115,7 +115,7 @@ func XGBoostGenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Se
 		DiskCache:         diskCache,
 		BatchSize:         batchSize,
 		Epoch:             epoch,
-		Submitter:         getSubmitter(session, "local"),
+		Submitter:         getSubmitter(session),
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Parse(xgbTrainTemplate))
@@ -183,7 +183,7 @@ func XGBoostGeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb
 		PredLabelName: predStmt.ResultColumn,
 		ResultTable:   predStmt.ResultTable,
 		Load:          predStmt.Using,
-		Submitter:     getSubmitter(session, "local"),
+		Submitter:     getSubmitter(session),
 	}
 
 	var program bytes.Buffer
@@ -208,7 +208,7 @@ def step_entry_{{.StepIndex}}():
              load='''{{.Load}}''')
 `
 
-func getSubmitter(session *pb.Session, defaultValue string) string {
+func getSubmitter(session *pb.Session) string {
 	if session.Submitter != "" {
 		return session.Submitter
 	}
@@ -217,7 +217,7 @@ func getSubmitter(session *pb.Session, defaultValue string) string {
 	if submitter != "" {
 		return submitter
 	}
-	return defaultValue
+	return "local"
 }
 
 func generateFeatureColumnCode(fcMap map[string][]ir.FeatureColumn) string {

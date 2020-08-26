@@ -14,8 +14,12 @@
 package experimental
 
 import (
+	"encoding/binary"
 	"fmt"
+	"github.com/bitly/go-simplejson"
 	"net/url"
+	"sqlflow.org/sqlflow/go/model"
+	"sqlflow.org/sqlflow/go/sqlfs"
 	"strings"
 
 	"sqlflow.org/sqlflow/go/database"
@@ -24,37 +28,130 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-// TODO(sneaxiy): implement this method to distinguish whether
-// a model is a XGBoost model.
-func isTrainedXBoostModel(modelName string) bool {
-	return true
-}
-
-func generateStepCode(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session) (string, error) {
+func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	switch stmt := sqlStmt.(type) {
 	case *ir.TrainStmt:
-		return generateTrainCode(stmt, stepIndex, session)
+		return generateTrainCodeAndImage(stmt, stepIndex, session)
 	case *ir.PredictStmt:
-		return generatePredictCode(stmt, stepIndex, session)
+		return generatePredictCodeAndImage(stmt, stepIndex, session, sqlStmts)
 	case *ir.NormalStmt:
-		return GenerateNormalStmtStep(string(*stmt), session, stepIndex)
+		code, err := generateNormalStmtStep(string(*stmt), stepIndex, session)
+		return code, "", err
 	default:
-		return "", fmt.Errorf("not implemented stmt execution type %v", stmt)
+		return "", "", fmt.Errorf("not implemented stmt execution type %v", stmt)
 	}
 }
 
-func generateTrainCode(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, error) {
-	if strings.HasPrefix(strings.ToUpper(trainStmt.Estimator), "XGBOOST.") {
-		return XGBoostGenerateTrain(trainStmt, stepIndex, session)
+func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, string, error) {
+	isXGBoost := isXGBoostEstimator(trainStmt.Estimator)
+	if isXGBoost {
+		code, err := XGBoostGenerateTrain(trainStmt, stepIndex, session)
+		if err != nil {
+			return "", "", err
+		}
+		return code, trainStmt.ModelImage, nil
 	}
-	return "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+	return "", "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
 }
 
-func generatePredictCode(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
-	if isTrainedXBoostModel(predStmt.Using) {
-		return XGBoostGeneratePredict(predStmt, stepIndex, session)
+func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
+	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
+	image := ""
+	isXGBoost := false
+	if trainStmt != nil {
+		image = trainStmt.ModelImage
+		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
+	} else {
+		meta, err := getModelMetadata(session, predStmt.Using)
+		if err != nil {
+			return "", "", err
+		}
+		image = meta.imageName()
+		isXGBoost = meta.isXGBoostModel()
 	}
-	return "", fmt.Errorf("not implemented model type")
+
+	if isXGBoost {
+		code, err := XGBoostGeneratePredict(predStmt, stepIndex, session)
+		if err != nil {
+			return "", "", err
+		}
+		return code, image, nil
+	}
+	return "", "", fmt.Errorf("not implemented model type")
+}
+
+// findModelGenerationTrainStmt finds the *ir.TrainStmt that generates the model named `modelName`.
+// TODO(sneaxiy): find a better way to do this when we have a well designed dependency analysis.
+func findModelGenerationTrainStmt(modelName string, idx int, sqlStmts []ir.SQLFlowStmt) *ir.TrainStmt {
+	idx--
+	for idx >= 0 {
+		trainStmt, ok := sqlStmts[idx].(*ir.TrainStmt)
+		if ok && trainStmt.Into == modelName {
+			return trainStmt
+		}
+		idx--
+	}
+	return nil
+}
+
+func isXGBoostEstimator(estimator string) bool {
+	return strings.HasPrefix(strings.ToUpper(estimator), "XGBOOST.")
+}
+
+type metadata simplejson.Json
+
+func (m *metadata) imageName() string {
+	return (*simplejson.Json)(m).Get("model_repo_image").MustString()
+}
+
+func (m *metadata) isXGBoostModel() bool {
+	return (*simplejson.Json)(m).Get("model_type").MustInt() == model.XGBOOST
+}
+
+func getModelMetadata(session *pb.Session, table string) (*metadata, error) {
+	submitter := getSubmitter(session)
+	if submitter == "local" {
+		return getModelMetadataFromDB(session.DbConnStr, table)
+	}
+	return nil, fmt.Errorf("not supported submitter %s", submitter)
+}
+
+func getModelMetadataFromDB(dbConnStr, table string) (*metadata, error) {
+	db, err := database.OpenAndConnectDB(dbConnStr)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	fs, err := sqlfs.Open(db.DB, table)
+	if err != nil {
+		return nil, err
+	}
+	defer fs.Close()
+
+	lengthBytes := make([]byte, 8)
+	readCnt, err := fs.Read(lengthBytes)
+	if err != nil {
+		return nil, err
+	}
+	if readCnt != 8 {
+		return nil, fmt.Errorf("invalid model table")
+	}
+
+	length := binary.LittleEndian.Uint64(lengthBytes)
+	jsonBytes := make([]byte, length)
+	readCnt, err = fs.Read(jsonBytes)
+	if err != nil {
+		return nil, err
+	}
+	if readCnt != int(length) {
+		return nil, fmt.Errorf("invalid model metadata")
+	}
+	json, err := simplejson.NewJson(jsonBytes)
+	if err != nil {
+		return nil, err
+	}
+	return (*metadata)(json), nil
 }
 
 func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {

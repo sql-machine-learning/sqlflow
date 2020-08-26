@@ -16,6 +16,7 @@ package pai
 import (
 	"bytes"
 	"fmt"
+	"sqlflow.org/sqlflow/go/model"
 	"strings"
 	"text/template"
 
@@ -25,15 +26,6 @@ import (
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/verifier"
-)
-
-const (
-	// ModelTypeTF is the mode type that trained by PAI TensorFlow.
-	ModelTypeTF = iota
-	// ModelTypeXGBoost is the model type that use PAI TensorFlow to train XGBoost models.
-	ModelTypeXGBoost
-	// ModelTypePAIML is the model type that trained by PAI machine learning algorithm toolkit
-	ModelTypePAIML
 )
 
 const entryFile = "entry.py"
@@ -154,11 +146,11 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, paramsFile, model
 	if e != nil {
 		return
 	}
-	if modelType == ModelTypePAIML {
+	if modelType == model.PAIML {
 		if paiCmd, e = getPAIPredictCmd(ir, session); e != nil {
 			return
 		}
-	} else if modelType == ModelTypeXGBoost {
+	} else if modelType == model.XGBOOST {
 		requirements, e = genRequirements(true)
 		ossURI := OSSModelURL(ossModelPath)
 		var xgbPredCode bytes.Buffer
@@ -220,7 +212,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, model
 	}
 
 	expn := newExplainRender(session.UserId)
-	if modelType == ModelTypePAIML {
+	if modelType == model.PAIML {
 		if ir.Into == "" {
 			return nil, fmt.Errorf("explain PAI random forests model need INTO clause to output the explain result to a table")
 		}
@@ -228,7 +220,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, model
 			return nil, err
 		}
 		expn.PaiCmd, err = getExplainRandomForestsPAICmd(ir, session)
-	} else if modelType == ModelTypeXGBoost {
+	} else if modelType == model.XGBOOST {
 		if expn.Requirements, err = genRequirements(true); err != nil {
 			return nil, err
 		}
@@ -284,9 +276,9 @@ func Evaluate(ir *ir.EvaluateStmt, session *pb.Session, tarball, paramsFile, mod
 		return "", "", "", err
 	}
 
-	if modelType == ModelTypePAIML {
+	if modelType == model.PAIML {
 		return "", "", "", fmt.Errorf("evaluate PAI ML model is not supported for now")
-	} else if modelType == ModelTypeXGBoost {
+	} else if modelType == model.XGBOOST {
 		if requirements, err = genRequirements(true); err != nil {
 			return "", "", "", err
 		}
