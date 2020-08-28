@@ -25,6 +25,8 @@ from runtime.dbapi.paiio import PaiIOConnection
 from scipy.sparse import vstack
 from sklearn.datasets import load_svmlight_file, load_svmlight_files
 
+DMATRIX_FILE_SEP = "\t"
+
 
 def xgb_dataset(datasource,
                 fn,
@@ -130,7 +132,8 @@ def dump_dmatrix(filename,
                                                  feature_metas)
 
             if raw_data_fid is not None:
-                raw_data_fid.write("/".join([str(r) for r in row]) + "\n")
+                raw_data_fid.write(
+                    DMATRIX_FILE_SEP.join([str(r) for r in row]) + "\n")
 
             if transform_fn:
                 features = transform_fn(features)
@@ -163,7 +166,7 @@ def dump_dmatrix(filename,
             if has_label:
                 row_data = [str(label)] + row_data
 
-            f.write("\t".join(row_data) + "\n")
+            f.write(DMATRIX_FILE_SEP.join(row_data) + "\n")
             row_id += 1
             # batch_size == None means use all data in generator
             if batch_size is None:
