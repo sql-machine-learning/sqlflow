@@ -165,24 +165,7 @@ def explain(datasource,
             oss_bucket_name=None,
             transform_fn=None,
             feature_column_code=""):
-    if explainer == "TreeExplainer":
-        shap_explain(datasource,
-                     select,
-                     feature_field_meta,
-                     feature_column_names,
-                     label_meta,
-                     summary_params,
-                     result_table=result_table,
-                     is_pai=is_pai,
-                     pai_explain_table="",
-                     oss_dest=oss_dest,
-                     oss_ak=oss_ak,
-                     oss_sk=oss_sk,
-                     oss_endpoint=oss_endpoint,
-                     oss_bucket_name=oss_bucket_name,
-                     transform_fn=transform_fn,
-                     feature_column_code=feature_column_code)
-    elif explainer == "XGBoostExplainer":
+    if explainer == "XGBoostExplainer":
         if result_table == "":
             raise ValueError("""XGBoostExplainer must use with INTO to output
 result to a table.""")
@@ -203,6 +186,24 @@ result to a table.""")
             for fkey in all_feature_keys:
                 row = [fkey, fscore_map[fkey], gain_map[fkey]]
                 w.write(list(row))
+    else:
+        # when explainer is "" or "TreeExplainer" use SHAP by default.
+        shap_explain(datasource,
+                     select,
+                     feature_field_meta,
+                     feature_column_names,
+                     label_meta,
+                     summary_params,
+                     result_table=result_table,
+                     is_pai=is_pai,
+                     pai_explain_table="",
+                     oss_dest=oss_dest,
+                     oss_ak=oss_ak,
+                     oss_sk=oss_sk,
+                     oss_endpoint=oss_endpoint,
+                     oss_bucket_name=oss_bucket_name,
+                     transform_fn=transform_fn,
+                     feature_column_code=feature_column_code)
 
 
 def shap_explain(datasource,
