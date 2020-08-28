@@ -154,6 +154,7 @@ def explain(datasource,
             feature_column_names,
             label_meta,
             summary_params,
+            explainer="TreeExplainer",
             result_table="",
             is_pai=False,
             pai_explain_table="",
@@ -164,6 +165,62 @@ def explain(datasource,
             oss_bucket_name=None,
             transform_fn=None,
             feature_column_code=""):
+    if explainer == "TreeExplainer":
+        shap_explain(datasource,
+                     select,
+                     feature_field_meta,
+                     feature_column_names,
+                     label_meta,
+                     summary_params,
+                     result_table=result_table,
+                     is_pai=is_pai,
+                     pai_explain_table="",
+                     oss_dest=oss_dest,
+                     oss_ak=oss_ak,
+                     oss_sk=oss_sk,
+                     oss_endpoint=oss_endpoint,
+                     oss_bucket_name=oss_bucket_name,
+                     transform_fn=transform_fn,
+                     feature_column_code=feature_column_code)
+    elif explainer == "XGBoostExplainer":
+        if result_table == "":
+            raise ValueError("""XGBoostExplainer must use with INTO to output
+result to a table.""")
+        bst = xgb.Booster()
+        bst.load_model("my_model")
+        gain_map = bst.get_score(importance_type="gain")
+        fscore_map = bst.get_fscore()
+        if is_pai:
+            from runtime.dbapi.paiio import PaiIOConnection
+            conn = PaiIOConnection.from_table(result_table)
+        else:
+            conn = db.connect_with_data_source(datasource)
+
+        all_feature_keys = list(gain_map.keys())
+        all_feature_keys.sort()
+        with db.buffered_db_writer(conn, result_table,
+                                   ["feature", "fscore", "gain"], 100) as w:
+            for fkey in all_feature_keys:
+                row = [fkey, fscore_map[fkey], gain_map[fkey]]
+                w.write(list(row))
+
+
+def shap_explain(datasource,
+                 select,
+                 feature_field_meta,
+                 feature_column_names,
+                 label_meta,
+                 summary_params,
+                 result_table="",
+                 is_pai=False,
+                 pai_explain_table="",
+                 oss_dest=None,
+                 oss_ak=None,
+                 oss_sk=None,
+                 oss_endpoint=None,
+                 oss_bucket_name=None,
+                 transform_fn=None,
+                 feature_column_code=""):
     x = xgb_shap_dataset(datasource,
                          select,
                          feature_column_names,

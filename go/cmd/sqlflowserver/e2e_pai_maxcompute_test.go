@@ -511,5 +511,4 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 			caseEnd2EndXGBoostDenseFeatureColumn(t, true)
 		})
 	})
-
 }
