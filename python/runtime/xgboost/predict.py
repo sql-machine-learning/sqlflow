@@ -16,7 +16,7 @@ import xgboost as xgb
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.model.metadata import load_metadata
-from runtime.xgboost.dataset import xgb_dataset
+from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 DEFAULT_PREDICT_BATCH_SIZE = 10000
 
@@ -123,7 +123,8 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             # FIXME(typhoonzero): how to output columns that are not used
             # as features, like ids?
             row = [
-                item for i, item in enumerate(line.strip().split("/"))
+                item
+                for i, item in enumerate(line.strip().split(DMATRIX_FILE_SEP))
                 if i != train_label_index
             ]
             row.append(str(preds[line_no]))

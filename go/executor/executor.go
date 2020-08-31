@@ -294,15 +294,17 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if err = s.runProgram(code, false); err != nil {
 		return err
 	}
-	img, err := readExplainResult(path.Join(s.Cwd, "summary.png"))
-	if err != nil {
-		return err
+	if cl.Into == "" {
+		img, err := readExplainResult(path.Join(s.Cwd, "summary.png"))
+		if err != nil {
+			return err
+		}
+		termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
+		if err != nil {
+			return err
+		}
+		s.Writer.Write(Figures{img, string(termFigure)})
 	}
-	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
-	if err != nil {
-		return err
-	}
-	s.Writer.Write(Figures{img, string(termFigure)})
 	return nil
 }
 

@@ -17,7 +17,7 @@ import xgboost as xgb
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.model.metadata import load_metadata
-from runtime.xgboost.dataset import xgb_dataset
+from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 SKLEARN_METRICS = [
     'accuracy_score',
@@ -118,7 +118,7 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
 
     y_test_list = []
     for line in feature_file_read:
-        row = [i for i in line.strip().split("\t")]
+        row = [i for i in line.strip().split(DMATRIX_FILE_SEP)]
         # DMatrix store label in the first column
         if label_meta["dtype"] == "float32":
             label = float(row[0])
