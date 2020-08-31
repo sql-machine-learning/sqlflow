@@ -36,11 +36,11 @@ func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 		return generatePredictCodeAndImage(stmt, stepIndex, session, sqlStmts)
 	case *ir.EvaluateStmt:
 		return generateEvaluationCodeAndImage(stmt, stepIndex, session, sqlStmts)
-	case *ir.OptimizeStmt:
-		code, err := generateOptimizeCode(stmt, stepIndex, session)
-		return code, "", err
 	case *ir.ShowTrainStmt:
 		code, err := generateShowTrainCode(stmt, stepIndex, session)
+		return code, "", err
+	case *ir.OptimizeStmt:
+		code, err := generateOptimizeCode(stmt, stepIndex, session)
 		return code, "", err
 	case *ir.NormalStmt:
 		code, err := generateNormalStmtStep(string(*stmt), stepIndex, session)
