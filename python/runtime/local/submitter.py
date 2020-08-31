@@ -11,10 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.dbapi import table_writer
 from runtime.local.xgboost_submitter.evaluate import \
     evaluate as xgboost_evaluate
 from runtime.local.xgboost_submitter.predict import pred as xgboost_pred
 from runtime.local.xgboost_submitter.train import train as xgboost_train
+from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
 
 
@@ -89,3 +91,16 @@ def submit_local_evaluate(datasource, select, result_table, pred_label_name,
     else:
         raise NotImplementedError("not implemented model type: {}".format(
             model.get_type()))
+
+
+def submit_local_show_train(datasource, model_name):
+    meta = read_metadata_from_db(datasource, model_name)
+    original_sql = meta.get("original_sql")
+    if not original_sql:
+        raise ValueError("cannot find the train SQL statement")
+
+    result_set = [(model_name, original_sql)]
+    header = ["Model", "Train Statement"]
+    writer = table_writer.ProtobufWriter(result_set, header)
+    for line in writer.dump_strings():
+        print(line)
