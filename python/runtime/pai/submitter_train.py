@@ -62,9 +62,19 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
     return cmd
 
 
-def submit_pai_train(datasource, original_sql, select, validation_select,
-                     estimator_string, model_image, feature_column_map,
-                     label_column, model_params, train_params, save, load):
+def submit_pai_train(datasource,
+                     original_sql,
+                     select,
+                     validation_select,
+                     estimator_string,
+                     model_image,
+                     feature_column_map,
+                     label_column,
+                     model_params,
+                     train_params,
+                     save,
+                     load,
+                     user=""):
     """This function submit PAI-TF train task to the PAI platform.
 
     Args:
@@ -95,6 +105,9 @@ def submit_pai_train(datasource, original_sql, select, validation_select,
             Model name to save.
         load: string
             The pre-trained model name to load before training.
+        user: string
+            A string to identify the user, used to store models in the user's
+            directory.
     """
     # prepare params for to call runtime.pai.xxx_submitter.train_step(...),
     # the params will be pickled into train_params.pkl
@@ -111,11 +124,6 @@ def submit_pai_train(datasource, original_sql, select, validation_select,
         select, validation_select, datasource)
     train_params["pai_table"], train_params[
         "pai_val_table"] = train_table, val_table
-
-    # FIXME(typhoonzero): get user from session
-    user = ""
-    if "user" in train_params:
-        user = train_params["user"]
 
     # clean target dir
     path_to_save = pai_model.get_oss_model_save_path(datasource,

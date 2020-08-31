@@ -256,4 +256,11 @@ def train_step(original_sql,
         model = Model(EstimatorType.XGBOOST, model_meta)
         model.save_to_db(datasource, save)
         print("Model saved to db: %s" % save)
+        oss_model_dir = FLAGS.sqlflow_oss_modeldir
+        oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
+                           feature_column_names, feature_column_names_map,
+                           feature_metas, label_meta, model_params, fc_map_ir,
+                           num_workers)
+        print("Model saved to OSS: %s" % oss_model_dir)
+
     print("Done training")

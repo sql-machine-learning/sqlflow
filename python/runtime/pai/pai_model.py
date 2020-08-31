@@ -13,8 +13,10 @@
 
 import subprocess
 
+import tensorflow as tf
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.model import EstimatorType, oss
+from runtime.tensorflow import is_tf_estimator
 
 
 def get_oss_model_url(model_full_path):

@@ -18,7 +18,7 @@ from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.tensorflow_submitter.evaluate import evaluate as evaluate_tf
 from runtime.pai.tensorflow_submitter.explain import explain as explain_tf
-from runtime.pai.tensorflow_submitter.predict import predict as predict_tf
+from runtime.pai.tensorflow_submitter.predict import predict_step as predict_tf
 from runtime.pai.tensorflow_submitter.train import train_step as train_tf
 
 try:

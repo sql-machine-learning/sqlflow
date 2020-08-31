@@ -109,10 +109,11 @@ def get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
 
 
 def submit_pai_explain(datasource,
+                       original_sql,
                        select,
-                       result_table,
                        model_name,
                        model_params,
+                       result_table,
                        user=""):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
@@ -143,7 +144,7 @@ def submit_pai_explain(datasource,
                                                        user=user)
     model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
-    params["oss_model_path"] = oss_model_path
+    params["load"] = model_name
 
     label_column = model_params.get("label_col")
     params["label_column"] = label_column

@@ -147,12 +147,12 @@ class SubmitPAITrainTask(TestCase):
         }
         label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
 
-        original_sql = '''
+        original_sql = """
 SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
 TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
-INTO e2etest_pai_dnn;'''
+INTO e2etest_pai_dnn;"""
 
         train(testing.get_datasource(), original_sql,
               "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train", "",
@@ -160,10 +160,13 @@ INTO e2etest_pai_dnn;'''
               model_params, {}, "e2etest_pai_dnn", None)
 
     def test_submit_pai_predict_task(self):
-        predict(testing.get_datasource(),
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO PREDICT alifin_jtest_dev.pai_dnn_predict.class
+USING e2etest_pai_dnn;"""
+        predict(testing.get_datasource(), original_sql,
                 """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
-                "alifin_jtest_dev.pai_dnn_predict", "class", "e2etest_pai_dnn",
-                {})
+                "e2etest_pai_dnn", "class", {},
+                "alifin_jtest_dev.pai_dnn_predict")
 
     def test_submit_pai_explain_task(self):
         explain(testing.get_datasource(),
