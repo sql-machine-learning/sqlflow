@@ -418,6 +418,8 @@ LABEL class
 INTO iris.evaluate_result_table;
 
 SELECT * FROM iris.evaluate_result_table;
+
+SHOW TRAIN sqlflow_models.xgb_classification;
 `
 	testMain(extraTrainSQLProgram + sqlProgram)
 	testMain(sqlProgram)

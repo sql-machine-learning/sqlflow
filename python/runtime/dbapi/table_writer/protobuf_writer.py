@@ -16,14 +16,19 @@ from runtime.dbapi.connection import ResultSet
 from runtime.dbapi.table_writer import sqlflow_pb2
 
 
-class ProtobufWriter:
-    def __init__(self, result_set):
-        assert isinstance(result_set, ResultSet)
-        column_info = result_set.column_info()
-        self.all_responses = []
+class ProtobufWriter(object):
+    def __init__(self, result_set, header=None):
         head = sqlflow_pb2.Head()
-        for field_name, _ in column_info:
-            head.column_names.append(field_name)
+        if header is None:
+            assert isinstance(result_set, ResultSet)
+            column_info = result_set.column_info()
+            for field_name, _ in column_info:
+                head.column_names.append(field_name)
+        else:
+            for field_name in header:
+                head.column_names.append(field_name)
+
+        self.all_responses = []
         self.all_responses.append(sqlflow_pb2.Response(head=head))
         for row in result_set:
             pb_row = sqlflow_pb2.Row()
