@@ -39,6 +39,9 @@ type Filler struct {
 	SecretName       string
 	SecretData       string
 	Resources        string
+	// The step output duplication file, in the container.
+	// Log framework may read the file to collect logs.
+	StepLogFile string
 }
 
 const coulerTemplateText = `
@@ -47,6 +50,7 @@ import couler.steps as steps
 import json
 import re
 datasource = "{{ .DataSource }}"
+step_log_file = "{{ .StepLogFile }}"
 
 step_envs = dict()
 {{range $k, $v := .StepEnvs}}
@@ -69,7 +73,7 @@ couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
 
-steps.sqlflow(sql=r'''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret, resources=resources)
+steps.sqlflow(sql=r'''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret, resources=resources, log_file=step_log_file)
 	{{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 
@@ -81,7 +85,7 @@ auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=dat
 # TODO(yancey1989): 
 #	using "repl -parse" to output IR and
 #	feed to "runtime.{submitter}.train" to submit the job
-steps.sqlflow(sql=r'''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, resources=resources)
+steps.sqlflow(sql=r'''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, resources=resources, log_file=step_log_file)
 	{{end}}
 {{end}}
 `
