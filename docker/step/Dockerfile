@@ -13,7 +13,7 @@ RUN /bin/bash -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_faste
   && echo "Choose the fastest PIP source ..." \
   && choose_fastest_pip_source; fi' && \
   apt-get update && \
-  apt-get -qq install -y --no-install-recommends openjdk-8-jre-headless python3 libmysqlclient20 python3-idna libgomp1 python3-setuptools python3-pip && \
+  apt-get -qq install -y --no-install-recommends openjdk-8-jre-headless python3 libmysqlclient20 python3-idna libgomp1 python3-setuptools python3-pip glpk-utils && \
   ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
   apt-get install -y tzdata > /dev/null && \
   dpkg-reconfigure --frontend noninteractive tzdata && \
