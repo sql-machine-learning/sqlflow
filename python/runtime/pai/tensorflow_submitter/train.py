@@ -231,7 +231,7 @@ def train_step(original_sql,
                                   class_name=estimator_string,
                                   attributes=model_params,
                                   features=fc_map_ir,
-                                  label=label_meta)
+                                  label=fc_label_ir)
 
     # FIXME(typhoonzero): avoid save model_meta twice, keras_train_and_save,
     # estimator_train_and_save also dumps model_meta to a file under cwd.
