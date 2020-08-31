@@ -69,6 +69,13 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		caseTrainTable = caseDB + ".sqlflow_test_iris_train"
 		caseTestTable = caseDB + ".sqlflow_test_iris_test"
 		casePredictTable = caseDB + ".sqlflow_test_iris_predict"
+	} else {
+		dbConnStr = os.Getenv("SQLFLOW_TEST_DATASOURCE")
+	}
+
+	err = prepareTestData(dbConnStr)
+	if err != nil {
+		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
 	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
@@ -79,6 +86,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	// test experimental workflow generation
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
 	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+	t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
 }
 
@@ -364,27 +372,26 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 }
 
-func CaseWorkflowTrainXgboost(t *testing.T) {
+func runSQLProgramAndCheck(t *testing.T, sqlProgram string) {
 	a := assert.New(t)
-
-	testMain := func(sqlProgram string) {
-		conn, err := createRPCConn()
-		if err != nil {
-			a.Fail("Create gRPC client error: %v", err)
-		}
-		defer conn.Close()
-
-		cli := pb.NewSQLFlowClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
-		defer cancel()
-
-		stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
-		if err != nil {
-			a.Fail("Create gRPC client error: %v", err)
-		}
-		a.NoError(checkWorkflow(ctx, cli, stream))
+	conn, err := createRPCConn()
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
 	}
+	defer conn.Close()
 
+	cli := pb.NewSQLFlowClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
+	defer cancel()
+
+	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	if err != nil {
+		a.Fail("Create gRPC client error: %v", err)
+	}
+	a.NoError(checkWorkflow(ctx, cli, stream))
+}
+
+func CaseWorkflowTrainXgboost(t *testing.T) {
 	extraTrainSQLProgram := `SELECT * FROM iris.train LIMIT 100;
 
 SELECT * FROM iris.train
@@ -421,6 +428,29 @@ SELECT * FROM iris.evaluate_result_table;
 
 SHOW TRAIN sqlflow_models.xgb_classification;
 `
-	testMain(extraTrainSQLProgram + sqlProgram)
-	testMain(sqlProgram)
+	runSQLProgramAndCheck(t, extraTrainSQLProgram+sqlProgram)
+	runSQLProgramAndCheck(t, sqlProgram)
+}
+
+func caseWorkflowOptimize(t *testing.T) {
+	sqlProgram := `
+	SELECT
+		t.plants AS plants,
+		t.markets AS markets,
+		t.distance AS distance,
+		p.capacity AS capacity,
+		m.demand AS demand FROM optimize_test_db.transportation_table AS t
+	LEFT JOIN optimize_test_db.plants_table AS p ON t.plants = p.plants
+	LEFT JOIN optimize_test_db.markets_table AS m ON t.markets = m.markets
+	TO MINIMIZE SUM(shipment * distance * 90 / 1000)
+	CONSTRAINT SUM(shipment) <= capacity GROUP BY plants,
+		SUM(shipment) >= demand GROUP BY markets
+	WITH variables="shipment(plants,markets)",
+		var_type="NonNegativeIntegers"
+	INTO optimize_test_db.optimize_result_table;
+
+	SELECT * FROM optimize_test_db.optimize_result_table;
+`
+
+	runSQLProgramAndCheck(t, sqlProgram)
 }
