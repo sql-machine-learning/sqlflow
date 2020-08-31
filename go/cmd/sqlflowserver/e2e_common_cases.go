@@ -639,9 +639,6 @@ func caseTensorFlowIncrementalTrain(t *testing.T, isPai bool) {
 	}
 }
 
-// TODO(sneaxiy):
-//  1. add tests on PAI
-//  2. add tests of prediction, evaluation and explanation
 func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a := assert.New(t)
 
@@ -725,7 +722,6 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 	a.Equal("label_col", columns[1])
 
 	// PAI does not support TO EVALUATE yet
-	// TODO(sneaxiy): TO EXPLAIN should be supported
 	if !isPai {
 		const evaluateTable = "xgb_kv_column_evaluate_table"
 		evaluateSQL := fmt.Sprintf(`SELECT c1, label_col FROM %[1]s.%[2]s 
@@ -734,6 +730,14 @@ TO EVALUATE %[3]s WITH validation.metrics="mean_squared_error" LABEL label_col I
 		explainSQL := fmt.Sprintf("SELECT c1, label_col FROM %s.%s TO EXPLAIN %s WITH summary.plot_type=bar;", dbName, trainTable, trainedModel)
 		executeSQLFunc(explainSQL)
 	}
+
+	explainSQLTmpl := `SELECT c1, label_col FROM %[1]s.%[2]s
+TO EXPLAIN %[3]s
+WITH label_col=label_col
+USING XGBoostExplainer
+INTO %[1]s.sparse_xgb_explain_result;`
+	explainSparseIntoSQL := fmt.Sprintf(explainSQLTmpl, dbName, trainTable, trainedModel)
+	executeSQLFunc(explainSparseIntoSQL)
 }
 
 func decodeAnyTypedRowData(anyData [][]*any.Any) ([][]interface{}, error) {

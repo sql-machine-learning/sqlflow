@@ -21,6 +21,7 @@ type explainFiller struct {
 	DataSource           string
 	DatasetSQL           string
 	ShapSummaryParams    string
+	Explainer            string
 	FeatureFieldMetaJSON string
 	FeatureColumnNames   []string
 	FeatureColumnCode    string
@@ -53,6 +54,7 @@ explain(
     feature_column_names=feature_column_names,
     label_meta=label_meta,
     summary_params=summary_params,
+    explainer="{{.Explainer}}",
     result_table="{{.ResultTable}}",
     is_pai="{{.IsPAI}}" == "true",
     pai_explain_table="{{.PAIExplainTable}}",

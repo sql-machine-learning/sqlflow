@@ -16,9 +16,11 @@ package executor
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/ir"
+	"sqlflow.org/sqlflow/go/model"
 	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/verifier"
 )
@@ -81,6 +83,65 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 	}
 
 	createStmt := b.String()
+	if _, e := db.Exec(createStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", createStmt, e)
+	}
+	return nil
+}
+
+func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName string, modelType int, estimator string) error {
+	dropStmt := fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tableName)
+	var e error
+	if _, e = db.Exec(dropStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
+	}
+	createStmt := ""
+	// TODO(typhoonzero): Create XGBoostExplainer result table should be
+	// moved to Python runtime shortly.
+	if ir.Explainer == "XGBoostExplainer" {
+		// User specified using XGBoost functions to get fscore, gain.
+		// Create table with columns fscore, gain. Then each row records
+		// a feature's fscore and gain value.
+		columnDef := ""
+		if db.DriverName == "mysql" {
+			columnDef = "(feature VARCHAR(255), fscore FLOAT, gain FLOAT)"
+		} else {
+			columnDef = "(feature STRING, fscore STRING, gain STRING)"
+		}
+		createStmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s %s", tableName, columnDef)
+	} else if modelType == model.TENSORFLOW {
+		if strings.HasPrefix(estimator, "BoostedTrees") {
+			columnDef := ""
+			if db.DriverName == "mysql" {
+				columnDef = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
+			} else {
+				// Hive & MaxCompute
+				columnDef = "(feature STRING, dfc STRING, gain STRING)"
+			}
+			createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s %s;`, tableName, columnDef)
+		} else {
+			labelCol, ok := ir.Attributes["label_col"]
+			if !ok {
+				return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining deep models")
+			}
+			createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
+			if e != nil {
+				return e
+			}
+		}
+	} else if modelType == model.XGBOOST {
+		labelCol, ok := ir.Attributes["label_col"]
+		if !ok {
+			return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining xgboost models")
+		}
+		createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
+		if e != nil {
+			return e
+		}
+	} else {
+		return fmt.Errorf("not supported modelType %d for creating Explain result table", modelType)
+	}
+
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}

@@ -650,52 +650,6 @@ func getCreateShapResultSQL(db *database.DB, tableName string, selectStmt string
 	return createStmt, nil
 }
 
-func createExplainResultTable(db *database.DB, ir *ir.ExplainStmt, tableName string, modelType int, estimator string) error {
-	dropStmt := fmt.Sprintf(`DROP TABLE IF EXISTS %s;`, tableName)
-	var e error
-	if _, e = db.Exec(dropStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
-	}
-	createStmt := ""
-	if modelType == model.TENSORFLOW {
-		if strings.HasPrefix(estimator, "BoostedTrees") {
-			columnDef := ""
-			if db.DriverName == "mysql" {
-				columnDef = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
-			} else {
-				// Hive & MaxCompute
-				columnDef = "(feature STRING, dfc STRING, gain STRING)"
-			}
-			createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s %s;`, tableName, columnDef)
-		} else {
-			labelCol, ok := ir.Attributes["label_col"]
-			if !ok {
-				return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining deep models")
-			}
-			createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
-			if e != nil {
-				return e
-			}
-		}
-	} else if modelType == model.XGBOOST {
-		labelCol, ok := ir.Attributes["label_col"]
-		if !ok {
-			return fmt.Errorf("need to specify WITH label_col=lable_col_name when explaining xgboost models")
-		}
-		createStmt, e = getCreateShapResultSQL(db, tableName, ir.Select, labelCol.(string))
-		if e != nil {
-			return e
-		}
-	} else {
-		return fmt.Errorf("not supported modelType %d for creating Explain result table", modelType)
-	}
-
-	if _, e := db.Exec(createStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", createStmt, e)
-	}
-	return nil
-}
-
 func copyPythonPackage(packageName, dst string) error {
 	path, e := findPyModulePath(packageName)
 	if e != nil {

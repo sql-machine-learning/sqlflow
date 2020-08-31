@@ -16,9 +16,10 @@ package pai
 import (
 	"bytes"
 	"fmt"
-	"sqlflow.org/sqlflow/go/model"
 	"strings"
 	"text/template"
+
+	"sqlflow.org/sqlflow/go/model"
 
 	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"sqlflow.org/sqlflow/go/codegen/xgboost"
@@ -232,6 +233,7 @@ func Explain(ir *ir.ExplainStmt, session *pb.Session, tarball, paramsFile, model
 			DataSource:       session.DbConnStr,
 			DatasetSQL:       ir.Select,
 			ResultTable:      ir.Into,
+			Explainer:        ir.Explainer,
 			IsPAI:            tensorflow.IsPAI(),
 			PAIExplainTable:  ir.TmpExplainTable,
 			HDFSNameNodeAddr: session.HdfsNamenodeAddr,
