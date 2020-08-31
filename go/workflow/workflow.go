@@ -60,6 +60,11 @@ func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Log
 	if e != nil {
 		return "", e
 	}
+	sqlProgram, e = parser.RemoveCommentInSQLStatement(sqlProgram)
+	if e != nil {
+		return "", e
+	}
+
 	var yaml string
 	var wf Workflow
 
