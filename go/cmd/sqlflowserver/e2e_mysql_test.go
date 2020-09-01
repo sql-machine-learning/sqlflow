@@ -54,6 +54,71 @@ INTO sqlflow_models.custom_loop_model_eval_result;`, caseTrainTable)
 	}
 }
 
+func caseTrainXGBoostMultiClassi(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`
+SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH
+	objective="multi:softmax",
+	num_class=3
+LABEL class
+INTO sqlflow_models.my_xgb_multi_model;
+`)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL := `
+SELECT * FROM iris.test
+TO PREDICT iris.xgb_pred_result.class
+USING sqlflow_models.my_xgb_multi_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+
+	showPred := `SELECT * FROM iris.xgb_pred_result LIMIT 5;`
+	_, rows, _, err := connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("Run showPred error: %v", err)
+	}
+	for _, row := range rows {
+		a.True(EqualAny(int64(0), row[4]) || EqualAny(int64(1), row[4]) || EqualAny(int64(2), row[4]))
+	}
+
+	trainSQL = fmt.Sprintf(`
+SELECT * FROM iris.train WHERE class < 2
+TO TRAIN xgboost.gbtree
+WITH
+	objective="binary:logistic"
+LABEL class
+INTO sqlflow_models.my_xgb_multi_model;
+`)
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL = `
+SELECT * FROM iris.test WHERE class < 2
+TO PREDICT iris.xgb_pred_result.class
+USING sqlflow_models.my_xgb_multi_model;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+	showPred = `SELECT * FROM iris.xgb_pred_result LIMIT 5;`
+	_, rows, _, err = connectAndRunSQL(showPred)
+	if err != nil {
+		a.Fail("Run showPred error: %v", err)
+	}
+	for _, row := range rows {
+		a.True(EqualAny(int64(0), row[4]) || EqualAny(int64(1), row[4]))
+	}
+}
+
 func TestEnd2EndMySQL(t *testing.T) {
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
@@ -90,6 +155,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)
 
 	// xgboost cases
+	t.Run("caseTrainXGBoostMultiClassi", caseTrainXGBoostMultiClassi)
 	t.Run("caseTrainXGBoostRegressionConvergence", caseTrainXGBoostRegressionConvergence)
 	t.Run("CasePredictXGBoostRegression", casePredictXGBoostRegression)
 

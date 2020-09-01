@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -101,26 +102,35 @@ func sqlRequest(sql string) *pb.Request {
 	return &pb.Request{Sql: sql, Session: se}
 }
 
-// AssertEqualAny checks any type of returned protobuf message to an interface
-func AssertEqualAny(a *assert.Assertions, expected interface{}, actual *any.Any) {
+// EqualAny checks any type of returned protobuf message to an interface
+func EqualAny(expected interface{}, actual *any.Any) bool {
 	switch actual.TypeUrl {
 	case "type.googleapis.com/google.protobuf.StringValue":
 		b := wrappers.StringValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(expected, b.Value)
+		if expected == b.Value {
+			return true
+		}
 	case "type.googleapis.com/google.protobuf.FloatValue":
 		b := wrappers.FloatValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(float32(expected.(float64)), b.Value)
+		if math.Abs(expected.(float64)-float64(b.Value)) < 1e-7 {
+			return true
+		}
 	case "type.googleapis.com/google.protobuf.DoubleValue":
 		b := wrappers.DoubleValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(expected.(float64), b.Value)
+		if math.Abs(expected.(float64)-b.Value) < 1e-7 {
+			return true
+		}
 	case "type.googleapis.com/google.protobuf.Int64Value":
 		b := wrappers.Int64Value{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(expected.(int64), b.Value)
+		if expected.(int64) == b.Value {
+			return true
+		}
 	}
+	return false
 }
 
 // AssertGreaterEqualAny checks the protobuf value is greater than expected value.
