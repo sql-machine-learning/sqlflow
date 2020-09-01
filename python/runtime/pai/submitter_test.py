@@ -196,7 +196,6 @@ WITH objective="multi:softprob", num_class=3, eta=0.4, booster="gbtree"
 LABEL class
 INTO e2etest_xgb_classify_model;"""
         model_params = {
-            "booster": "gbtree",
             "eta": 0.4,
             "num_class": 3,
             "objective": "multi:softprob"
@@ -207,12 +206,11 @@ INTO e2etest_xgb_classify_model;"""
             [fc.NumericColumn(fd.FieldDesc(name="sepal_length"))]
         }
         label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
-
         train(testing.get_datasource(), original_sql,
               "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-              "select * from alifin_jtest_dev.sqlflow_iris_test", "XGBoost",
-              "", feature_column_map, label_column, model_params, train_params,
-              "e2etest_xgb_classify_model", None)
+              "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
+              "xgboost.gbtree", "", feature_column_map, label_column,
+              model_params, train_params, "e2etest_xgb_classify_model", None)
 
     def test_submit_pai_xgb_predict_task(self):
         predict(testing.get_datasource(),

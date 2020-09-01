@@ -145,7 +145,7 @@ def train_step(original_sql,
                                                    label_column,
                                                    n=1000)
     feature_columns = compile_ir_feature_columns(fc_map_ir,
-                                                 EstimatorType.TENSORFLOW)
+                                                 EstimatorType.XGBOOST)
     field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
@@ -158,6 +158,8 @@ def train_step(original_sql,
     epoch = train_params.get("epoch", 1)
     load_pretrained_model = True if load else False
     disk_cache = train_params.get("disk_cache", False)
+
+    print("validation_select", validation_select)
 
     if is_dist_train:
         dist_train(flags=FLAGS,

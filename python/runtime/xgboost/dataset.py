@@ -252,6 +252,7 @@ def pai_dataset(filename,
                 batch_size=None,
                 feature_column_code="",
                 raw_data_dir=None):
+    print("in pai_dataset: ", pai_table, filename, "batch_size: ", batch_size)
     from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
@@ -285,6 +286,7 @@ def pai_dataset(filename,
     slice_id = rank
     slice_total = 0
     while slice_id < slice_count:
+        print("apply_async: ", slice_id)
         pool.apply_async(thread_worker, (slice_id, ))
         slice_id += nworkers
         slice_total += 1
@@ -292,8 +294,12 @@ def pai_dataset(filename,
     if batch_size is None:
         pool.close()
         pool.join()
+        print("batch_size is None, ", os.listdir("."))
+        with open(filename) as fn:
+            print(fn.readlines())
         yield load_dmatrix('{0}#{0}.cache'.format(dname) if cache else dname)
         return
+    print("batch_size is not None...")
 
     for _ in six.moves.range(slice_total):
         slice_id = complete_queue.get(block=True)
