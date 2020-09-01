@@ -109,3 +109,41 @@ def train(datasource,
                     feature_column_code=feature_columns_code,
                     model_repo_image=model_repo_image,
                     original_sql=original_sql)
+
+
+def train_step(original_sql,
+               model_image,
+               estimator_string,
+               datasource,
+               select,
+               validation_select,
+               pai_table,
+               pai_val_table,
+               model_params,
+               train_params,
+               feature_column_map,
+               label_column,
+               save,
+               load=None):
+    FLAGS = define_tf_flags()
+    num_workers = len(FLAGS.worker_hosts.split(","))
+    is_dist_train = num_workers > 1
+    oss_model_dir = FLAGS.sqlflow_oss_modeldir
+
+    if load:
+        oss.load_file(oss_model_dir_to_load, "my_model")
+
+    transform_fn = ComposedColumnTransformer(feature_column_names,
+                                             *feature_columns)
+
+    conn = db.connect_with_data_source(datasource)
+    fc_map_ir, fc_label_ir = infer_feature_columns(conn,
+                                                   select,
+                                                   feature_column_map,
+                                                   label_column,
+                                                   n=1000)
+    fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.TENSORFLOW)
+    field_descs = get_ordered_field_descs(fc_map_ir)
+    feature_column_names = [fd.name for fd in field_descs]
+    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    label_meta = label_column.get_field_desc()[0].to_dict()

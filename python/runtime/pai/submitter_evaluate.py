@@ -54,19 +54,31 @@ def get_evaluate_metrics(model_type, model_attrs):
 
 
 def submit_pai_evaluate(datasource,
-                        model_name,
+                        original_sql,
                         select,
+                        model_name,
+                        model_params,
                         result_table,
-                        model_attrs,
                         user=""):
     """Submit a PAI evaluation task
 
     Args:
-        datasource: current datasource
-        model_name: model used to do evaluation
-        select: sql statement to get evaluate data set
-        result_table: the table name to save result
-        model_params: dict, Params for training, crossponding to WITH claus
+        datasource: string
+            Like: maxcompute://ak:sk@domain.com/api?
+                  curr_project=test_ci&scheme=http
+        original_sql: string
+            Original "TO PREDICT" statement.
+        select: string
+            SQL statement to get prediction data set.
+        model_name: string
+            Model to load and do prediction.
+        model_params: dict
+            Params for training, crossponding to WITH clause.
+        result_table: string
+            The table name to save prediction result.
+        user: string
+            A string to identify the user, used to load model from the user's
+            directory.
     """
 
     params = dict(locals())
@@ -75,6 +87,8 @@ def submit_pai_evaluate(datasource,
     project = table_ops.get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
+    params["result_table"] = result_table
+
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
                                                        model_name,
                                                        user=user)
@@ -88,11 +102,11 @@ def submit_pai_evaluate(datasource,
     data_table = table_ops.create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
 
-    metrics = get_evaluate_metrics(model_type, model_attrs)
+    metrics = get_evaluate_metrics(model_type, model_params)
     params["metrics"] = metrics
     create_evaluate_result_table(datasource, result_table, metrics)
 
-    conf = cluster_conf.get_cluster_config(model_attrs)
+    conf = cluster_conf.get_cluster_config(model_params)
 
     if model_type == EstimatorType.XGBOOST:
         params["entry_type"] = "evaluate_xgb"

@@ -122,8 +122,7 @@ def submit_pai_train(datasource,
 
     train_table, val_table = table_ops.create_train_and_eval_tmp_table(
         select, validation_select, datasource)
-    train_params["pai_table"], train_params[
-        "pai_val_table"] = train_table, val_table
+    params["pai_table"], params["pai_val_table"] = train_table, val_table
 
     # clean target dir
     path_to_save = pai_model.get_oss_model_save_path(datasource,
@@ -132,7 +131,6 @@ def submit_pai_train(datasource,
     path_to_load = pai_model.get_oss_model_save_path(datasource,
                                                      load,
                                                      user=user)
-    train_params["oss_model_dir"] = path_to_save
     if path_to_load == "" or path_to_load != path_to_save:
         pai_model.clean_oss_model_path(path_to_save + "/")
 

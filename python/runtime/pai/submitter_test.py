@@ -169,10 +169,24 @@ USING e2etest_pai_dnn;"""
                 "alifin_jtest_dev.pai_dnn_predict")
 
     def test_submit_pai_explain_task(self):
-        explain(testing.get_datasource(),
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO EXPLAIN e2etest_pai_dnn
+WITH label_col=class
+INTO alifin_jtest_dev.pai_dnn_explain_result;"""
+        explain(testing.get_datasource(), original_sql,
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
-                "alifin_jtest_dev.pai_dnn_explain_result", "e2etest_pai_dnn",
-                {"label_col": "class"})
+                "e2etest_pai_dnn", {"label_col": "class"},
+                "alifin_jtest_dev.pai_dnn_explain_result")
+
+    def test_submit_pai_tf_evaluate_task(self):
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO EXPLAIN e2etest_pai_dnn
+WITH label_col=class
+INTO alifin_jtest_dev.pai_dnn_explain_result;"""
+        evaluate(testing.get_datasource(), original_sql,
+                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+                 "e2etest_pai_dnn", {"validation.metrics": "Accuracy,Recall"},
+                 "alifin_jtest_dev.e2etest_pai_dnn_evaluate_result")
 
     def test_submit_xgb_train_task(self):
         model_params = {
@@ -254,12 +268,6 @@ USING e2etest_pai_dnn;"""
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
                 "alifin_jtest_dev.e2etest_random_forest_explain_result",
                 "e2e_test_random_forest", {"label_col": "class"})
-
-    def test_submit_pai_tf_evaluate_task(self):
-        evaluate(testing.get_datasource(), "e2etest_pai_dnn",
-                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-                 "alifin_jtest_dev.e2etest_pai_dnn_evaluate_result",
-                 {"validation.metrics": "Accuracy,Recall"})
 
     def test_submit_pai_xgb_evaluate_task(self):
         evaluate(testing.get_datasource(), "e2etest_xgb_classify_model",

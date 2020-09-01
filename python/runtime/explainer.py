@@ -56,6 +56,17 @@ def plot_and_save(plotfunc,
         # The plotille text backend
         matplotlib.use('module://plotille_text_backend')
         import matplotlib.pyplot as plt_text_backend
-        sys.stdout.isatty = lambda: True
+        sys.stdout = PseudoTTY(sys.stdout)
         plotfunc()
         plt_text_backend.savefig(filename, bbox_inches='tight')
+
+
+class PseudoTTY(object):
+    def __init__(self, underlying):
+        self.__underlying = underlying
+
+    def __getattr__(self, name):
+        return getattr(self.__underlying, name)
+
+    def isatty(self):
+        return True

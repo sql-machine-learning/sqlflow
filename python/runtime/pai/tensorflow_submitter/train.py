@@ -140,6 +140,8 @@ def train_step(original_sql,
                datasource,
                select,
                validation_select,
+               pai_table,
+               pai_val_table,
                model_params,
                train_params,
                feature_column_map,
@@ -179,8 +181,6 @@ def train_step(original_sql,
 
     # extract params for training.
     verbose = train_params.get("verbose", 1)
-    pai_table = train_params["pai_table"]
-    pai_val_table = train_params["pai_val_table"]
     batch_size = train_params.get("batch_size", 1)
     epoch = train_params.get("epoch", 1)
     validation_metrics = train_params.get("validation_metrics", ["Accuracy"])
