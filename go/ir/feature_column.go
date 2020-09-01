@@ -14,6 +14,7 @@
 package ir
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -23,6 +24,7 @@ type FeatureColumn interface {
 	GetFieldDesc() []*FieldDesc
 	ApplyTo(*FieldDesc) (FeatureColumn, error)
 	GenPythonCode() string
+	json.Marshaler
 }
 
 // CategoryColumn corresponds to categorical column
@@ -41,10 +43,10 @@ type FieldDesc struct {
 	IsSparse  bool   `json:"is_sparse"` // If the field saves a sparse tensor.
 	// Vocabulary stores all possible enumerate values if the column type is string,
 	// e.g. the column values are: "MALE", "FEMALE", "NULL"
-	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
+	Vocabulary map[string]bool `json:"vocabulary"` // use a map to generate a list without duplication
 	// if the column data is used as embedding(category_column()), the `num_buckets` should use the maxID
 	// appeared in the sample data. if error still occurs, users should set `num_buckets` manually.
-	MaxID int64
+	MaxID int64 `json:"max_id"`
 }
 
 // GenPythonCode generate Python code to construct a runtime.feature.field_desc
@@ -69,6 +71,7 @@ func (fd *FieldDesc) GenPythonCode() string {
 }
 
 // Possible DType values in FieldDesc
+// Should keep the order with DataType in python/runtime/feature/field_desc.py
 const (
 	Int int = iota
 	Float
@@ -97,6 +100,16 @@ func (c *NumericColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
 func (c *NumericColumn) GenPythonCode() string {
 	code := fmt.Sprintf(`runtime.feature.column.NumericColumn(%s)`, c.FieldDesc.GenPythonCode())
 	return code
+}
+
+// MarshalJSON converts NumericColumn to JSON
+func (c *NumericColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "NumericColumn",
+		"value": map[string]interface{}{
+			"field_desc": c.FieldDesc,
+		},
+	})
 }
 
 // BucketColumn represents `tf.feature_column.bucketized_column`
@@ -135,6 +148,17 @@ func (c *BucketColumn) GenPythonCode() string {
 		AttrToPythonValue(c.Boundaries),
 	)
 	return code
+}
+
+// MarshalJSON converts BucketColumn to JSON
+func (c *BucketColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "BucketColumn",
+		"value": map[string]interface{}{
+			"source_column": c.SourceColumn,
+			"boundaries":    c.Boundaries,
+		},
+	})
 }
 
 // CrossColumn represents `tf.feature_column.crossed_column`
@@ -190,6 +214,17 @@ func (c *CrossColumn) GenPythonCode() string {
 	return code
 }
 
+// MarshalJSON converts CrossColumn to JSON
+func (c *CrossColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "CrossColumn",
+		"value": map[string]interface{}{
+			"keys":             c.Keys,
+			"hash_bucket_size": c.HashBucketSize,
+		},
+	})
+}
+
 // CategoryIDColumn represents `tf.feature_column.categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/categorical_column_with_identity
 type CategoryIDColumn struct {
@@ -219,6 +254,17 @@ func (c *CategoryIDColumn) GenPythonCode() string {
 		c.BucketSize,
 	)
 	return code
+}
+
+// MarshalJSON converts CategoryIDColumn to JSON
+func (c *CategoryIDColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "CategoryIDColumn",
+		"value": map[string]interface{}{
+			"field_desc":  c.FieldDesc,
+			"bucket_size": c.BucketSize,
+		},
+	})
 }
 
 // CategoryHashColumn represents `tf.feature_column.categorical_column_with_hash_bucket`
@@ -252,6 +298,17 @@ func (c *CategoryHashColumn) GenPythonCode() string {
 	return code
 }
 
+// MarshalJSON converts CategoryHashColumn to JSON
+func (c *CategoryHashColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "CategoryHashColumn",
+		"value": map[string]interface{}{
+			"field_desc":  c.FieldDesc,
+			"bucket_size": c.BucketSize,
+		},
+	})
+}
+
 // SeqCategoryIDColumn represents `tf.feature_column.sequence_categorical_column_with_identity`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/sequence_categorical_column_with_identity
 type SeqCategoryIDColumn struct {
@@ -281,6 +338,17 @@ func (c *SeqCategoryIDColumn) GenPythonCode() string {
 		c.BucketSize,
 	)
 	return code
+}
+
+// MarshalJSON converts SeqCategoryIDColumn to JSON
+func (c *SeqCategoryIDColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "SeqCategoryIDColumn",
+		"value": map[string]interface{}{
+			"field_desc":  c.FieldDesc,
+			"bucket_size": c.BucketSize,
+		},
+	})
 }
 
 // EmbeddingColumn represents `tf.feature_column.embedding_column`
@@ -345,6 +413,20 @@ func (c *EmbeddingColumn) GenPythonCode() string {
 	return code
 }
 
+// MarshalJSON converts EmbeddingColumn to JSON
+func (c *EmbeddingColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "EmbeddingColumn",
+		"value": map[string]interface{}{
+			"category_column": c.CategoryColumn,
+			"dimension":       c.Dimension,
+			"combiner":        c.Combiner,
+			"initializer":     c.Initializer,
+			"name":            c.Name,
+		},
+	})
+}
+
 // IndicatorColumn represents `tf.feature_column.indicator_column`
 // ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/indicator_column
 type IndicatorColumn struct {
@@ -393,4 +475,15 @@ func (c *IndicatorColumn) GenPythonCode() string {
 		c.Name,
 	)
 	return code
+}
+
+// MarshalJSON converts IndicatorColumn to JSON
+func (c *IndicatorColumn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type": "IndicatorColumn",
+		"value": map[string]interface{}{
+			"category_column": c.CategoryColumn,
+			"name":            c.Name,
+		},
+	})
 }

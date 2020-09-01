@@ -209,10 +209,10 @@ func fillFieldDescByDataType(cellData string, fieldDescMap FieldDescMap, fieldNa
 			fieldDescMap[fieldName].Shape = []int{1}
 			if fieldDescMap[fieldName].Vocabulary == nil {
 				// initialize the vocabulary map
-				fieldDescMap[fieldName].Vocabulary = make(map[string]string)
+				fieldDescMap[fieldName].Vocabulary = make(map[string]bool)
 			}
 			if _, ok := fieldDescMap[fieldName].Vocabulary[cellData]; !ok {
-				fieldDescMap[fieldName].Vocabulary[cellData] = cellData
+				fieldDescMap[fieldName].Vocabulary[cellData] = true
 			}
 		}
 	} else {

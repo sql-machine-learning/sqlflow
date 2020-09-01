@@ -14,6 +14,7 @@
 package ir
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 
@@ -228,6 +229,12 @@ func TestFeatureDerivation(t *testing.T) {
 	e := InferFeatureColumns(trainStmt, db)
 	a.NoError(e)
 
+	_, e = json.Marshal(trainStmt.Features)
+	a.NoError(e)
+
+	_, e = json.Marshal(trainStmt.Label)
+	a.NoError(e)
+
 	fc1 := trainStmt.Features["feature_columns"][0]
 	nc, ok := fc1.(*NumericColumn)
 	a.True(ok)
@@ -289,6 +296,12 @@ func TestFeatureDerivation(t *testing.T) {
 	e = InferFeatureColumns(trainStmt, db)
 	a.NoError(e)
 
+	_, e = json.Marshal(trainStmt.Features)
+	a.NoError(e)
+
+	_, e = json.Marshal(trainStmt.Label)
+	a.NoError(e)
+
 	a.Equal(5, len(trainStmt.Features["feature_columns"]))
 
 	fc1 = trainStmt.Features["feature_columns"][0]
@@ -347,6 +360,12 @@ func TestFeatureDerivationNoColumnClause(t *testing.T) {
 
 	trainStmt := mockTrainStmtIrisNoColumnClause()
 	e := InferFeatureColumns(trainStmt, db)
+	a.NoError(e)
+
+	_, e = json.Marshal(trainStmt.Features)
+	a.NoError(e)
+
+	_, e = json.Marshal(trainStmt.Label)
 	a.NoError(e)
 
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))
