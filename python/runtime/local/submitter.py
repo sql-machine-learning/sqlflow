@@ -11,8 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.dbapi import table_writer
+from runtime.local.xgboost_submitter.evaluate import \
+    evaluate as xgboost_evaluate
 from runtime.local.xgboost_submitter.predict import pred as xgboost_pred
 from runtime.local.xgboost_submitter.train import train as xgboost_train
+from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
 
 
@@ -36,9 +40,14 @@ def submit_local_train(datasource, estimator_string, select, validation_select,
             The pre-trained model name to load
         train_params: dict
             Extra train params, will be passed to runtime.tensorflow.train
-            or runtime.xgboost.train, required fields: original_sql,
-            model_image, feature_column_map, label_column; optional fields:
-            disk_cache, batch_size, epoch.
+            or runtime.xgboost.train. Required fields:
+            - original_sql: Original SQLFlow statement.
+            - model_image: Docker image used for training.
+            - feature_column_map: A map of Python feature column IR.
+            - label_column: Feature column instance describing the label.
+            - disk_cache (optional): Use dmatrix disk cache if True.
+            - batch_size (optional): Split data to batches and train.
+            - epoch (optional): Epochs to train.
     """
     if estimator_string.lower().startswith("xgboost"):
         # pop required params from train_params
@@ -69,5 +78,29 @@ def submit_local_pred(datasource, select, result_table, pred_label_name, load):
     if model.get_type() == EstimatorType.XGBOOST:
         xgboost_pred(datasource, select, result_table, pred_label_name, model)
     else:
-        raise NotImplementedError("not implemented model type: %s" %
-                                  model.get_type())
+        raise NotImplementedError("not implemented model type: {}".format(
+            model.get_type()))
+
+
+def submit_local_evaluate(datasource, select, result_table, pred_label_name,
+                          load, validation_metrics):
+    model = Model.load_from_db(datasource, load)
+    if model.get_type() == EstimatorType.XGBOOST:
+        xgboost_evaluate(datasource, select, result_table, model,
+                         pred_label_name, validation_metrics)
+    else:
+        raise NotImplementedError("not implemented model type: {}".format(
+            model.get_type()))
+
+
+def submit_local_show_train(datasource, model_name):
+    meta = read_metadata_from_db(datasource, model_name)
+    original_sql = meta.get("original_sql")
+    if not original_sql:
+        raise ValueError("cannot find the train SQL statement")
+
+    result_set = [(model_name, original_sql)]
+    header = ["Model", "Train Statement"]
+    writer = table_writer.ProtobufWriter(result_set, header)
+    for line in writer.dump_strings():
+        print(line)

@@ -32,7 +32,6 @@ import (
 
 	"sqlflow.org/sqlflow/go/codegen/optimize"
 
-	"sqlflow.org/sqlflow/go/codegen/pai"
 	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"sqlflow.org/sqlflow/go/codegen/xgboost"
 	"sqlflow.org/sqlflow/go/database"
@@ -276,10 +275,10 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	var modelType int
 	if cl.TrainStmt.GetModelKind() == ir.XGBoost {
 		code, err = xgboost.Explain(cl, s.Session)
-		modelType = pai.ModelTypeXGBoost
+		modelType = model.XGBOOST
 	} else {
 		code, err = tensorflow.Explain(cl, s.Session)
-		modelType = pai.ModelTypeTF
+		modelType = model.TENSORFLOW
 	}
 
 	if cl.Into != "" {
@@ -295,15 +294,17 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	if err = s.runProgram(code, false); err != nil {
 		return err
 	}
-	img, err := readExplainResult(path.Join(s.Cwd, "summary.png"))
-	if err != nil {
-		return err
+	if cl.Into == "" {
+		img, err := readExplainResult(path.Join(s.Cwd, "summary.png"))
+		if err != nil {
+			return err
+		}
+		termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
+		if err != nil {
+			return err
+		}
+		s.Writer.Write(Figures{img, string(termFigure)})
 	}
-	termFigure, err := ioutil.ReadFile(path.Join(s.Cwd, "summary.txt"))
-	if err != nil {
-		return err
-	}
-	s.Writer.Write(Figures{img, string(termFigure)})
 	return nil
 }
 

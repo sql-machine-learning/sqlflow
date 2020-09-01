@@ -17,6 +17,7 @@ import functools
 import numpy as np
 import tensorflow as tf
 from runtime import db
+from runtime.feature.field_desc import DataType
 
 
 def parse_sparse_feature(features, label, feature_column_names, feature_metas):
@@ -51,6 +52,13 @@ def get_dtype(type_str):
         return tf.int64
     elif type_str == "string":
         return tf.string
+    # FIXME(typhoonzero): add types to work with refactored code.
+    elif type_str == DataType.INT64:
+        return tf.int64
+    elif type_str == DataType.FLOAT32:
+        return tf.float32
+    elif type_str == DataType.STRING:
+        return tf.string
     else:
         raise TypeError("not supported dtype: %s" % type_str)
 
@@ -61,6 +69,12 @@ def tf_generator(gen, selected_cols, feature_column_names, feature_metas):
             features = db.read_features_from_row(row, selected_cols,
                                                  feature_column_names,
                                                  feature_metas)
+            features = list(features)
+            for i, f in enumerate(features):
+                if len(f) == 1 and isinstance(f[0], np.ndarray):
+                    features[i] = f[0]
+            features = tuple(features)
+
             if label is None:
                 yield (features, )
             else:
@@ -171,17 +185,35 @@ def pai_dataset(table,
                 slice_id=0,
                 slice_count=1):
     selected_cols = copy.copy(feature_column_names)
-    dtypes = [
-        "string"
-        if feature_metas[n]["delimiter"] else feature_metas[n]["dtype"]
-        for n in feature_column_names
-    ]
+    dtypes = []
+    for n in feature_column_names:
+        if feature_metas[n]["delimiter"]:
+            dtypes.append("string")
+        else:
+            # FIXME(typhoonzero): add types to work with refactored code.
+            if feature_metas[n]["dtype"] == DataType.INT64:
+                dtypes.append("int64")
+            elif feature_metas[n]["dtype"] == DataType.FLOAT32:
+                dtypes.append("float32")
+            elif feature_metas[n]["dtype"] == DataType.STRING:
+                dtypes.append("string")
+            else:
+                dtypes.append(feature_metas[n]["dtype"])
+
     if label_meta and label_meta["feature_name"]:
         selected_cols.append(label_meta["feature_name"])
         if label_meta["delimiter"] != "":
             dtypes.append("string")
         else:
-            dtypes.append(label_meta["dtype"])
+            # FIXME(typhoonzero): add types to work with refactored code.
+            if label_meta["dtype"] == DataType.INT64:
+                dtypes.append("int64")
+            elif label_meta["dtype"] == DataType.FLOAT32:
+                dtypes.append("float32")
+            elif label_meta["dtype"] == DataType.STRING:
+                dtypes.append("string")
+            else:
+                dtypes.append(label_meta["dtype"])
 
     import paiio
     return paiio.TableRecordDataset(

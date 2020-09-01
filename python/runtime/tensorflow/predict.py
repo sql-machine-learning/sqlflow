@@ -17,6 +17,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from runtime import db
+from runtime.feature.field_desc import DataType
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.import_model import import_model
@@ -159,17 +160,17 @@ def estimator_predict(estimator, model_params, save, result_table,
     def add_to_example(example, x, i):
         feature_name = feature_column_names[i]
         dtype_str = feature_metas[feature_name]["dtype"]
+        print("add to example: ", feature_name, feature_metas[feature_name])
         if feature_metas[feature_name]["delimiter"] != "":
-            if feature_metas[feature_name]["is_sparse"]:
-                # NOTE(typhoonzero): sparse feature will get
-                # (indices,values,shape) here, use indices only
-                values = x[0][i][0].flatten()
-            else:
-                values = x[0][i].flatten()
-            if dtype_str == "float32" or dtype_str == "float64":
+            # NOTE(typhoonzero): sparse feature will get
+            # (indices,values,shape) here, use indices only
+            values = x[0][i][0].flatten()
+            if (dtype_str == "float32" or dtype_str == "float64"
+                    or dtype_str == DataType.FLOAT32):
                 example.features.feature[feature_name].float_list.value.extend(
                     list(values))
-            elif dtype_str == "int32" or dtype_str == "int64":
+            elif (dtype_str == "int32" or dtype_str == "int64"
+                  or dtype_str == DataType.INT64):
                 example.features.feature[feature_name].int64_list.value.extend(
                     list(values))
         else:
@@ -194,11 +195,13 @@ def estimator_predict(estimator, model_params, save, result_table,
                 if idx == -1:
                     raise ValueError(
                         "can not found feature %s in all feature columns")
-            if dtype_str == "float32" or dtype_str == "float64":
+            if (dtype_str == "float32" or dtype_str == "float64"
+                    or dtype_str == DataType.FLOAT32):
                 # need to pass a tuple(float, )
                 example.features.feature[feature_name].float_list.value.extend(
                     (float(x[0][i][0]), ))
-            elif dtype_str == "int32" or dtype_str == "int64":
+            elif (dtype_str == "int32" or dtype_str == "int64"
+                  or dtype_str == DataType.INT64):
                 numeric_type = type(tf.feature_column.numeric_column("tmp"))
                 if type(fc) == numeric_type:
                     example.features.feature[
@@ -208,7 +211,7 @@ def estimator_predict(estimator, model_params, save, result_table,
                     example.features.feature[
                         feature_name].int64_list.value.extend(
                             (int(x[0][i][0]), ))
-            elif dtype_str == "string":
+            elif dtype_str == "string" or dtype_str == DataType.STRING:
                 example.features.feature[feature_name].bytes_list.value.extend(
                     x[0][i])
 

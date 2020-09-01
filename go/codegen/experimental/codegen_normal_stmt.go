@@ -48,8 +48,8 @@ type normalStmtFiller struct {
 	Stmt       string
 }
 
-// GenerateNormalStmtStep generate step Python code to run a normal SQL statement.
-func GenerateNormalStmtStep(stmt string, session *pb.Session, stepIndex int) (string, error) {
+// generateNormalStmtStep generate step Python code to run a normal SQL statement.
+func generateNormalStmtStep(stmt string, stepIndex int, session *pb.Session) (string, error) {
 	filler := &normalStmtFiller{
 		StepIndex:  stepIndex,
 		DataSource: session.DbConnStr,

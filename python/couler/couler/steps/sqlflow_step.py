@@ -22,6 +22,7 @@ def escape_sql(original_sql):
     return original_sql.replace('\\', '\\\\').replace('"', r'\"').replace(
         "`", r'\`').replace("$", r'\$')
 
+
 def sqlflow(sql,
             image="sqlflow/sqlflow",
             env=None,

@@ -23,7 +23,7 @@ from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
 from runtime.model.model import Model
-from runtime.xgboost.dataset import xgb_dataset
+from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 
 def pred(datasource, select, result_table, pred_label_name, model):
@@ -148,8 +148,8 @@ def _store_predict_result(preds, result_table, result_column_names,
                     break
 
                 row = [
-                    item for i, item in enumerate(line.strip().split("/"))
-                    if i != train_label_idx
+                    item for i, item in enumerate(line.strip().split(
+                        DMATRIX_FILE_SEP)) if i != train_label_idx
                 ]
                 row.append(str(preds[line_no]))
                 w.write(row)

@@ -38,7 +38,7 @@ def connect(uri):
     """
     parts = uri.split("://")
     if len(parts) < 2:
-        raise ValueError("Input should be a valid uri.")
+        raise ValueError("Input should be a valid uri.", uri)
     if parts[0] not in DRIVER_MAP:
         raise ValueError("Can't find driver for scheme: %s" % parts[0])
     return DRIVER_MAP[parts[0]](uri)

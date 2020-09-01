@@ -39,6 +39,15 @@ const (
 	modelMetaFileName = "model_meta.json"
 )
 
+const (
+	// TENSORFLOW is the mode type that trained by TensorFlow.
+	TENSORFLOW = iota
+	// XGBOOST is the model type that trained by XGBoost models.
+	XGBOOST
+	// PAIML is the model type that trained by PAI machine learning algorithm toolkit
+	PAIML
+)
+
 // Model represent a trained model, which could be saved to a filesystem or sqlfs.
 type Model struct {
 	workDir     string           // We don't expose and gob workDir; instead we tar it.

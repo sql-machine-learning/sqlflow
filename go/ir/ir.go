@@ -217,11 +217,11 @@ func (stmt *ShowTrainStmt) GetOriginalSQL() string { return stmt.OriginalSQL }
 // OptimizeExpr is the intermediate code for generating target solver expressions.
 type OptimizeExpr struct {
 	// Objective expression or constraint expression string tokens prepared for generate target code.
-	ExpressionTokens []string
+	ExpressionTokens []string `json:"tokens"`
 	// constraint group by like: SUM(markets) <= capacity GROUP BY plants, will expand to
 	// for p in plants:
 	//     sum(m for m in markets) <= capacity
-	GroupBy string
+	GroupBy string `json:"group_by"`
 }
 
 // OptimizeStmt is the intermediate representation of "SELECT TO MAXIMIZE|MINIMIZE" statement.

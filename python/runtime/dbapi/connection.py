@@ -93,6 +93,7 @@ class Connection(object):
     def __init__(self, conn_uri):
         self.uristr = conn_uri
         self.uripts = self._parse_uri()
+        self.driver = self.uripts.scheme
         self.params = parse_qs(
             self.uripts.query,
             keep_blank_values=True,
@@ -166,13 +167,15 @@ class Connection(object):
         Returns:
             True on success, False otherwise
         """
+        rs = None
         try:
             rs = self._get_result_set(statement)
             return rs.success()
-        except:  # noqa: E722
-            return False
+        except Exception as e:  # noqa: E722
+            raise e
         finally:
-            rs.close()
+            if rs:
+                rs.close()
 
     def get_table_schema(self, table_name):
         """Get table schema for given table

@@ -77,6 +77,7 @@ for _ in {1..30}; do
     if [[ "${MYSQL_POD_READY}" == "true" ]]; then
         MYSQL_POD_IP=$(kubectl get pod mysql -o jsonpath='{.status.podIP}')
         echo "MySQL pod IP: $MYSQL_POD_IP"
+        export SQLFLOW_TEST_DB="mysql"
         export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
 
         go generate ./...

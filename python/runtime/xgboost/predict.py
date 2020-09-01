@@ -15,7 +15,8 @@ import numpy as np
 import xgboost as xgb
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
-from runtime.xgboost.dataset import xgb_dataset
+from runtime.model.metadata import load_metadata
+from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 DEFAULT_PREDICT_BATCH_SIZE = 10000
 
@@ -55,6 +56,8 @@ def pred(datasource,
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
     print("Start predicting XGBoost model...")
+    if not model_params:
+        model_params = load_metadata("model_meta.json")["attributes"]
 
     selected_cols = db.selected_cols(conn, select)
 
@@ -75,9 +78,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                              feature_column_names, feature_metas, is_pai, conn,
                              result_table):
     preds = bst.predict(dpred)
-
-    # TODO(yancey1989): should save train_params and model_params
-    # not only on PAI submitter
     # TODO(yancey1989): output the original result for various
     # objective function.
     if model_params:
@@ -123,7 +123,8 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
             # FIXME(typhoonzero): how to output columns that are not used
             # as features, like ids?
             row = [
-                item for i, item in enumerate(line.strip().split("/"))
+                item
+                for i, item in enumerate(line.strip().split(DMATRIX_FILE_SEP))
                 if i != train_label_index
             ]
             row.append(str(preds[line_no]))
