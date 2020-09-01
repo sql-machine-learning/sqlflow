@@ -129,6 +129,21 @@ func EqualAny(expected interface{}, actual *any.Any) bool {
 		if expected.(int64) == b.Value {
 			return true
 		}
+	case "type.googleapis.com/google.protobuf.Int32Value":
+		b := wrappers.Int32Value{}
+		ptypes.UnmarshalAny(actual, &b)
+		// convert expected to int32 value to compare
+		v, ok := expected.(int32)
+		if !ok {
+			v64, ok := expected.(int64)
+			if !ok {
+				return false
+			}
+			v = int32(v64)
+		}
+		if v == b.Value {
+			return true
+		}
 	}
 	return false
 }
