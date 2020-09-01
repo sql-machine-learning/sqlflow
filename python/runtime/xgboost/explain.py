@@ -105,7 +105,7 @@ def xgb_shap_dataset(datasource,
         # column name would be "c" too.
         #
         # If the column "c" contains 3 features,
-        # the result column name would be "c-0", "c-1" and "c-2"
+        # the result column name would be "c_0", "c_1" and "c_2"
         if i == 0:
             offsets = np.cumsum([0] + sizes)
             column_names = []
@@ -116,7 +116,7 @@ def xgb_shap_dataset(datasource,
                     column_names.append(feature_names[j])
                 else:
                     for k in six.moves.range(start, end):
-                        column_names.append('{}-{}'.format(
+                        column_names.append('{}_{}'.format(
                             feature_names[j], k))
 
             xs = pd.DataFrame(columns=column_names)
