@@ -125,22 +125,23 @@ def submit_pai_train(datasource,
     params["pai_table"], params["pai_val_table"] = train_table, val_table
 
     # clean target dir
-    path_to_save = pai_model.get_oss_model_save_path(datasource,
-                                                     save,
-                                                     user=user)
-    path_to_load = pai_model.get_oss_model_save_path(datasource,
-                                                     load,
-                                                     user=user)
-    if path_to_load == "" or path_to_load != path_to_save:
-        pai_model.clean_oss_model_path(path_to_save + "/")
+    oss_path_to_save = pai_model.get_oss_model_save_path(datasource,
+                                                         save,
+                                                         user=user)
+    oss_path_to_load = pai_model.get_oss_model_save_path(datasource,
+                                                         load,
+                                                         user=user)
+    if oss_path_to_load == "" or oss_path_to_load != oss_path_to_save:
+        pai_model.clean_oss_model_path(oss_path_to_save + "/")
+    train_params["oss_path_to_load"] = oss_path_to_load
 
     # zip all required resource to a tarball
-    prepare_archive(cwd, estimator_string, path_to_save, params)
+    prepare_archive(cwd, estimator_string, oss_path_to_save, params)
 
     # submit pai task to execute the training
     cmd = get_pai_train_cmd(datasource, estimator_string, save, train_table,
                             val_table, model_params, train_params,
-                            path_to_save,
+                            oss_path_to_save,
                             "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
                             "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
 

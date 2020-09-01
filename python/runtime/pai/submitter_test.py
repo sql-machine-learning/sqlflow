@@ -189,6 +189,12 @@ INTO alifin_jtest_dev.pai_dnn_explain_result;"""
                  "alifin_jtest_dev.e2etest_pai_dnn_evaluate_result")
 
     def test_submit_xgb_train_task(self):
+        original_sql = """SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH objective="multi:softprob", num_class=3, eta=0.4, booster="gbtree"
+     validatioin.select="select * from alifin_jtest_dev.sqlflow_iris_test"
+LABEL class
+INTO e2etest_xgb_classify_model;"""
         model_params = {
             "booster": "gbtree",
             "eta": 0.4,
@@ -196,29 +202,17 @@ INTO alifin_jtest_dev.pai_dnn_explain_result;"""
             "objective": "multi:softprob"
         }
         train_params = {"num_boost_round": 10}
-        feature_columns_code = """
-            xgboost_extended.feature_column.numeric_column(
-                "sepal_length", shape=[1]),
-            xgboost_extended.feature_column.numeric_column(
-                "sepal_width", shape=[1]),
-            xgboost_extended.feature_column.numeric_column(
-                "petal_length", shape=[1]),
-            xgboost_extended.feature_column.numeric_column(
-                "petal_width", shape=[1])
-        """
-        train(testing.get_datasource(),
-              "XGBoost",
+        feature_column_map = {
+            "feature_columns":
+            [fc.NumericColumn(fd.FieldDesc(name="sepal_length"))]
+        }
+        label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
+
+        train(testing.get_datasource(), original_sql,
               "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-              "select * from alifin_jtest_dev.sqlflow_iris_train",
-              model_params,
-              "e2etest_xgb_classify_model",
-              None,
-              train_params=train_params,
-              feature_columns=eval("[%s]" % feature_columns_code),
-              feature_metas=iris_feature_metas,
-              label_meta=iris_label_meta,
-              feature_column_names=iris_feature_column_names,
-              feature_columns_code=feature_columns_code)
+              "select * from alifin_jtest_dev.sqlflow_iris_test", "XGBoost",
+              "", feature_column_map, label_column, model_params, train_params,
+              "e2etest_xgb_classify_model", None)
 
     def test_submit_pai_xgb_predict_task(self):
         predict(testing.get_datasource(),
