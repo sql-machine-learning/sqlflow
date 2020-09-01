@@ -116,6 +116,7 @@ def dump_dmatrix(filename,
                  batch_size=None,
                  transform_fn=None,
                  raw_data_dir=None):
+    print("in dump_dmatrix: ", filename)
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
 
@@ -131,6 +132,7 @@ def dump_dmatrix(filename,
                                                  feature_column_names,
                                                  feature_metas)
 
+            print("dump data features: ", filename, features)
             if raw_data_fid is not None:
                 raw_data_fid.write(
                     DMATRIX_FILE_SEP.join([str(r) for r in row]) + "\n")
@@ -165,7 +167,7 @@ def dump_dmatrix(filename,
 
             if has_label:
                 row_data = [str(label)] + row_data
-
+            print("dump data row_data: ", filename, features)
             f.write(DMATRIX_FILE_SEP.join(row_data) + "\n")
             row_id += 1
             # batch_size == None means use all data in generator
@@ -269,6 +271,7 @@ def pai_dataset(filename,
     complete_queue = queue.Queue()
 
     def thread_worker(slice_id):
+        print("in thread_worker: ", slice_id)
         p = Popen("{} -m {}".format(sys.executable, __name__),
                   shell=True,
                   stdin=PIPE)
@@ -278,7 +281,7 @@ def pai_dataset(filename,
                 pai_table, slice_id, slice_count, feature_column_code,
                 raw_data_dir
             ]))
-
+        print("end p.communicate...")
         assert p.returncode == 0, \
             "The subprocess raises error when reading data"
         complete_queue.put(slice_id)
@@ -295,11 +298,9 @@ def pai_dataset(filename,
         pool.close()
         pool.join()
         print("batch_size is None, ", os.listdir("."))
-        with open(filename) as fn:
-            print(fn.readlines())
+        print("batch_size is None, ", os.listdir("validate.txt"))
         yield load_dmatrix('{0}#{0}.cache'.format(dname) if cache else dname)
         return
-    print("batch_size is not None...")
 
     for _ in six.moves.range(slice_total):
         slice_id = complete_queue.get(block=True)
@@ -344,6 +345,8 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
     gen = db.db_generator(conn, None, label_meta=label_meta)()
     selected_cols = db.selected_cols(conn, None)
     filename = "{}/{}.txt".format(dname, slice_id)
+    print("in pai_download_table_data_worker, before dump_dmatrix...",
+          filename)
     dump_dmatrix(filename,
                  gen,
                  feature_column_names,
