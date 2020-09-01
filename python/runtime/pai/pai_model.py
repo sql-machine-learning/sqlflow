@@ -60,11 +60,6 @@ def clean_oss_model_path(oss_path):
     oss.delete_oss_dir_recursive(bucket, oss_path)
 
 
-def save_model_to_sqlfs(datasource, model_oss_path, model_name):
-    # (TODO: save model to sqlfs)
-    pass
-
-
 def get_oss_saved_model_type_and_estimator(model_name, project):
     """Get oss model type and estimator name, model can be:
     1. PAI ML models: model is saved by pai

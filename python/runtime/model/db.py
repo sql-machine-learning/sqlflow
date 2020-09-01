@@ -37,14 +37,12 @@ def _create_table(conn, table):
         raise SQLFlowDiagnostic("unsupported driver {0} on creating\
             table.".format(conn.driver))
 
-    cursor = conn.cursor()
-    cursor.execute(stmt)
+    conn.execute(stmt)
 
 
 def _drop_table_if_exists(conn, table):
     sql = "DROP TABLE IF EXISTS {0}".format(table)
-    cursor = conn.cursor()
-    cursor.execute(sql)
+    conn.execute(sql)
 
 
 class SQLFSWriter(object):
