@@ -22,7 +22,6 @@ def escape_sql(original_sql):
     return original_sql.replace('\\', '\\\\').replace('"', r'\"').replace(
         "`", r'\`').replace("$", r'\$')
 
-
 def sqlflow(sql,
             image="sqlflow/sqlflow",
             env=None,
@@ -34,9 +33,15 @@ def sqlflow(sql,
     if not log_file:
         command = '''step -e "%s"''' % escape_sql(sql)
     else:
+        # wait for some seconds to exit in case the
+        # step pod is recycled too fast
+        exit_time_wait = 0
+        if isinstance(env, dict):
+            exit_time_wait = env.get("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT", "0")
+
         log_dir = path.dirname(log_file)
-        command = '''(mkdir -p %s && step -e "%s") 2>&1 | tee %s''' % (
-            log_dir, escape_sql(sql), log_file)
+        command = '''(mkdir -p %s && step -e "%s" && sleep %s) 2>&1 | tee %s''' % (  # noqa E501
+            log_dir, escape_sql(sql), exit_time_wait, log_file)
 
     couler.run_container(command=command,
                          image=image,
