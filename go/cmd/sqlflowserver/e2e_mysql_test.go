@@ -54,7 +54,7 @@ INTO sqlflow_models.custom_loop_model_eval_result;`, caseTrainTable)
 	}
 }
 
-func caseTrainXGBoostMultiClassi(t *testing.T) {
+func caseTrainXGBoostMultiClass(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
 SELECT * FROM iris.train
@@ -155,7 +155,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)
 
 	// xgboost cases
-	t.Run("caseTrainXGBoostMultiClassi", caseTrainXGBoostMultiClassi)
+	t.Run("caseTrainXGBoostMultiClass", caseTrainXGBoostMultiClass)
 	t.Run("caseTrainXGBoostRegressionConvergence", caseTrainXGBoostRegressionConvergence)
 	t.Run("CasePredictXGBoostRegression", casePredictXGBoostRegression)
 

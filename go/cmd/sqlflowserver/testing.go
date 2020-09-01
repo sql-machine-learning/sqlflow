@@ -108,27 +108,19 @@ func EqualAny(expected interface{}, actual *any.Any) bool {
 	case "type.googleapis.com/google.protobuf.StringValue":
 		b := wrappers.StringValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		if expected == b.Value {
-			return true
-		}
+		return expected == b.Value
 	case "type.googleapis.com/google.protobuf.FloatValue":
 		b := wrappers.FloatValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		if math.Abs(expected.(float64)-float64(b.Value)) < 1e-7 {
-			return true
-		}
+		return math.Abs(expected.(float64)-float64(b.Value)) < 1e-7
 	case "type.googleapis.com/google.protobuf.DoubleValue":
 		b := wrappers.DoubleValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		if math.Abs(expected.(float64)-b.Value) < 1e-7 {
-			return true
-		}
+		return math.Abs(expected.(float64)-b.Value) < 1e-7
 	case "type.googleapis.com/google.protobuf.Int64Value":
 		b := wrappers.Int64Value{}
 		ptypes.UnmarshalAny(actual, &b)
-		if expected.(int64) == b.Value {
-			return true
-		}
+		return expected.(int64) == b.Value
 	case "type.googleapis.com/google.protobuf.Int32Value":
 		b := wrappers.Int32Value{}
 		ptypes.UnmarshalAny(actual, &b)
@@ -141,9 +133,7 @@ func EqualAny(expected interface{}, actual *any.Any) bool {
 			}
 			v = int32(v64)
 		}
-		if v == b.Value {
-			return true
-		}
+		return v == b.Value
 	}
 	return false
 }
