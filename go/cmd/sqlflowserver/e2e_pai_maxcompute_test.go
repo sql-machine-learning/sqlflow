@@ -509,6 +509,6 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
 		t.Run("CaseEnd2EndXGBoostDenseFeatureColumn", func(t *testing.T) {
 			caseEnd2EndXGBoostDenseFeatureColumn(t, true)
-		// })
+		})
 	})
 }
