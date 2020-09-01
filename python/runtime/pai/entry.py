@@ -26,7 +26,7 @@ try:
     # (TODO: lhw) split entry.py into multiple files,
     # so, we can only import needed packages
     from runtime.pai.xgboost_submitter.predict import predict as predict_xgb
-    from runtime.pai.xgboost_submitter.train_step import train as train_xgb
+    from runtime.pai.xgboost_submitter.train import train_step as train_xgb
     from runtime.pai.xgboost_submitter.explain import explain as explain_xgb
     from runtime.pai.xgboost_submitter.evaluate import evaluate as evaluate_xgb
 except:  # noqa: E722
