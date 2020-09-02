@@ -64,9 +64,9 @@ spec:
           name: cert-path
         env:
           - name: SQLFLOW_MYSQL_IMAGE
-            value: registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:mysql
+            value: sqlflow/sqlflow:mysql
           - name: SQLFLOW_JUPYTER_IMAGE
-            value: registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:jupyter
+            value: sqlflow/sqlflow:jupyter
           - name: SQLFLOW_JUPYTER_SSL_KEY
             value: /jupyter/certs/playground.sqlflow.tech.key
           - name: SQLFLOW_JUPYTER_SSL_CERT

@@ -120,7 +120,7 @@ c.JupyterHub.services = [{
     'admin':
     True,
     'command':
-    [sys.executable, '-m', 'jupyterhub_idle_culler', '--timeout=300'],
+    [sys.executable, '-m', 'jupyterhub_idle_culler', '--timeout=3600'],
 }]
 
 
