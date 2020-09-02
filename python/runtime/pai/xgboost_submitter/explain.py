@@ -12,15 +12,18 @@
 # limitations under the License
 
 import runtime.xgboost as xgboost_extended
-from runtime.model import oss
+from runtime.feature.compile import compile_ir_feature_columns
+from runtime.feature.derivation import get_ordered_field_descs
+from runtime.model import EstimatorType, oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.explain import explain as explain_xgb
+from runtime.xgboost.feature_column import ComposedColumnTransformer
 
 FLAGS = define_tf_flags()
 
 
-def explain(datasource, select, data_table, result_table, label_column,
-            oss_model_path):
+def explain_step(datasource, select, data_table, result_table, label_column,
+                 oss_model_path):
     """Do XGBoost model explanation, this function use selected data to
     explain the model stored at oss_model_path
 
@@ -38,12 +41,16 @@ def explain(datasource, select, data_table, result_table, label_column,
 
     (estimator, model_params, train_params, feature_field_meta,
      feature_column_names, label_field_meta,
-     feature_column_code) = oss.load_metas(oss_model_path,
-                                           "xgboost_model_desc")
+     fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
 
-    feature_column_transformers = eval('[{}]'.format(feature_column_code))
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
-        feature_column_names, *feature_column_transformers)
+    feature_columns = compile_ir_feature_columns(fc_map_ir,
+                                                 EstimatorType.XGBOOST)
+    field_descs = get_ordered_field_descs(fc_map_ir)
+    feature_column_names = [fd.name for fd in field_descs]
+    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+
+    transform_fn = ComposedColumnTransformer(
+        feature_column_names, *feature_columns["feature_columns"])
 
     explain_xgb(
         datasource=datasource,
@@ -62,4 +69,4 @@ def explain(datasource, select, data_table, result_table, label_column,
         oss_endpoint="",
         oss_bucket_name="",
         transform_fn=transform_fn,
-        feature_column_code=feature_column_code)
+        feature_column_code=fc_map_ir)

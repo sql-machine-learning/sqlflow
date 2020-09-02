@@ -134,7 +134,7 @@ def train_step(original_sql,
     is_dist_train = num_workers > 1
     oss_model_dir = FLAGS.sqlflow_oss_modeldir
 
-    oss_path_to_load = train_params["oss_path_to_load"]
+    oss_path_to_load = train_params.pop("oss_path_to_load")
     if load:
         oss.load_file(oss_path_to_load, "my_model")
 
@@ -154,7 +154,7 @@ def train_step(original_sql,
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
 
-    batch_size = train_params.get("batch_size", 1)
+    batch_size = train_params.get("batch_size", None)
     epoch = train_params.get("epoch", 1)
     load_pretrained_model = True if load else False
     disk_cache = train_params.get("disk_cache", False)

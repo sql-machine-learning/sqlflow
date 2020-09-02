@@ -12,15 +12,18 @@
 # limitations under the License
 
 import runtime.xgboost as xgboost_extended
-from runtime.model import oss
+from runtime.feature.compile import compile_ir_feature_columns
+from runtime.feature.derivation import get_ordered_field_descs
+from runtime.model import EstimatorType, oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.evaluate import evaluate as _evaluate
+from runtime.xgboost.feature_column import ComposedColumnTransformer
 
 FLAGS = define_tf_flags()
 
 
-def evaluate(datasource, select, data_table, result_table, oss_model_path,
-             metrics):
+def evaluate_step(datasource, select, data_table, result_table, oss_model_path,
+                  metrics):
     """PAI XGBoost evaluate wrapper
     This function do some preparation for the local evaluation, say,
     download the model from OSS, extract metadata and so on.
@@ -39,12 +42,16 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
     oss.load_file(oss_model_path, "my_model")
     (estimator, model_params, train_params, feature_metas,
      feature_column_names, label_meta,
-     feature_column_code) = oss.load_metas(oss_model_path,
-                                           "xgboost_model_desc")
+     fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
 
-    feature_column_transformers = eval('[{}]'.format(feature_column_code))
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
-        feature_column_names, *feature_column_transformers)
+    feature_columns = compile_ir_feature_columns(fc_map_ir,
+                                                 EstimatorType.XGBOOST)
+    field_descs = get_ordered_field_descs(fc_map_ir)
+    feature_column_names = [fd.name for fd in field_descs]
+    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+
+    transform_fn = ComposedColumnTransformer(
+        feature_column_names, *feature_columns["feature_columns"])
 
     _evaluate(datasource=datasource,
               select=select,
@@ -57,4 +64,4 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
               pai_table=data_table,
               model_params=model_params,
               transform_fn=transform_fn,
-              feature_column_code=feature_column_code)
+              feature_column_code=fc_map_ir)

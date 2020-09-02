@@ -16,6 +16,7 @@ import sklearn.metrics
 import xgboost as xgb
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
+from runtime.feature.field_desc import DataType
 from runtime.model.metadata import load_metadata
 from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
@@ -120,9 +121,11 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
     for line in feature_file_read:
         row = [i for i in line.strip().split(DMATRIX_FILE_SEP)]
         # DMatrix store label in the first column
-        if label_meta["dtype"] == "float32":
+        if label_meta["dtype"] == "float32" or label_meta[
+                "dtype"] == DataType.FLOAT32:
             label = float(row[0])
-        elif label_meta["dtype"] == "int64" or label_meta["dtype"] == "int32":
+        elif label_meta["dtype"] == "int64" or label_meta[
+                "dtype"] == "int32" or label_meta["dtype"] == DataType.INT64:
             label = int(row[0])
         else:
             raise ValueError("unsupported label dtype: %s" %

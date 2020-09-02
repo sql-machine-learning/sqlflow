@@ -147,8 +147,6 @@ def train(datasource,
                          transform_fn=transform_fn,
                          feature_column_code=feature_column_code)
     if len(validation_select.strip()) > 0:
-        print("load validate data to file: ", validation_select,
-              pai_validate_table)
         dvalidate = list(
             xgb_dataset(datasource,
                         'validate.txt',

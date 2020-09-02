@@ -18,10 +18,13 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import runtime.feature.column as fc
 import six
 import xgboost as xgb
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
+from runtime.feature.compile import compile_ir_feature_columns
+from runtime.model import EstimatorType
 from scipy.sparse import vstack
 from sklearn.datasets import load_svmlight_file, load_svmlight_files
 
@@ -116,7 +119,6 @@ def dump_dmatrix(filename,
                  batch_size=None,
                  transform_fn=None,
                  raw_data_dir=None):
-    print("in dump_dmatrix: ", filename)
     # TODO(yancey1989): generate group and weight text file if necessary
     row_id = 0
 
@@ -132,7 +134,6 @@ def dump_dmatrix(filename,
                                                  feature_column_names,
                                                  feature_metas)
 
-            print("dump data features: ", filename, features)
             if raw_data_fid is not None:
                 raw_data_fid.write(
                     DMATRIX_FILE_SEP.join([str(r) for r in row]) + "\n")
@@ -167,7 +168,6 @@ def dump_dmatrix(filename,
 
             if has_label:
                 row_data = [str(label)] + row_data
-            print("dump data row_data: ", filename, features)
             f.write(DMATRIX_FILE_SEP.join(row_data) + "\n")
             row_id += 1
             # batch_size == None means use all data in generator
@@ -254,7 +254,6 @@ def pai_dataset(filename,
                 batch_size=None,
                 feature_column_code="",
                 raw_data_dir=None):
-    print("in pai_dataset: ", pai_table, filename, "batch_size: ", batch_size)
     from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
@@ -271,7 +270,6 @@ def pai_dataset(filename,
     complete_queue = queue.Queue()
 
     def thread_worker(slice_id):
-        print("in thread_worker: ", slice_id)
         p = Popen("{} -m {}".format(sys.executable, __name__),
                   shell=True,
                   stdin=PIPE)
@@ -280,8 +278,8 @@ def pai_dataset(filename,
                 dname, feature_metas, feature_column_names, label_meta,
                 pai_table, slice_id, slice_count, feature_column_code,
                 raw_data_dir
-            ]))
-        print("end p.communicate...")
+            ],
+                       cls=fc.JSONEncoderWithFeatureColumn))
         assert p.returncode == 0, \
             "The subprocess raises error when reading data"
         complete_queue.put(slice_id)
@@ -289,7 +287,6 @@ def pai_dataset(filename,
     slice_id = rank
     slice_total = 0
     while slice_id < slice_count:
-        print("apply_async: ", slice_id)
         pool.apply_async(thread_worker, (slice_id, ))
         slice_id += nworkers
         slice_total += 1
@@ -297,8 +294,6 @@ def pai_dataset(filename,
     if batch_size is None:
         pool.close()
         pool.join()
-        print("batch_size is None, ", os.listdir("."))
-        print("batch_size is None, ", os.listdir("validate.txt"))
         yield load_dmatrix('{0}#{0}.cache'.format(dname) if cache else dname)
         return
 
@@ -337,16 +332,25 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
                                    slice_count, feature_column_code,
                                    raw_data_dir):
     import runtime.xgboost as xgboost_extended
-    feature_column_transformers = eval('[{}]'.format(feature_column_code))
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
-        feature_column_names, *feature_column_transformers)
+    if isinstance(feature_column_code, dict):
+        # NOTE(typhoonzero): feature_column_code is a dict of
+        # runtime.feature.column in refactored step code.
+        feature_column_transformers = compile_ir_feature_columns(
+            feature_column_code, EstimatorType.XGBOOST)
+        transform_fn = \
+            xgboost_extended.feature_column.ComposedColumnTransformer(
+            feature_column_names,
+            *feature_column_transformers["feature_columns"])
+    else:
+        feature_column_transformers = eval('[{}]'.format(feature_column_code))
+        transform_fn = \
+            xgboost_extended.feature_column.ComposedColumnTransformer(
+            feature_column_names, *feature_column_transformers)
 
     conn = PaiIOConnection.from_table(pai_table, slice_id, slice_count)
     gen = db.db_generator(conn, None, label_meta=label_meta)()
     selected_cols = db.selected_cols(conn, None)
     filename = "{}/{}.txt".format(dname, slice_id)
-    print("in pai_download_table_data_worker, before dump_dmatrix...",
-          filename)
     dump_dmatrix(filename,
                  gen,
                  feature_column_names,
@@ -358,4 +362,5 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
 
 
 if __name__ == "__main__":
-    pai_download_table_data_worker(*json.load(sys.stdin))
+    pai_download_table_data_worker(
+        *json.load(sys.stdin, cls=fc.JSONDecoderWithFeatureColumn))

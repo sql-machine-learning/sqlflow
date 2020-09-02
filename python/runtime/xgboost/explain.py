@@ -196,7 +196,7 @@ result to a table.""")
                      summary_params,
                      result_table=result_table,
                      is_pai=is_pai,
-                     pai_explain_table="",
+                     pai_explain_table=pai_explain_table,
                      oss_dest=oss_dest,
                      oss_ak=oss_ak,
                      oss_sk=oss_sk,
