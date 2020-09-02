@@ -339,13 +339,13 @@ def pai_download_table_data_worker(dname, feature_metas, feature_column_names,
             feature_column_code, EstimatorType.XGBOOST)
         transform_fn = \
             xgboost_extended.feature_column.ComposedColumnTransformer(
-            feature_column_names,
-            *feature_column_transformers["feature_columns"])
+                feature_column_names,
+                *feature_column_transformers["feature_columns"])
     else:
         feature_column_transformers = eval('[{}]'.format(feature_column_code))
         transform_fn = \
             xgboost_extended.feature_column.ComposedColumnTransformer(
-            feature_column_names, *feature_column_transformers)
+                feature_column_names, *feature_column_transformers)
 
     conn = PaiIOConnection.from_table(pai_table, slice_id, slice_count)
     gen = db.db_generator(conn, None, label_meta=label_meta)()

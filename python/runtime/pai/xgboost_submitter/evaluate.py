@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import runtime.xgboost as xgboost_extended
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, oss

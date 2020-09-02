@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import runtime.xgboost as xgboost_extended
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, oss
@@ -45,9 +44,6 @@ def explain_step(datasource, select, data_table, result_table, label_column,
 
     feature_columns = compile_ir_feature_columns(fc_map_ir,
                                                  EstimatorType.XGBOOST)
-    field_descs = get_ordered_field_descs(fc_map_ir)
-    feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
 
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
