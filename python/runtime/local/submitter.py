@@ -14,6 +14,7 @@
 from runtime.dbapi import table_writer
 from runtime.local.xgboost_submitter.evaluate import \
     evaluate as xgboost_evaluate
+from runtime.local.xgboost_submitter.explain import explain as xgboost_explain
 from runtime.local.xgboost_submitter.predict import pred as xgboost_pred
 from runtime.local.xgboost_submitter.train import train as xgboost_train
 from runtime.model.db import read_metadata_from_db
@@ -88,6 +89,17 @@ def submit_local_evaluate(datasource, select, result_table, pred_label_name,
     if model.get_type() == EstimatorType.XGBOOST:
         xgboost_evaluate(datasource, select, result_table, model,
                          pred_label_name, validation_metrics)
+    else:
+        raise NotImplementedError("not implemented model type: {}".format(
+            model.get_type()))
+
+
+def submit_local_explain(datasource, select, explainer, summary_params,
+                         result_table, load):
+    model = Model.load_from_db(datasource, load)
+    if model.get_type() == EstimatorType.XGBOOST:
+        xgboost_explain(datasource, select, explainer, summary_params,
+                        result_table, model)
     else:
         raise NotImplementedError("not implemented model type: {}".format(
             model.get_type()))

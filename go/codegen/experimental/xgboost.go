@@ -279,6 +279,71 @@ def step_entry_{{.StepIndex}}():
                  validation_metrics={{.ValidationMetrics}})
 `
 
+type xgbExplainFiller struct {
+	StepIndex       int
+	DataSource      string
+	Select          string
+	Explainer       string
+	SummaryAttrJSON string
+	ResultTable     string
+	Load            string
+	Submitter       string
+}
+
+// XGBoostGenerateExplain generates the XGBoost explain code
+func XGBoostGenerateExplain(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Session) (string, error) {
+	ds, err := GeneratePyDbConnStr(session)
+	if err != nil {
+		return "", err
+	}
+
+	const summaryAttrPrefix = "summary."
+	summaryAttrs := make(map[string]interface{})
+	for k, v := range explainStmt.Attributes {
+		if strings.HasPrefix(k, summaryAttrPrefix) {
+			summaryAttrs[k[len(summaryAttrPrefix):]] = v
+		}
+	}
+	summaryAttrJSON, err := json.Marshal(summaryAttrs)
+	if err != nil {
+		return "", err
+	}
+
+	filler := &xgbExplainFiller{
+		StepIndex:       stepIndex,
+		DataSource:      ds,
+		Select:          replaceNewLineRuneAndTrimSpace(explainStmt.Select),
+		Explainer:       explainStmt.Explainer,
+		SummaryAttrJSON: string(summaryAttrJSON),
+		ResultTable:     explainStmt.Into,
+		Load:            explainStmt.ModelName,
+		Submitter:       getSubmitter(session),
+	}
+
+	tpl := template.Must(template.New("Explain").Parse(xgbExplainTemplate))
+	var program bytes.Buffer
+	if err := tpl.Execute(&program, filler); err != nil {
+		return "", err
+	}
+	return program.String(), nil
+}
+
+const xgbExplainTemplate = `
+def step_entry_{{.StepIndex}}():
+    import json
+    import runtime.temp_file as temp_file
+    from runtime.{{.Submitter}} import explain
+    
+    summary_params = json.loads('''{{.SummaryAttrJSON}}''')
+    with temp_file.TemporaryDirectory(as_cwd=True):
+        explain(datasource='''{{.DataSource}}''', 
+                select='''{{.Select}}''',
+                explainer='''{{.Explainer}}''',
+                summary_params=summary_params,
+                result_table='''{{.ResultTable}}''',
+                load='''{{.Load}}''')
+`
+
 func getSubmitter(session *pb.Session) string {
 	if session.Submitter != "" {
 		return session.Submitter
