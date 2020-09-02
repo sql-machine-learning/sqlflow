@@ -169,54 +169,78 @@ USING e2etest_pai_dnn;"""
                 "alifin_jtest_dev.pai_dnn_predict")
 
     def test_submit_pai_explain_task(self):
-        explain(testing.get_datasource(),
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO EXPLAIN e2etest_pai_dnn
+WITH label_col=class
+INTO alifin_jtest_dev.pai_dnn_explain_result;"""
+        explain(testing.get_datasource(), original_sql,
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
-                "alifin_jtest_dev.pai_dnn_explain_result", "e2etest_pai_dnn",
-                {"label_col": "class"})
+                "e2etest_pai_dnn", {"label_col": "class"},
+                "alifin_jtest_dev.pai_dnn_explain_result")
+
+    def test_submit_pai_tf_evaluate_task(self):
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO EXPLAIN e2etest_pai_dnn
+WITH label_col=class
+INTO alifin_jtest_dev.pai_dnn_explain_result;"""
+        evaluate(testing.get_datasource(), original_sql,
+                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+                 "e2etest_pai_dnn", {"validation.metrics": "Accuracy,Recall"},
+                 "alifin_jtest_dev.e2etest_pai_dnn_evaluate_result")
 
     def test_submit_xgb_train_task(self):
+        original_sql = """SELECT * FROM iris.train
+TO TRAIN xgboost.gbtree
+WITH objective="multi:softprob", num_class=3, eta=0.4, booster="gbtree"
+     validatioin.select="select * from alifin_jtest_dev.sqlflow_iris_test"
+LABEL class
+INTO e2etest_xgb_classify_model;"""
         model_params = {
-            "booster": "gbtree",
             "eta": 0.4,
             "num_class": 3,
             "objective": "multi:softprob"
         }
         train_params = {"num_boost_round": 10}
-        feature_columns_code = """
-            xgboost_extended.feature_column.numeric_column(
-                "sepal_length", shape=[1]),
-            xgboost_extended.feature_column.numeric_column(
-                "sepal_width", shape=[1]),
-            xgboost_extended.feature_column.numeric_column(
-                "petal_length", shape=[1]),
-            xgboost_extended.feature_column.numeric_column(
-                "petal_width", shape=[1])
-        """
-        train(testing.get_datasource(),
-              "XGBoost",
+        feature_column_map = {
+            "feature_columns":
+            [fc.NumericColumn(fd.FieldDesc(name="sepal_length"))]
+        }
+        label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
+        train(testing.get_datasource(), original_sql,
               "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-              "select * from alifin_jtest_dev.sqlflow_iris_train",
-              model_params,
-              "e2etest_xgb_classify_model",
-              None,
-              train_params=train_params,
-              feature_columns=eval("[%s]" % feature_columns_code),
-              feature_metas=iris_feature_metas,
-              label_meta=iris_label_meta,
-              feature_column_names=iris_feature_column_names,
-              feature_columns_code=feature_columns_code)
+              "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
+              "xgboost.gbtree", "", feature_column_map, label_column,
+              model_params, train_params, "e2etest_xgb_classify_model", None)
 
     def test_submit_pai_xgb_predict_task(self):
-        predict(testing.get_datasource(),
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO PREDICT alifin_jtest_dev.pai_xgb_predict.class
+USING e2etest_xgb_classify_model;"""
+        predict(testing.get_datasource(), original_sql,
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
-                "alifin_jtest_dev.pai_xgb_predict", "class",
-                "e2etest_xgb_classify_model", {})
+                "e2etest_xgb_classify_model", "class", {},
+                "alifin_jtest_dev.pai_xgb_predict")
 
     def test_submit_pai_xgb_explain_task(self):
-        explain(testing.get_datasource(),
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO EXPLAIN e2etest_xgb_classify_model
+WITH label_col=class
+INTO alifin_jtest_dev.e2etest_xgb_explain_result;"""
+        explain(testing.get_datasource(), original_sql,
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-                "alifin_jtest_dev.e2etest_xgb_explain_result",
-                "e2etest_xgb_classify_model", {"label_col": "class"})
+                "e2etest_xgb_classify_model", {"label_col": "class"},
+                "alifin_jtest_dev.e2etest_xgb_explain_result")
+
+    def test_submit_pai_xgb_evaluate_task(self):
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO EVALUATE e2etest_xgb_classify_model
+WITH validation.metrics=accuracy_score
+INTO alifin_jtest_dev.e2etest_pai_xgb_evaluate_result;"""
+        evaluate(testing.get_datasource(), original_sql,
+                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
+                 "e2etest_xgb_classify_model",
+                 {"validation.metrics": "accuracy_score"},
+                 "alifin_jtest_dev.e2etest_pai_xgb_evaluate_result")
 
     def test_submit_pai_kmeans_train_task(self):
         train(
@@ -254,18 +278,6 @@ USING e2etest_pai_dnn;"""
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
                 "alifin_jtest_dev.e2etest_random_forest_explain_result",
                 "e2e_test_random_forest", {"label_col": "class"})
-
-    def test_submit_pai_tf_evaluate_task(self):
-        evaluate(testing.get_datasource(), "e2etest_pai_dnn",
-                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-                 "alifin_jtest_dev.e2etest_pai_dnn_evaluate_result",
-                 {"validation.metrics": "Accuracy,Recall"})
-
-    def test_submit_pai_xgb_evaluate_task(self):
-        evaluate(testing.get_datasource(), "e2etest_xgb_classify_model",
-                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-                 "alifin_jtest_dev.e2etest_pai_xgb_evaluate_result",
-                 {"validation.metrics": "accuracy_score"})
 
 
 if __name__ == "__main__":
