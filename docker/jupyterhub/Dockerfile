@@ -6,8 +6,9 @@ ENV SQLFLOW_MYSQL_IMAGE=${SQLFLOW_MYSQL_IMAGE}
 ARG SQLFLOW_JUPYTER_IMAGE="sqlflow/sqlflow:jupyter"
 ENV SQLFLOW_JUPYTER_IMAGE=${SQLFLOW_JUPYTER_IMAGE}
 
-RUN pip install jupyterhub-kubespawner jupyterhub-dummyauthenticator \
-    kubernetes==9.0.0
+RUN pip install --upgrade pip && pip install jupyterhub-kubespawner \
+    oauthenticator==0.11.0 \
+    jupyterhub_idle_culler==1.0
 
 COPY docker/jupyterhub/jupyterhub_config.py /etc/jhub/jupyterhub_config.py
 

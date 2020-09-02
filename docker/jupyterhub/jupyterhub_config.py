@@ -15,11 +15,12 @@
 # flake8: noqa
 
 # Configuration file for jupyterhub.
-# shutdown the server after no activity for an hour
 import os
 import socket
+import sys
 
 from kubernetes import client
+from oauthenticator.github import GitHubOAuthenticator
 
 sqlflow_jupyter_image = os.getenv("SQLFLOW_JUPYTER_IMAGE")
 sqlflow_mysql_image = os.getenv("SQLFLOW_MYSQL_IMAGE")
@@ -53,16 +54,18 @@ c.KubeSpawner.hub_connect_ip = host_ip
 c.JupyterHub.hub_connect_ip = c.KubeSpawner.hub_connect_ip
 
 c.KubeSpawner.service_account = 'default'
-# Do not use any authentication at all - any username / password will work.
-c.JupyterHub.authenticator_class = 'dummyauthenticator.DummyAuthenticator'
 
-c.Authenticator.admin_users = {'yancey1989'}
-
-c.KubeSpawner.image_pull_policy = 'Always'
-c.KubeSpawner.storage_pvc_ensure = False
+# use GitHub oauth
+c.JupyterHub.authenticator_class = GitHubOAuthenticator
+c.GitHubOAuthenticator.oauth_callback_url = 'https://playground.sqlflow.tech/hub/oauth_callback'
+c.GitHubOAuthenticator.client_id = os.getenv("SQLFLOW_JUPYTER_OAUTH_CLIENT_ID")
+c.GitHubOAuthenticator.client_secret = os.getenv(
+    "SQLFLOW_JUPYTER_OAUTH_CLIENT_SECRET")
 
 c.JupyterHub.allow_named_servers = True
 
+c.KubeSpawner.image_pull_policy = 'Always'
+c.KubeSpawner.storage_pvc_ensure = False
 c.KubeSpawner.extra_pod_config.update({'restartPolicy': 'Never'})
 
 # container tonyyang/sqlflow:sqlflow need to be run at root to start MySQL
@@ -108,6 +111,16 @@ c.KubeSpawner.extra_containers = [{
     "ports": [{
         "containerPort": 3306,
     }]
+}]
+
+# shutdown the server after no activity for an hour
+c.JupyterHub.services = [{
+    'name':
+    'idle-culler',
+    'admin':
+    True,
+    'command':
+    [sys.executable, '-m', 'jupyterhub_idle_culler', '--timeout=300'],
 }]
 
 
