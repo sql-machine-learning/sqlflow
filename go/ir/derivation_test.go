@@ -14,6 +14,7 @@
 package ir
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -223,6 +224,15 @@ func TestFeatureDerivation(t *testing.T) {
 
 	a := assert.New(t)
 	db := database.GetTestingDBSingleton()
+	var testDataSQL string
+	if testDB == "mysql" {
+		testDataSQL = testdata.FeatureDerivationCaseSQL
+	} else if testDB == "hive" {
+		testDataSQL = testdata.FeatureDerivationCaseSQLHive
+	}
+	if err := testdata.Popularize(db.DB, testDataSQL); err != nil {
+		a.FailNow(fmt.Sprintf("%v", err))
+	}
 
 	trainStmt := mockTrainStmtNormal()
 	e := InferFeatureColumns(trainStmt, db)

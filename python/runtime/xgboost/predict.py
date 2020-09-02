@@ -78,23 +78,11 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                              feature_column_names, feature_metas, is_pai, conn,
                              result_table):
     preds = bst.predict(dpred)
-    # TODO(yancey1989): output the original result for various
-    # objective function.
-    if model_params:
-        obj = model_params["objective"]
-        if obj.startswith("binary:"):
-            preds = (preds > 0.5).astype(int)
-        elif obj.startswith("multi:"):
-            preds = np.argmax(np.array(preds), axis=1)
-        else:
-            # using the original prediction result of predict API by default
-            pass
-    else:
-        # prediction output with multi-class job has two dimensions, this
-        # is a temporary way, can remove this else branch when we can load
-        # the model meta not only on PAI submitter.
-        if len(preds.shape) == 2:
-            preds = np.argmax(np.array(preds), axis=1)
+    # prediction output with multi-class job has two dimensions, this
+    # is a temporary way, can remove this else branch when we can load
+    # the model meta not only on PAI submitter.
+    if len(preds.shape) == 2:
+        preds = np.argmax(np.array(preds), axis=1)
 
     if is_pai:
         feature_file_read = open("predict.txt.raw", "r")
@@ -127,6 +115,6 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                 for i, item in enumerate(line.strip().split(DMATRIX_FILE_SEP))
                 if i != train_label_index
             ]
-            row.append(str(preds[line_no]))
+            row.append(preds[line_no])
             w.write(row)
             line_no += 1

@@ -106,7 +106,7 @@ func caseSelect(t *testing.T) {
 	}
 	for rowIdx, row := range rows {
 		for colIdx, rowCell := range row {
-			AssertEqualAny(a, expectedRows[rowIdx][colIdx], rowCell)
+			a.True(EqualAny(expectedRows[rowIdx][colIdx], rowCell))
 		}
 	}
 }
