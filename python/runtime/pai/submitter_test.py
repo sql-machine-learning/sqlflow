@@ -81,55 +81,10 @@ iris_feature_column_names = [
     "petal_width",
 ]
 
-iris_feature_column_names_map = dict()
-iris_feature_column_names_map["feature_columns"] = [
-    "sepal_length",
-    "sepal_width",
-    "petal_length",
-    "petal_width",
-]
-
-iris_feature_metas = dict()
-iris_feature_metas["sepal_length"] = {
-    "feature_name": "sepal_length",
-    "dtype": "float32",
-    "delimiter": "",
-    "format": "",
-    "shape": [1],
-    "is_sparse": "false" == "true"
+feature_column_map = {
+    "feature_columns": [fc.NumericColumn(fd.FieldDesc(name="sepal_length"))]
 }
-iris_feature_metas["sepal_width"] = {
-    "feature_name": "sepal_width",
-    "dtype": "float32",
-    "delimiter": "",
-    "format": "",
-    "shape": [1],
-    "is_sparse": "false" == "true"
-}
-iris_feature_metas["petal_length"] = {
-    "feature_name": "petal_length",
-    "dtype": "float32",
-    "delimiter": "",
-    "format": "",
-    "shape": [1],
-    "is_sparse": "false" == "true"
-}
-iris_feature_metas["petal_width"] = {
-    "feature_name": "petal_width",
-    "dtype": "float32",
-    "delimiter": "",
-    "format": "",
-    "shape": [1],
-    "is_sparse": "false" == "true"
-}
-
-iris_label_meta = {
-    "feature_name": "class",
-    "dtype": "int64",
-    "delimiter": "",
-    "shape": [],
-    "is_sparse": "false" == "true"
-}
+label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
 
 
 @unittest.skipUnless(testing.get_driver() == "maxcompute"
@@ -140,12 +95,6 @@ class SubmitPAITrainTask(TestCase):
         model_params = dict()
         model_params["hidden_units"] = [10, 20]
         model_params["n_classes"] = 3
-
-        feature_column_map = {
-            "feature_columns":
-            [fc.NumericColumn(fd.FieldDesc(name="sepal_length"))]
-        }
-        label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
 
         original_sql = """
 SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
@@ -201,11 +150,6 @@ INTO e2etest_xgb_classify_model;"""
             "objective": "multi:softprob"
         }
         train_params = {"num_boost_round": 10}
-        feature_column_map = {
-            "feature_columns":
-            [fc.NumericColumn(fd.FieldDesc(name="sepal_length"))]
-        }
-        label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
         train(testing.get_datasource(), original_sql,
               "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
               "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
@@ -243,29 +187,34 @@ INTO alifin_jtest_dev.e2etest_pai_xgb_evaluate_result;"""
                  "alifin_jtest_dev.e2etest_pai_xgb_evaluate_result")
 
     def test_submit_pai_kmeans_train_task(self):
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_train
+TO TRAIN KMeans
+WITH model.excluded_columns="class",
+     model.idx_table_name="alifin_jtest_dev.e2e_test_kmeans_output_idx"
+INTO e2e_test_kmeans;"""
+
         train(
-            testing.get_datasource(),
-            "KMeans",
-            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-            "", {
+            testing.get_datasource(), original_sql,
+            "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train", "", "KMeans",
+            "", feature_column_map, None, {
                 "excluded_columns": "class",
                 "idx_table_name": "alifin_jtest_dev.e2e_test_kmeans_output_idx"
-            },
-            "e2e_test_kmeans",
-            "",
-            feature_column_names=[*iris_feature_column_names, "class"])
+            }, {"feature_column_names": iris_feature_column_names},
+            "e2e_test_kmeans_wuyi", None)
 
     def test_submit_pai_random_forest_train_task(self):
-        train(testing.get_datasource(),
-              "RandomForests",
-              "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-              "", {
-                  "tree_num": 3,
-              },
-              "e2e_test_random_forest",
-              "",
-              feature_column_names=iris_feature_column_names,
-              label_meta=iris_label_meta)
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_train
+TO TRAIN RandomForests
+WITH model.tree_num=3
+LABEL class
+INTO e2e_test_random_forest;"""
+        train(testing.get_datasource(), original_sql,
+              "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train", "",
+              "RandomForests", "", feature_column_map, label_column,
+              {"tree_num": 3}, {
+                  "feature_column_names": iris_feature_column_names,
+                  "label_meta": label_column.get_field_desc()[0].to_json()
+              }, "e2e_test_random_forest", None)
 
     def test_submit_pai_random_forest_predict_task(self):
         predict(testing.get_datasource(),
