@@ -36,6 +36,8 @@ func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 		return generatePredictCodeAndImage(stmt, stepIndex, session, sqlStmts)
 	case *ir.EvaluateStmt:
 		return generateEvaluationCodeAndImage(stmt, stepIndex, session, sqlStmts)
+	case *ir.ExplainStmt:
+		return generateExplainCodeAndImage(stmt, stepIndex, session, sqlStmts)
 	case *ir.ShowTrainStmt:
 		code, err := generateShowTrainCode(stmt, stepIndex, session)
 		return code, "", err
@@ -106,6 +108,32 @@ func generateEvaluationCodeAndImage(evalStmt *ir.EvaluateStmt, stepIndex int, se
 
 	if isXGBoost {
 		code, err := XGBoostGenerateEvaluation(evalStmt, stepIndex, session)
+		if err != nil {
+			return "", "", err
+		}
+		return code, image, nil
+	}
+	return "", "", fmt.Errorf("not implemented model type")
+}
+
+func generateExplainCodeAndImage(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
+	image := ""
+	isXGBoost := false
+	trainStmt := findModelGenerationTrainStmt(explainStmt.ModelName, stepIndex, sqlStmts)
+	if trainStmt != nil {
+		image = trainStmt.ModelImage
+		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
+	} else {
+		meta, err := getModelMetadata(session, explainStmt.ModelName)
+		if err != nil {
+			return "", "", err
+		}
+		image = meta.imageName()
+		isXGBoost = meta.isXGBoostModel()
+	}
+
+	if isXGBoost {
+		code, err := XGBoostGenerateExplain(explainStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
 		}

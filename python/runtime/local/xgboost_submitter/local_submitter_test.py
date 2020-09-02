@@ -19,6 +19,7 @@ import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
 from runtime.local.xgboost_submitter.evaluate import evaluate
+from runtime.local.xgboost_submitter.explain import explain
 from runtime.local.xgboost_submitter.predict import pred
 from runtime.local.xgboost_submitter.train import train
 
@@ -102,6 +103,11 @@ class TestXGBoostTrain(unittest.TestCase):
                                                 "iris.evaluate_result_table")
             self.assertEqual(eval_schema.keys(),
                              set(['loss', 'accuracy_score']))
+
+            explain(ds, select, "TreeExplainer", {"plot_type": "decision"},
+                    "iris.explain_result_table", save_name)
+            explain(ds, select, "XGBoostExplainer", {},
+                    "iris.explain_result_table", save_name)
 
 
 if __name__ == '__main__':

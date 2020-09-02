@@ -427,6 +427,23 @@ INTO iris.evaluate_result_table;
 SELECT * FROM iris.evaluate_result_table;
 
 SHOW TRAIN sqlflow_models.xgb_classification;
+
+SELECT * FROM iris.test
+TO EXPLAIN sqlflow_models.xgb_classification
+WITH
+	summary.plot_type = bar
+INTO sqlflow_models.explain_result_table;
+
+SELECT * FROM sqlflow_models.explain_result_table;
+
+SELECT * FROM iris.test
+TO EXPLAIN sqlflow_models.xgb_classification
+WITH
+	summary.plot_type = bar
+USING XGBoostExplainer
+INTO sqlflow_models.explain_result_table;
+
+SELECT * FROM sqlflow_models.explain_result_table;
 `
 	runSQLProgramAndCheck(t, extraTrainSQLProgram+sqlProgram)
 	runSQLProgramAndCheck(t, sqlProgram)
