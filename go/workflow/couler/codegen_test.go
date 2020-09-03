@@ -121,7 +121,7 @@ func TestCoulerCodegen(t *testing.T) {
 
 	yaml, e = cg.GenYAML(code)
 	a.NoError(e)
-	r, e = regexp.Compile(`\(mkdir -p (.*) && step -e "([^|]|\n)*[|] tee (.*)'`)
+	r, e = regexp.Compile(`mkdir -p (.*) && \(step -e "([^|]|\n)*[|] tee (.*)\)`)
 	a.NoError(e)
 	a.Equal("/home/admin/logs", r.FindStringSubmatch(yaml)[1])
 	a.Equal("/home/admin/logs/step.log", r.FindStringSubmatch(yaml)[3])
