@@ -41,8 +41,8 @@ def sqlflow(sql,
             exit_time_wait = env.get("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT", "0")
 
         log_dir = path.dirname(log_file)
-        command = '''(mkdir -p %s && step -e "%s" && sleep %s) 2>&1 | tee %s''' % (  # noqa E501
-            log_dir, escape_sql(sql), exit_time_wait, log_file)
+        command = '''mkdir -p %s && (step -e "%s" 2>&1 | tee %s) && sleep %s''' % (  # noqa E501
+            log_dir, escape_sql(sql), log_file, exit_time_wait)
 
     couler.run_container(command=command,
                          image=image,
