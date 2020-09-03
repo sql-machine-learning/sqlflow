@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import unittest
 from unittest import TestCase
@@ -200,7 +201,7 @@ INTO e2e_test_kmeans;"""
                 "excluded_columns": "class",
                 "idx_table_name": "alifin_jtest_dev.e2e_test_kmeans_output_idx"
             }, {"feature_column_names": iris_feature_column_names},
-            "e2e_test_kmeans_wuyi", None)
+            "e2e_test_kmeans", None)
 
     def test_submit_pai_random_forest_train_task(self):
         original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_train
@@ -212,21 +213,30 @@ INTO e2e_test_random_forest;"""
               "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train", "",
               "RandomForests", "", feature_column_map, label_column,
               {"tree_num": 3}, {
-                  "feature_column_names": iris_feature_column_names,
-                  "label_meta": label_column.get_field_desc()[0].to_json()
-              }, "e2e_test_random_forest", None)
+                  "feature_column_names":
+                  iris_feature_column_names,
+                  "label_meta":
+                  json.loads(label_column.get_field_desc()[0].to_json())
+              }, "e2e_test_random_forest_wuyi", None)
 
     def test_submit_pai_random_forest_predict_task(self):
-        predict(testing.get_datasource(),
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO PREDICT alifin_jtest_dev.pai_rf_predict.class
+USING e2e_test_random_forest_wuyi;"""
+        predict(testing.get_datasource(), original_sql,
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
-                "alifin_jtest_dev.pai_rf_predict", "class",
-                "e2e_test_random_forest", {})
+                "e2e_test_random_forest_wuyi", "class", {},
+                "alifin_jtest_dev.pai_rf_predict")
 
     def test_submit_pai_random_forest_explain_task(self):
-        explain(testing.get_datasource(),
+        original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_train
+TO EXPLAIN e2e_test_random_forest_wuyi
+WITH label_col=class
+INTO alifin_jtest_dev.e2etest_random_forest_explain_result;"""
+        explain(testing.get_datasource(), original_sql,
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
-                "alifin_jtest_dev.e2etest_random_forest_explain_result",
-                "e2e_test_random_forest", {"label_col": "class"})
+                "e2e_test_random_forest_wuyi", {"label_col": "class"},
+                "alifin_jtest_dev.e2etest_random_forest_explain_result")
 
 
 if __name__ == "__main__":
