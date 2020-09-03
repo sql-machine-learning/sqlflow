@@ -114,6 +114,7 @@ def submit_pai_explain(datasource,
                        model_name,
                        model_params,
                        result_table,
+                       explainer="TreeExplainer",
                        user=""):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
@@ -143,6 +144,7 @@ def submit_pai_explain(datasource,
     # is like: "SELECT fields,... FROM table"
     data_table = table_ops.create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
+    params["explainer"] = explainer
 
     # format resultTable name to "db.table" to let the codegen form a
     # submitting argument of format "odps://project/tables/table_name"

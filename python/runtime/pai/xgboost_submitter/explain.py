@@ -20,8 +20,8 @@ from runtime.xgboost.feature_column import ComposedColumnTransformer
 FLAGS = define_tf_flags()
 
 
-def explain_step(datasource, select, data_table, result_table, label_column,
-                 oss_model_path):
+def explain_step(datasource, select, data_table, explainer, result_table,
+                 label_column, oss_model_path):
     """Do XGBoost model explanation, this function use selected data to
     explain the model stored at oss_model_path
 
@@ -47,13 +47,19 @@ def explain_step(datasource, select, data_table, result_table, label_column,
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
 
+    summary_params = dict()
+    for k in model_params:
+        if k.startswith("summary."):
+            summary_key = k.replace("summary.", "")
+            summary_params[summary_key] = model_params[k]
     explain_xgb(
         datasource=datasource,
         select=select,
         feature_field_meta=feature_field_meta,
         feature_column_names=feature_column_names,
         label_meta=label_field_meta,
-        summary_params={},
+        summary_params=summary_params,
+        explainer=explainer,
         result_table=result_table,
         is_pai=True,
         pai_explain_table=data_table,
