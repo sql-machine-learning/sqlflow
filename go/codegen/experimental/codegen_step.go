@@ -16,11 +16,13 @@ package experimental
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/bitly/go-simplejson"
 	"net/url"
+	"os"
+	"strings"
+
+	"github.com/bitly/go-simplejson"
 	"sqlflow.org/sqlflow/go/model"
 	"sqlflow.org/sqlflow/go/sqlfs"
-	"strings"
 
 	"sqlflow.org/sqlflow/go/database"
 
@@ -55,7 +57,7 @@ func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, string, error) {
 	isXGBoost := isXGBoostEstimator(trainStmt.Estimator)
 	if isXGBoost {
-		code, err := XGBoostGenerateTrain(trainStmt, stepIndex, session)
+		code, err := GenerateTrain(trainStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
 		}
@@ -81,7 +83,7 @@ func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, sessio
 	}
 
 	if isXGBoost {
-		code, err := XGBoostGeneratePredict(predStmt, stepIndex, session)
+		code, err := GeneratePredict(predStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
 		}
@@ -107,7 +109,7 @@ func generateEvaluationCodeAndImage(evalStmt *ir.EvaluateStmt, stepIndex int, se
 	}
 
 	if isXGBoost {
-		code, err := XGBoostGenerateEvaluation(evalStmt, stepIndex, session)
+		code, err := GenerateEvaluation(evalStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
 		}
@@ -133,7 +135,7 @@ func generateExplainCodeAndImage(explainStmt *ir.ExplainStmt, stepIndex int, ses
 	}
 
 	if isXGBoost {
-		code, err := XGBoostGenerateExplain(explainStmt, stepIndex, session)
+		code, err := GenerateExplain(explainStmt, stepIndex, session)
 		if err != nil {
 			return "", "", err
 		}
@@ -267,4 +269,32 @@ func GeneratePyDbConnStr(session *pb.Session) (string, error) {
 
 	u.RawQuery = query.Encode()
 	return u.String(), nil
+}
+
+func getSubmitter(session *pb.Session) string {
+	if session.Submitter != "" {
+		return session.Submitter
+	}
+
+	submitter := os.Getenv("SQLFLOW_submitter")
+	if submitter != "" {
+		return submitter
+	}
+	return "local"
+}
+
+func generateFeatureColumnCode(fcMap map[string][]ir.FeatureColumn) string {
+	allFCCodes := make([]string, 0)
+	for target, fcList := range fcMap {
+		if len(fcList) == 0 {
+			continue
+		}
+		codeList := make([]string, 0)
+		for _, fc := range fcList {
+			codeList = append(codeList, fc.GenPythonCode())
+		}
+		code := fmt.Sprintf(`"%s":[%s]`, target, strings.Join(codeList, ","))
+		allFCCodes = append(allFCCodes, code)
+	}
+	return fmt.Sprintf("{%s}", strings.Join(allFCCodes, ","))
 }

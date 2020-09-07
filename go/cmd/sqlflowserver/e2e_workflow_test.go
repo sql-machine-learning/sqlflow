@@ -30,6 +30,10 @@ import (
 
 func TestEnd2EndWorkflow(t *testing.T) {
 	a := assert.New(t)
+	// test log collection
+	os.Setenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE", "/home/admin/logs/step.log")
+	os.Setenv("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT", "2")
+
 	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
 		t.Skip("Skipping workflow test.")
 	}
