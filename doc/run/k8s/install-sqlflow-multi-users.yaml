@@ -23,6 +23,8 @@ spec:
           value: "http://playground.sqlflow.tech:2746"
         - name: SQLFLOW_WORKFLOW_STEP_IMAGE
           value: sqlflow/sqlflow:step
+        - name: SQLFLOW_WORKFLOW_TTL
+          value: "600"
         ports:
         - containerPort: 50051
           protocol: TCP
