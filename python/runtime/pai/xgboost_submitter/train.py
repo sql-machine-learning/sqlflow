@@ -155,11 +155,12 @@ def train_step(original_sql,
         feature_column_names, *feature_columns["feature_columns"])
 
     batch_size = train_params.get("batch_size", None)
+    train_params.pop("batch_size")
     epoch = train_params.get("epoch", 1)
+    train_params.pop("epoch")
     load_pretrained_model = True if load else False
     disk_cache = train_params.get("disk_cache", False)
-
-    print("validation_select", validation_select)
+    train_params.pop("disk_cache")
 
     if is_dist_train:
         dist_train(flags=FLAGS,
