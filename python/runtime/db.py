@@ -25,41 +25,54 @@ def connect_with_data_source(driver_dsn):
 
 
 INT64_TYPE = long if six.PY2 else int  # noqa: F821
+# NOTE(typhoonzero): use a magic number to represent missing values for
+# xgboost, since we can not write a dmatrix file with NaN.
 XGBOOST_NULL_MAGIC = 9999.0
 
 
 def read_feature(raw_val, feature_spec, feature_name):
-    # FIXME(typhoonzero): return None if not XGBoost
-    if raw_val is None:
-        return XGBOOST_NULL_MAGIC,
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["is_sparse"]:
         if feature_spec["format"] == "kv":
-            items = raw_val.split()
-            items = [item.split(':', 2) for item in items]
-            indices = np.array([int(item[0]) for item in items],
-                               dtype=np.int64)
-            values = np.array([float(item[1]) for item in items],
-                              dtype=np.float32)
+            if raw_val is None:
+                indices = np.array([], dtype=np.int64)
+                values = np.array([], dtype=np.float32)
+            else:
+                items = raw_val.split()
+                items = [item.split(':', 2) for item in items]
+                indices = np.array([int(item[0]) for item in items],
+                                   dtype=np.int64)
+                values = np.array([float(item[1]) for item in items],
+                                  dtype=np.float32)
         else:
-            indices = np.fromstring(raw_val,
-                                    dtype=int,
-                                    sep=feature_spec["delimiter"])
-            indices = indices.reshape(indices.size, 1)
-            values = np.ones([indices.size], dtype=np.int64)
+            if raw_val is None:
+                indices = np.array([], dtype=int)
+                values = np.array([], dtype=np.int64)
+            else:
+                indices = np.fromstring(raw_val,
+                                        dtype=int,
+                                        sep=feature_spec["delimiter"])
+                indices = indices.reshape(indices.size, 1)
+                values = np.ones([indices.size], dtype=np.int64)
 
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return indices, values, dense_shape
     elif feature_spec["delimiter"] != "":
         # Dense string vector
         if feature_spec["dtype"] == "float32":
-            vec = np.fromstring(raw_val,
-                                dtype=np.float32,
-                                sep=feature_spec["delimiter"])
+            if raw_val is None:
+                vec = np.array([XGBOOST_NULL_MAGIC], dtype=np.float32)
+            else:
+                vec = np.fromstring(raw_val,
+                                    dtype=np.float32,
+                                    sep=feature_spec["delimiter"])
         elif feature_spec["dtype"] == "int64":
-            vec = np.fromstring(raw_val,
-                                dtype=np.int64,
-                                sep=feature_spec["delimiter"])
+            if raw_val is None:
+                vec = np.array([int(XGBOOST_NULL_MAGIC)], dtype=np.int64)
+            else:
+                vec = np.fromstring(raw_val,
+                                    dtype=np.int64,
+                                    sep=feature_spec["delimiter"])
         else:
             raise ValueError('unrecognize dtype {}'.format(
                 feature_spec["dtype"]))
@@ -67,12 +80,21 @@ def read_feature(raw_val, feature_spec, feature_name):
         vec = vec.reshape(list(feature_spec["shape"]))
         return vec,
     elif feature_spec["dtype"] == "float32":
-        return float(raw_val),
+        if raw_val is None:
+            return float(XGBOOST_NULL_MAGIC),
+        else:
+            return float(raw_val),
     elif feature_spec["dtype"] == "int64":
-        int_raw_val = INT64_TYPE(raw_val)
-        return int_raw_val,
+        if raw_val is None:
+            return int(XGBOOST_NULL_MAGIC),
+        else:
+            int_raw_val = INT64_TYPE(raw_val)
+            return int_raw_val,
     elif feature_spec["dtype"] == "string":
-        return str(raw_val),
+        if raw_val is None:
+            return "",
+        else:
+            return str(raw_val),
     else:
         # This case is used for unittests.
         # For example, explain_test.py uses int32 data.

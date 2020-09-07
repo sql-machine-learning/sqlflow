@@ -60,9 +60,14 @@ func caseTrainXGBoostWithNull(t *testing.T) {
 	prepareSQL2 := `UPDATE boston.train_ext
 SET rad = NULL
 WHERE zn < 18.1 AND zn > 17.0;`
+	prepareSQL3 := `UPDATE boston.train_ext
+SET tax = NULL
+WHERE zn < 18.1 AND zn > 17.0;`
 	_, _, _, err := connectAndRunSQL(prepareSQL1)
 	a.NoError(err)
 	_, _, _, err = connectAndRunSQL(prepareSQL2)
+	a.NoError(err)
+	_, _, _, err = connectAndRunSQL(prepareSQL3)
 	a.NoError(err)
 
 	trainSQL := fmt.Sprintf(`SELECT * FROM boston.train_ext
