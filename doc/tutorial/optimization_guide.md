@@ -6,7 +6,7 @@ This document explains how to use the SQLFlow to solve the optimization problems
 
 The optimization SQL syntax in SQLFlow is as follows:
 
-```SQL
+```sql
 SELECT ... FROM ...
 TO MAXIMIZE|MINIMIZE
     objective_expression
@@ -40,11 +40,11 @@ where:
 - `USING glpk`: indicates the solver to solve the problem. Currently, only `glpk` is supported. Please see [here](https://www.gnu.org/software/glpk/) for details on the GLPK solver.  The `USING` clause will be optional if we use the `glpk` solver.
 - `INTO ...`: indicates the output table to save the solved result.
 
-## Example 1: Single Variable Case
+## Example 1: Single Column Case
 
 Let us take an example to explain how to use SQLFlow to solve optimization problems. You can refer to this case for details [here](http://faculty.kutztown.edu/vasko/MAT121/MAT121web/Example_2.html).
 
-Giapetto’s Woodcarving, Inc., manufactures two types of wooden toys: soldiers and trains. A soldier sells for $27 and uses $10 worth of raw materials.  Each soldier that is manufactured increases Giapetto’s variable labor and overhead costs by $14.  A train sells for $21 and uses $9 worth of raw materials.  Each train built increases Giapetto’s variable labor and overhead costs by $10.  The manufacture of wooden soldiers and trains requires two types of skilled labor: carpentry and finishing.  A soldier requires 2 hours of finishing labor and 1 hour of carpentry labor.  A train requires 1 hour of finishing labor and 1 hour of carpentry labor.  Each week, Giapetto can obtain all the needed raw material but only 100 finishing hours and 80 carpentry hours.  At most 10000 trains and at most 40 soldiers are bought each week.  Giapetto wants to maximize weekly profit (revenues-costs).
+Giapetto’s Woodcarving, Inc., manufactures two types of wooden toys: soldiers and trains. A soldier sells for 27 dollar and uses 10 dollar worth of raw materials.  Each soldier that is manufactured increases Giapetto’s variable labor and overhead costs by 14 dollar.  A train sells for 21 dollar and uses 9 dollar worth of raw materials.  Each train built increases Giapetto’s variable labor and overhead costs by 10 dollar.  The manufacture of wooden soldiers and trains requires two types of skilled labor: carpentry and finishing.  A soldier requires 2 hours of finishing labor and 1 hour of carpentry labor.  A train requires 1 hour of finishing labor and 1 hour of carpentry labor.  Each week, Giapetto can obtain all the needed raw material but only 100 finishing hours and 80 carpentry hours.  At most 10000 trains and at most 40 soldiers are bought each week.  Giapetto wants to maximize weekly profit (revenues-costs).
 
 Let
 
@@ -69,10 +69,32 @@ The table `my_db.woodcarving` corresponding to the example above is:
 | soldier | 27    | 10             | 14         | 2         | 1         | 40      |
 | train   | 21    | 9              | 10         | 1         | 1         | 10000   |
 
+We can create the data table `my_db.woodcarving` using the following SQL statements:
+
+```sql
+%%sqlflow
+CREATE DATABASE IF NOT EXISTS my_db;
+
+DROP TABLE IF EXISTS my_db.woodcarving;
+
+CREATE TABLE my_db.woodcarving (
+    product VARCHAR(255),
+    price FLOAT,
+    materials_cost FLOAT,
+    other_cost FLOAT,
+    finishing FLOAT,
+    carpentry FLOAT,
+    max_num FLOAT
+);
+
+INSERT INTO my_db.woodcarving VALUES('soldier', 27, 10, 14, 2, 1, 40);
+INSERT INTO my_db.woodcarving VALUES('train', 21, 9, 10, 1, 1, 10000);
+```
 
 The SQLFlow optimization SQL statement for this case would be:
 
-```SQL
+```sql
+%%sqlflow
 SELECT * FROM my_db.woodcarving -- the input data source
 TO MAXIMIZE 
     SUM((price - materials_cost - other_cost) * amount) -- the objective expression
@@ -89,7 +111,7 @@ INTO my_db.woodcarving_result_table;
 
 Once the SQLFlow server receives the SQL statement above, it would call the GLPK solver to solve the optimization problem described in the SQL statement. After solving the problem, we would get the following logs:
 
-```
+```text
 Solved result is:
 
    product  amount
@@ -99,21 +121,24 @@ Solved result is:
 1    train      60
 
 Saved in my_db.woodcarving_result_table.
+
+Objective value is 180.0
 ```
 
-We can also examine the solved result by the SQL statement `SELECT * FROM my_db.woodcarving_result_table;`:
+We can also examine the solved result by the SQL statement:
 
-```
-+---------+--------+
-| PRODUCT | AMOUNT |
-+---------+--------+
-| soldier |     20 |
-| train   |     60 |
-+---------+--------+
+```sql
+%%sqlflow
+SELECT * FROM my_db.woodcarving_result_table;
 ```
 
+|product|amount|
+|---    |---   |
+|soldier| 20   |
+|train  | 60   |
 
-## Example 2: Multiple Variable Case with GROUP BY
+
+## Example 2: Multiple Columns Case with GROUP BY
 
 Suppose that there are several plants that manufacture products, and several markets that sell them (see the example described [here](https://en.wikipedia.org/wiki/AMPL) for details). We want to minimize the cost of transportation between plants and markets.
 
@@ -121,30 +146,62 @@ We have three tables that look like below:
 
 1. Plants capacity table `my_db.plants`, where the column `capacity` indicates the maximum product number that each plant can manufacture. The product number should be integers.
 
-    | plants  | capacity |
-    | ------- | -------- |
-    | plantA  | 100      |
-    | plantB  | 90       |
+| plants  | capacity |
+|---      |---       |
+| plantA  | 100      |
+| plantB  | 90       |
 
 2. Markets demand table `my_db.markets`, where the column `demand` indicates the required product number of each market.
 
-    | markets |  demand |
-    | ------- | ------- |
-    | marketA | 130     |
-    | marketB | 60      |
+| markets |  demand |
+|---      |---      |
+| marketA | 130     |
+| marketB | 60      |
 
 3. Plants to markets distance table `my_db.transportation`, where the column `distance` is the distance to transport each plant to each market.
 
-    | plants  | markets | distance |
-    | ------- | ------- | -------- |
-    | plantA  | marketA |  140     |
-    | plantA  | marketB |  210     |
-    | plantB  | marketA |  300     |
-    | plantB  | marketB |  90      |
+| plants  | markets | distance |
+|---      |---      |---       |
+| plantA  | marketA |  140     |
+| plantA  | marketB |  210     |
+| plantB  | marketA |  300     |
+| plantB  | marketB |  90      |
+
+We can create the tables above using the following SQL statements:
+```sql
+%%sqlflow
+CREATE DATABASE IF NOT EXISTS my_db;
+
+DROP TABLE IF EXISTS my_db.plants;
+CREATE TABLE my_db.plants (
+    plants VARCHAR(255),
+    capacity FLOAT
+);
+INSERT INTO my_db.plants VALUES('plantA', 100), ('plantB', 90);
+
+DROP TABLE IF EXISTS my_db.markets;
+CREATE TABLE my_db.markets (
+    markets VARCHAR(255),
+    demand FLOAT
+);
+INSERT INTO my_db.markets VALUES('marketA', 130), ('marketB', 60);
+
+DROP TABLE IF EXISTS my_db.transportation;
+CREATE TABLE my_db.transportation (
+    plants VARCHAR(255),
+    markets VARCHAR(255),
+    distance FLOAT
+);
+INSERT INTO my_db.transportation VALUES('plantA', 'marketA', 140);
+INSERT INTO my_db.transportation VALUES('plantA', 'marketB', 210);
+INSERT INTO my_db.transportation VALUES('plantB', 'marketA', 300);
+INSERT INTO my_db.transportation VALUES('plantB', 'marketB', 90);
+```
 
 When we start to solve the problem, we would like to join the tables beforehand:
 
-```SQL
+```sql
+%%sqlflow
 SELECT 
     t.plants AS plants, 
     t.markets AS markets, 
@@ -168,7 +225,8 @@ Then we have a "joined" table like below to start the solving process:
 
 Then we can use below extended SQL syntax to describe the above example:
 
-```SQL
+```sql
+%%sqlflow
 SELECT 
     t.plants AS plants, 
     t.markets AS markets, 
@@ -212,20 +270,23 @@ Solved result is:
 3  plantB  marketB      60
 
 Saved in my_db.transportation_result_table.
+
+Objective value is 28400.0
 ```
 
-We can also examine the solved result by the SQL statement `SELECT * FROM my_db.transportation_result_table;`:
+We can also examine the solved result by the SQL statement:
 
+```sql
+%%sqlflow
+SELECT * FROM my_db.transportation_result_table;
 ```
-+--------+---------+--------+
-| PLANTS | MARKETS | AMOUNT |
-+--------+---------+--------+
+
+| plants | markets | amount |
+|---     |---      |---     |
 | plantA | marketA |    100 |
 | plantB | marketA |     30 |
 | plantA | marketB |      0 |
 | plantB | marketB |     60 |
-+--------+---------+--------+
-```
 
 ## Summary
 In the above examples, we explain how to use the SQLFlow to solve the optimization problems. Currently, we only support the linear optimization problem and the GLPK solver. We would support more optimization problems and solvers in the future version.

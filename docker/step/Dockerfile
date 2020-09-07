@@ -13,11 +13,13 @@ RUN /bin/bash -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_faste
   && echo "Choose the fastest PIP source ..." \
   && choose_fastest_pip_source; fi' && \
   apt-get update && \
-  apt-get -qq install -y --no-install-recommends openjdk-8-jre-headless python3 libmysqlclient20 python3-idna libgomp1 python3-setuptools && \
+  apt-get -qq install -y --no-install-recommends openjdk-8-jre-headless python3 libmysqlclient20 python3-idna libgomp1 python3-setuptools python3-pip build-essential python3-dev glpk-utils && \
   ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
   apt-get install -y tzdata > /dev/null && \
   dpkg-reconfigure --frontend noninteractive tzdata && \
-  ln -s /usr/bin/python3 /usr/bin/python
+  ln -s /usr/bin/python3 /usr/bin/python && \
+  ln -s /usr/bin/pip3 /usr/bin/pip && \
+  pip install --upgrade pip
 
 # Build python wheels in sub stage so we can 
 # keep the outcome and discard the build tool-chain
@@ -28,9 +30,7 @@ WORKDIR /install
 ENV PATH="${PATH}:/install/bin"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-  apt-get -qq install -y wget unzip build-essential libmysqlclient-dev python3-pip && \
-  ln -s /usr/bin/pip3 /usr/bin/pip && \
-  pip install --upgrade pip && \
+  apt-get -qq install -y wget unzip libmysqlclient-dev && \
   wget -q http://docs-aliyun.cn-hangzhou.oss.aliyun-inc.com/assets/attach/119096/cn_zh/1557995455961/odpscmd_public.zip && \
   mkdir -p /install/local/odpscmd && \
   unzip -qq odpscmd_public.zip -d /install/local/odpscmd && \

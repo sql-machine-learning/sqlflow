@@ -15,7 +15,9 @@ import sys
 
 import tensorflow as tf
 from runtime.dbapi.paiio import PaiIOConnection
-from runtime.model import oss
+from runtime.feature.compile import compile_ir_feature_columns
+from runtime.feature.derivation import get_ordered_field_descs
+from runtime.model import EstimatorType, oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.evaluate import (estimator_evaluate, keras_evaluate,
@@ -35,8 +37,8 @@ except Exception as e:
 FLAGS = define_tf_flags()
 
 
-def evaluate(datasource, select, data_table, result_table, oss_model_path,
-             metrics):
+def evaluate_step(datasource, select, data_table, result_table, oss_model_path,
+                  metrics):
     """PAI TensorFlow evaluate wrapper
     This function do some preparation for the local evaluation, say,
     download the model from OSS, extract metadata and so on.
@@ -55,7 +57,13 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
      feature_columns_code) = oss.load_metas(oss_model_path,
                                             "tensorflow_model_desc")
 
-    feature_columns = eval(feature_columns_code)
+    fc_map_ir = feature_columns_code
+    feature_columns = compile_ir_feature_columns(fc_map_ir,
+                                                 EstimatorType.TENSORFLOW)
+    field_descs = get_ordered_field_descs(fc_map_ir)
+    feature_column_names = [fd.name for fd in field_descs]
+    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+
     # NOTE(typhoonzero): No need to eval model_params["optimizer"] and
     # model_params["loss"] because predicting do not need these parameters.
 
@@ -64,11 +72,12 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
     # Keras single node is using h5 format to save the model, no need to deal
     # with export model format. Keras distributed mode will use estimator, so
     # this is also needed.
+    model_name = oss_model_path.split("/")[-1]
     if is_estimator:
         oss.load_file(oss_model_path, "exported_path")
         # NOTE(typhoonzero): directory "model_save" is hardcoded in
         # codegen/tensorflow/codegen.go
-        oss.load_dir("%s/model_save" % oss_model_path)
+        oss.load_dir("%s/%s" % (oss_model_path, model_name))
     else:
         oss.load_file(oss_model_path, "model_save")
 
@@ -86,7 +95,6 @@ def evaluate(datasource, select, data_table, result_table, oss_model_path,
               batch_size=1,
               validation_steps=None,
               verbose=0,
-              is_pai=True,
               pai_table=data_table)
 
 

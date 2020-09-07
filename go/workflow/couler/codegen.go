@@ -49,6 +49,7 @@ func fillEnvFromSession(envs *map[string]string, session *pb.Session) {
 	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
 	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
 	fillMapIfValueNotEmpty(*envs, "SQLFLOW_submitter", session.Submitter)
+	fillMapIfValueNotEmpty(*envs, "SQLFLOW_WORKFLOW_STEP_LOG_FILE", os.Getenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE"))
 }
 
 // GetStepEnvs returns a map of envs used for couler workflow.
@@ -121,6 +122,8 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 		return nil, e
 	}
 
+	stepLogFile := os.Getenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE")
+
 	r := &Filler{
 		DataSource:  session.DbConnStr,
 		StepEnvs:    stepEnvs,
@@ -128,6 +131,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 		SecretName:  secretName,
 		SecretData:  secretData,
 		Resources:   os.Getenv(envResource),
+		StepLogFile: stepLogFile,
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.

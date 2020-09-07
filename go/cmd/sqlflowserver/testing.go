@@ -19,6 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -101,26 +102,40 @@ func sqlRequest(sql string) *pb.Request {
 	return &pb.Request{Sql: sql, Session: se}
 }
 
-// AssertEqualAny checks any type of returned protobuf message to an interface
-func AssertEqualAny(a *assert.Assertions, expected interface{}, actual *any.Any) {
+// EqualAny checks any type of returned protobuf message to an interface
+func EqualAny(expected interface{}, actual *any.Any) bool {
 	switch actual.TypeUrl {
 	case "type.googleapis.com/google.protobuf.StringValue":
 		b := wrappers.StringValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(expected, b.Value)
+		return expected == b.Value
 	case "type.googleapis.com/google.protobuf.FloatValue":
 		b := wrappers.FloatValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(float32(expected.(float64)), b.Value)
+		return math.Abs(expected.(float64)-float64(b.Value)) < 1e-7
 	case "type.googleapis.com/google.protobuf.DoubleValue":
 		b := wrappers.DoubleValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(expected.(float64), b.Value)
+		return math.Abs(expected.(float64)-b.Value) < 1e-7
 	case "type.googleapis.com/google.protobuf.Int64Value":
 		b := wrappers.Int64Value{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.Equal(expected.(int64), b.Value)
+		return expected.(int64) == b.Value
+	case "type.googleapis.com/google.protobuf.Int32Value":
+		b := wrappers.Int32Value{}
+		ptypes.UnmarshalAny(actual, &b)
+		// convert expected to int32 value to compare
+		v, ok := expected.(int32)
+		if !ok {
+			v64, ok := expected.(int64)
+			if !ok {
+				return false
+			}
+			v = int32(v64)
+		}
+		return v == b.Value
 	}
+	return false
 }
 
 // AssertGreaterEqualAny checks the protobuf value is greater than expected value.
@@ -237,7 +252,8 @@ func prepareTestData(dbStr string) error {
 		datasets = append(datasets,
 			fmt.Sprintf(testdata.IrisMaxComputeSQL, caseDB),
 			fmt.Sprintf(testdata.ChurnMaxComputeSQL, caseDB),
-			fmt.Sprintf(testdata.XGBoostMaxComputeSparseDataCaseSQL, caseDB))
+			fmt.Sprintf(testdata.XGBoostMaxComputeSparseDataCaseSQL, caseDB),
+			fmt.Sprintf(testdata.FeatureDerivationCaseSQLMaxCompute, caseDB))
 	default:
 		return fmt.Errorf("unrecognized SQLFLOW_TEST_DB %s", db)
 	}

@@ -24,8 +24,8 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
                              train_dataset_fn, val_dataset_fn,
                              log_every_n_iter, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs,
-                             save_checkpoints_steps, metric_names,
-                             load_pretrained_model, model_meta):
+                             save_checkpoints_steps, metric_names, load,
+                             model_meta):
     print("Start training using estimator model...")
     is_distributed = False
     if len(FLAGS.worker_hosts.split(",")) > 1:
@@ -38,8 +38,7 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
     print("Using checkpoint path: %s" % FLAGS.checkpointDir)
     model_params["model_dir"] = FLAGS.checkpointDir
 
-    warm_start_from = save if load_pretrained_model else None
-    if warm_start_from:
+    if load:
         load_pretrained_model_estimator(estimator, model_params)
     classifier = init_model(estimator, model_params)
 

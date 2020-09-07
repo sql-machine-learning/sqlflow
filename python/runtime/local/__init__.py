@@ -11,5 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.local.submitter import submit_local_evaluate as evaluate  # noqa: F401, E501
+from runtime.local.submitter import submit_local_explain as explain  # noqa: F401, E501
 from runtime.local.submitter import submit_local_pred as pred  # noqa: F401
+from runtime.local.submitter import submit_local_show_train as show_train  # noqa: F401, E501
 from runtime.local.submitter import submit_local_train as train  # noqa: F401

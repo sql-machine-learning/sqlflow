@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sqlflow.org/sqlflow/go/model"
 	"strings"
 	"testing"
 
@@ -148,7 +149,7 @@ func TestPredictCodegen(t *testing.T) {
 	ossModelPath := "iris/sqlflow/my_dnn_model"
 	scriptPath := "file:///tmp/task.tar.gz"
 	paramsPath := "file:///tmp/params.txt"
-	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, paramsPath, "my_dnn_model", ossModelPath, "", ModelTypeTF)
+	paiTFCode, paiCmd, _, e := Predict(ir, sess, scriptPath, paramsPath, "my_dnn_model", ossModelPath, "", model.TENSORFLOW)
 	a.NoError(e)
 	a.False(hasUnknownParameters(paiTFCode, knownPredictParams))
 	tfCode, err := tensorflow.Pred(ir, sess)

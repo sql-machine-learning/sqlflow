@@ -73,6 +73,7 @@ type xgbExplainFiller struct {
 	DataSource        string
 	DatasetSQL        string
 	ResultTable       string
+	Explainer         string
 	IsPAI             bool
 	PAIExplainTable   string
 	HDFSNameNodeAddr  string
@@ -125,6 +126,7 @@ explain(
 	feature_column_names=feature_column_names,
 	label_meta=label_field_meta,
 	summary_params={},
+	explainer="{{.Explainer}}",
 	result_table='''{{.ResultTable}}''',
 	is_pai="{{.IsPAI}}" == "true",
 	pai_explain_table="{{.PAIExplainTable}}",

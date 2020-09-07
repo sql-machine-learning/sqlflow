@@ -53,10 +53,12 @@ func Explain(explainStmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 		DataSource:           session.DbConnStr,
 		DatasetSQL:           explainStmt.Select,
 		ShapSummaryParams:    string(jsonSummary),
+		Explainer:            explainStmt.Explainer,
 		FeatureFieldMetaJSON: string(f),
 		FeatureColumnNames:   fs,
 		FeatureColumnCode:    featureColumnCode,
 		LabelJSON:            string(l),
+		ResultTable:          explainStmt.Into,
 		IsPAI:                tf.IsPAI(),
 		PAIExplainTable:      explainStmt.TmpExplainTable,
 	}

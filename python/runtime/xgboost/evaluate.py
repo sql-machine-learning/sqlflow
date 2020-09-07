@@ -15,7 +15,10 @@ import numpy as np
 import sklearn.metrics
 import xgboost as xgb
 from runtime import db
-from runtime.xgboost.dataset import xgb_dataset
+from runtime.dbapi.paiio import PaiIOConnection
+from runtime.feature.field_desc import DataType
+from runtime.model.metadata import load_metadata
+from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 SKLEARN_METRICS = [
     'accuracy_score',
@@ -58,7 +61,7 @@ def evaluate(datasource,
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
-        conn = None
+        conn = PaiIOConnection.from_table(pai_table)
     dpred = xgb_dataset(datasource,
                         'predict.txt',
                         select,
@@ -75,6 +78,8 @@ def evaluate(datasource,
                         )  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load model
+    if not model_params:
+        model_params = load_metadata("model_meta.json")["attributes"]
     print("Start evaluating XGBoost model...")
     feature_file_id = 0
     for pred_dmatrix in dpred:
@@ -114,11 +119,13 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
 
     y_test_list = []
     for line in feature_file_read:
-        row = [i for i in line.strip().split("\t")]
+        row = [i for i in line.strip().split(DMATRIX_FILE_SEP)]
         # DMatrix store label in the first column
-        if label_meta["dtype"] == "float32":
+        if label_meta["dtype"] == "float32" or label_meta[
+                "dtype"] == DataType.FLOAT32:
             label = float(row[0])
-        elif label_meta["dtype"] == "int64" or label_meta["dtype"] == "int32":
+        elif label_meta["dtype"] == "int64" or label_meta[
+                "dtype"] == "int32" or label_meta["dtype"] == DataType.INT64:
             label = int(row[0])
         else:
             raise ValueError("unsupported label dtype: %s" %

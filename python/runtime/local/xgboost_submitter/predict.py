@@ -23,7 +23,7 @@ from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
 from runtime.model.model import Model
-from runtime.xgboost.dataset import xgb_dataset
+from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 
 def pred(datasource, select, result_table, pred_label_name, model):
@@ -88,33 +88,25 @@ def pred(datasource, select, result_table, pred_label_name, model):
         for idx, pred_dmatrix in enumerate(dpred):
             feature_file_name = os.path.join(
                 tmp_dir_name, "predict_raw_dir/predict.txt_%d" % idx)
-            _predict_and_store_result(bst, pred_dmatrix, model_params,
-                                      result_table, result_column_names,
-                                      train_label_idx, feature_file_name, conn)
+            preds = _calc_predict_result(bst, pred_dmatrix, model_params)
+            _store_predict_result(preds, result_table, result_column_names,
+                                  train_label_idx, feature_file_name, conn)
         print("Done predicting. Predict table : %s" % result_table)
 
     conn.close()
 
 
-def _predict_and_store_result(bst, dpred, model_params, result_table,
-                              result_column_names, train_label_idx,
-                              feature_file_name, conn):
+def _calc_predict_result(bst, dpred, model_params):
     """
-    Do prediction and save the prediction result in the table.
+    Calculate the prediction result.
 
     Args:
         bst: the XGBoost booster object.
         dpred: the XGBoost DMatrix input data to predict.
         model_params (dict): the XGBoost model parameters.
-        result_table (str): the result table name.
-        result_column_names (list[str]): the result column names.
-        train_label_idx (int): the index where the trained label is inside
-            result_column_names.
-        feature_file_name (str): the file path where the feature dumps.
-        conn: the database connection object.
 
     Returns:
-        None.
+        The prediction result.
     """
     preds = bst.predict(dpred)
 
@@ -128,8 +120,27 @@ def _predict_and_store_result(bst, dpred, model_params, result_table,
     elif objective.startswith("multi:") and len(preds) == 2:
         preds = np.argmax(np.array(preds), axis=1)
 
-    with db.buffered_db_writer(conn, result_table, result_column_names,
-                               100) as w:
+    return preds
+
+
+def _store_predict_result(preds, result_table, result_column_names,
+                          train_label_idx, feature_file_name, conn):
+    """
+    Save the prediction result in the table.
+
+    Args:
+        preds: the prediction result to save.
+        result_table (str): the result table name.
+        result_column_names (list[str]): the result column names.
+        train_label_idx (int): the index where the trained label is inside
+            result_column_names.
+        feature_file_name (str): the file path where the feature dumps.
+        conn: the database connection object.
+
+    Returns:
+        None.
+    """
+    with db.buffered_db_writer(conn, result_table, result_column_names) as w:
         with open(feature_file_name, "r") as feature_file_read:
             line_no = 0
             for line in feature_file_read.readlines():
@@ -137,8 +148,8 @@ def _predict_and_store_result(bst, dpred, model_params, result_table,
                     break
 
                 row = [
-                    item for i, item in enumerate(line.strip().split("/"))
-                    if i != train_label_idx
+                    item for i, item in enumerate(line.strip().split(
+                        DMATRIX_FILE_SEP)) if i != train_label_idx
                 ]
                 row.append(str(preds[line_no]))
                 w.write(row)

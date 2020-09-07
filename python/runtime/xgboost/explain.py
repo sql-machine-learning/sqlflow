@@ -51,9 +51,10 @@ def xgb_shap_dataset(datasource,
         # (TODO: lhw) we may specify pai_explain_table in datasoure
         # and discard the condition statement here
         conn = PaiIOConnection.from_table(pai_explain_table)
+        stream = db.db_generator(conn, None, label_meta)
     else:
         conn = db.connect_with_data_source(datasource)
-    stream = db.db_generator(conn, select, label_meta)
+        stream = db.db_generator(conn, select, label_meta)
     selected_cols = db.selected_cols(conn, select)
 
     if transform_fn:
@@ -104,7 +105,7 @@ def xgb_shap_dataset(datasource,
         # column name would be "c" too.
         #
         # If the column "c" contains 3 features,
-        # the result column name would be "c-0", "c-1" and "c-2"
+        # the result column name would be "c_0", "c_1" and "c_2"
         if i == 0:
             offsets = np.cumsum([0] + sizes)
             column_names = []
@@ -115,7 +116,7 @@ def xgb_shap_dataset(datasource,
                     column_names.append(feature_names[j])
                 else:
                     for k in six.moves.range(start, end):
-                        column_names.append('{}-{}'.format(
+                        column_names.append('{}_{}'.format(
                             feature_names[j], k))
 
             xs = pd.DataFrame(columns=column_names)
@@ -153,6 +154,7 @@ def explain(datasource,
             feature_column_names,
             label_meta,
             summary_params,
+            explainer="TreeExplainer",
             result_table="",
             is_pai=False,
             pai_explain_table="",
@@ -163,6 +165,63 @@ def explain(datasource,
             oss_bucket_name=None,
             transform_fn=None,
             feature_column_code=""):
+    if explainer == "XGBoostExplainer":
+        if result_table == "":
+            raise ValueError("""XGBoostExplainer must use with INTO to output
+result to a table.""")
+        bst = xgb.Booster()
+        bst.load_model("my_model")
+        gain_map = bst.get_score(importance_type="gain")
+        fscore_map = bst.get_fscore()
+        if is_pai:
+            from runtime.dbapi.paiio import PaiIOConnection
+            conn = PaiIOConnection.from_table(result_table)
+        else:
+            conn = db.connect_with_data_source(datasource)
+
+        all_feature_keys = list(gain_map.keys())
+        all_feature_keys.sort()
+        with db.buffered_db_writer(conn, result_table,
+                                   ["feature", "fscore", "gain"], 100) as w:
+            for fkey in all_feature_keys:
+                row = [fkey, fscore_map[fkey], gain_map[fkey]]
+                w.write(list(row))
+    else:
+        # when explainer is "" or "TreeExplainer" use SHAP by default.
+        shap_explain(datasource,
+                     select,
+                     feature_field_meta,
+                     feature_column_names,
+                     label_meta,
+                     summary_params,
+                     result_table=result_table,
+                     is_pai=is_pai,
+                     pai_explain_table=pai_explain_table,
+                     oss_dest=oss_dest,
+                     oss_ak=oss_ak,
+                     oss_sk=oss_sk,
+                     oss_endpoint=oss_endpoint,
+                     oss_bucket_name=oss_bucket_name,
+                     transform_fn=transform_fn,
+                     feature_column_code=feature_column_code)
+
+
+def shap_explain(datasource,
+                 select,
+                 feature_field_meta,
+                 feature_column_names,
+                 label_meta,
+                 summary_params,
+                 result_table="",
+                 is_pai=False,
+                 pai_explain_table="",
+                 oss_dest=None,
+                 oss_ak=None,
+                 oss_sk=None,
+                 oss_endpoint=None,
+                 oss_bucket_name=None,
+                 transform_fn=None,
+                 feature_column_code=""):
     x = xgb_shap_dataset(datasource,
                          select,
                          feature_column_names,
@@ -172,23 +231,23 @@ def explain(datasource,
                          pai_explain_table,
                          transform_fn=transform_fn,
                          feature_column_code=feature_column_code)
-
     shap_values, shap_interaction_values, expected_value = xgb_shap_values(x)
-
     if result_table != "":
         if is_pai:
             from runtime.dbapi.paiio import PaiIOConnection
             conn = PaiIOConnection.from_table(result_table)
-            # TODO(typhoonzero): the shape of shap_values is
-            # (3, num_samples, num_features), use the first
-            # dimension here, should find out how to use
-            # the other two.
         else:
             conn = db.connect_with_data_source(datasource)
-
-        write_shap_values(shap_values[0], conn, result_table,
-                          feature_column_names)
-        return
+        # TODO(typhoonzero): the shap_values is may be a
+        # list of shape [3, num_samples, num_features],
+        # use the first dimension here, should find out
+        # when to use the other two. When shap_values is
+        # not a list it can be directly used.
+        if isinstance(shap_values, list):
+            to_write = shap_values[0]
+        else:
+            to_write = shap_values
+        write_shap_values(to_write, conn, result_table, feature_column_names)
 
     if summary_params.get("plot_type") == "decision":
         explainer.plot_and_save(

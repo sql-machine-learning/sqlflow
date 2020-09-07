@@ -22,8 +22,8 @@ from runtime.tensorflow.train_keras import keras_compile, keras_train_compiled
 
 def keras_train_and_save(estimator, model_params, save, FLAGS,
                          train_dataset_fn, val_dataset_fn, label_meta, epochs,
-                         verbose, metric_names, validation_steps,
-                         load_pretrained_model, model_meta):
+                         verbose, metric_names, validation_steps, load,
+                         model_meta):
     print("Start training using keras model...")
     classifier, has_none_optimizer = keras_compile(estimator, model_params,
                                                    save, metric_names)
@@ -33,11 +33,11 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
     else:
         validate_dataset = None
 
-    if load_pretrained_model:
+    if load:
         # FIXME(typhoonzero): copied from runtime.tensorflow.train_keras
         inputs, targets = next(iter(train_dataset.take(1)))
         classifier.evaluate(inputs, targets)
-        classifier.load_weights(save)
+        classifier.load_weights(load)
 
     if len(FLAGS.worker_hosts.split(",")) > 1:
         keras_train_distributed(classifier, model_params, save, model_meta,

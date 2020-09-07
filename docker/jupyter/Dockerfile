@@ -15,6 +15,10 @@ RUN apk add --no-cache python3 py3-pip py3-pyzmq py3-grpcio
 # Install IPythono Notebook tutorials
 COPY /docker/jupyter/js /jupyter/js/
 COPY build/tutorial /workspace
+# Remove non-interactive tutorials
+RUN rm /workspace/energe_lstmbasedtimeseries.ipynb \
+    /workspace/cora-gcn.ipynb \
+    /workspace/imdb-stackedbilstm.ipynb
 COPY docker/jupyter/install-jupyter.sh /jupyter/install-jupyter.sh
 RUN /bin/sh /jupyter/install-jupyter.sh
 

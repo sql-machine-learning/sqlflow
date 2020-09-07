@@ -14,6 +14,7 @@
 package ir
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -27,6 +28,11 @@ func TestCSVRegex(t *testing.T) {
 		"1,2,3,4",
 		"1.3,-3.2,132,32",
 		"33,-33",
+		"33,-33,",
+		" 33 , -70 , 80 , ",
+		" 33 , -70 , 80 ,",
+		" 33 , -70 , 80, ",
+		" 33 , -70 , 80,",
 	}
 	for _, s := range csvStings {
 		if inferStringDataFormat(s) != csv {
@@ -218,6 +224,15 @@ func TestFeatureDerivation(t *testing.T) {
 
 	a := assert.New(t)
 	db := database.GetTestingDBSingleton()
+	var testDataSQL string
+	if testDB == "mysql" {
+		testDataSQL = testdata.FeatureDerivationCaseSQL
+	} else if testDB == "hive" {
+		testDataSQL = testdata.FeatureDerivationCaseSQLHive
+	}
+	if err := testdata.Popularize(db.DB, testDataSQL); err != nil {
+		a.FailNow(fmt.Sprintf("%v", err))
+	}
 
 	trainStmt := mockTrainStmtNormal()
 	e := InferFeatureColumns(trainStmt, db)
