@@ -33,13 +33,15 @@ type stepContext struct {
 }
 
 type coulerFiller struct {
-	StepList    []*stepContext
-	DataSource  string
-	StepEnvs    map[string]string
-	WorkflowTTL int
-	SecretName  string
-	SecretData  string
-	Resources   string
+	StepList         []*stepContext
+	DataSource       string
+	StepEnvs         map[string]string
+	WorkflowTTL      int
+	SecretName       string
+	SecretData       string
+	Resources        string
+	StepLogFile      string
+	StepExitTimeWait int64
 }
 
 // GenerateCodeCouler generate a Couler program to submit a workflow to run the sql program.
@@ -93,14 +95,25 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 		}
 	}
 
+	exitTimeWait := int64(0)
+	exitTimeWaitEnv := os.Getenv("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT")
+	if exitTimeWaitEnv != "" {
+		exitTimeWait, err = strconv.ParseInt(exitTimeWaitEnv, 10, 64)
+		if err != nil {
+			return "", fmt.Errorf("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT: %s should be int", exitTimeWaitEnv)
+		}
+	}
+
 	filler := &coulerFiller{
-		StepList:    stepList,
-		DataSource:  session.DbConnStr,
-		StepEnvs:    envs,
-		WorkflowTTL: workflowTTL,
-		SecretName:  secretName,
-		SecretData:  secretData,
-		Resources:   os.Getenv(workflowResourcesEnv),
+		StepList:         stepList,
+		DataSource:       session.DbConnStr,
+		StepEnvs:         envs,
+		WorkflowTTL:      workflowTTL,
+		SecretName:       secretName,
+		SecretData:       secretData,
+		Resources:        os.Getenv(workflowResourcesEnv),
+		StepLogFile:      os.Getenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE"),
+		StepExitTimeWait: exitTimeWait,
 	}
 	var program bytes.Buffer
 	if err := coulerTemplate.Execute(&program, filler); err != nil {
@@ -111,6 +124,8 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 
 var coulerCodeTmpl = `
 import couler.argo as couler
+import couler.pyfunc as pyfunc
+from os import path
 import json
 import re
 
@@ -133,9 +148,30 @@ if '''{{.Resources}}''' != "":
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 
+step_log_file = "{{.StepLogFile}}"
+step_exit_time_wait = {{.StepExitTimeWait}}
+
 {{ range $ss := .StepList }}
 {{.Code}}
-couler.run_script(image="{{.Image}}", source=step_entry_{{.StepIndex}}, env=step_envs, resources=resources)
+
+if step_log_file:
+	log_dir = path.dirname(step_log_file)
+	code = "\n".join([
+		"mkdir -p %s" % log_dir,
+		"set -o pipefail # fail when any sub-command fail",
+		"(",
+		"python <<EOF",
+		pyfunc.body(step_entry_{{.StepIndex}}),
+		"EOF",
+		") 2>&1 | tee %s" % step_log_file,
+		"exit_code=$?",
+		"# sleep a while for finishing log collection",
+		"sleep %d" % step_exit_time_wait,
+		"exit $exit_code"
+	])
+	couler.run_script(image="{{.Image}}", command="bash", source=code, env=step_envs, resources=resources)
+else:
+	couler.run_script(image="{{.Image}}", source=step_entry_{{.StepIndex}}, env=step_envs, resources=resources)
 {{end}}
 `
 
