@@ -33,20 +33,17 @@ class TestXGBoostTrain(unittest.TestCase):
             validation.select="SELECT * FROM iris.test"
         INTO iris.xgboost_train_model_test;
         """
-
         select = "SELECT * FROM iris.train"
         val_select = "SELECT * FROM iris.test"
         train_params = {
             "num_boost_round": 20,
-            "original_sql": original_sql,
-            "feature_column_map": None,
-            "label_column": NumericColumn(FieldDesc(name="class")),
-            "model_image": "sqlflow:step"
         }
         model_params = {"num_class": 3, "objective": "multi:softmax"}
-        eval_result = train(ds, "xgboost.gbtree", select, val_select,
-                            model_params, "iris.xgboost_train_model_test",
-                            None, train_params)
+        eval_result = train(ds, original_sql, select, val_select,
+                            "xgboost.gbtree", "", None,
+                            NumericColumn(FieldDesc(name="class")),
+                            model_params, train_params,
+                            "iris.xgboost_train_model_test", None)
         self.assertLess(eval_result['train']['merror'][-1], 0.01)
         self.assertLess(eval_result['validate']['merror'][-1], 0.01)
 
