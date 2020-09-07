@@ -25,9 +25,13 @@ def connect_with_data_source(driver_dsn):
 
 
 INT64_TYPE = long if six.PY2 else int  # noqa: F821
+XGBOOST_NULL_MAGIC = 9999.0
 
 
 def read_feature(raw_val, feature_spec, feature_name):
+    # FIXME(typhoonzero): return None if not XGBoost
+    if raw_val is None:
+        return XGBOOST_NULL_MAGIC,
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["is_sparse"]:
         if feature_spec["format"] == "kv":

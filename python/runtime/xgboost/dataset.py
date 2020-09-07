@@ -22,6 +22,7 @@ import runtime.feature.column as fc
 import six
 import xgboost as xgb
 from runtime import db
+from runtime.db import XGBOOST_NULL_MAGIC
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.model import EstimatorType
@@ -143,6 +144,7 @@ def dump_dmatrix(filename,
 
             row_data = []
             offset = 0
+            sys.stderr.write("##########\n %s\n" % str(features))
             for i, v in enumerate(features):
                 if len(v) == 1:  # dense feature
                     value = v[0]
@@ -215,12 +217,12 @@ def load_dmatrix(filename):
             ret = load_svmlight_files(files, zero_based=True)
             X = vstack(ret[0::2])
             y = np.concatenate(ret[1::2], axis=0)
-            return xgb.DMatrix(X, y)
+            return xgb.DMatrix(X, y, missing=XGBOOST_NULL_MAGIC)
         else:
             ret = load_svmlight_file(filename, zero_based=True)
-            return xgb.DMatrix(ret[0], ret[1])
+            return xgb.DMatrix(ret[0], ret[1], missing=XGBOOST_NULL_MAGIC)
     else:
-        return xgb.DMatrix(filename)
+        return xgb.DMatrix(filename, missing=XGBOOST_NULL_MAGIC)
 
 
 def get_pai_table_slice_count(table, nworkers, batch_size):

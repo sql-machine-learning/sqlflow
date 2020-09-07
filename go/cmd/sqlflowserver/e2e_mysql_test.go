@@ -54,6 +54,31 @@ INTO sqlflow_models.custom_loop_model_eval_result;`, caseTrainTable)
 	}
 }
 
+func caseTrainXGBoostWithNull(t *testing.T) {
+	a := assert.New(t)
+	prepareSQL1 := `CREATE TABLE IF NOT EXISTS boston.train_ext AS SELECT * FROM boston.train;`
+	prepareSQL2 := `UPDATE boston.train_ext
+SET rad = NULL
+WHERE zn < 18.1 AND zn > 17.0;`
+	_, _, _, err := connectAndRunSQL(prepareSQL1)
+	a.NoError(err)
+	_, _, _, err = connectAndRunSQL(prepareSQL2)
+	a.NoError(err)
+
+	trainSQL := fmt.Sprintf(`SELECT * FROM boston.train_ext
+TO TRAIN xgboost.gbtree
+WITH
+	objective="reg:squarederror",
+	train.num_boost_round = 30
+LABEL medv
+INTO sqlflow_models.my_xgb_regression_model;
+`)
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+}
+
 func caseTrainXGBoostMultiClass(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`
@@ -155,6 +180,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)
 
 	// xgboost cases
+	t.Run("caseTrainXGBoostWithNull", caseTrainXGBoostWithNull)
 	t.Run("caseTrainXGBoostMultiClass", caseTrainXGBoostMultiClass)
 	t.Run("caseTrainXGBoostRegressionConvergence", caseTrainXGBoostRegressionConvergence)
 	t.Run("CasePredictXGBoostRegression", casePredictXGBoostRegression)
