@@ -17,7 +17,6 @@ COPY /docker/jupyter/js /jupyter/js/
 COPY build/tutorial /workspace
 # Remove non-interactive tutorials
 RUN rm /workspace/energe_lstmbasedtimeseries.ipynb \
-    /workspace/optimization_guide.ipynb \
     /workspace/cora-gcn.ipynb \
     /workspace/imdb-stackedbilstm.ipynb
 COPY docker/jupyter/install-jupyter.sh /jupyter/install-jupyter.sh
