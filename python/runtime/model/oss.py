@@ -15,6 +15,7 @@ import os
 import pickle
 
 import oss2
+import six
 import tensorflow as tf
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.tensorflow import is_tf_estimator
@@ -118,9 +119,13 @@ def save_dir(oss_model_dir, local_dir):
     '''
     bucket = get_models_bucket()
     for (root, dirs, files) in os.walk(local_dir, topdown=True):
+        if not six.PY2:
+            root = root.decode("utf-8")
         dst_dir = "/".join([oss_model_dir.rstrip("/"), root])
         mkdir(bucket, dst_dir)
         for file_name in files:
+            if not six.PY2:
+                file_name = file_name.decode("utf-8")
             curr_file_path = os.path.join(root, file_name)
             remote_file_path = "/".join([dst_dir.rstrip("/"), file_name])
             remote_file_path = remove_bucket_prefix(remote_file_path)
