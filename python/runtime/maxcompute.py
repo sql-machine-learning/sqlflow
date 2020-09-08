@@ -12,7 +12,11 @@
 # limitations under the License.
 
 import numpy as np
-from odps import ODPS, tunnel
+
+try:
+    from odps import ODPS, tunnel
+except:  # noqa: E722
+    pass
 
 
 # MaxCompute(odps) does not provide dbapi
