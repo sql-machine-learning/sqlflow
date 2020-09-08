@@ -114,16 +114,28 @@ def submit_pai_explain(datasource,
                        model_name,
                        model_params,
                        result_table,
+                       explainer="TreeExplainer",
                        user=""):
     """This function pack need params and resource to a tarball
     and submit a explain task to PAI
 
     Args:
-        datasource: current datasource
-        select: sql statement to get explain data set
-        result_table: the table name to save result
-        model_name: model used to do prediction
-        model_params: dict, Params for training, crossponding to WITH clause
+        datasource: string
+            Like: maxcompute://ak:sk@domain.com/api?
+                  curr_project=test_ci&scheme=http
+        original_sql: string
+            Original "TO PREDICT" statement.
+        select: string
+            SQL statement to get prediction data set.
+        model_name: string
+            Model to load and do prediction.
+        model_params: dict
+            Params for training, crossponding to WITH clause.
+        result_table: string
+            The table name to save prediction result.
+        user: string
+            A string to identify the user, used to load model from the user's
+            directory.
     """
     params = dict(locals())
 
@@ -132,16 +144,19 @@ def submit_pai_explain(datasource,
     # is like: "SELECT fields,... FROM table"
     data_table = table_ops.create_tmp_table_from_select(select, datasource)
     params["data_table"] = data_table
+    params["explainer"] = explainer
 
     # format resultTable name to "db.table" to let the codegen form a
     # submitting argument of format "odps://project/tables/table_name"
     project = table_ops.get_project(datasource)
     if result_table.count(".") == 0:
         result_table = "%s.%s" % (project, result_table)
+    params["result_table"] = result_table
 
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
                                                        model_name,
                                                        user=user)
+    params["oss_model_path"] = oss_model_path
     model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
         oss_model_path, project)
     params["load"] = model_name

@@ -30,6 +30,10 @@ import (
 
 func TestEnd2EndWorkflow(t *testing.T) {
 	a := assert.New(t)
+	// test log collection
+	os.Setenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE", "/home/admin/logs/step.log")
+	os.Setenv("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT", "2")
+
 	if os.Getenv("SQLFLOW_TEST_DATASOURCE") == "" || strings.ToLower(os.Getenv("SQLFLOW_TEST")) != "workflow" {
 		t.Skip("Skipping workflow test.")
 	}
@@ -69,10 +73,10 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		caseTrainTable = caseDB + ".sqlflow_test_iris_train"
 		caseTestTable = caseDB + ".sqlflow_test_iris_test"
 		casePredictTable = caseDB + ".sqlflow_test_iris_predict"
+		caseInto = "my_dnn_model"
 	} else {
 		dbConnStr = os.Getenv("SQLFLOW_TEST_DATASOURCE")
 	}
-
 	err = prepareTestData(dbConnStr)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -392,44 +396,63 @@ func runSQLProgramAndCheck(t *testing.T, sqlProgram string) {
 }
 
 func CaseWorkflowTrainXgboost(t *testing.T) {
-	extraTrainSQLProgram := `SELECT * FROM iris.train LIMIT 100;
+	extraTrainSQLProgram := `SELECT * FROM %[1]s LIMIT 100;
 
-SELECT * FROM iris.train
+SELECT * FROM %[1]s
 TO TRAIN xgboost.gbtree
 WITH objective="multi:softmax",num_class=3
 LABEL class
-INTO sqlflow_models.xgb_classification;
+INTO %[2]s;
 
-SELECT * FROM iris.train
+SELECT * FROM %[1]s
 TO TRAIN xgboost.gbtree
 WITH objective="multi:softmax",num_class=3
 COLUMN sepal_length, DENSE(sepal_width)
 LABEL class
-INTO sqlflow_models.xgb_classification;
+INTO %[2]s;
 
-SELECT * FROM sqlflow_models.xgb_classification;
+-- SELECT * FROM sqlflow_models.xgb_classification;
 `
 
 	sqlProgram := `
-SELECT * FROM iris.test
-TO PREDICT iris.test_result_table.class
-USING sqlflow_models.xgb_classification;
+SELECT * FROM %[2]s
+TO PREDICT %[1]s.test_result_table.class
+USING %[3]s;
 
-SELECT * FROM iris.test_result_table;
+SELECT * FROM %[1]s.test_result_table;
 
-SELECT * FROM iris.test
-TO EVALUATE sqlflow_models.xgb_classification
+SELECT * FROM %[2]s
+TO EVALUATE %[3]s
 WITH
 	validation.metrics="accuracy_score"
 LABEL class
-INTO iris.evaluate_result_table;
+INTO %[1]s.evaluate_result_table;
 
-SELECT * FROM iris.evaluate_result_table;
+SELECT * FROM %[1]s.evaluate_result_table;
 
-SHOW TRAIN sqlflow_models.xgb_classification;
+SHOW TRAIN %[3]s;
+
+SELECT * FROM %[2]s
+TO EXPLAIN %[3]s
+WITH
+	summary.plot_type = bar
+INTO %[1]s.explain_result_table;
+
+SELECT * FROM %[1]s.explain_result_table;
+
+SELECT * FROM %[2]s
+TO EXPLAIN %[3]s
+WITH
+	summary.plot_type = bar
+USING XGBoostExplainer
+INTO %[1]s.explain_result_table;
+
+SELECT * FROM %[1]s.explain_result_table;
 `
-	runSQLProgramAndCheck(t, extraTrainSQLProgram+sqlProgram)
-	runSQLProgramAndCheck(t, sqlProgram)
+	sql1 := fmt.Sprintf(extraTrainSQLProgram, caseTrainTable, caseInto)
+	sql2 := fmt.Sprintf(sqlProgram, caseDB, caseTestTable, caseInto)
+	runSQLProgramAndCheck(t, sql1+sql2)
+	runSQLProgramAndCheck(t, sql2)
 }
 
 func caseWorkflowOptimize(t *testing.T) {

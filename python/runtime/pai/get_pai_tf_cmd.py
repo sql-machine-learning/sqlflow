@@ -66,8 +66,9 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
            ) % (job_name, tarball, entry_file, submit_tables, output_tables,
                 params_file)
 
-    # format the oss checkpoint path with ARN authorization.
-    oss_checkpoint_configs = os.getenv("SQLFLOW_OSS_CHECKPOINT_CONFIG")
+    # format the oss checkpoint path with ARN authorization, should use eval
+    # because we use '''json''' in the workflow yaml file.
+    oss_checkpoint_configs = eval(os.getenv("SQLFLOW_OSS_CHECKPOINT_CONFIG"))
     if not oss_checkpoint_configs:
         raise SQLFlowDiagnostic(
             "need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when "

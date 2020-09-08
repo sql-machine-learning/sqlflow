@@ -146,6 +146,7 @@ axel --quiet --output /usr/local/bin/checkstyle-8.29-all.jar \
 
 echo "Install BARON mathematical programming solver ..."
 axel --quiet --output /tmp/baron-lin64.zip \
+    "http://cdn.sqlflow.tech/ci/baron-lin64.zip" \
     "https://minlp.com/downloads/xecs/baron/current/baron-lin64.zip"
 unzip -qq /tmp/baron-lin64.zip -d /tmp/
 mv /tmp/baron-lin64/baron /usr/bin

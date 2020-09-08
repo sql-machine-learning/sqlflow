@@ -11,11 +11,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from odps import ODPS, tunnel
+try:
+    from odps import ODPS, tunnel
+    COMPRESS_ODPS_ZLIB = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
+except:  # noqa: E722
+    COMPRESS_ODPS_ZLIB = None
+
 from runtime.dbapi.connection import Connection, ResultSet
 from six.moves.urllib.parse import parse_qs, urlparse
-
-COMPRESS_ODPS_ZLIB = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
 
 
 class MaxComputeResultSet(ResultSet):
