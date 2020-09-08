@@ -48,10 +48,15 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
+		dtype, err := toModuleDataType(c.FieldDesc.DType, module)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s, dtype=%s)",
 			module,
 			c.FieldDesc.Name,
-			shapeStr), nil
+			shapeStr,
+			dtype), nil
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
