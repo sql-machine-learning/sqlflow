@@ -216,29 +216,20 @@ def pai_dataset(table,
                 dtypes.append(label_meta["dtype"])
 
     import paiio
-
+    # satisfy different paiio versions.
     try:
-        ds = paiio.TableRecordDataset(
-            table,
-            ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
-            selected_cols=",".join(selected_cols),
-            slice_id=slice_id,
-            slice_count=slice_count,
-            capacity=2**25,
-            num_threads=64).map(
-                functools.partial(parse_pai_dataset, feature_column_names,
-                                  label_meta, feature_metas))
+        f = paiio.TableRecordDataset
     except:  # noqa: E722
-        ds = paiio.data.TableRecordDataset(
-            table,
-            ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
-            selected_cols=",".join(selected_cols),
-            slice_id=slice_id,
-            slice_count=slice_count,
-            capacity=2**25,
-            num_threads=64).map(
-                functools.partial(parse_pai_dataset, feature_column_names,
-                                  label_meta, feature_metas))
+        f = paiio.data.TableRecordDataset
+    ds = f(table,
+           ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
+           selected_cols=",".join(selected_cols),
+           slice_id=slice_id,
+           slice_count=slice_count,
+           capacity=2**25,
+           num_threads=64).map(
+               functools.partial(parse_pai_dataset, feature_column_names,
+                                 label_meta, feature_metas))
     return ds
 
 
