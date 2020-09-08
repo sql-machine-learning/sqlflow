@@ -386,7 +386,7 @@ INTO evaluate_result_table;
 - *attr_expr* sets attributes when doing evaluation. You can set `validation.metrics` to indicate which metrics will be outputed to the result table, e.g. `validation.metrics="Accuracy,AUC"`, you can find more supported metric names for Keras models [here](https://www.tensorflow.org/api_docs/python/tf/keras/metrics) and XGBoost models [here](https://xgboost.readthedocs.io/en/latest/parameter.html).
 - *evaluate_result_table* is the result table that stores the evaluation results.
 
-### Optimization Clause
+## Optimization Syntax
 
 SQLFlow uses the `TO MAXIMIZE` and `TO MINIMIZE` clauses to describe and solve the math programming problems. 
 
