@@ -15,7 +15,7 @@ try:
     from odps import ODPS, tunnel
     COMPRESS_ODPS_ZLIB = tunnel.CompressOption.CompressAlgorithm.ODPS_ZLIB
 except:  # noqa: E722
-    pass
+    COMPRESS_ODPS_ZLIB = None
 
 from runtime.dbapi.connection import Connection, ResultSet
 from six.moves.urllib.parse import parse_qs, urlparse
