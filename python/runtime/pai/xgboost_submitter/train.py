@@ -154,12 +154,10 @@ def train_step(original_sql,
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
 
-    batch_size = train_params.get("batch_size", None)
-    epoch = train_params.get("epoch", 1)
+    batch_size = train_params.pop("batch_size", None)
+    epoch = train_params.pop("epoch", 1)
     load_pretrained_model = True if load else False
-    disk_cache = train_params.get("disk_cache", False)
-
-    print("validation_select", validation_select)
+    disk_cache = train_params.pop("disk_cache", False)
 
     if is_dist_train:
         dist_train(flags=FLAGS,

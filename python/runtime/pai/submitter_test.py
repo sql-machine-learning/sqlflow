@@ -20,7 +20,7 @@ import runtime.feature.column as fc
 import runtime.feature.field_desc as fd
 import runtime.testing as testing
 import runtime.xgboost as xgboost_extended  # noqa: F401
-import tensorflow as tf  # noqa: F401
+import tensorflow as tf  # noqa: E0401,F401
 from runtime.pai import (evaluate, explain, get_pai_tf_cmd, pai_model, predict,
                          train)
 from runtime.pai.cluster_conf import get_cluster_config
@@ -33,8 +33,8 @@ class SubmitterTestCase(TestCase):
 
     def test_get_pai_tf_cmd(self):
         conf = get_cluster_config({})
-        os.environ[
-            "SQLFLOW_OSS_CHECKPOINT_CONFIG"] = '{"arn":"arn", "host":"host"}'
+        os.environ["SQLFLOW_OSS_CHECKPOINT_CONFIG"] = \
+            '\'\'\'{"arn":"arn", "host":"host"}\'\'\''
         cmd = get_pai_tf_cmd.get_pai_tf_cmd(
             conf, "job.tar.gz", "params.txt", "entry.py", "my_dnn_model",
             "user1/my_dnn_model", "test_project.input_table",

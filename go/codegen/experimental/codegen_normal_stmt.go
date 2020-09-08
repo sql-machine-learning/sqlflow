@@ -30,6 +30,8 @@ def step_entry_{{.StepIndex}}():
     stmt = """{{.Stmt}}"""
     if conn.is_query(stmt):
         rs = conn.query(stmt)
+        if rs.error():
+            raise Exception("execute query error: %s " % rs.error())
         tw = table_writer.ProtobufWriter(rs)
         lines = tw.dump_strings()
         for l in lines:
@@ -37,7 +39,7 @@ def step_entry_{{.StepIndex}}():
     else:
         success = conn.execute(stmt)
         if not success:
-            raise Exception("execute statment error: " % stmt)
+            raise Exception("execute statment error: %s" % stmt)
 `
 
 var normalStmtStepTemplate = template.Must(template.New("NormalStmtStep").Parse(normalStmtStepTmpl))
