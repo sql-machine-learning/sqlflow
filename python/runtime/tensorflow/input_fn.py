@@ -228,7 +228,7 @@ def pai_dataset(table,
             num_threads=64).map(
                 functools.partial(parse_pai_dataset, feature_column_names,
                                   label_meta, feature_metas))
-    except:
+    except:  # noqa: E722
         ds = paiio.data.TableRecordDataset(
             table,
             ["" if t == "string" else eval("np.%s()" % t) for t in dtypes],
