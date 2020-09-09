@@ -24,6 +24,7 @@ import tensorflow as tf  # noqa: E0401,F401
 from runtime.pai import (evaluate, explain, get_pai_tf_cmd, pai_model, predict,
                          train)
 from runtime.pai.cluster_conf import get_cluster_config
+from runtime.pai.pai_distributed import define_tf_flags
 
 
 class SubmitterTestCase(TestCase):
@@ -237,6 +238,43 @@ INTO alifin_jtest_dev.e2etest_random_forest_explain_result;"""
                 "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train",
                 "e2e_test_random_forest_wuyi", {"label_col": "class"},
                 "alifin_jtest_dev.e2etest_random_forest_explain_result")
+
+
+# NOTE(typhoonzero): below tests must run under PAI Docker environment.
+@unittest.skipUnless(testing.get_driver() == "maxcompute"
+                     and testing.get_submitter() == "pai",
+                     "skip non PAI tests")
+class LocalRunPAITrainTask(TestCase):
+    def test_pai_train_step(self):
+        from runtime.pai.tensorflow_submitter.train import train_step
+        model_params = dict()
+        model_params["hidden_units"] = [10, 20]
+        model_params["n_classes"] = 3
+
+        original_sql = """
+SELECT * FROM alifin_jtest_dev.sqlflow_test_iris_train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO e2etest_pai_dnn;"""
+        datasource = testing.get_datasource()
+        save = "e2etest_pai_dnn"
+
+        FLAGS = define_tf_flags()
+        FLAGS.sqlflow_oss_ak = os.getenv("SQLFLOW_OSS_AK")
+        FLAGS.sqlflow_oss_sk = os.getenv("SQLFLOW_OSS_SK")
+        FLAGS.sqlflow_oss_ep = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+
+        oss_path_to_save = pai_model.get_oss_model_save_path(datasource,
+                                                             save,
+                                                             user="")
+        FLAGS.sqlflow_oss_modeldir = pai_model.get_oss_model_url(
+            oss_path_to_save)
+
+        train_step(original_sql, "", "DNNClassifier", datasource,
+                   "SELECT * FROM alifin_jtest_dev.sqlflow_iris_train", "",
+                   "alifin_jtest_dev.sqlflow_iris_train", "", model_params, {},
+                   feature_column_map, label_column, save, None)
 
 
 if __name__ == "__main__":
