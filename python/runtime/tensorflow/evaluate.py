@@ -57,7 +57,8 @@ def evaluate(datasource,
                                             validation_metrics)
     else:
         keras_model = init_model_with_feature_column(estimator_cls,
-                                                     model_params)
+                                                     model_params,
+                                                     is_training=False)
         keras_model_pkg = sys.modules[estimator_cls.__module__]
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)

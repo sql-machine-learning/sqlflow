@@ -53,10 +53,6 @@ def load_pretrained_model_estimator(estimator,
 
 def init_model(estimator, model_params):
     # load estimator class and diagnose the type error
-    model_params = copy.deepcopy(model_params)
-    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
-        model_params.pop(param, None)
-
     try:
         return estimator(**model_params)
     except TypeError as e:

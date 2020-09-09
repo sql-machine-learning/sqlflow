@@ -30,7 +30,8 @@ class WrappedKerasModel(tf.keras.Model):
 
 def init_model_with_feature_column(estimator,
                                    model_params,
-                                   has_none_optimizer=False):
+                                   has_none_optimizer=False,
+                                   is_training=True):
     """Check if estimator have argument "feature_column" and initialize the model
        by wrapping the keras model if no "feature_column" argument detected.
 
@@ -41,6 +42,14 @@ def init_model_with_feature_column(estimator,
         argspec = inspect.getargspec(estimator.__init__)
     else:
         argspec = inspect.getargspec(estimator)
+
+    if not is_training:
+        model_params = copy.deepcopy(model_params)
+        for param in [
+                "optimizer", "dnn_optimizer", "linear_optimizer", "loss"
+        ]:
+            model_params.pop(param, None)
+
     if "feature_columns" not in argspec.args and not has_none_optimizer:
         feature_columns = model_params["feature_columns"]
         del model_params["feature_columns"]

@@ -121,7 +121,9 @@ def _explain(datasource,
                            pai_table=pai_table)
         return dataset.batch(1).cache()
 
-    estimator = init_model_with_feature_column(estimator_cls, model_params)
+    estimator = init_model_with_feature_column(estimator_cls,
+                                               model_params,
+                                               is_training=False)
     conn = PaiIOConnection.from_table(result_table) if result_table else None
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
