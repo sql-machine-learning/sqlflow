@@ -444,10 +444,10 @@ INTO my_db.my_result_table;
 
 ## TO RUN Syntax
 
-SQLFlow provides `TO RUN` statement to execute runnables to do complicated
+SQLFlow provides the `TO RUN` statement to execute runnables to do complicated
 data preprocessing or analysis. The runnables can be implemented using any
 program language such as Python, C++, Go .etc and are released as Docker images.
-The Syntax is as follows:
+The syntax is as follows:
 
 ```sql
 SELECT select_expr [, select_expr ...]
