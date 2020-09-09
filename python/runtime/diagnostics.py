@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import inspect
 import os
 import re
@@ -53,6 +54,12 @@ def load_pretrained_model_estimator(estimator,
 def init_model(estimator, model_params):
     # load estimator class and diagnose the type error
     try:
+        model_params = copy.deepcopy(model_params)
+        for param in [
+                "optimizer", "dnn_optimizer", "linear_optimizer", "loss"
+        ]:
+            model_params.pop(param, None)
+
         return estimator(**model_params)
     except TypeError as e:
         name = estimator.__name__
