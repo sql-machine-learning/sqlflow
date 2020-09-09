@@ -474,22 +474,22 @@ TO RUN sqlflow/runnable:v0.0.1
 CMD "binning.py",
     "--dbname=iris",
     "--columns=sepal_length,sepal_width",
-    "--bucket_method=bucket,log_bucket",
-    "--bucket_num=10,5"
-INTO iris.train_binning_result;
+    "--bin_method=bucket,log_bucket",
+    "--bin_num=10,5"
+INTO train_binning_result;
 ```
 
 The SQL statement above runs [binning algorithm](https://en.wikipedia.org/wiki/Data_binning)
 on the table `iris.train` and then write the result into the table
-`iris.train_binning_result`.
+`train_binning_result`.
 
 - *binning.py* is the entry file of the runnable program in the docker image.
 - *--dbname=iris* is the database name of the output table.
 - *--columns=sepal_length,sepal_width* indicates that we will execute binning
 on these two columns `sepal_length` and `sepal_width` in the source table.
-- *--bucket_method=bucket,log_bucket* standards for the binning methods for the
+- *--bin_method=bucket,log_bucket* standards for the binning methods for the
 selected columns. Currently we support two methods: `bucket` and `log_bucket`.
-- *--bucket_num=10,5* indicates the binning counts for the selected columns
+- *--bin_num=10,5* indicates the binning counts for the selected columns
 above.
 
 ## Models
