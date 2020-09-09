@@ -42,7 +42,9 @@ def keras_predict(estimator, model_params, save, result_table,
                   feature_column_names, feature_metas, train_label_name,
                   result_col_name, conn, predict_generator, selected_cols):
 
-    classifier = init_model_with_feature_column(estimator, model_params)
+    classifier = init_model_with_feature_column(estimator,
+                                                model_params,
+                                                is_training=False)
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
