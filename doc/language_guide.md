@@ -442,6 +442,53 @@ INTO my_db.my_result_table;
     - [BARON](https://www.minlp.com/baron): used to solve the non-linear programming problems.
 - The `INTO my_db.my_result_table` means that the solved result would be saved in the `my_db.my_result_table` table.
 
+## TO RUN Syntax
+
+SQLFlow provide `TO RUN` statement to execute a runnable to execute complicated
+data preprocessing and analysis. The runnables can be implemented using any
+program language such as Python, C++, Go .etc and is released as Docker images.
+The Syntax is as follows:
+
+```sql
+SELECT select_expr [, select_expr ...]
+FROM table_references
+  [WHERE where_condition]
+  [LIMIT row_count]
+TO RUN docker_image_name
+[CMD param [, param ...]]
+[INTO result_table [, result_table ...]]
+```
+
+- *docker_image_name* is the docker image to execute in this SQL statement. It
+contains multiple runnable programs. SQLFlow provides some pre-made runnables
+in the docker image *sqlflow/runnable*.
+- *param* is the parameter for the runnable program.
+- *result_table* is the table name to store the preprocessing/analysis results
+from runnable programs. There can be 0 ~ N output tables.
+
+Let's take the following SQL statement for example:
+
+```SQL
+SELECT * FROM iris.train
+TO RUN sqlflow/runnable:v0.0.1
+CMD "binning.py",
+    "--columns=sepal_length,sepal_width",
+    "--bucket_method=bucket,log_bucket",
+    "--bucket_num=10,5"
+INTO iris.train_binning_result;
+```
+
+The SQL statement above runs binning algorithm on the table `iris.train` and
+then write the result into the table `iris.train_binning_result`.
+
+- *binning.py* is the runnable entry file in the docker image.
+- *--columns=sepal_length,sepal_width* indicates that we will execute binning
+on these two columns `sepal_length` and `sepal_width` in the source table.
+- *--bucket_method=bucket,log_bucket* indicates the binning methods for the
+selected columns. Currently we support two methods: `bucket` and `log_bucket`.
+- *--bucket_num=10,5* indicates the binning counts for the selected columns
+above.
+
 ## Models
 
 SQLFlow supports various TensorFlow pre-made estimators, Keras customized models, and XGBoost models. A full supported parameter list is under active construction, for now, please refer to [the tutorial](tutorial/iris-dnn.md) for example usage.
