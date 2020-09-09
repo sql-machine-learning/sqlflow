@@ -472,6 +472,7 @@ Let's take the following SQL statement for example:
 SELECT * FROM iris.train
 TO RUN sqlflow/runnable:v0.0.1
 CMD "binning.py",
+    "--dbname=iris",
     "--columns=sepal_length,sepal_width",
     "--bucket_method=bucket,log_bucket",
     "--bucket_num=10,5"
@@ -482,6 +483,7 @@ The SQL statement above runs binning algorithm on the table `iris.train` and
 then write the result into the table `iris.train_binning_result`.
 
 - *binning.py* is the runnable entry file in the docker image.
+- *--dbname=iris* is the data base name of the output table.
 - *--columns=sepal_length,sepal_width* indicates that we will execute binning
 on these two columns `sepal_length` and `sepal_width` in the source table.
 - *--bucket_method=bucket,log_bucket* indicates the binning methods for the
