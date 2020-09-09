@@ -44,7 +44,6 @@ def init_model_with_feature_column(estimator,
         argspec = inspect.getargspec(estimator)
 
     if not is_training:
-        model_params = copy.deepcopy(model_params)
         for param in [
                 "optimizer", "dnn_optimizer", "linear_optimizer", "loss"
         ]:
