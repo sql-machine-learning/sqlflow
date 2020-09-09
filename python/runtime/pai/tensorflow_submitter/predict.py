@@ -22,11 +22,6 @@ from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.predict import estimator_predict, keras_predict
 
 
-def remove_optimizer_and_loss(model_params):
-    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
-        model_params.pop(param, None)
-
-
 def predict_step(datasource, select, data_table, result_table, label_column,
                  oss_model_path):
     """PAI TensorFlow prediction wrapper
