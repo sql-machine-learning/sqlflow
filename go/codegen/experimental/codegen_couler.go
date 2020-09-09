@@ -157,6 +157,9 @@ step_exit_time_wait = {{.StepExitTimeWait}}
 if step_log_file:
 	log_dir = path.dirname(step_log_file)
 	code = "\n".join([
+		"if [[ -f /opt/sqlflow/init_step_container.sh ]]; then",
+		"  bash /opt/sqlflow/init_step_container.sh",
+		"fi",
 		"mkdir -p %s" % log_dir,
 		"set -o pipefail # fail when any sub-command fail",
 		"(",
