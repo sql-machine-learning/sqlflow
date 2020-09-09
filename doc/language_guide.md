@@ -444,9 +444,9 @@ INTO my_db.my_result_table;
 
 ## TO RUN Syntax
 
-SQLFlow provide `TO RUN` statement to execute a runnable to execute complicated
-data preprocessing and analysis. The runnables can be implemented using any
-program language such as Python, C++, Go .etc and is released as Docker images.
+SQLFlow provides `TO RUN` statement to execute runnables to do complicated
+data preprocessing or analysis. The runnables can be implemented using any
+program language such as Python, C++, Go .etc and are released as Docker images.
 The Syntax is as follows:
 
 ```sql
@@ -468,7 +468,7 @@ from runnable programs. There can be 0 ~ N output tables.
 
 Let's take the following SQL statement for example:
 
-```SQL
+```sql
 SELECT * FROM iris.train
 TO RUN sqlflow/runnable:v0.0.1
 CMD "binning.py",
@@ -479,14 +479,15 @@ CMD "binning.py",
 INTO iris.train_binning_result;
 ```
 
-The SQL statement above runs binning algorithm on the table `iris.train` and
-then write the result into the table `iris.train_binning_result`.
+The SQL statement above runs [binning algorithm](https://en.wikipedia.org/wiki/Data_binning)
+on the table `iris.train` and then write the result into the table
+`iris.train_binning_result`.
 
-- *binning.py* is the runnable entry file in the docker image.
-- *--dbname=iris* is the data base name of the output table.
+- *binning.py* is the entry file of the runnable program in the docker image.
+- *--dbname=iris* is the database name of the output table.
 - *--columns=sepal_length,sepal_width* indicates that we will execute binning
 on these two columns `sepal_length` and `sepal_width` in the source table.
-- *--bucket_method=bucket,log_bucket* indicates the binning methods for the
+- *--bucket_method=bucket,log_bucket* standards for the binning methods for the
 selected columns. Currently we support two methods: `bucket` and `log_bucket`.
 - *--bucket_num=10,5* indicates the binning counts for the selected columns
 above.
