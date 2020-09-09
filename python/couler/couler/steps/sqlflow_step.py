@@ -42,7 +42,9 @@ def sqlflow(sql,
 
         log_dir = path.dirname(log_file)
         command = "".join([
-            "set -o pipefail",  # fail when any sub-command fail
+            "if [[ -f /opt/sqlflow/init_step_container.sh ]]; "
+            "then bash /opt/sqlflow/init_step_container.sh; fi",
+            " && set -o pipefail",  # fail when any sub-command fail
             " && mkdir -p %s" % log_dir,
             """ && (step -e "%s" 2>&1 | tee %s)""" %
             (escape_sql(sql), log_file),
