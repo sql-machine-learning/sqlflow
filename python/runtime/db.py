@@ -30,7 +30,7 @@ INT64_TYPE = long if six.PY2 else int  # noqa: F821
 XGBOOST_NULL_MAGIC = 9999.0
 
 
-def read_feature(raw_val, feature_spec, feature_name):
+def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
     # FIXME(typhoonzero): Should use correct dtype here.
     if feature_spec["is_sparse"]:
         if feature_spec["format"] == "kv":
@@ -61,14 +61,18 @@ def read_feature(raw_val, feature_spec, feature_name):
         # Dense string vector
         if feature_spec["dtype"] == "float32":
             if raw_val is None:
-                vec = np.array([XGBOOST_NULL_MAGIC], dtype=np.float32)
+                raise ValueError(
+                    "column %s value is NULL, expected dense vector with delimiter %s"
+                    % (feature_name, feature_spec["delimiter"]))
             else:
                 vec = np.fromstring(raw_val,
                                     dtype=np.float32,
                                     sep=feature_spec["delimiter"])
         elif feature_spec["dtype"] == "int64":
             if raw_val is None:
-                vec = np.array([int(XGBOOST_NULL_MAGIC)], dtype=np.int64)
+                raise ValueError(
+                    "column %s value is NULL, expected dense vector with delimiter %s"
+                    % (feature_name, feature_spec["delimiter"]))
             else:
                 vec = np.fromstring(raw_val,
                                     dtype=np.int64,
@@ -168,12 +172,15 @@ def selected_cols(conn, select):
     return [item[0] for item in name_and_type]
 
 
-def read_features_from_row(row, select_cols, feature_column_names,
-                           feature_metas):
+def read_features_from_row(row,
+                           select_cols,
+                           feature_column_names,
+                           feature_metas,
+                           is_xgboost=False):
     features = []
     for name in feature_column_names:
         feature = read_feature(row[select_cols.index(name)],
-                               feature_metas[name], name)
+                               feature_metas[name], name, is_xgboost)
         features.append(feature)
     return tuple(features)
 

@@ -131,9 +131,11 @@ def dump_dmatrix(filename,
 
     with open(filename, 'a') as f:
         for row, label in generator:
-            features = db.read_features_from_row(row, selected_cols,
+            features = db.read_features_from_row(row,
+                                                 selected_cols,
                                                  feature_column_names,
-                                                 feature_metas)
+                                                 feature_metas,
+                                                 is_xgboost=True)
 
             if raw_data_fid is not None:
                 raw_data_fid.write(
@@ -144,7 +146,6 @@ def dump_dmatrix(filename,
 
             row_data = []
             offset = 0
-            sys.stderr.write("##########\n %s\n" % str(features))
             for i, v in enumerate(features):
                 if len(v) == 1:  # dense feature
                     value = v[0]

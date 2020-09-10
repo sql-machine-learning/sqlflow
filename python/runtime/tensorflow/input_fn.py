@@ -66,9 +66,11 @@ def get_dtype(type_str):
 def tf_generator(gen, selected_cols, feature_column_names, feature_metas):
     def reader():
         for row, label in gen():
-            features = db.read_features_from_row(row, selected_cols,
+            features = db.read_features_from_row(row,
+                                                 selected_cols,
                                                  feature_column_names,
-                                                 feature_metas)
+                                                 feature_metas,
+                                                 is_xgboost=False)
             features = list(features)
             for i, f in enumerate(features):
                 if len(f) == 1 and isinstance(f[0], np.ndarray):

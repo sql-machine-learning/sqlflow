@@ -224,9 +224,11 @@ def estimator_predict(estimator, model_params, save, result_table,
 
     with db.buffered_db_writer(conn, result_table, write_cols, 100) as w:
         for row, _ in predict_generator():
-            features = db.read_features_from_row(row, selected_cols,
+            features = db.read_features_from_row(row,
+                                                 selected_cols,
                                                  feature_column_names,
-                                                 feature_metas)
+                                                 feature_metas,
+                                                 is_xgboost=False)
             result = predict((features, ))
             if train_label_index != -1 and len(row) > train_label_index:
                 del row[train_label_index]
