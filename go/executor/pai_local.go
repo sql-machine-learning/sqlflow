@@ -30,7 +30,8 @@ FLAGS = define_tf_flags()
 FLAGS.sqlflow_oss_ak = os.getenv("SQLFLOW_OSS_AK")
 FLAGS.sqlflow_oss_sk = os.getenv("SQLFLOW_OSS_SK")
 FLAGS.sqlflow_oss_ep = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
-FLAGS.sqlflow_oss_modeldir = "%s"
+FLAGS.sqlflow_oss_modeldir = "%[1]s"
+FLAGS.checkpointDir = "."
 `
 
 func (s *paiLocalExecutor) ExecuteTrain(trainStmt *ir.TrainStmt) error {
@@ -64,11 +65,17 @@ func (s *paiLocalExecutor) ExecuteTrain(trainStmt *ir.TrainStmt) error {
 
 func (s *paiLocalExecutor) ExecutePredict(predStmt *ir.PredictStmt) error {
 	code, _, _, _, err := getPaiPredictCode(s.pythonExecutor, predStmt)
+
 	defer dropTmpTables([]string{predStmt.TmpPredictTable}, s.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
-	return s.runProgram(code, true)
+	ossModelPathToSave, e := getModelPath(predStmt.Using, s.Session)
+	if e != nil {
+		return e
+	}
+	setLocalFlagsCode := fmt.Sprintf(setLocalFlagsCodeTmpl, pai.OSSModelURL(ossModelPathToSave))
+	return s.runProgram(setLocalFlagsCode+code, true)
 }
 
 func (s *paiLocalExecutor) ExecuteExplain(explainStmt *ir.ExplainStmt) error {
@@ -77,7 +84,12 @@ func (s *paiLocalExecutor) ExecuteExplain(explainStmt *ir.ExplainStmt) error {
 	if err != nil {
 		return err
 	}
-	return s.runProgram(expn.Code, true)
+	ossModelPathToSave, e := getModelPath(explainStmt.ModelName, s.Session)
+	if e != nil {
+		return e
+	}
+	setLocalFlagsCode := fmt.Sprintf(setLocalFlagsCodeTmpl, pai.OSSModelURL(ossModelPathToSave))
+	return s.runProgram(setLocalFlagsCode+expn.Code, true)
 }
 
 func (s *paiLocalExecutor) ExecuteEvaluate(evalStmt *ir.EvaluateStmt) error {
@@ -86,5 +98,10 @@ func (s *paiLocalExecutor) ExecuteEvaluate(evalStmt *ir.EvaluateStmt) error {
 	if err != nil {
 		return err
 	}
-	return s.runProgram(code, true)
+	ossModelPathToSave, e := getModelPath(evalStmt.ModelName, s.Session)
+	if e != nil {
+		return e
+	}
+	setLocalFlagsCode := fmt.Sprintf(setLocalFlagsCodeTmpl, pai.OSSModelURL(ossModelPathToSave))
+	return s.runProgram(setLocalFlagsCode+code, true)
 }

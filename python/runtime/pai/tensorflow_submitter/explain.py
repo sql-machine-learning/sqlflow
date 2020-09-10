@@ -110,6 +110,8 @@ def _explain(datasource,
     FLAGS = tf.app.flags.FLAGS
     model_params["model_dir"] = FLAGS.checkpointDir
     model_params.update(feature_columns)
+    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
+        model_params.pop(param, None)
 
     def _input_fn():
         dataset = input_fn("",

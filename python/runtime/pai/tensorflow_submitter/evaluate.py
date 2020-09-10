@@ -126,6 +126,8 @@ def _evaluate(datasource,
                                   batch_size=batch_size)
 
     model_params.update(feature_columns)
+    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
+        model_params.pop(param, None)
     if is_estimator:
         FLAGS = tf.app.flags.FLAGS
         model_params["model_dir"] = FLAGS.checkpointDir

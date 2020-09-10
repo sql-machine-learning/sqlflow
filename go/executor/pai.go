@@ -607,7 +607,6 @@ func getOSSModelBucket(project string) (*oss.Bucket, error) {
 func getOSSSavedModelType(modelName string, project string) (modelType int, estimator string, err error) {
 	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
 	// should use a general method to fetch the model and see the model type.
-	fmt.Printf("in getOSSSavedModelType, modelName: %s, project: %s\n", modelName, project)
 	bucket, err := getOSSModelBucket(project)
 	if err != nil {
 		return
@@ -617,7 +616,6 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 		return
 	}
 	if ret {
-		fmt.Println("got tensorflow_model_desc")
 		modelType = model.TENSORFLOW
 		var buf []byte
 		err = bucket.GetObjectToFile(modelName+"/tensorflow_model_desc_estimator", "tmp_estimator_name")
@@ -634,7 +632,6 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 		return
 	}
 	if ret {
-		fmt.Println("got xgboost_model_desc")
 		modelType = model.XGBOOST
 		return
 	}
