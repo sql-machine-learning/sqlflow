@@ -20,20 +20,21 @@ require (
 	github.com/go-delve/delve v1.3.2 // indirect
 	github.com/go-openapi/spec v0.19.5 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
-	github.com/golang/protobuf v1.3.3
+	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
 	github.com/joho/godotenv v1.3.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.5 // indirect
+	github.com/mattn/go-colorable v0.1.4 // indirect
+	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mattn/go-runewidth v0.0.7 // indirect
 	github.com/mattn/go-sixel v0.0.1
-	github.com/mattn/goveralls v0.0.7 // indirect
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/peterh/liner v1.1.0 // indirect
 	github.com/pingcap/parser v0.0.0-20190613045206-37cc370a20a4
 	github.com/pingcap/tidb v0.0.0-20190625145607-60965b006877
 	github.com/pkg/term v0.0.0-20190109203006-aa71e9d9e942 // indirect
-	github.com/rakyll/gotest v0.0.5 // indirect
+	github.com/rakyll/gotest v0.0.0-20191108192113-45d501058f2a // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sbinet/go-python v0.0.0-20190615090516-46d882be3991 // indirect
 	github.com/sirupsen/logrus v1.4.2
@@ -42,13 +43,15 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/topicai/candy v0.0.0-20160816022300-1b9030d056fa // indirect
-	github.com/wangkuiyi/goyaccfmt v0.1.1 // indirect
 	github.com/wangkuiyi/ipynb v0.0.0-20190916115031-f33fb706ed27 // indirect
 	go.starlark.net v0.0.0-20191218235703-9fcb808a6221 // indirect
 	golang.org/x/arch v0.0.0-20191126211547-368ea8f32fff // indirect
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/tools v0.0.0-20200908211811-12e1bf57a112 // indirect
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
+	golang.org/x/mod v0.3.0 // indirect
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 // indirect
+	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76 // indirect
+	golang.org/x/tools v0.0.0-20200626171337-aa94e735be7f // indirect
 	golang.org/x/tools/gopls v0.4.1 // indirect
 	google.golang.org/grpc v1.27.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6 // indirect
