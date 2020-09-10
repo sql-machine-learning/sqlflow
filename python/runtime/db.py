@@ -32,9 +32,12 @@ XGBOOST_NULL_MAGIC = 9999.0
 
 def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
     # FIXME(typhoonzero): Should use correct dtype here.
+    null_feature_error = ValueError(
+        "column %s value is NULL, expected dense vector with delimiter %s" %
+        (feature_name, feature_spec["delimiter"]))
     if feature_spec["is_sparse"]:
         if feature_spec["format"] == "kv":
-            if raw_val is None:
+            if is_xgboost and raw_val is None:
                 indices = np.array([], dtype=np.int64)
                 values = np.array([], dtype=np.float32)
             else:
@@ -45,7 +48,7 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                 values = np.array([float(item[1]) for item in items],
                                   dtype=np.float32)
         else:
-            if raw_val is None:
+            if is_xgboost and raw_val is None:
                 indices = np.array([], dtype=int)
                 values = np.array([], dtype=np.int64)
             else:
@@ -61,18 +64,14 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
         # Dense string vector
         if feature_spec["dtype"] == "float32":
             if raw_val is None:
-                raise ValueError(
-                    "column %s value is NULL, expected dense vector with delimiter %s"
-                    % (feature_name, feature_spec["delimiter"]))
+                raise null_feature_error
             else:
                 vec = np.fromstring(raw_val,
                                     dtype=np.float32,
                                     sep=feature_spec["delimiter"])
         elif feature_spec["dtype"] == "int64":
             if raw_val is None:
-                raise ValueError(
-                    "column %s value is NULL, expected dense vector with delimiter %s"
-                    % (feature_name, feature_spec["delimiter"]))
+                raise null_feature_error
             else:
                 vec = np.fromstring(raw_val,
                                     dtype=np.int64,
@@ -85,12 +84,18 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
         return vec,
     elif feature_spec["dtype"] == "float32":
         if raw_val is None:
-            return float(XGBOOST_NULL_MAGIC),
+            if is_xgboost:
+                return float(XGBOOST_NULL_MAGIC),
+            else:
+                raise null_feature_error
         else:
             return float(raw_val),
     elif feature_spec["dtype"] == "int64":
         if raw_val is None:
-            return int(XGBOOST_NULL_MAGIC),
+            if is_xgboost:
+                return int(XGBOOST_NULL_MAGIC),
+            else:
+                raise null_feature_error
         else:
             int_raw_val = INT64_TYPE(raw_val)
             return int_raw_val,

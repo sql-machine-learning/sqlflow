@@ -17,10 +17,10 @@ from unittest import TestCase
 
 import numpy as np
 import runtime.testing as testing
-from runtime.db import (buffered_db_writer, connect_with_data_source,
-                        db_generator, get_table_schema, limit_select,
-                        read_feature, read_features_from_row,
-                        selected_columns_and_types)
+from runtime.db import (XGBOOST_NULL_MAGIC, buffered_db_writer,
+                        connect_with_data_source, db_generator,
+                        get_table_schema, limit_select, read_feature,
+                        read_features_from_row, selected_columns_and_types)
 from runtime.dbapi import connect
 from runtime.dbapi.mysql import MYSQL_FIELD_TYPE_DICT
 
@@ -105,10 +105,10 @@ class TestDB(TestCase):
 
 class TestGenerator(TestCase):
     create_statement = "create table test_table_float_fea " \
-                       "(features float, label int)"
+                       "(f1 float, f2 int, f3str VARCHAR(255), f4sparse VARCHAR(255), f5dense VARCHAR(255), label int)"
     drop_statement = "drop table if exists test_table_float_fea"
-    insert_statement = "insert into test_table_float_fea (features,label)" \
-                       " values(1.0, 0), (2.0, 1)"
+    insert_statement = "insert into test_table_float_fea (f1,f2,f3str,f4sparse,f5dense,label)" \
+                       " values(1.0,1,'a','1:1.0 2:2.0','1,2,3',0), (NULL,NULL,NULL,NULL,'1,2,3',1)"
 
     @unittest.skipUnless(testing.get_driver() == "mysql",
                          "skip non mysql tests")
@@ -120,12 +120,41 @@ class TestGenerator(TestCase):
         conn.execute(self.insert_statement)
 
         column_name_to_type = {
-            "features": {
-                "feature_name": "features",
+            "f1": {
+                "feature_name": "f1",
                 "delimiter": "",
                 "dtype": "float32",
                 "is_sparse": False,
                 "shape": []
+            },
+            "f2": {
+                "feature_name": "f2",
+                "delimiter": "",
+                "dtype": "int64",
+                "is_sparse": False,
+                "shape": []
+            },
+            "f3str": {
+                "feature_name": "f3str",
+                "delimiter": "",
+                "dtype": "string",
+                "is_sparse": False,
+                "shape": []
+            },
+            "f4sparse": {
+                "feature_name": "f4sparse",
+                "delimiter": "",
+                "dtype": "string",
+                "is_sparse": True,
+                "shape": [],
+                "format": "kv"
+            },
+            "f5dense": {
+                "feature_name": "f5dense",
+                "delimiter": ",",
+                "dtype": "int64",
+                "is_sparse": False,
+                "shape": [3]
             }
         }
         label_meta = {"feature_name": "label", "shape": [], "delimiter": ""}
@@ -133,13 +162,44 @@ class TestGenerator(TestCase):
                            label_meta)
         idx = 0
         for row, label in gen():
-            features = read_features_from_row(row, ["features"], ["features"],
-                                              column_name_to_type)
-            d = (features, label)
             if idx == 0:
-                self.assertEqual(d, (((1.0, ), ), 0))
+                features = read_features_from_row(
+                    row, ["f1", "f2", "f3str", "f4sparse", "f5dense"],
+                    ["f1", "f2", "f3str", "f4sparse", "f5dense"],
+                    column_name_to_type)
+                d = (features, label)
+                self.assertEqual(1.0, features[0][0])
+                self.assertEqual(1, features[1][0])
+                self.assertEqual('a', features[2][0])
+                self.assertTrue(
+                    np.array_equal(np.array([1, 2]), features[3][0]))
+                self.assertTrue(
+                    np.array_equal(np.array([1., 2.], dtype=np.float32),
+                                   features[3][1]))
+                self.assertTrue(
+                    np.array_equal(np.array([1, 2, 3]), features[4][0]))
+                self.assertEqual(0, label)
             elif idx == 1:
-                self.assertEqual(d, (((2.0, ), ), 1))
+                try:
+                    features = read_features_from_row(
+                        row, ["f1", "f2", "f3str", "f4sparse", "f5dense"],
+                        ["f1", "f2", "f3str", "f4sparse", "f5dense"],
+                        column_name_to_type)
+                except Exception as e:
+                    self.assertTrue(isinstance(e, ValueError))
+                features = read_features_from_row(
+                    row, ["f1", "f2", "f3str", "f4sparse", "f5dense"],
+                    ["f1", "f2", "f3str", "f4sparse", "f5dense"],
+                    column_name_to_type,
+                    is_xgboost=True)
+                self.assertEqual(XGBOOST_NULL_MAGIC, features[0][0])
+                self.assertEqual(int(XGBOOST_NULL_MAGIC), features[1][0])
+                self.assertEqual("", features[2][0])
+                self.assertTrue(np.array_equal(np.array([]), features[3][0]))
+                self.assertTrue(np.array_equal(np.array([]), features[3][1]))
+                self.assertTrue(
+                    np.array_equal(np.array([1, 2, 3]), features[4][0]))
+                self.assertEqual(1, label)
             idx += 1
         self.assertEqual(idx, 2)
 
@@ -160,11 +220,12 @@ class TestConnectWithDataSource(TestCase):
             "format": "kv",
             "dtype": "float",
             "shape": [10],
+            "delimiter": ""
         }
 
         raw_val = "0:1 3:4 4:6"
         indices, values, shape = read_feature(raw_val, feature_spec,
-                                              feature_spec["name"])
+                                              feature_spec["name"], False)
         self.assertTrue(np.array_equal(indices, np.array([0, 3, 4],
                                                          dtype=int)))
         self.assertTrue(np.array_equal(values, np.array([1, 4, 6], dtype=int)))
