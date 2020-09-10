@@ -67,7 +67,9 @@ def explain(datasource,
                            feature_metas, label_meta)
         return dataset.batch(1).cache()
 
-    estimator = init_model_with_feature_column(estimator_cls, model_params)
+    estimator = init_model_with_feature_column(estimator_cls,
+                                               model_params,
+                                               is_training=False)
     conn = connect_with_data_source(datasource)
 
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
