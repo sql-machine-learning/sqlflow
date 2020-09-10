@@ -25,7 +25,7 @@ class PAIMaxComputeDBWriter(BufferedDBWriter):
                                                         table_name_parts[1])
         try:
             self.writer = paiio.TableWriter(table_name_formatted, slice_id=0)
-        except:
+        except Exception:
             self.writer = paiio.python_io.TableWriter(table_name_formatted,
                                                       slice_id=0)
         self.writer_indices = list(range(len(table_schema)))
