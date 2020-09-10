@@ -22,6 +22,7 @@ from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
+from runtime.tensorflow.load_model import load_keras_model_weights
 
 
 def keras_compile(estimator, model_params, save, metric_names):
@@ -126,7 +127,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai,
 
         # NOTE(sneaxiy): should we save/load optimizer info for incremental
         # training, or let users to write the same WITH statements in SQL?
-        classifier.load_weights(save)
+        load_keras_model_weights(classifier, save)
 
     keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                          label_meta, epochs, verbose, model_meta,
@@ -179,10 +180,10 @@ def keras_train_compiled(classifier, save, train_dataset, validate_dataset,
     save_metadata("model_meta.json", model_meta)
 
     try:
-        # NOTE: classifier.save_weights may fail if the model has
+        # NOTE: classifier.save may fail if the model has
         # sqlflow_train_loop and does not have Keras layers defined.
-        # So save metadata before calling save_weights.
-        classifier.save_weights(save, save_format="h5")
+        # So save metadata before calling classifier.save.
+        classifier.save(save, save_format="tf")
     except:  # noqa: E722
         if has_none_optimizer:
             warnings.warn("Saving model with None optimizer fails")
