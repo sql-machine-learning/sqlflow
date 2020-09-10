@@ -104,11 +104,13 @@ class TestDB(TestCase):
 
 
 class TestGenerator(TestCase):
-    create_statement = "create table test_table_float_fea " \
-                       "(f1 float, f2 int, f3str VARCHAR(255), f4sparse VARCHAR(255), f5dense VARCHAR(255), label int)"
+    create_statement = """create table test_table_float_fea
+(f1 float, f2 int, f3str VARCHAR(255),
+f4sparse VARCHAR(255), f5dense VARCHAR(255), label int)"""
     drop_statement = "drop table if exists test_table_float_fea"
-    insert_statement = "insert into test_table_float_fea (f1,f2,f3str,f4sparse,f5dense,label)" \
-                       " values(1.0,1,'a','1:1.0 2:2.0','1,2,3',0), (NULL,NULL,NULL,NULL,'1,2,3',1)"
+    insert_statement = """insert into test_table_float_fea
+(f1,f2,f3str,f4sparse,f5dense,label)
+values(1.0,1,'a','1:1.0 2:2.0','1,2,3',0), (NULL,NULL,NULL,NULL,'1,2,3',1)"""
 
     @unittest.skipUnless(testing.get_driver() == "mysql",
                          "skip non mysql tests")
@@ -167,7 +169,6 @@ class TestGenerator(TestCase):
                     row, ["f1", "f2", "f3str", "f4sparse", "f5dense"],
                     ["f1", "f2", "f3str", "f4sparse", "f5dense"],
                     column_name_to_type)
-                d = (features, label)
                 self.assertEqual(1.0, features[0][0])
                 self.assertEqual(1, features[1][0])
                 self.assertEqual('a', features[2][0])
