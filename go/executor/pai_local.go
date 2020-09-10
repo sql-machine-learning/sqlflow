@@ -14,6 +14,9 @@
 package executor
 
 import (
+	"fmt"
+
+	"sqlflow.org/sqlflow/go/codegen/pai"
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/ir"
 	"sqlflow.org/sqlflow/go/model"
@@ -21,14 +24,18 @@ import (
 
 type paiLocalExecutor struct{ *pythonExecutor }
 
+const setLocalFlagsCodeTmpl = `import os
+from runtime.pai.pai_distributed import define_tf_flags
+FLAGS = define_tf_flags()
+FLAGS.sqlflow_oss_ak = os.getenv("SQLFLOW_OSS_AK")
+FLAGS.sqlflow_oss_sk = os.getenv("SQLFLOW_OSS_SK")
+FLAGS.sqlflow_oss_ep = os.getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+FLAGS.sqlflow_oss_modeldir = "%s"
+`
+
 func (s *paiLocalExecutor) ExecuteTrain(trainStmt *ir.TrainStmt) error {
 	code, _, _, err := getPaiTrainCode(s.pythonExecutor, trainStmt)
-	// defer dropTmpTables([]string{trainStmt.TmpTrainTable, trainStmt.TmpValidateTable}, s.Session.DbConnStr)
-	if err != nil {
-		return err
-	}
-
-	err = s.runProgram(code, true)
+	defer dropTmpTables([]string{trainStmt.TmpTrainTable, trainStmt.TmpValidateTable}, s.Session.DbConnStr)
 	if err != nil {
 		return err
 	}
@@ -39,6 +46,11 @@ func (s *paiLocalExecutor) ExecuteTrain(trainStmt *ir.TrainStmt) error {
 	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
 	if e != nil {
 		return e
+	}
+	setLocalFlagsCode := fmt.Sprintf(setLocalFlagsCodeTmpl, pai.OSSModelURL(ossModelPathToSave))
+	err = s.runProgram(setLocalFlagsCode+code, true)
+	if err != nil {
+		return err
 	}
 	// download model from OSS to local cwd and save to sqlfs
 	// NOTE(typhoonzero): model in sqlfs will be used by sqlflow model zoo currently

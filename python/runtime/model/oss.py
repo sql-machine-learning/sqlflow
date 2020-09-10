@@ -69,6 +69,8 @@ def get_oss_path_from_uri(oss_model_dir, file_name):
 
 
 def mkdir(bucket, oss_dir):
+    import sys
+    sys.stderr.write("%s\n" % oss_dir)
     assert (oss_dir.startswith("oss://"))
     if not oss_dir.endswith("/"):
         oss_dir = oss_dir + "/"
