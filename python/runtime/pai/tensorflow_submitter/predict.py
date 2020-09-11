@@ -108,6 +108,9 @@ def _predict(datasource,
     selected_cols = db.selected_cols(conn, None)
     predict_generator = db.db_generator(conn, None)
 
+    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
+        model_params.pop(param, None)
+
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter

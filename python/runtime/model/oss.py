@@ -133,6 +133,10 @@ def save_dir(oss_model_dir, local_dir):
 
 
 def load_dir(oss_model_dir):
+    import sys
+    sys.stderr.write("load oss dir: %s, cwd: %s\n" %
+                     (oss_model_dir, os.getcwd()))
+    sys.stderr.write("list cwd: %s\n" % os.listdir(os.getcwd()))
     bucket = get_models_bucket()
     path = remove_bucket_prefix(oss_model_dir)
     prefix = "/".join(path.split("/")[:-1]) + "/"
@@ -141,7 +145,11 @@ def load_dir(oss_model_dir):
         # remote: path/to/my/dir/
         # local: dir/
         if obj.key.endswith("/"):
-            os.makedirs(obj.key.replace(prefix, ""))
+            sys.stderr.write("mkdir: %s\n" % obj.key.replace(prefix, ""))
+            try:
+                os.makedirs(obj.key.replace(prefix, ""))
+            except Exception as e:
+                sys.stderr.write("mkdir exception: %s\n" % str(e))
         else:
             bucket.get_object_to_file(obj.key, obj.key.replace(prefix, ""))
 

@@ -81,7 +81,7 @@ func attrIsOptimizer(attrKey string) bool {
 
 // IsPAI tells if we are using PAI platform currently
 func IsPAI() bool {
-	return os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa"
+	return os.Getenv("SQLFLOW_submitter") == "pai" || os.Getenv("SQLFLOW_submitter") == "alisa" || os.Getenv("SQLFLOW_submitter") == "pai_local"
 }
 
 func setDefaultOptimizer(trainStmt *ir.TrainStmt, optimizerParamName string) {

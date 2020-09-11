@@ -110,8 +110,12 @@ class PaiIOConnection(Connection):
                                        slice_id=self.params["slice_id"],
                                        slice_count=self.params["slice_count"])
             return PaiIOResultSet(reader, None)
-        except Exception as e:
-            return PaiIOResultSet(None, str(e))
+        except Exception:
+            reader = paiio.python_io.TableReader(
+                self.params["table"],
+                slice_id=self.params["slice_id"],
+                slice_count=self.params["slice_count"])
+            return PaiIOResultSet(reader, None)
 
     def query(self, statement=None):
         return super(PaiIOConnection, self).query(statement)

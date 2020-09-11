@@ -83,7 +83,6 @@ def train(datasource,
     set_oss_environs(FLAGS)
     num_workers = len(FLAGS.worker_hosts.split(","))
     worker_id = FLAGS.task_index
-
     train_dataset_fn = get_dataset_fn(select,
                                       datasource,
                                       feature_column_names,
