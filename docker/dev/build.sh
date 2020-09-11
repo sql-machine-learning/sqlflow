@@ -65,6 +65,10 @@ protoc --java_out=src/main/java \
 mvn -B -q clean compile assembly:single
 cp target/*.jar $SQLFLOW_BIN
 
+echo "Generate Python protobuf ..."
+protoc --python_out=$SQLFLOWPATH/python/runtime/dbapi/table_writer \
+        -I $SQLFLOWPATH/go/proto/ sqlflow.proto
+
 echo "Build model zoo ..."
 cd $SQLFLOW_BIN
 if [[ ! -d models ]]; then

@@ -126,6 +126,8 @@ def _evaluate(datasource,
                                   batch_size=batch_size)
 
     model_params.update(feature_columns)
+    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
+        model_params.pop(param, None)
     if is_estimator:
         FLAGS = tf.app.flags.FLAGS
         model_params["model_dir"] = FLAGS.checkpointDir
@@ -133,7 +135,9 @@ def _evaluate(datasource,
         result_metrics = estimator_evaluate(estimator, eval_dataset,
                                             validation_metrics)
     else:
-        keras_model = init_model_with_feature_column(estimator, model_params)
+        keras_model = init_model_with_feature_column(estimator,
+                                                     model_params,
+                                                     is_training=False)
         keras_model_pkg = sys.modules[estimator_cls.__module__]
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)

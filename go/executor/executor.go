@@ -80,6 +80,8 @@ func New(executor string) Executor {
 		return &pythonExecutor{}
 	case "pai":
 		return &paiExecutor{&pythonExecutor{}}
+	case "pai_local":
+		return &paiLocalExecutor{&pythonExecutor{}}
 	case "alisa":
 		return &alisaExecutor{&pythonExecutor{}}
 	case "alps":

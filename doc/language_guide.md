@@ -386,6 +386,111 @@ INTO evaluate_result_table;
 - *attr_expr* sets attributes when doing evaluation. You can set `validation.metrics` to indicate which metrics will be outputed to the result table, e.g. `validation.metrics="Accuracy,AUC"`, you can find more supported metric names for Keras models [here](https://www.tensorflow.org/api_docs/python/tf/keras/metrics) and XGBoost models [here](https://xgboost.readthedocs.io/en/latest/parameter.html).
 - *evaluate_result_table* is the result table that stores the evaluation results.
 
+## Optimization Syntax
+
+SQLFlow uses the `TO MAXIMIZE` and `TO MINIMIZE` clauses to describe and solve the [Mathematical Programming](https://en.wikipedia.org/wiki/Mathematical_Programming) problems. 
+
+A SQLFlow `TO MAXIMIZE` or `TO MINIMIZE` clause consists of select, objective, constraints, attributes, solver and into expressions. 
+
+```sql
+SELECT select_expr [, select_expr ...]
+FROM table_references
+  [WHERE where_condition]
+  [LIMIT row_count]
+TO MAXIMIZE|MINIMIZE
+  objective_expr
+CONSTRAINT
+  constraint_expr [GROUP BY column_name]
+  [, constraint_expr [GROUP BY column_name]...]
+WITH
+  variables="variable_value(column_name, ...)"
+  var_type="Integers|Reals|Binary|NonNegativeIntegers|..."
+[USING solver_name]
+INTO result_table_name;
+```
+
+A real world SQL statement for optimization is as follows:
+
+```sql
+SELECT c1, c2, c3 FROM my_db.my_table
+TO MAXIMIZE SUM(x * c1)
+CONSTRAINT
+    SUM(x) <= c2 GROUP BY c1
+    x <= 3
+WITH
+    variables="x(c3)",
+    var_type="NonNegativeIntegers"
+USING glpk
+INTO my_db.my_result_table;
+```
+
+- The `objective_expr` following by `TO MAXIMIZE` in this example means that we want to maximize the value of `SUM(x * c1)`. 
+- The `CONSTRAINT` expressions mean that:
+    - `SUM(x) <= c2 GROUP BY c1`: the `GROUP BY` means that for each distinct `c1`, there would be a constraint expression `SUM(x) <= c2`.
+    - `x <= 3`: for each `x`, there would be `x <= 3`.
+- The `variables=x(c3)` in the `WITH` expression means that the column we want to optimize is the column `c3`, and `x` represents the variable value to be solved.
+- The `var_type="NonNegativeIntegers"` in the `WITH` expression means that variable value `x` is inside non-negative integers. SQLFlow supports the following variable type:
+    - `Binary`: the variable value can be only 0 or 1.
+    - `Integers`: the variable value can be only integers.
+    - `PositiveIntegers`, `NegativeIntegers`: the variable value can be only positive or negative integers.
+    - `NonPositiveIntegers`, `NonNegativeIntegers`: the variable value can be only non-positive or non-negative integers.
+    - `Reals`: the variable value can be only real numbers.
+    - `PositiveReals`, `NegativeReals`: the variable value can be positive or negative real numbers.
+    - `NonPositiveReals`, `NonNegativeReals`: the variable value can be non-positive or non-negative real numbers.
+- The `USING glpk` means that we use the GLPK solver to solve the problem. SQLFlow supports two solvers:
+    - [GLPK](https://www.gnu.org/software/glpk/): used to solve the linear programming problems.
+    - [BARON](https://www.minlp.com/baron): used to solve the non-linear programming problems.
+- The `INTO my_db.my_result_table` means that the solved result would be saved in the `my_db.my_result_table` table.
+
+## TO RUN Syntax
+
+SQLFlow provides the `TO RUN` statement to execute runnables to do complicated
+data preprocessing or analysis. The runnables can be implemented using any
+program language such as Python, C++, Go .etc and are released as Docker images.
+The syntax is as follows:
+
+```sql
+SELECT select_expr [, select_expr ...]
+FROM table_references
+  [WHERE where_condition]
+  [LIMIT row_count]
+TO RUN docker_image_name
+[CMD param [, param ...]]
+[INTO result_table [, result_table ...]]
+```
+
+- *docker_image_name* is the docker image to execute in this SQL statement. It
+contains multiple runnable programs. SQLFlow provides some pre-made runnables
+in the docker image *sqlflow/runnable*.
+- *param* is the parameter for the runnable program.
+- *result_table* is the table name to store the preprocessing/analysis results
+from runnable programs. There can be 0 ~ N output tables.
+
+Let's take the following SQL statement for example:
+
+```sql
+SELECT * FROM iris.train
+TO RUN sqlflow/runnable:v0.0.1
+CMD "binning.py",
+    "--dbname=iris",
+    "--columns=sepal_length,sepal_width",
+    "--bin_method=bucket,log_bucket",
+    "--bin_num=10,5"
+INTO train_binning_result;
+```
+
+The SQL statement above runs [binning algorithm](https://en.wikipedia.org/wiki/Data_binning)
+on the table `iris.train` and then write the result into the table
+`train_binning_result`.
+
+- *binning.py* is the entry file of the runnable program in the docker image.
+- *--dbname=iris* is the database name of the output table.
+- *--columns=sepal_length,sepal_width* indicates that we will execute binning
+on these two columns `sepal_length` and `sepal_width` in the source table.
+- *--bin_method=bucket,log_bucket* standards for the binning methods for the
+selected columns. Currently we support two methods: `bucket` and `log_bucket`.
+- *--bin_num=10,5* indicates the binning counts for the selected columns
+above.
 
 ## Models
 

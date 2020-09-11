@@ -110,6 +110,8 @@ def _explain(datasource,
     FLAGS = tf.app.flags.FLAGS
     model_params["model_dir"] = FLAGS.checkpointDir
     model_params.update(feature_columns)
+    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
+        model_params.pop(param, None)
 
     def _input_fn():
         dataset = input_fn("",
@@ -121,7 +123,9 @@ def _explain(datasource,
                            pai_table=pai_table)
         return dataset.batch(1).cache()
 
-    estimator = init_model_with_feature_column(estimator_cls, model_params)
+    estimator = init_model_with_feature_column(estimator_cls,
+                                               model_params,
+                                               is_training=False)
     conn = PaiIOConnection.from_table(result_table) if result_table else None
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):

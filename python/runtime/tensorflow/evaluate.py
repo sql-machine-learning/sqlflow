@@ -57,7 +57,8 @@ def evaluate(datasource,
                                             validation_metrics)
     else:
         keras_model = init_model_with_feature_column(estimator_cls,
-                                                     model_params)
+                                                     model_params,
+                                                     is_training=False)
         keras_model_pkg = sys.modules[estimator_cls.__module__]
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)
@@ -74,9 +75,9 @@ def estimator_evaluate(estimator, eval_dataset, validation_metrics):
     result = estimator.evaluate(eval_dataset)
     avg_loss = result["average_loss"]
     result_metrics = dict()
-    result_metrics["loss"] = avg_loss
+    result_metrics["loss"] = float(avg_loss)
     for m in validation_metrics:
-        val = result.get(m.lower())
+        val = float(result.get(m.lower()))
         if val:
             result_metrics[m] = val
         else:
@@ -136,7 +137,7 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
     assert (len(result) == len(validation_metrics) + 1)
     result_metrics = dict()
     for idx, m in enumerate(["loss"] + validation_metrics):
-        result_metrics[m] = result[idx]
+        result_metrics[m] = float(result[idx])
     return result_metrics
 
 
