@@ -257,6 +257,7 @@ def pai_dataset(filename,
                 batch_size=None,
                 feature_column_code="",
                 raw_data_dir=None):
+
     from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
@@ -273,9 +274,11 @@ def pai_dataset(filename,
     complete_queue = queue.Queue()
 
     def thread_worker(slice_id):
+        # add universal_newlines=True to be compatible with Python3.
         p = Popen("{} -m {}".format(sys.executable, __name__),
                   shell=True,
-                  stdin=PIPE)
+                  stdin=PIPE,
+                  universal_newlines=True)
         p.communicate(
             json.dumps([
                 dname, feature_metas, feature_column_names, label_meta,

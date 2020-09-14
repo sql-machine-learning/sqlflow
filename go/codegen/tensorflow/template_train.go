@@ -151,5 +151,6 @@ train(datasource="{{.DataSource}}",
       feature_columns_code=feature_columns_code,
       model_params_code_map=model_params,
       model_repo_image="{{.ModelRepoImage}}",
-      original_sql='''{{.OriginalSQL}}''')
+      original_sql='''{{.OriginalSQL}}''',
+      feature_column_names_map=feature_column_names_map)
 `

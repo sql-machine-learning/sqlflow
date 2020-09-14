@@ -95,16 +95,10 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
                               model_params, feature_column_names, label_meta,
                               is_pai, conn, result_table):
     preds = bst.predict(dpred)
-    # FIXME(typhoonzero): copied from predict.py
     if model_params:
         obj = model_params["objective"]
         if obj.startswith("binary:"):
             preds = (preds > 0.5).astype(int)
-        elif obj.startswith("multi:"):
-            preds = np.argmax(np.array(preds), axis=1)
-        else:
-            # using the original prediction result of predict API by default
-            pass
     else:
         # prediction output with multi-class job has two dimensions, this
         # is a temporary way, can remove this else branch when we can load
