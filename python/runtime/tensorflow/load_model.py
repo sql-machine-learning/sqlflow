@@ -14,5 +14,10 @@
 import os
 
 
+# NOTE(sneaxiy): model.save(...) would save the weights in the directory
+# ./variables, which is in the format of TensorFlow checkpoint.
+# model.save_weights(...) also saves the weights in the format of
+# TensorFlow checkpoint. So we can load the weights which are saved
+# using model.save(...) method.
 def load_keras_model_weights(model, path):
     return model.load_weights(os.path.join(path, "variables/variables"))
