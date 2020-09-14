@@ -82,6 +82,8 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
         obj = model_params["objective"]
         if obj.startswith("binary:"):
             preds = (preds > 0.5).astype(int)
+        elif obj.startswith("multi:"):
+            preds = np.argmax(np.array(preds), axis=1)
     else:
         # prediction output with multi-class job has two dimensions, this
         # is a temporary way, can remove this else branch when we can load
