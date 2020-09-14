@@ -270,7 +270,7 @@ def load_oss_model(oss_model_dir, estimator):
 
     # NOTE(typhoonzero): directory "model_save" is hardcoded in
     # codegen/tensorflow/codegen.go
-    load_dir(os.path.join(oss_model_dir + "model_save"))
+    load_dir(os.path.join(oss_model_dir, "model_save"))
 
 
 def save_oss_model(oss_model_dir, model_name, is_estimator,
