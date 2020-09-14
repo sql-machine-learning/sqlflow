@@ -267,11 +267,10 @@ def load_oss_model(oss_model_dir, estimator):
     # this is also needed.
     if is_estimator:
         load_file(oss_model_dir, "exported_path")
-        # NOTE(typhoonzero): directory "model_save" is hardcoded in
-        # codegen/tensorflow/codegen.go
-        load_dir(oss_model_dir + "/model_save")
-    else:
-        load_file(oss_model_dir, "model_save")
+
+    # NOTE(typhoonzero): directory "model_save" is hardcoded in
+    # codegen/tensorflow/codegen.go
+    load_dir(os.path.join(oss_model_dir + "model_save"))
 
 
 def save_oss_model(oss_model_dir, model_name, is_estimator,
@@ -292,7 +291,7 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
             if FLAGS.task_index == 0:
                 save_file(oss_model_dir, "exported_path")
         else:
-            save_file(oss_model_dir, "model_save")
+            save_dir(oss_model_dir, "model_save")
 
     save_metas(oss_model_dir, num_workers, "tensorflow_model_desc", model_name,
                feature_column_names, feature_column_names_map, feature_metas,

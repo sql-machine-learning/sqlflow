@@ -68,7 +68,7 @@ def explain_step(datasource, select, data_table, result_table, label_column,
         # codegen/tensorflow/codegen.go
         oss.load_dir("%s/%s" % (oss_model_path, model_name))
     else:
-        oss.load_file(oss_model_path, "model_save")
+        oss.load_dir(os.path.join(oss_model_path, "model_save"))
 
     # (TODO: lhw) use oss to store result image
     _explain(datasource=datasource,

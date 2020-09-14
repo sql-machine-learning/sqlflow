@@ -49,10 +49,7 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
                              validation_steps, has_none_optimizer)
 
     print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-    if len(FLAGS.worker_hosts.split(",")) > 1:
-        oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
-    else:
-        oss.save_file(FLAGS.sqlflow_oss_modeldir, save)
+    oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
     oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
 
