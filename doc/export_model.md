@@ -1,11 +1,24 @@
-# Download Your Trained Model
+# Export Trained Models
 
-Once you have trained your model with SQLFlow you may need to download your
-model so that you can deploy some online service to do real-time prediction.
+Once we train a model using SQLFlow via a statement like the following,
 
-To download your trained model from SQLFlow, you need to install our
-[command-line tool](run/cli.md) first. Then run the below command to download
-your model:
+```sql
+SELECT * FROM iris.train
+TO TRAIN DNNClassifier
+WITH model.n_classes=3,model.hidden_units=[10,20]
+INTO sqlflow_models.my_dnn_model;
+```
+
+the trained model `sqlflow_models.my_dnn_model` is saved in the model zoo.
+Anyone with the read access can write SQLFlow statement to visually explain
+the model or to use the model for prediction.
+
+In some cases, you might want to export and download a trained model from the
+model zoo, so you can use it out of SQLFlow, for example, load it to an online
+prediction service of an online advertising system. To export a model, you can
+use the [command-line tool](run/cli.md) `sqlflow`.
+we can download the trained model (`sqlflow_models.my_dnn_model`), using the
+command:
 
 ```shell
 # Configure database connection string
