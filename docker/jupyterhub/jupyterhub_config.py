@@ -64,7 +64,9 @@ c.GitHubOAuthenticator.client_secret = os.getenv(
 
 c.JupyterHub.allow_named_servers = True
 
-c.KubeSpawner.image_pull_policy = 'Always'
+# To speed up container booting, we use local cache.
+# Addintonally, we add a cron task to pull image daily.
+c.KubeSpawner.image_pull_policy = 'IfNotPresent'
 c.KubeSpawner.storage_pvc_ensure = False
 c.KubeSpawner.extra_pod_config.update({'restartPolicy': 'Never'})
 
