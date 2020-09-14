@@ -203,15 +203,9 @@ def estimator_predict(estimator, model_params, save, result_table,
                     (float(x[0][i][0]), ))
             elif (dtype_str == "int32" or dtype_str == "int64"
                   or dtype_str == DataType.INT64):
-                numeric_type = type(tf.feature_column.numeric_column("tmp"))
-                if type(fc) == numeric_type:
-                    example.features.feature[
-                        feature_name].float_list.value.extend(
-                            (float(x[0][i][0]), ))
-                else:
-                    example.features.feature[
-                        feature_name].int64_list.value.extend(
-                            (int(x[0][i][0]), ))
+                example.features.feature[
+                    feature_name].int64_list.value.extend(
+                        (int(x[0][i][0]), ))
             elif dtype_str == "string" or dtype_str == DataType.STRING:
                 example.features.feature[feature_name].bytes_list.value.extend(
                     x[0][i])
