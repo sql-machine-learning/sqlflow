@@ -97,10 +97,13 @@ def evaluate_and_store_result(bst, dpred, feature_file_id, validation_metrics,
     preds = bst.predict(dpred)
     if model_params:
         obj = model_params["objective"]
-        if obj.startswith("binary:"):
+        # binary:hinge output class labels
+        if obj.startswith("binary:logistic"):
             preds = (preds > 0.5).astype(int)
-        elif obj.startswith("multi:"):
+        # multi:softmax output class labels
+        elif obj.startswith("multi:softprob"):
             preds = np.argmax(np.array(preds), axis=1)
+        # TODO(typhoonzero): deal with binary:logitraw when needed.
     else:
         # prediction output with multi-class job has two dimensions, this
         # is a temporary way, can remove this else branch when we can load
