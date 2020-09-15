@@ -138,7 +138,7 @@ def step_entry_{{.StepIndex}}():
     model_params = json.loads('''{{.ModelParamsJSON}}''')
     train_params = json.loads('''{{.TrainParamsJSON}}''')
 
-    with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
+    with temp_file.TemporaryDirectory(as_cwd=True):
         train_params["disk_cache"] = "{{.DiskCache}}"=="true"
         train_params["batch_size"] = {{.BatchSize}}
         train_params["epoch"] = {{.Epoch}}
