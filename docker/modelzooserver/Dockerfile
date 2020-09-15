@@ -19,6 +19,7 @@ RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest
     rm glibc-2.31-r0.apk && \
     ln -s /usr/bin/python3 /usr/local/bin/python && \
     ln -s /usr/bin/pip3 /usr/local/bin/pi; fi'
+RUN apk add --no-cache bash
 
 # Install pre-built SQLFlow components.
 COPY build/modelzooserver /usr/local/bin/modelzooserver
