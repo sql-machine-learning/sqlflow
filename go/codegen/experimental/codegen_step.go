@@ -296,16 +296,16 @@ func generateFeatureColumnCode(fcMap map[string][]ir.FeatureColumn) string {
 }
 
 func categorizeAttributes(attrs map[string]interface{}) map[string]map[string]interface{} {
-	prefixList := []string{"train.", "model.", "validation."}
 	params := make(map[string]map[string]interface{})
+	prefixList := []string{"train.", "model.", "validation."}
+	for _, prefix := range prefixList {
+		params[prefix] = make(map[string]interface{})
+	}
+
 	for k, v := range attrs {
 		foundPrefix := false
 		for _, prefix := range prefixList {
 			if strings.HasPrefix(k, prefix) {
-				if _, ok := params[prefix]; !ok {
-					params[prefix] = make(map[string]interface{})
-				}
-
 				params[prefix][k[len(prefix):]] = v
 				foundPrefix = true
 				break
