@@ -32,7 +32,7 @@ sleep 10
 # NOTE(typhoonzero): In the sqlflow/sqlflow:jupyter Docker image, this is
 # installed by install-jupyter.sh, you should update both places.
 pip install sqlflow==0.14.0
-IPYTHON_STARTUP="/root/.ipython/profile_default/startup/"
+IPYTHON_STARTUP="$HOME/.ipython/profile_default/startup/"
 mkdir -p "$IPYTHON_STARTUP"
 if [ ! -e "$IPYTHON_STARTUP"/00-first.py ]; then
 { echo 'get_ipython().magic(u"%reload_ext sqlflow.magic")';
