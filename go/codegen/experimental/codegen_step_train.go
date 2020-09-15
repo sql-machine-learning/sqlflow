@@ -121,7 +121,7 @@ def step_entry_{{.StepIndex}}():
     train_params = json.loads('''{{.TrainParamsJSON}}''')
     validation_params = json.loads('''{{.ValidationParamsJSON}}''')
 
-    with temp_file.TemporaryDirectory(as_cwd=True) as temp_dir:
+    with temp_file.TemporaryDirectory(as_cwd=True):
         train(datasource='''{{.DataSource}}''',
               original_sql='''{{.OriginalSQL}}''',
               select='''{{.Select}}''',
