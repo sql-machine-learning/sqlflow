@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
 import sys
 
 import tensorflow as tf
@@ -79,7 +80,7 @@ def evaluate_step(datasource, select, data_table, result_table, oss_model_path,
         # codegen/tensorflow/codegen.go
         oss.load_dir("%s/%s" % (oss_model_path, model_name))
     else:
-        oss.load_file(oss_model_path, "model_save")
+        oss.load_dir(os.path.join(oss_model_path, "model_save"))
 
     _evaluate(datasource=datasource,
               estimator_string=estimator,
