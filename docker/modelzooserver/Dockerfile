@@ -11,15 +11,14 @@ RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest
     echo "Choose the fastest Alpine source ..." && \
     choose_fastest_alpine_source && \
     echo "Choose the fastest PIP source ..." && \
-    choose_fastest_pip_source && \
+    choose_fastest_pip_source; fi && \
     apk add --no-cache python3 py3-pip sudo bash docker-cli && \
     wget -q -O /etc/apk/keys/sgerrand.rsa.pub http://cdn.sqlflow.tech/alpine/sgerrand.rsa.pub.txt && \
     wget -q http://cdn.sqlflow.tech/alpine/glibc-2.31-r0.apk && \
     apk add glibc-2.31-r0.apk && \
     rm glibc-2.31-r0.apk && \
     ln -s /usr/bin/python3 /usr/local/bin/python && \
-    ln -s /usr/bin/pip3 /usr/local/bin/pi; fi'
-RUN apk add --no-cache bash
+    ln -s /usr/bin/pip3 /usr/local/bin/pi'
 
 # Install pre-built SQLFlow components.
 COPY build/modelzooserver /usr/local/bin/modelzooserver
