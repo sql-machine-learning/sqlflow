@@ -36,6 +36,7 @@ def train(original_sql,
           validation_select,
           model_params,
           train_params,
+          validation_params,
           feature_column_map,
           label_column,
           save,
@@ -54,6 +55,8 @@ def train(original_sql,
         train_params (dict): the training parameters, can have
                              disk_cache(bool), batch_size(int), epoch(int)
                              settings in the dict.
+        validation_params (dict): the validation parameters. Not used
+                                  currently.
         feature_column_map (dict): the feature column map to do derivation.
         label_column (FeatureColumn): the label column.
         save (str): the table name to save the trained model and meta.

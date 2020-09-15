@@ -13,6 +13,7 @@
 
 from runtime.dbapi import table_writer
 from runtime.feature.column import FeatureColumn
+from runtime.local.tensorflow_submitter.train import train as tf_train
 from runtime.local.xgboost_submitter.evaluate import \
     evaluate as xgboost_evaluate
 from runtime.local.xgboost_submitter.explain import explain as xgboost_explain
@@ -32,6 +33,7 @@ def submit_local_train(datasource,
                        label_column,
                        model_params,
                        train_params,
+                       validation_params,
                        save,
                        load,
                        user=""):
@@ -62,6 +64,8 @@ def submit_local_train(datasource,
             - disk_cache: Use dmatrix disk cache if True, default: False.
             - batch_size: Split data to batches and train, default: 1.
             - epoch: Epochs to train, default: 1.
+        validation_params: dict
+            Params for validation.
         save: string
             Model name to be saved.
         load: string
@@ -70,21 +74,22 @@ def submit_local_train(datasource,
             Not used for local submitter, used in runtime.pai only.
     """
     if estimator_string.lower().startswith("xgboost"):
-        return xgboost_train(original_sql,
-                             model_image,
-                             estimator_string,
-                             datasource,
-                             select,
-                             validation_select,
-                             model_params,
-                             train_params,
-                             feature_column_map,
-                             label_column,
-                             save,
-                             load=load)
+        train_func = xgboost_train
     else:
-        raise NotImplementedError("not implemented model type: %s" %
-                                  estimator_string)
+        train_func = tf_train
+
+    return train_func(original_sql,
+                      model_image,
+                      estimator_string,
+                      datasource,
+                      select,
+                      validation_select,
+                      model_params,
+                      train_params,
+                      feature_column_map,
+                      label_column,
+                      save,
+                      load=load)
 
 
 def submit_local_pred(datasource,

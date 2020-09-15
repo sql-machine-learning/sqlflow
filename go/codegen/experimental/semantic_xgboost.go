@@ -102,20 +102,6 @@ func resolveModelParams(ir *ir.TrainStmt) error {
 	return nil
 }
 
-func parseAttribute(attrs map[string]interface{}) map[string]map[string]interface{} {
-	params := map[string]map[string]interface{}{"": {}, "train.": {}}
-	paramPrefix := []string{"train.", ""} // use slice to assure traverse order, this is necessary because all string starts with ""
-	for key, attr := range attrs {
-		for _, pp := range paramPrefix {
-			if strings.HasPrefix(key, pp) {
-				params[pp][key[len(pp):]] = attr
-				break
-			}
-		}
-	}
-	return params
-}
-
 func init() {
 	// xgboost.gbtree, xgboost.dart, xgboost.gblinear share the same parameter set
 	fullAttrValidator = attribute.NewDictionaryFromModelDefinition("xgboost.gbtree", "")
