@@ -464,7 +464,7 @@ SELECT * FROM %[1]s
 TO TRAIN DNNClassifier
 WITH model.n_classes = 3, model.hidden_units = [10, 20]
 LABEL class
-INTO sqlflow_models.my_dnn_model;
+INTO %[2]s;
 `
 
 	sql1 := fmt.Sprintf(extraTrainSQLProgram, caseTrainTable, caseInto)
