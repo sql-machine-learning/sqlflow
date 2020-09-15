@@ -54,7 +54,11 @@ def train(datasource,
           feature_columns_code="",
           model_params_code_map={},
           model_repo_image="",
-          original_sql=""):
+          original_sql="",
+          feature_column_names_map=None):
+    # NOTE(typhoonzero): feature_column_names_map is used only for PAI
+    # submitter API.
+
     # TODO(sneaxiy): collect features and label
     model_meta = collect_metadata(original_sql=original_sql,
                                   select=select,

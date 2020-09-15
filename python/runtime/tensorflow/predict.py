@@ -196,7 +196,8 @@ def estimator_predict(estimator, model_params, save, result_table,
                         pass
                 if idx == -1:
                     raise ValueError(
-                        "can not found feature %s in all feature columns")
+                        "can not found feature %s in all feature columns." %
+                        feature_name)
             if (dtype_str == "float32" or dtype_str == "float64"
                     or dtype_str == DataType.FLOAT32):
                 # need to pass a tuple(float, )
