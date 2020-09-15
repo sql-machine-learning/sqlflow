@@ -175,28 +175,6 @@ def estimator_predict(estimator, model_params, save, result_table,
                 example.features.feature[feature_name].int64_list.value.extend(
                     list(values))
         else:
-            if "feature_columns" in feature_columns:
-                idx = feature_column_names.index(feature_name)
-                fc = feature_columns["feature_columns"][idx]
-            else:
-                # DNNLinearCombinedXXX have dnn_feature_columns and
-                # linear_feature_columns param.
-                idx = -1
-                try:
-                    idx = feature_column_names_map[
-                        "dnn_feature_columns"].index(feature_name)
-                    fc = feature_columns["dnn_feature_columns"][idx]
-                except:  # noqa: E722
-                    try:
-                        idx = feature_column_names_map[
-                            "linear_feature_columns"].index(feature_name)
-                        fc = feature_columns["linear_feature_columns"][idx]
-                    except:  # noqa: E722
-                        pass
-                if idx == -1:
-                    raise ValueError(
-                        "can not found feature %s in all feature columns." %
-                        feature_name)
             if (dtype_str == "float32" or dtype_str == "float64"
                     or dtype_str == DataType.FLOAT32):
                 # need to pass a tuple(float, )
@@ -204,15 +182,8 @@ def estimator_predict(estimator, model_params, save, result_table,
                     (float(x[0][i][0]), ))
             elif (dtype_str == "int32" or dtype_str == "int64"
                   or dtype_str == DataType.INT64):
-                numeric_type = type(tf.feature_column.numeric_column("tmp"))
-                if type(fc) == numeric_type:
-                    example.features.feature[
-                        feature_name].float_list.value.extend(
-                            (float(x[0][i][0]), ))
-                else:
-                    example.features.feature[
-                        feature_name].int64_list.value.extend(
-                            (int(x[0][i][0]), ))
+                example.features.feature[feature_name].int64_list.value.extend(
+                    (int(x[0][i][0]), ))
             elif dtype_str == "string" or dtype_str == DataType.STRING:
                 example.features.feature[feature_name].bytes_list.value.extend(
                     x[0][i])
