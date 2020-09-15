@@ -15,6 +15,7 @@ import random
 
 import pandas as pd
 import tensorflow as tf
+from runtime.tensorflow.load_model import load_keras_model_weights
 from sklearn.model_selection import train_test_split
 
 data = {
@@ -110,11 +111,11 @@ if is_training:
               validation_data=val_ds,
               epochs=model.default_training_epochs(),
               verbose=0)
-    model.save_weights('my_model', save_format="h5")
+    model.save('my_model', save_format="tf")
     print("Done training.")
 else:
     model.predict(test_ds)
-    model.load_weights('my_model')
+    load_keras_model_weights(model, 'my_model')
     prediction = model.predict(test_ds)
     print(model.prepare_prediction_column(prediction))
     print("Done predicting.")

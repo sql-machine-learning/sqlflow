@@ -126,7 +126,10 @@ class PaiIOConnection(Connection):
         Return:
             Number of rows in the table
         """
-        reader = paiio.TableReader(self.params["table"])
+        try:
+            reader = paiio.TableReader(self.params["table"])
+        except Exception:
+            reader = paiio.python_io.TableReader(self.params["table"])
         row_num = reader.get_row_count()
         reader.close()
         return row_num

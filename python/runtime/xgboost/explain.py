@@ -272,4 +272,7 @@ def write_shap_values(shap_values, conn, result_table, feature_column_names):
     with db.buffered_db_writer(conn, result_table, feature_column_names,
                                100) as w:
         for row in shap_values:
-            w.write(list(row))
+            # NOTE(typhoonzero): assume all shap explain value are float, and
+            # there's no INT or other types of values yet.
+            row_float = [float(c) for c in row]
+            w.write(list(row_float))

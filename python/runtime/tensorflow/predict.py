@@ -26,6 +26,8 @@ from runtime.tensorflow.input_fn import (get_dtype,
                                          tf_generator)
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
+from runtime.tensorflow.load_model import (load_keras_model_weights,
+                                           pop_optimizer_and_loss)
 
 # Disable TensorFlow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -41,10 +43,8 @@ else:
 def keras_predict(estimator, model_params, save, result_table,
                   feature_column_names, feature_metas, train_label_name,
                   result_col_name, conn, predict_generator, selected_cols):
-
-    classifier = init_model_with_feature_column(estimator,
-                                                model_params,
-                                                is_training=False)
+    pop_optimizer_and_loss(model_params)
+    classifier = init_model_with_feature_column(estimator, model_params)
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
@@ -76,7 +76,7 @@ def keras_predict(estimator, model_params, save, result_table,
         # NOTE: must run predict one batch to initialize parameters. See:
         # https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models  # noqa: E501
         classifier.predict_on_batch(one_batch)
-        classifier.load_weights(save)
+        load_keras_model_weights(classifier, save)
     pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
 
     column_names = selected_cols[:]

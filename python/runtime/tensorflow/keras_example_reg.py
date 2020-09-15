@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import shutil
 
 import tensorflow as tf
 from runtime.tensorflow.estimator_example import datasource
@@ -165,4 +165,4 @@ if __name__ == "__main__":
          model_params={"hidden_units": [10, 20]},
          save="myregmodel_keras",
          batch_size=1)
-    os.unlink("myregmodel_keras")
+    shutil.rmtree("myregmodel_keras")

@@ -20,6 +20,8 @@ from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
+from runtime.tensorflow.load_model import (load_keras_model_weights,
+                                           pop_optimizer_and_loss)
 from runtime.tensorflow.set_log_level import set_log_level
 
 
@@ -50,6 +52,7 @@ def evaluate(datasource,
                                   batch_size=batch_size)
 
     model_params.update(feature_columns)
+    pop_optimizer_and_loss(model_params)
     if is_estimator:
         model_params["model_dir"] = save
         estimator = estimator_cls(**model_params)
@@ -57,8 +60,7 @@ def evaluate(datasource,
                                             validation_metrics)
     else:
         keras_model = init_model_with_feature_column(estimator_cls,
-                                                     model_params,
-                                                     is_training=False)
+                                                     model_params)
         keras_model_pkg = sys.modules[estimator_cls.__module__]
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)
@@ -131,7 +133,7 @@ def keras_evaluate(keras_model, eval_dataset_fn, save, keras_model_pkg,
         # NOTE: must run predict one batch to initialize parameters
         # see: https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models # noqa: E501
         keras_model.predict_on_batch(one_batch)
-        keras_model.load_weights(save)
+        load_keras_model_weights(keras_model, save)
         result = keras_model.evaluate(eval_dataset)
 
     assert (len(result) == len(validation_metrics) + 1)
