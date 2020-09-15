@@ -9,12 +9,12 @@ WITH model.n_classes=3,model.hidden_units=[10,20]
 INTO sqlflow_models.my_dnn_model;
 ```
 
-the trained model `sqlflow_models.my_dnn_model` is saved in the model zoo.
+the trained model `sqlflow_models.my_dnn_model` is saved in the database.
 Anyone with the read access can write SQLFlow statement to visually explain
 the model or to use the model for prediction.
 
 In some cases, you might want to export and download a trained model from the
-model zoo, so you can use it out of SQLFlow, for example, load it to an online
+database, so you can use it out of SQLFlow, for example, load it to an online
 prediction service of an online advertising system. To export a model, you can
 use the [command-line tool](run/cli.md) `sqlflow`.
 we can download the trained model (`sqlflow_models.my_dnn_model`), using the
