@@ -411,8 +411,6 @@ WITH objective="multi:softmax",num_class=3
 COLUMN sepal_length, DENSE(sepal_width)
 LABEL class
 INTO %[2]s;
-
--- SELECT * FROM sqlflow_models.xgb_classification;
 `
 
 	sqlProgram := `

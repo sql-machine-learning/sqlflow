@@ -70,7 +70,7 @@ func updateIfKeyDoesNotExist(current, add map[string]interface{}) {
 	}
 }
 
-func resolveModelParams(ir *ir.TrainStmt) error {
+func resolveXGBoostModelParams(ir *ir.TrainStmt) error {
 	switch strings.ToUpper(ir.Estimator) {
 	case "XGBOOST.XGBREGRESSOR", "XGBREGRESSOR":
 		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror"}

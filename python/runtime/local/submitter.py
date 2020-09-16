@@ -78,17 +78,18 @@ def submit_local_train(datasource,
     else:
         train_func = tf_train
 
-    return train_func(original_sql,
-                      model_image,
-                      estimator_string,
-                      datasource,
-                      select,
-                      validation_select,
-                      model_params,
-                      train_params,
-                      feature_column_map,
-                      label_column,
-                      save,
+    return train_func(original_sql=original_sql,
+                      model_image=model_image,
+                      estimator_string=estimator_string,
+                      datasource=datasource,
+                      select=select,
+                      validation_select=validation_select,
+                      model_params=model_params,
+                      train_params=train_params,
+                      validation_params=validation_params,
+                      feature_column_map=feature_column_map,
+                      label_column=label_column,
+                      save=save,
                       load=load)
 
 

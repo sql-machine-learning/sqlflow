@@ -51,8 +51,10 @@ func replaceNewLineRuneAndTrimSpace(s string) string {
 // GenerateTrain returns the step code for training.
 func GenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, error) {
 	var err error
-	if err = resolveModelParams(trainStmt); err != nil {
-		return "", err
+	if isXGBoostEstimator(trainStmt.Estimator) {
+		if err = resolveXGBoostModelParams(trainStmt); err != nil {
+			return "", err
+		}
 	}
 	if len(trainStmt.Features) > 1 {
 		return "", fmt.Errorf("xgboost only support 0 or 1 feature column set, received %d", len(trainStmt.Features))

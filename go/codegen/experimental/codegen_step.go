@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"strings"
 
 	"github.com/bitly/go-simplejson"
@@ -224,7 +225,7 @@ func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
 		// 	else if s.GetModelKind() == ir.KMeans {
 		// 		return pai.InitializeKMeansAttributes(s)
 		// 	}
-		// 	return tensorflow.InitializeAttributes(s)
+		return tensorflow.InitializeAttributes(s)
 		// case *ir.OptimizeStmt:
 		// 	return optimize.InitializeAttributes(s)
 	}

@@ -88,6 +88,7 @@ def train(original_sql,
     disk_cache = train_params.pop("disk_cache", False)
     batch_size = train_params.pop("batch_size", None)
     epoch = train_params.pop("epoch", 1)
+    num_workers = train_params.pop("num_workers", 1)
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,
@@ -147,7 +148,7 @@ def train(original_sql,
                             features=fc_map_ir,
                             label=fc_label_ir,
                             evaluation=eval_result,
-                            num_workers=1)
+                            num_workers=num_workers)
 
     save_model_to_local_file(bst, model_params, file_name)
     model = Model(EstimatorType.XGBOOST, meta)
