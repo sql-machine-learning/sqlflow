@@ -1,11 +1,10 @@
 codecov:
     require_ci_to_pass: yes
-    token: 4e38aa90-fefe-42a5-aeae-6587d671ce03
 
 coverage:
-precision: 2
-round: down
-range: "70...100"
+    precision: 2
+    round: down
+    range: "40...90"
 
 parsers:
 gcov:

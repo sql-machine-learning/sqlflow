@@ -14,6 +14,7 @@ jobs:
     env:
       SQLFLOW_PARSER_SERVER_PORT: 12300
       SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
     - uses: actions/checkout@v1
     - name: pre-commit
