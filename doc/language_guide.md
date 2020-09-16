@@ -20,8 +20,8 @@ Instead of writing a Python program with a lot of boilerplate code, this can be 
 
 ```sql
 SELECT * FROM iris.train
-TO TRAIN DNNClassifer
-WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10
+TO TRAIN DNNClassifier
+WITH model.hidden_units = [10, 10], model.n_classes = 3, train.epoch= 10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;
@@ -80,7 +80,7 @@ TO TRAIN ...
 
 ### Train Clause
 
-The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
+The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifier WITH model.hidden_units = [10, 10], model.n_classes = 3, train.epoch= 10`.
 
 ```sql
 TO TRAIN model_identifier
@@ -97,7 +97,7 @@ For example, if you want to train a `DNNClassifier`, which has two hidden layers
 
 ```sql
 SELECT ...
-TO TRAIN DNNClassifer
+TO TRAIN DNNClassifier
 WITH
   model.hidden_units = [10, 10],
   model.n_classes = 3,
