@@ -282,6 +282,8 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
     if is_estimator:
         with open("exported_path", "rb") as fn:
             saved_model_path = fn.read()
+        if isinstance(saved_model_path, bytes):
+            saved_model_path = saved_model_path.decode("utf-8")
         save_dir(oss_model_dir, saved_model_path)
         save_file(oss_model_dir, "exported_path")
     else:
