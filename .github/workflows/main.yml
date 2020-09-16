@@ -34,6 +34,7 @@ jobs:
         docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow:mysql
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
         # bash scripts/travis/upload_codecov.sh
+        bash <(curl -s https://codecov.io/bash)
   test-hive-java:
     runs-on: [self-hosted, linux]
     env:

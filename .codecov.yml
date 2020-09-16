@@ -15,6 +15,6 @@ gcov:
     macro: no
 
 comment:
-layout: "reach,diff,flags,tree"
-behavior: default
-require_changes: no
+    layout: "reach,diff,flags,tree"
+    behavior: default
+    require_changes: no
