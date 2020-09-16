@@ -30,7 +30,7 @@ None of the existing solution solves our pain point, instead we want it to be fu
 
 ## Quick Overview
 
-Here are examples for training a TensorFlow [DNNClassifer](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using sample data Iris.train, and running prediction using the trained model. You can see how cool it is to write some elegant ML code using SQL:
+Here are examples for training a TensorFlow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using sample data Iris.train, and running prediction using the trained model. You can see how cool it is to write some elegant ML code using SQL:
 
 ```sql
 sqlflow> SELECT *

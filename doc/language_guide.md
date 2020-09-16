@@ -364,10 +364,13 @@ FROM table_references
 TO EVALUATE model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
+LABEL class
 INTO evaluate_result_table;
 ```
 
 The SELECT statement before TO EVALUATE must generate the same data schema as that used in training. Please be aware that, by the machine learning theory, you are not supposed to use the training dataset for evaluation. If you do that, you are likely to see a very good evaluation result, which indeed, doesn't tell much useful information. Please write a SELECT statement as the prefix that generates different dataset but have the same schema.
+
+The LABEL clause specify the name of table column which contains the ground truth label.
 
 The INTO clause names the table for saving evaluation results, which, in this example, is `evaluate_result_table`.
 
