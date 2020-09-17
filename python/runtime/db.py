@@ -52,11 +52,24 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                 indices = np.array([], dtype=int)
                 values = np.array([], dtype=np.int64)
             else:
-                indices = np.fromstring(raw_val,
-                                        dtype=int,
-                                        sep=feature_spec["delimiter"])
-                indices = indices.reshape(indices.size, 1)
-                values = np.ones([indices.size], dtype=np.int64)
+                # TODO(typhoonzero): unify with above kv format
+                if feature_spec[
+                        "delimiter2"] != "":  # "k:v,k:v" formated kv list
+                    items = raw_val.split(feature_spec["delimiter"])
+                    items = [
+                        item.split(feature_spec["delimiter2"])
+                        for item in items
+                    ]
+                    indices = np.array([int(item[0]) for item in items],
+                                       dtype=np.int64)
+                    values = np.array([float(item[1]) for item in items],
+                                      dtype=np.float32)
+                else:
+                    indices = np.fromstring(raw_val,
+                                            dtype=int,
+                                            sep=feature_spec["delimiter"])
+                    indices = indices.reshape(indices.size, 1)
+                    values = np.ones([indices.size], dtype=np.int64)
 
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return indices, values, dense_shape

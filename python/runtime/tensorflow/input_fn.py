@@ -24,12 +24,23 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name]["is_sparse"]:
-            # NOTE(sneaxiy): be careful that not all feature column APIs accept
-            # SparseTensor.
-            features_dict[name] = tf.SparseTensor(*col)
+        if feature_metas[name][
+                "delimiter2"] != "":  # kv list that should be parsed to two features.
+            if feature_metas[name]["is_sparse"]:
+                values = np.ones([col[0].size], dtype=np.int64)
+                features_dict[name] = tf.SparseTensor(col[0], col[1], col[2])
+                features_dict["_".join([name, "key"])] = tf.SparseTensor(
+                    col[0], values, col[2])
+            else:
+                features_dict[name] = col[1]
+                features_dict["_".join([name, "key"])] = col[0]
         else:
-            features_dict[name] = col
+            if feature_metas[name]["is_sparse"]:
+                # NOTE(sneaxiy): be careful that not all feature column APIs accept
+                # SparseTensor.
+                features_dict[name] = tf.SparseTensor(*col)
+            else:
+                features_dict[name] = col
     return features_dict, label
 
 
@@ -38,10 +49,21 @@ def parse_sparse_feature_predict(features, feature_column_names,
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name]["is_sparse"]:
-            features_dict[name] = tf.SparseTensor(*col)
+        if feature_metas[name][
+                "delimiter2"] != "":  # kv list that should be parsed to two features.
+            if feature_metas[name]["is_sparse"]:
+                values = np.ones([col[0].size], dtype=np.int64)
+                features_dict[name] = tf.SparseTensor(col[0], col[1], col[2])
+                features_dict["_".join([name, "key"])] = tf.SparseTensor(
+                    col[0], values, col[2])
+            else:
+                features_dict[name] = col[1]
+                features_dict["_".join([name, "key"])] = col[0]
         else:
-            features_dict[name] = col
+            if feature_metas[name]["is_sparse"]:
+                features_dict[name] = tf.SparseTensor(*col)
+            else:
+                features_dict[name] = col
     return features_dict
 
 

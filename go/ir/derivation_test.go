@@ -376,7 +376,7 @@ func TestHiveFeatureDerivation(t *testing.T) {
 		Estimator:        "xgboost.gbtree",
 		Attributes:       map[string]interface{}{},
 		Features:         map[string][]FeatureColumn{},
-		Label:            &NumericColumn{&FieldDesc{"class", Int, "", "", []int{1}, false, nil, 0}}}
+		Label:            &NumericColumn{&FieldDesc{"class", Int, Int, "", "", "", []int{1}, false, nil, 0}}}
 	e := InferFeatureColumns(trainStmt, database.GetTestingDBSingleton())
 	a.NoError(e)
 	a.Equal(4, len(trainStmt.Features["feature_columns"]))

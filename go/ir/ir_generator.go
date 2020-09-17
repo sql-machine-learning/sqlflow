@@ -25,19 +25,20 @@ import (
 )
 
 const (
-	sparse        = "SPARSE"
-	cross         = "CROSS"
-	categoryID    = "CATEGORY_ID"
-	seqCategoryID = "SEQ_CATEGORY_ID"
-	categoryHash  = "CATEGORY_HASH"
-	embedding     = "EMBEDDING"
-	indicator     = "INDICATOR"
-	bucket        = "BUCKET"
-	dense         = "DENSE"
-	comma         = "COMMA"
-	negative      = "-"
-	variables     = "variables"
-	variableType  = "var_type"
+	sparse           = "SPARSE"
+	cross            = "CROSS"
+	categoryID       = "CATEGORY_ID"
+	seqCategoryID    = "SEQ_CATEGORY_ID"
+	categoryHash     = "CATEGORY_HASH"
+	weightedCategory = "WEIGHTED_CATEGORY"
+	embedding        = "EMBEDDING"
+	indicator        = "INDICATOR"
+	bucket           = "BUCKET"
+	dense            = "DENSE"
+	comma            = "COMMA"
+	negative         = "-"
+	variables        = "variables"
+	variableType     = "var_type"
 )
 
 // GenerateTrainStmtWithInferredColumns generates a `TrainStmt` with inferred feature columns
@@ -509,6 +510,8 @@ func parseFeatureColumn(el *parser.ExprList) (FeatureColumn, error) {
 		return parseEmbeddingColumn(el)
 	case indicator:
 		return parseIndicatorColumn(el)
+	case weightedCategory:
+		return parseWeightedCategoryColumn(el)
 	default:
 		return nil, fmt.Errorf("not supported expr: %s", head)
 	}
@@ -624,7 +627,6 @@ func parseCategoryIDColumn(el *parser.ExprList) (*CategoryIDColumn, error) {
 			return nil, fmt.Errorf("bad CATEGORY_ID key: %s, err: %s", (*el)[1], err)
 		}
 		// generate a default FieldDesc
-		// TODO(typhoonzero): update default FieldDesc when doing feature derivation
 		fieldDesc = &FieldDesc{
 			Name:     strings.ToLower(key),
 			DType:    Int,
@@ -640,6 +642,25 @@ func parseCategoryIDColumn(el *parser.ExprList) (*CategoryIDColumn, error) {
 	return &CategoryIDColumn{
 		FieldDesc:  fieldDesc,
 		BucketSize: int64(bucketSize),
+	}, nil
+}
+
+func parseWeightedCategoryColumn(el *parser.ExprList) (*WeightedCategoryColumn, error) {
+	help := "WEIGHTED_CATEGORY([CATEGORY_ID(...)|CATEGORY_HASH(...)])"
+	if len(*el) != 2 {
+		return nil, fmt.Errorf("bad WEIGHTED_CATEGORY expression format: %s, should be like: %s", *el, help)
+	}
+	catColumn, colName, err := buildCategoryIDForEmbeddingOrIndicator(el)
+	if err != nil {
+		return nil, err
+	}
+	if catColumn == nil {
+		return nil, fmt.Errorf("must use specify category column type when using WEIGHTED_CATEGORY like %s", help)
+	}
+
+	return &WeightedCategoryColumn{
+		CategoryColumn: catColumn,
+		Name:           colName,
 	}, nil
 }
 
@@ -811,9 +832,9 @@ func parseIndicatorColumn(el *parser.ExprList) (*IndicatorColumn, error) {
 }
 
 func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
-	help := "DENSE|SPARSE(col_name[, SHAPE, DELIMITER, DTYPE])"
+	help := "DENSE|SPARSE(col_name[, SHAPE, DELIMITER, DTYPE, DELIMITER2, DTYPE_KEY])"
 
-	if len(*el) < 2 || len(*el) > 5 {
+	if len(*el) < 2 || len(*el) > 7 {
 		return nil, fmt.Errorf("bad DENSE|SPARSE format: %v, should be like: %s", *el, help)
 	}
 
@@ -832,7 +853,7 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		return nil, fmt.Errorf("bad DENSE|SPARSE format: %v, should be like: %s", *el, help)
 	}
 
-	help = head + "(col_name[, SHAPE, DELIMITER, DTYPE])"
+	help = head + "(col_name[, SHAPE, DELIMITER, DTYPE, DELIMITER2, DTYPE_KEY])"
 
 	name, err := expression2string((*el)[1])
 	if err != nil {
@@ -872,15 +893,11 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bad %s delimiter: %s, err: %s", head, (*el)[1], err)
 		}
-
-		delimiter, err = resolveDelimiter(unresolvedDelimiter)
-		if err != nil {
-			return nil, err
-		}
+		delimiter = resolveDelimiter(unresolvedDelimiter)
 	}
 
 	dtype := Float
-	if len(*el) == 5 {
+	if len(*el) >= 5 {
 		dtypeStr, err := expression2string((*el)[4])
 		if err != nil {
 			return nil, err
@@ -889,17 +906,47 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 			dtype = Float
 		} else if strings.EqualFold(dtypeStr, "int") {
 			dtype = Int
+		} else if strings.EqualFold(dtypeStr, "string") {
+			dtype = String
 		} else {
-			return nil, fmt.Errorf("bad %s data type %s", head, dtypeStr)
+			return nil, fmt.Errorf("bad %s data value type %s", head, dtypeStr)
+		}
+	}
+
+	// parse delimiter2
+	delimiter2 := ""
+	if len(*el) >= 6 {
+		delimiter2, err = expression2string((*el)[5])
+		if err != nil {
+			return nil, err
+		}
+	}
+	// parse DTypeKey
+	dtypeKey := Int
+	if len(*el) == 7 {
+		dtypeKeyStr, err := expression2string((*el)[6])
+		if err != nil {
+			return nil, err
+		}
+		if strings.EqualFold(dtypeKeyStr, "float") {
+			dtypeKey = Float
+		} else if strings.EqualFold(dtypeKeyStr, "int") {
+			dtypeKey = Int
+		} else if strings.EqualFold(dtypeKeyStr, "string") {
+			dtypeKey = String
+		} else {
+			return nil, fmt.Errorf("bad %s data key type %s", head, dtypeKeyStr)
 		}
 	}
 
 	return &FieldDesc{
-		Name:      name,
-		IsSparse:  isSparse,
-		Shape:     shape,
-		DType:     dtype,
-		Delimiter: delimiter,
+		Name:       name,
+		IsSparse:   isSparse,
+		Shape:      shape,
+		DType:      dtype,
+		Delimiter:  delimiter,
+		Delimiter2: delimiter2,
+		DTypeKey:   dtypeKey,
 	}, nil
 }
 
@@ -951,11 +998,13 @@ func parseResultTable(intoStatement string) (string, string, error) {
 	}
 }
 
-func resolveDelimiter(delimiter string) (string, error) {
+func resolveDelimiter(delimiter string) string {
+	// Keep compatible with previous documents
+	// TODO(typhoonzero): support any delimiter string
 	if strings.EqualFold(delimiter, comma) {
-		return ",", nil
+		return ","
 	}
-	return "", fmt.Errorf("unsolved delimiter: %s", delimiter)
+	return delimiter
 }
 
 func expression2string(e interface{}) (string, error) {
