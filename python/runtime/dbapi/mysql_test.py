@@ -28,6 +28,14 @@ class TestMySQLConnection(TestCase):
         except:  # noqa: E722
             self.fail()
 
+        try:
+            conn_str = testing.get_datasource()
+            conn_str = conn_str.replace(":3306", "")
+            conn = MySQLConnection(conn_str)
+            conn.close()
+        except:  # noqa: E722
+            self.fail()
+
     def test_query(self):
         conn = MySQLConnection(testing.get_datasource())
         rs = conn.query("select * from notexist limit 1")

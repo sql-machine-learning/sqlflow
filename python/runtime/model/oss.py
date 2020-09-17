@@ -13,9 +13,9 @@
 
 import os
 import pickle
+import sys
 
 import oss2
-import six
 import tensorflow as tf
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.tensorflow import is_tf_estimator
@@ -119,13 +119,9 @@ def save_dir(oss_model_dir, local_dir):
     '''
     bucket = get_models_bucket()
     for (root, dirs, files) in os.walk(local_dir, topdown=True):
-        if not six.PY2:
-            root = root.decode("utf-8")
         dst_dir = "/".join([oss_model_dir.rstrip("/"), root])
         mkdir(bucket, dst_dir)
         for file_name in files:
-            if not six.PY2:
-                file_name = file_name.decode("utf-8")
             curr_file_path = os.path.join(root, file_name)
             remote_file_path = "/".join([dst_dir.rstrip("/"), file_name])
             remote_file_path = remove_bucket_prefix(remote_file_path)
@@ -141,7 +137,10 @@ def load_dir(oss_model_dir):
         # remote: path/to/my/dir/
         # local: dir/
         if obj.key.endswith("/"):
-            os.makedirs(obj.key.replace(prefix, ""))
+            try:
+                os.makedirs(obj.key.replace(prefix, ""))
+            except Exception as e:
+                sys.stderr.write("mkdir exception: %s\n" % str(e))
         else:
             bucket.get_object_to_file(obj.key, obj.key.replace(prefix, ""))
 
@@ -267,11 +266,10 @@ def load_oss_model(oss_model_dir, estimator):
     # this is also needed.
     if is_estimator:
         load_file(oss_model_dir, "exported_path")
-        # NOTE(typhoonzero): directory "model_save" is hardcoded in
-        # codegen/tensorflow/codegen.go
-        load_dir(oss_model_dir + "/model_save")
-    else:
-        load_file(oss_model_dir, "model_save")
+
+    # NOTE(typhoonzero): directory "model_save" is hardcoded in
+    # codegen/tensorflow/codegen.go
+    load_dir(os.path.join(oss_model_dir, "model_save"))
 
 
 def save_oss_model(oss_model_dir, model_name, is_estimator,
@@ -284,6 +282,8 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
     if is_estimator:
         with open("exported_path", "rb") as fn:
             saved_model_path = fn.read()
+        if isinstance(saved_model_path, bytes):
+            saved_model_path = saved_model_path.decode("utf-8")
         save_dir(oss_model_dir, saved_model_path)
         save_file(oss_model_dir, "exported_path")
     else:
@@ -292,7 +292,7 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
             if FLAGS.task_index == 0:
                 save_file(oss_model_dir, "exported_path")
         else:
-            save_file(oss_model_dir, "model_save")
+            save_dir(oss_model_dir, "model_save")
 
     save_metas(oss_model_dir, num_workers, "tensorflow_model_desc", model_name,
                feature_column_names, feature_column_names_map, feature_metas,

@@ -69,9 +69,11 @@ def xgb_shap_dataset(datasource,
 
     i = 0
     for row, label in stream():
-        features = db.read_features_from_row(row, selected_cols,
+        features = db.read_features_from_row(row,
+                                             selected_cols,
                                              feature_column_names,
-                                             feature_metas)
+                                             feature_metas,
+                                             is_xgboost=True)
         if transform_fn:
             features = transform_fn(features)
 
@@ -270,4 +272,7 @@ def write_shap_values(shap_values, conn, result_table, feature_column_names):
     with db.buffered_db_writer(conn, result_table, feature_column_names,
                                100) as w:
         for row in shap_values:
-            w.write(list(row))
+            # NOTE(typhoonzero): assume all shap explain value are float, and
+            # there's no INT or other types of values yet.
+            row_float = [float(c) for c in row]
+            w.write(list(row_float))

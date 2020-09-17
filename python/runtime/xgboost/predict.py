@@ -78,11 +78,21 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
                              feature_column_names, feature_metas, is_pai, conn,
                              result_table):
     preds = bst.predict(dpred)
-    # prediction output with multi-class job has two dimensions, this
-    # is a temporary way, can remove this else branch when we can load
-    # the model meta not only on PAI submitter.
-    if len(preds.shape) == 2:
-        preds = np.argmax(np.array(preds), axis=1)
+    if model_params:
+        obj = model_params["objective"]
+        # binary:hinge output class labels
+        if obj.startswith("binary:logistic"):
+            preds = (preds > 0.5).astype(int)
+        # multi:softmax output class labels
+        elif obj.startswith("multi:softprob"):
+            preds = np.argmax(np.array(preds), axis=1)
+        # TODO(typhoonzero): deal with binary:logitraw when needed.
+    else:
+        # prediction output with multi-class job has two dimensions, this
+        # is a temporary way, can remove this else branch when we can load
+        # the model meta not only on PAI submitter.
+        if len(preds.shape) == 2:
+            preds = np.argmax(np.array(preds), axis=1)
 
     if is_pai:
         feature_file_read = open("predict.txt.raw", "r")

@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
 import sys
 
 import tensorflow as tf
@@ -26,6 +27,7 @@ from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
+from runtime.tensorflow.load_model import pop_optimizer_and_loss
 from runtime.tensorflow.set_log_level import set_log_level
 
 try:
@@ -79,7 +81,7 @@ def evaluate_step(datasource, select, data_table, result_table, oss_model_path,
         # codegen/tensorflow/codegen.go
         oss.load_dir("%s/%s" % (oss_model_path, model_name))
     else:
-        oss.load_file(oss_model_path, "model_save")
+        oss.load_dir(os.path.join(oss_model_path, "model_save"))
 
     _evaluate(datasource=datasource,
               estimator_string=estimator,
@@ -126,6 +128,7 @@ def _evaluate(datasource,
                                   batch_size=batch_size)
 
     model_params.update(feature_columns)
+    pop_optimizer_and_loss(model_params)
     if is_estimator:
         FLAGS = tf.app.flags.FLAGS
         model_params["model_dir"] = FLAGS.checkpointDir

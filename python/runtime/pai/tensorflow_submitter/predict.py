@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
+
 import tensorflow as tf
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
@@ -19,6 +21,7 @@ from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, oss
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
+from runtime.tensorflow.load_model import pop_optimizer_and_loss
 from runtime.tensorflow.predict import estimator_predict, keras_predict
 
 
@@ -68,7 +71,7 @@ def predict_step(datasource, select, data_table, result_table, label_column,
         # codegen/tensorflow/codegen.go
         oss.load_dir("%s/%s" % (oss_model_path, model_local_dir))
     else:
-        oss.load_file(oss_model_path, "model_save")
+        oss.load_dir(os.path.join(oss_model_path, "model_save"))
 
     _predict(datasource=datasource,
              estimator_string=estimator,
@@ -107,6 +110,8 @@ def _predict(datasource,
     conn = PaiIOConnection.from_table(pai_table)
     selected_cols = db.selected_cols(conn, None)
     predict_generator = db.db_generator(conn, None)
+
+    pop_optimizer_and_loss(model_params)
 
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):

@@ -282,7 +282,8 @@ func CasePAIMaxComputeDNNTrainPredictExplain(t *testing.T) {
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN DNNClassifier
-WITH model.n_classes = 3, model.hidden_units = [10, 20], optimizer.learning_rate=0.01
+WITH model.n_classes = 3, model.hidden_units = [10, 20],
+optimizer.learning_rate=0.01, model.optimizer="AdagradOptimizer"
 LABEL class
 INTO e2etest_pai_dnn;`, caseTrainTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
@@ -376,19 +377,32 @@ INTO e2etest_dense_input_without_indicating_shape;`, caseTrainTable)
 func CasePAIMaxComputeTrainXGBoost(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
-
+	// train with batch_size to split dmatrix files
 	trainSQL := fmt.Sprintf(`SELECT * FROM %s
 TO TRAIN xgboost.gbtree
 WITH
-	objective="multi:softprob",
+	objective="multi:softmax",
 	train.num_boost_round = 30,
 	eta = 0.4,
 	num_class = 3,
 	train.batch_size=10,
 	validation.select="select * from %s"
 LABEL class
-INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTrainTable)
+INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTestTable)
 	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err, "Run trainSQL error.")
+	// train without batch_size
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s
+TO TRAIN xgboost.gbtree
+WITH
+	objective="multi:softmax",
+	train.num_boost_round = 30,
+	eta = 0.4,
+	num_class = 3,
+	validation.select="select * from %s"
+LABEL class
+INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTestTable)
+	_, _, _, err = connectAndRunSQL(trainSQL)
 	a.NoError(err, "Run trainSQL error.")
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
@@ -460,7 +474,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	if testDBDriver != "maxcompute" {
 		t.Skip("Skipping non maxcompute tests")
 	}
-	if os.Getenv("SQLFLOW_submitter") != "pai" {
+	if os.Getenv("SQLFLOW_submitter") != "pai" && os.Getenv("SQLFLOW_submitter") != "pai_local" {
 		t.Skip("Skip non PAI tests")
 	}
 	AK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_AK")

@@ -86,10 +86,8 @@ is_estimator = is_tf_estimator(estimator)
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
     oss.load_file("{{.OSSModelDir}}", "exported_path")
-    # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    oss.load_dir("{{.OSSModelDir}}/model_save")
-else:
-    oss.load_file("{{.OSSModelDir}}", "model_save")
+# NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+oss.load_dir("{{.OSSModelDir}}/model_save")
 `
 
 // install sklearn-pandas==1.8.0 to fix deps for sklearn2pmml with Python2 on PAI.
@@ -147,10 +145,8 @@ is_estimator = is_tf_estimator(import_model(estimator))
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
     oss.load_file("{{.OSSModelDir}}", "exported_path")
-    # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    oss.load_dir("{{.OSSModelDir}}/model_save")
-else:
-    oss.load_file("{{.OSSModelDir}}", "model_save")
+# NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+oss.load_dir("{{.OSSModelDir}}/model_save")
 
 predict._predict(datasource="{{.DataSource}}",
              estimator_string=estimator,
@@ -207,10 +203,8 @@ is_estimator = is_tf_estimator(import_model(estimator))
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
     oss.load_file("{{.OSSModelDir}}", "exported_path")
-    # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    oss.load_dir("{{.OSSModelDir}}/model_save")
-else:
-    oss.load_file("{{.OSSModelDir}}", "model_save")
+# NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+oss.load_dir("{{.OSSModelDir}}/model_save")
 
 
 explain._explain(datasource="{{.DataSource}}",
@@ -270,10 +264,8 @@ is_estimator = is_tf_estimator(import_model(estimator))
 # Keras distributed mode will use estimator, so this is also needed.
 if is_estimator:
     oss.load_file("{{.OSSModelDir}}", "exported_path")
-    # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
-    oss.load_dir("{{.OSSModelDir}}/model_save")
-else:
-    oss.load_file("{{.OSSModelDir}}", "model_save")
+# NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
+oss.load_dir("{{.OSSModelDir}}/model_save")
 
 evaluate._evaluate(datasource="{{.DataSource}}",
                   estimator_string=estimator,

@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import shutil
 
 # TODO(yancey1989): this import line would conflict with isort pre-commit stage
 # yapf: disable
@@ -61,7 +61,7 @@ if __name__ == "__main__":
          },
          save="mymodel_keras",
          batch_size=1)
-    os.unlink("mymodel_keras")
+    shutil.rmtree("mymodel_keras")
 
     train(datasource=datasource,
           estimator_string="sqlflow_models.RawDNNClassifier",
@@ -97,4 +97,4 @@ if __name__ == "__main__":
          },
          save="mymodel_keras",
          batch_size=1)
-    os.unlink("mymodel_keras")
+    shutil.rmtree("mymodel_keras")

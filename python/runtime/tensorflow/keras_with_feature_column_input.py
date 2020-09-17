@@ -23,9 +23,9 @@ class WrappedKerasModel(tf.keras.Model):
         self.sub_model = keras_model(**model_params)
         self.feature_layer = tf.keras.layers.DenseFeatures(feature_columns)
 
-    def __call__(self, inputs, training=True):
+    def call(self, inputs, training=True):
         x = self.feature_layer(inputs)
-        return self.sub_model.__call__(x, training=training)
+        return self.sub_model(x, training=training)
 
 
 def init_model_with_feature_column(estimator,
@@ -41,6 +41,7 @@ def init_model_with_feature_column(estimator,
         argspec = inspect.getargspec(estimator.__init__)
     else:
         argspec = inspect.getargspec(estimator)
+
     if "feature_columns" not in argspec.args and not has_none_optimizer:
         feature_columns = model_params["feature_columns"]
         del model_params["feature_columns"]

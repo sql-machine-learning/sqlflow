@@ -104,10 +104,10 @@ class MySQLConnection(Connection):
     def _parse_uri(self):
         # MySQL connection string is a DataSourceName(DSN),
         # we need to do some pre-process
-        pattern = r"^(\w+)://(\w*):(\w*)@tcp\(([.a-zA-Z0-9\-]*):([0-9]*)\)/(\w*)(\?.*)?$"  # noqa: W605, E501
+        pattern = r"^(\w+)://(\w*):(\w*)@tcp\(([.a-zA-Z0-9\-]*):?([0-9]*)\)/(\w*)(\?.*)?$"  # noqa: W605, E501
         found_result = re.findall(pattern, self.uristr)
         scheme, user, passwd, host, port, db, config = found_result[0]
-        netloc = "{}:{}@{}:{}".format(user, passwd, host, port)
+        netloc = "{}:{}@{}:{}".format(user, passwd, host, port or 3306)
         return ParseResult(scheme, netloc, db, "", config.lstrip("?"), "")
 
     def _get_result_set(self, statement):

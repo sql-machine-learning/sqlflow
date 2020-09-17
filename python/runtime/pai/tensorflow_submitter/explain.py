@@ -27,6 +27,7 @@ from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
+from runtime.tensorflow.load_model import pop_optimizer_and_loss
 
 if os.environ.get('DISPLAY', '') == '':
     print('no display found. Using non-interactive Agg backend')
@@ -68,7 +69,7 @@ def explain_step(datasource, select, data_table, result_table, label_column,
         # codegen/tensorflow/codegen.go
         oss.load_dir("%s/%s" % (oss_model_path, model_name))
     else:
-        oss.load_file(oss_model_path, "model_save")
+        oss.load_dir(os.path.join(oss_model_path, "model_save"))
 
     # (TODO: lhw) use oss to store result image
     _explain(datasource=datasource,
@@ -110,6 +111,7 @@ def _explain(datasource,
     FLAGS = tf.app.flags.FLAGS
     model_params["model_dir"] = FLAGS.checkpointDir
     model_params.update(feature_columns)
+    pop_optimizer_and_loss(model_params)
 
     def _input_fn():
         dataset = input_fn("",

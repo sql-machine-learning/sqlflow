@@ -22,6 +22,7 @@ import runtime.feature.column as fc
 import six
 import xgboost as xgb
 from runtime import db
+from runtime.db import XGBOOST_NULL_MAGIC
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.model import EstimatorType
@@ -130,9 +131,11 @@ def dump_dmatrix(filename,
 
     with open(filename, 'a') as f:
         for row, label in generator:
-            features = db.read_features_from_row(row, selected_cols,
+            features = db.read_features_from_row(row,
+                                                 selected_cols,
                                                  feature_column_names,
-                                                 feature_metas)
+                                                 feature_metas,
+                                                 is_xgboost=True)
 
             if raw_data_fid is not None:
                 raw_data_fid.write(
@@ -215,12 +218,12 @@ def load_dmatrix(filename):
             ret = load_svmlight_files(files, zero_based=True)
             X = vstack(ret[0::2])
             y = np.concatenate(ret[1::2], axis=0)
-            return xgb.DMatrix(X, y)
+            return xgb.DMatrix(X, y, missing=XGBOOST_NULL_MAGIC)
         else:
             ret = load_svmlight_file(filename, zero_based=True)
-            return xgb.DMatrix(ret[0], ret[1])
+            return xgb.DMatrix(ret[0], ret[1], missing=XGBOOST_NULL_MAGIC)
     else:
-        return xgb.DMatrix(filename)
+        return xgb.DMatrix(filename, missing=XGBOOST_NULL_MAGIC)
 
 
 def get_pai_table_slice_count(table, nworkers, batch_size):
@@ -254,6 +257,7 @@ def pai_dataset(filename,
                 batch_size=None,
                 feature_column_code="",
                 raw_data_dir=None):
+
     from subprocess import Popen, PIPE
     from multiprocessing.dummy import Pool  # ThreadPool
     import queue
@@ -270,9 +274,11 @@ def pai_dataset(filename,
     complete_queue = queue.Queue()
 
     def thread_worker(slice_id):
+        # add universal_newlines=True to be compatible with Python3.
         p = Popen("{} -m {}".format(sys.executable, __name__),
                   shell=True,
-                  stdin=PIPE)
+                  stdin=PIPE,
+                  universal_newlines=True)
         p.communicate(
             json.dumps([
                 dname, feature_metas, feature_column_names, label_meta,

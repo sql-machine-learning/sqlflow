@@ -78,9 +78,11 @@ def xgb_shap_dataset(datasource,
 
     i = 0
     for row, label in stream():
-        features = db.read_features_from_row(row, selected_cols,
+        features = db.read_features_from_row(row,
+                                             selected_cols,
                                              feature_column_names,
-                                             feature_metas)
+                                             feature_metas,
+                                             is_xgboost=True)
         if transform_fn:
             features = transform_fn(features)
 

@@ -150,54 +150,73 @@ func preExecuteTrainOnPAI(cl *ir.TrainStmt, session *pb.Session) (e error) {
 	return nil
 }
 
-// Possible situations:
-//
-// 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""
-// 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
-func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	if e = preExecuteTrainOnPAI(cl, s.Session); e != nil {
-		return e
+// getPaiTrainCode returns (code, paiCmd, requirements, error) for submit.
+func getPaiTrainCode(s *pythonExecutor, trainStmt *ir.TrainStmt) (string, string, string, error) {
+	if err := preExecuteTrainOnPAI(trainStmt, s.Session); err != nil {
+		return "", "", "", err
 	}
 
-	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
-
-	ossModelPathToSave, e := getModelPath(cl.Into, s.Session)
+	ossModelPathToSave, e := getModelPath(trainStmt.Into, s.Session)
 	if e != nil {
-		return e
+		return "", "", "", e
 	}
 
 	ossModelPathToLoad := ""
-	if cl.PreTrainedModel != "" {
-		ossModelPathToLoad, e = getModelPath(cl.PreTrainedModel, s.Session)
+	if trainStmt.PreTrainedModel != "" {
+		ossModelPathToLoad, e = getModelPath(trainStmt.PreTrainedModel, s.Session)
 		if e != nil {
-			return e
+			return "", "", "", e
 		}
 	}
 
 	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
 	if e != nil {
-		return e
+		return "", "", "", e
 	}
 	// NOTE(sneaxiy): should be careful whether there would be file conflict
 	// if we do not remove the original OSS files.
 	if ossModelPathToLoad == "" || ossModelPathToSave != ossModelPathToLoad {
 		e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
 		if e != nil {
-			return e
+			return "", "", "", e
 		}
 	}
 
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
 	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPathToSave); err != nil {
-		return err
+		return "", "", "", err
 	}
-	code, paiCmd, requirements, e := pai.Train(cl, s.Session, scriptPath, paramsPath, cl.Into, ossModelPathToSave,
+	code, paiCmd, requirements, e := pai.Train(trainStmt, s.Session, scriptPath, paramsPath, trainStmt.Into, ossModelPathToSave,
 		ossModelPathToLoad, s.Cwd)
+	if e != nil {
+		return "", "", "", e
+	}
+	return code, paiCmd, requirements, nil
+}
+
+// Possible situations:
+//
+// 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""
+// 2. non-argo mode server | repl -e: create tmp table in go, and use it to train
+func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
+	code, paiCmd, requirements, e := getPaiTrainCode(s.pythonExecutor, cl)
+	// drop table should be run even if there's error.
+	defer dropTmpTables([]string{cl.TmpTrainTable, cl.TmpValidateTable}, s.Session.DbConnStr)
 	if e != nil {
 		return e
 	}
+
 	if e = s.submitPAITask(code, paiCmd, requirements, cl.Estimator); e != nil {
+		return e
+	}
+
+	ossModelPathToSave, e := getModelPath(cl.Into, s.Session)
+	if e != nil {
+		return e
+	}
+	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	if e != nil {
 		return e
 	}
 	// download model from OSS to local cwd and save to sqlfs
@@ -297,19 +316,18 @@ func (s *paiExecutor) submitPAITask(code, paiCmd, requirements, estimator string
 	return nil
 }
 
-func (s *paiExecutor) ExecutePredict(cl *ir.PredictStmt) error {
+func getPaiPredictCode(s *pythonExecutor, cl *ir.PredictStmt) (string, string, string, string, error) {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
-		return err
+		return "", "", "", "", err
 	}
 	cl.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
-	defer dropTmpTables([]string{cl.TmpPredictTable}, s.Session.DbConnStr)
 
 	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
 	if err != nil {
-		return err
+		return "", "", "", "", err
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
@@ -318,51 +336,59 @@ func (s *paiExecutor) ExecutePredict(cl *ir.PredictStmt) error {
 		cl.ResultTable = fmt.Sprintf("%s.%s", currProject, cl.ResultTable)
 	}
 	if e := createPredictionResultTable(cl, s.Db, s.Session); e != nil {
-		return e
+		return "", "", "", "", e
 	}
 
 	ossModelPath, e := getModelPath(cl.Using, s.Session)
 	if e != nil {
-		return e
+		return "", "", "", "", e
 	}
 	modelType, estimator, err := getOSSSavedModelType(ossModelPath, currProject)
 	if err != nil {
-		return err
+		return "", "", "", "", err
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
 	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
-		return err
+		return "", "", "", "", err
 	}
-	code, paiCmd, requirements, e := pai.Predict(cl, s.Session, scriptPath, paramsPath, cl.Using, ossModelPath, s.Cwd, modelType)
-	if e != nil {
-		return e
+	code, paiCmd, requirements, err := pai.Predict(cl, s.Session, scriptPath, paramsPath, cl.Using, ossModelPath, s.Cwd, modelType)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	return code, paiCmd, requirements, estimator, nil
+}
+
+func (s *paiExecutor) ExecutePredict(cl *ir.PredictStmt) error {
+	code, paiCmd, requirements, estimator, err := getPaiPredictCode(s.pythonExecutor, cl)
+	defer dropTmpTables([]string{cl.TmpPredictTable}, s.Session.DbConnStr)
+	if err != nil {
+		return err
 	}
 	return s.submitPAITask(code, paiCmd, requirements, estimator)
 }
 
-func (s *paiExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
+func getPaiExplainCode(s *pythonExecutor, cl *ir.ExplainStmt) (*pai.ExplainRender, string, error) {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
-	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 
 	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
 	if e != nil {
-		return e
+		return nil, "", e
 	}
 
 	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 	modelType, estimator, err := getOSSSavedModelType(ossModelPath, currProject)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
@@ -375,25 +401,34 @@ func (s *paiExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 		}
 		db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
 		if err != nil {
-			return err
+			return nil, "", err
 		}
 		defer db.Close()
 		err = createExplainResultTable(db, cl, cl.Into, modelType, estimator)
 		if err != nil {
-			return err
+			return nil, "", err
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
 	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
-		return err
+		return nil, "", err
 	}
 	expn, e := pai.Explain(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
+	if e != nil {
+		return nil, "", e
+	}
+	return expn, estimator, nil
+}
+
+func (s *paiExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
+	expn, estimator, e := getPaiExplainCode(s.pythonExecutor, cl)
+	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 	if e != nil {
 		return e
 	}
 
-	if e = s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements, estimator); e != nil {
+	if e := s.submitPAITask(expn.Code, expn.PaiCmd, expn.Requirements, estimator); e != nil {
 		return e
 	}
 	if img, e := expn.Draw(); e == nil {
@@ -402,28 +437,27 @@ func (s *paiExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	return e
 }
 
-func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
+func getPaiEvaluateCode(s *pythonExecutor, cl *ir.EvaluateStmt) (string, string, string, string, error) {
 	// TODO(typhoonzero): Do **NOT** create tmp table when the select statement is like:
 	// "SELECT fields,... FROM table"
 	dbName, tableName, err := createTmpTableFromSelect(cl.Select, s.Session.DbConnStr)
 	if err != nil {
-		return err
+		return "", "", "", "", err
 	}
 	cl.TmpEvaluateTable = strings.Join([]string{dbName, tableName}, ".")
-	defer dropTmpTables([]string{cl.TmpEvaluateTable}, s.Session.DbConnStr)
 
 	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
 	if e != nil {
-		return e
+		return "", "", "", "", e
 	}
 
 	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
 	if err != nil {
-		return err
+		return "", "", "", "", err
 	}
 	modelType, estimator, err := getOSSSavedModelType(ossModelPath, currProject)
 	if err != nil {
-		return err
+		return "", "", "", "", err
 	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
@@ -436,7 +470,7 @@ func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 		}
 		db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
 		if err != nil {
-			return err
+			return "", "", "", "", err
 		}
 		defer db.Close()
 		// default always output evaluation loss
@@ -448,23 +482,28 @@ func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 		}
 		err = createEvaluationResultTable(db, cl.Into, metricNames)
 		if err != nil {
-			return err
+			return "", "", "", "", err
 		}
 	}
 	scriptPath := fmt.Sprintf("file://%s/%s", s.Cwd, tarball)
 	paramsPath := fmt.Sprintf("file://%s/%s", s.Cwd, paramsFile)
 	if err := createPAIHyperParamFile(s.Cwd, paramsFile, ossModelPath); err != nil {
-		return err
+		return "", "", "", "", err
 	}
 	code, paiCmd, requirements, e := pai.Evaluate(cl, s.Session, scriptPath, paramsPath, cl.ModelName, ossModelPath, s.Cwd, modelType)
 	if e != nil {
-		return e
+		return "", "", "", "", e
 	}
+	return code, paiCmd, requirements, estimator, nil
+}
 
-	if e = s.submitPAITask(code, paiCmd, requirements, estimator); e != nil {
+func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
+	code, paiCmd, requirements, estimator, e := getPaiEvaluateCode(s.pythonExecutor, cl)
+	defer dropTmpTables([]string{cl.TmpEvaluateTable}, s.Session.DbConnStr)
+	if e != nil {
 		return e
 	}
-	return e
+	return s.submitPAITask(code, paiCmd, requirements, estimator)
 }
 
 func executeOptimizeUsingOptFlow(pythonExecutor *pythonExecutor, stmt *ir.OptimizeStmt) error {
@@ -587,6 +626,7 @@ func getOSSSavedModelType(modelName string, project string) (modelType int, esti
 		estimator = string(buf)
 		return
 	}
+
 	ret, err = bucket.IsObjectExist(modelName + "/xgboost_model_desc")
 	if err != nil {
 		return

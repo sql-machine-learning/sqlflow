@@ -82,15 +82,9 @@ def train(original_sql,
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *feature_column_list)
 
-    disk_cache = False
-    batch_size = None
-    epoch = 1
-    if "disk_cache" in train_params:
-        disk_cache = train_params.pop("disk_cache")
-    if "batch_size" in train_params:
-        batch_size = train_params.pop("batch_size")
-    if "epoch" in train_params:
-        epoch = train_params.pop("epoch")
+    disk_cache = train_params.pop("disk_cache", False)
+    batch_size = train_params.pop("batch_size", None)
+    epoch = train_params.pop("epoch", 1)
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,

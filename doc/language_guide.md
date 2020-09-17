@@ -20,8 +20,8 @@ Instead of writing a Python program with a lot of boilerplate code, this can be 
 
 ```sql
 SELECT * FROM iris.train
-TO TRAIN DNNClassifer
-WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10
+TO TRAIN DNNClassifier
+WITH model.hidden_units = [10, 10], model.n_classes = 3, train.epoch= 10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;
@@ -80,7 +80,7 @@ TO TRAIN ...
 
 ### Train Clause
 
-The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
+The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifier WITH model.hidden_units = [10, 10], model.n_classes = 3, train.epoch= 10`.
 
 ```sql
 TO TRAIN model_identifier
@@ -97,7 +97,7 @@ For example, if you want to train a `DNNClassifier`, which has two hidden layers
 
 ```sql
 SELECT ...
-TO TRAIN DNNClassifer
+TO TRAIN DNNClassifier
 WITH
   model.hidden_units = [10, 10],
   model.n_classes = 3,
@@ -441,6 +441,56 @@ INTO my_db.my_result_table;
     - [GLPK](https://www.gnu.org/software/glpk/): used to solve the linear programming problems.
     - [BARON](https://www.minlp.com/baron): used to solve the non-linear programming problems.
 - The `INTO my_db.my_result_table` means that the solved result would be saved in the `my_db.my_result_table` table.
+
+## TO RUN Syntax
+
+SQLFlow provides the `TO RUN` statement to execute runnables to do complicated
+data preprocessing or analysis. The runnables can be implemented using any
+program language such as Python, C++, Go .etc and are released as Docker images.
+The syntax is as follows:
+
+```sql
+SELECT select_expr [, select_expr ...]
+FROM table_references
+  [WHERE where_condition]
+  [LIMIT row_count]
+TO RUN docker_image_name
+[CMD param [, param ...]]
+[INTO result_table [, result_table ...]]
+```
+
+- *docker_image_name* is the docker image to execute in this SQL statement. It
+contains multiple runnable programs. SQLFlow provides some pre-made runnables
+in the docker image *sqlflow/runnable*.
+- *param* is the parameter for the runnable program.
+- *result_table* is the table name to store the preprocessing/analysis results
+from runnable programs. There can be 0 ~ N output tables.
+
+Let's take the following SQL statement for example:
+
+```sql
+SELECT * FROM iris.train
+TO RUN sqlflow/runnable:v0.0.1
+CMD "binning.py",
+    "--dbname=iris",
+    "--columns=sepal_length,sepal_width",
+    "--bin_method=bucket,log_bucket",
+    "--bin_num=10,5"
+INTO train_binning_result;
+```
+
+The SQL statement above runs [binning algorithm](https://en.wikipedia.org/wiki/Data_binning)
+on the table `iris.train` and then write the result into the table
+`train_binning_result`.
+
+- *binning.py* is the entry file of the runnable program in the docker image.
+- *--dbname=iris* is the database name of the output table.
+- *--columns=sepal_length,sepal_width* indicates that we will execute binning
+on these two columns `sepal_length` and `sepal_width` in the source table.
+- *--bin_method=bucket,log_bucket* standards for the binning methods for the
+selected columns. Currently we support two methods: `bucket` and `log_bucket`.
+- *--bin_num=10,5* indicates the binning counts for the selected columns
+above.
 
 ## Models
 

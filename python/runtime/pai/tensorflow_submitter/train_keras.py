@@ -16,6 +16,7 @@ from runtime.model import oss, save_metadata
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
+from runtime.tensorflow.load_model import load_keras_model_weights
 from runtime.tensorflow.train_estimator import estimator_train_compiled
 from runtime.tensorflow.train_keras import keras_compile, keras_train_compiled
 
@@ -37,7 +38,7 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
         # FIXME(typhoonzero): copied from runtime.tensorflow.train_keras
         inputs, targets = next(iter(train_dataset.take(1)))
         classifier.evaluate(inputs, targets)
-        classifier.load_weights(load)
+        load_keras_model_weights(classifier, load)
 
     if len(FLAGS.worker_hosts.split(",")) > 1:
         keras_train_distributed(classifier, model_params, save, model_meta,
@@ -48,10 +49,7 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
                              validation_steps, has_none_optimizer)
 
     print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-    if len(FLAGS.worker_hosts.split(",")) > 1:
-        oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
-    else:
-        oss.save_file(FLAGS.sqlflow_oss_modeldir, save)
+    oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
     oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
 
