@@ -6,7 +6,7 @@ ENV SQLFLOW_MYSQL_IMAGE=${SQLFLOW_MYSQL_IMAGE}
 ARG SQLFLOW_JUPYTER_IMAGE="sqlflow/sqlflow:jupyter"
 ENV SQLFLOW_JUPYTER_IMAGE=${SQLFLOW_JUPYTER_IMAGE}
 
-RUN pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com --upgrade pip && pip install -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com jupyterhub-kubespawner \
+RUN pip install --upgrade pip && pip install jupyterhub-kubespawner \
     oauthenticator==0.11.0 \
     jupyterhub-dummyauthenticator==0.3.1 \
     jupyterhub_idle_culler==1.0
