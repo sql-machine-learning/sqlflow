@@ -16,11 +16,11 @@ spec:
       containers:
       - image: sqlflow/sqlflow:server
         name: server
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         command: ["sqlflowserver", "--argo-mode"]
         env:
         - name: SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT
-          value: "http://playground.sqlflow.tech:2746"
+          value: "http://localhost:9001"
         - name: SQLFLOW_WORKFLOW_STEP_IMAGE
           value: sqlflow/sqlflow:step
         - name: SQLFLOW_WORKFLOW_TTL
@@ -60,7 +60,7 @@ spec:
       containers:
       - image: sqlflow/sqlflow:jupyterhub
         name: jupyterhub
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         volumeMounts:
         - mountPath: /jupyter/certs
           name: cert-path
@@ -73,6 +73,8 @@ spec:
             value: /jupyter/certs/playground.sqlflow.tech.key
           - name: SQLFLOW_JUPYTER_SSL_CERT
             value: /jupyter/certs/playground.sqlflow.tech.pem
+          - name: SQLFLOW_JUPYTER_USE_OAUTH
+            value: "true"
           - name: SQLFLOW_JUPYTER_OAUTH_CLIENT_ID
             valueFrom:
               secretKeyRef:
@@ -90,4 +92,4 @@ spec:
       - name: cert-path
         hostPath:
           path: /jupyter/certs
-          type: Directory
+          type: DirectoryOrCreate

@@ -55,4 +55,4 @@ EOM
 
 # Patch GitHub OAuth, add retry
 sed -i -e'160r /tmp/retry_code' -e'160d' \
-    /usr/local/lib/python3.6/dist-packages/oauthenticator/github.py
+    /usr/local/lib/python3.8/dist-packages/oauthenticator/github.py
