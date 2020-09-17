@@ -27,7 +27,7 @@ export SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT=http://localhost:8001
 
 echo "Run Couler unit tests ..."
 pip -q install -r python/couler/requirements.txt
-pytest python/couler/tests
+pytest --cov=./ python/couler/tests
 
 
 echo "Run Couler end-to-end test ..."
@@ -66,61 +66,61 @@ if [[ "$TIMEOUT" == "true" ]]; then
 fi
 
 
-echo "Create a MySQL pod on Kubernetes ..."
-kubectl delete po mysql || true
-kubectl create -f ./scripts/test/mysql_pod.yaml
-
-TIMEOUT="true"
-for _ in {1..30}; do
-    MYSQL_POD_READY=$(kubectl get pod mysql -o jsonpath='{.status.containerStatuses[0].ready}')
-    echo "Check MySQL Pod is ready ..." "${MYSQL_POD_READY}"
-    if [[ "${MYSQL_POD_READY}" == "true" ]]; then
-        MYSQL_POD_IP=$(kubectl get pod mysql -o jsonpath='{.status.podIP}')
-        echo "MySQL pod IP: $MYSQL_POD_IP"
-        export SQLFLOW_TEST_DB="mysql"
-        export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
-
-        go generate ./...
-        # Refer to https://github.com/codecov/example-go for merging coverage
-        # from multiple runs of tests.
-        gotest -p 1 -covermode=count -coverprofile=profile.out -v \
-               -run TestEnd2EndWorkflow -timeout 1200s ./go/cmd/...
-        if [ -f profile.out ]; then
-            cat profile.out > coverage.txt
-            rm profile.out
-        fi
-        gotest -p 1 -covermode=count -coverprofile=profile.out -v \
-               ./go/workflow/argo/...
-        if [ -f profile.out ]; then
-            cat profile.out >> coverage.txt
-            rm profile.out
-        fi
-
-        TIMEOUT=false
-        break
-    else
-        sleep ${CHECK_INTERVAL_SECS}
-    fi
-done
-
-if [[ "$TIMEOUT" == "true" ]]; then
-    echo "Launching MySQL pod timeout"
-    exit 1
-fi
-
-
-echo "Test submitting PAI job using Argo workflow mode ..."
 # shellcheck disable=SC2154
 if [[ "$SQLFLOW_submitter" == "pai" ]]; then
+    echo "Test submitting PAI job using Argo workflow mode ..."
     export SQLFLOW_TEST_DATASOURCE="maxcompute://${MAXCOMPUTE_AK}:${MAXCOMPUTE_SK}@${MAXCOMPUTE_ENDPOINT}"
-    gotest -p 1 -run TestEnd2EndWorkflow -v ./go/cmd/...
+    gotest -p 1 -covermode=count -coverprofile=profile.out -run TestEnd2EndWorkflow -v ./go/cmd/...
+    if [ -f profile.out ]; then
+        cat profile.out > coverage.txt
+        rm profile.out
+    fi
+    echo "Run unit tests of go/workflow/argo ..."
+    gotest -p 1 -covermode=count -coverprofile=profile.out -v ./go/workflow/argo/
+    if [ -f profile.out ]; then
+        cat profile.out >> coverage.txt
+        rm profile.out
+    fi
+else
+    echo "Create a MySQL pod on Kubernetes ..."
+    kubectl delete po mysql || true
+    kubectl create -f ./scripts/test/mysql_pod.yaml
+
+    TIMEOUT="true"
+    for _ in {1..30}; do
+        MYSQL_POD_READY=$(kubectl get pod mysql -o jsonpath='{.status.containerStatuses[0].ready}')
+        echo "Check MySQL Pod is ready ..." "${MYSQL_POD_READY}"
+        if [[ "${MYSQL_POD_READY}" == "true" ]]; then
+            MYSQL_POD_IP=$(kubectl get pod mysql -o jsonpath='{.status.podIP}')
+            echo "MySQL pod IP: $MYSQL_POD_IP"
+            export SQLFLOW_TEST_DB="mysql"
+            export SQLFLOW_TEST_DATASOURCE="mysql://root:root@tcp(${MYSQL_POD_IP}:3306)/?maxAllowedPacket=0"
+
+            go generate ./...
+            # Refer to https://github.com/codecov/example-go for merging coverage
+            # from multiple runs of tests.
+            gotest -p 1 -covermode=count -coverprofile=profile.out -v \
+                -run TestEnd2EndWorkflow -timeout 1200s ./go/cmd/...
+            if [ -f profile.out ]; then
+                cat profile.out > coverage.txt
+                rm profile.out
+            fi
+            gotest -p 1 -covermode=count -coverprofile=profile.out -v \
+                ./go/workflow/argo/...
+            if [ -f profile.out ]; then
+                cat profile.out >> coverage.txt
+                rm profile.out
+            fi
+
+            TIMEOUT=false
+            break
+        else
+            sleep ${CHECK_INTERVAL_SECS}
+        fi
+    done
+
+    if [[ "$TIMEOUT" == "true" ]]; then
+        echo "Launching MySQL pod timeout"
+        exit 1
+    fi
 fi
-
-
-echo "Run unit tests of go/workflow/argo ..."
-gotest -p 1 -v ./go/workflow/argo/
-
-
-# TODO(yancey1989): run fluid test if tekton on SQLFlow it's ready.
-# bash ./scripts/test/fluid.sh
-# gotest ./cmd/... -run TestEnd2EndFluidWorkflow -v
