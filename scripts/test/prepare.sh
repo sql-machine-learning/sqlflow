@@ -41,7 +41,8 @@ python -m pip install --quiet \
     PyUtilib==5.8.0 \
     pyomo==5.6.9 \
     mysqlclient==1.4.4 \
-    pytest
+    pytest \
+    pytest-cov
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
