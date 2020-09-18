@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.step.tensorflow.train import train_step
+
 
 def train(original_sql,
           model_image,
@@ -25,5 +27,16 @@ def train(original_sql,
           label_column,
           save,
           load=None):
-    # TODO(sneaxiy): implement this method
-    pass
+    train_step(original_sql=original_sql,
+               model_image=model_image,
+               estimator_string=estimator_string,
+               datasource=datasource,
+               select=select,
+               validation_select=validation_select,
+               model_params=model_params,
+               train_params=train_params,
+               validation_params=validation_params,
+               feature_column_map=feature_column_map,
+               label_column=label_column,
+               save=save,
+               load=load)
