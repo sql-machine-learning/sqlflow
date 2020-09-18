@@ -55,9 +55,9 @@ func GenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) 
 		if err = resolveXGBoostModelParams(trainStmt); err != nil {
 			return "", err
 		}
-	}
-	if len(trainStmt.Features) > 1 {
-		return "", fmt.Errorf("xgboost only support 0 or 1 feature column set, received %d", len(trainStmt.Features))
+		if len(trainStmt.Features) > 1 {
+			return "", fmt.Errorf("xgboost only support 0 or 1 feature column set, received %d", len(trainStmt.Features))
+		}
 	}
 	// featureColumnCode is a python map definition code like fc_map = {"feature_columns": [...]}
 	featureColumnCode := generateFeatureColumnCode(trainStmt.Features)
