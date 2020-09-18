@@ -19,6 +19,7 @@ import os
 import socket
 import sys
 
+from dummyauthenticator import DummyAuthenticator
 from kubernetes import client
 from oauthenticator.github import GitHubOAuthenticator
 
@@ -56,11 +57,16 @@ c.JupyterHub.hub_connect_ip = c.KubeSpawner.hub_connect_ip
 c.KubeSpawner.service_account = 'default'
 
 # use GitHub oauth
-c.JupyterHub.authenticator_class = GitHubOAuthenticator
-c.GitHubOAuthenticator.oauth_callback_url = 'https://playground.sqlflow.tech/hub/oauth_callback'
-c.GitHubOAuthenticator.client_id = os.getenv("SQLFLOW_JUPYTER_OAUTH_CLIENT_ID")
-c.GitHubOAuthenticator.client_secret = os.getenv(
-    "SQLFLOW_JUPYTER_OAUTH_CLIENT_SECRET")
+if os.getenv("SQLFLOW_JUPYTER_USE_GITHUB_OAUTH") == "true":
+    c.JupyterHub.authenticator_class = GitHubOAuthenticator
+    c.GitHubOAuthenticator.oauth_callback_url = 'https://playground.sqlflow.tech/hub/oauth_callback'
+    c.GitHubOAuthenticator.client_id = os.getenv(
+        "SQLFLOW_JUPYTER_OAUTH_CLIENT_ID")
+    c.GitHubOAuthenticator.client_secret = os.getenv(
+        "SQLFLOW_JUPYTER_OAUTH_CLIENT_SECRET")
+else:
+    c.JupyterHub.authenticator_class = DummyAuthenticator
+    # c.Authenticator.admin_users = {'put your admin user here'}
 
 c.JupyterHub.allow_named_servers = True
 
@@ -95,7 +101,7 @@ c.KubeSpawner.extra_containers = [{
     "image":
     sqlflow_mysql_image,
     "imagePullPolicy":
-    "Always",
+    "IfNotPresent",
     "livenessProbe": {
         "exec": {
             "command": ["cat", "/work/mysql-inited"]
