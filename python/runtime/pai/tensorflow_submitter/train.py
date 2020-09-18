@@ -14,7 +14,7 @@
 import os
 import types
 
-from runtime.model import EstimatorType, Model, collect_metadata, oss
+from runtime.model import collect_metadata, oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.pai.tensorflow_submitter.train_estimator import \
     estimator_train_and_save

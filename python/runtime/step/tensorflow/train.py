@@ -97,12 +97,11 @@ def train_step(original_sql,
     estimator = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator)
 
-    is_pai = pai_table is not None
-
-    if is_pai:
-        if verbose < 1:  # always use verbose == 1 when using PAI to get more logs
-            verbose = 1
-        set_log_level(verbose, is_estimator)
+    is_pai = True if pai_table else False
+    # always use verbose == 1 when using PAI to get more logs
+    if verbose < 1:
+        verbose = 1
+    set_log_level(verbose, is_estimator)
 
     model_params_constructed.update(fc_map)
 
