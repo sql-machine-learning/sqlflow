@@ -20,7 +20,6 @@ from runtime.pai.tensorflow_submitter.evaluate import \
     evaluate_step as evaluate_tf
 from runtime.pai.tensorflow_submitter.explain import explain_step as explain_tf
 from runtime.pai.tensorflow_submitter.predict import predict_step as predict_tf
-from runtime.pai.tensorflow_submitter.train import train_step as train_tf
 from runtime.pai.xgboost_submitter.evaluate import \
     evaluate_step as evaluate_xgb
 from runtime.pai.xgboost_submitter.explain import explain_step as explain_xgb
@@ -28,6 +27,7 @@ from runtime.pai.xgboost_submitter.explain import explain_step as explain_xgb
 # so, we can only import needed packages
 from runtime.pai.xgboost_submitter.predict import predict_step as predict_xgb
 from runtime.pai.xgboost_submitter.train import train_step as train_xgb
+from runtime.step.tensorflow.train import train_step as train_tf
 
 
 def call_fun(func, params):
