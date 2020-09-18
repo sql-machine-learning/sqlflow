@@ -45,8 +45,13 @@ func getStepIdx(wf *v1alpha1.Workflow, targetStepGroup string) (int, error) {
 }
 
 func logViewURL(ns, wfID, podID string) (string, error) {
-	ep := os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT")
+	// if we are using DTM log collection, construct a different url pattern
+	dtmEp := os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_DTM_ENDPOINT")
+	if dtmEp != "" {
+		return fmt.Sprintf("%s?jobName=%s&taskName=%s&__envName=PROD", dtmEp, wfID, podID), nil
+	}
 	// argo UI log view panel
+	ep := os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT")
 	return fmt.Sprintf("%s/workflows/%s/%s?tab=workflow&nodeId=%s&sidePanel=logs:%s:main", ep, ns, wfID, podID, podID), nil
 }
 
