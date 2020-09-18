@@ -42,7 +42,7 @@ class TestXGBoostTrain(unittest.TestCase):
         eval_result = train(ds, original_sql, select, val_select,
                             "xgboost.gbtree", "", None,
                             NumericColumn(FieldDesc(name="class")),
-                            model_params, train_params,
+                            model_params, train_params, None,
                             "iris.xgboost_train_model_test", None)
         self.assertLess(eval_result['train']['merror'][-1], 0.01)
         self.assertLess(eval_result['validate']['merror'][-1], 0.01)

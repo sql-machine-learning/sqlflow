@@ -66,6 +66,7 @@ class TestXGBoostTrain(unittest.TestCase):
                                 validation_select=val_select,
                                 model_params=model_params,
                                 train_params=train_params,
+                                validation_params=None,
                                 feature_column_map=None,
                                 label_column=NumericColumn(
                                     FieldDesc(name=class_name)),
