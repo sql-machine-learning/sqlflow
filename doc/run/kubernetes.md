@@ -118,7 +118,7 @@ playground with your own `https` and `authentication` enabled/disabled.
 
     **NOTE:** If you do not want any `authentication`, you may safely skip above step.
     **But** you still need to make a fake secret in k8s' store. Then disable
-    OAuth in config by setting `SQLFLOW_JUPYTER_USE_OAUTH`'s value to 'false'.
+    OAuth in config by setting `SQLFLOW_JUPYTER_USE_GITHUB_OAUTH`'s value to 'false'.
     ```bash
     kubectl create secret generic sqlflow \
         --from-literal=jupyter_oauth_client_id=dummy \
@@ -126,7 +126,7 @@ playground with your own `https` and `authentication` enabled/disabled.
     ```
     Change config file to disable authentication.
     ```yaml
-    - name: SQLFLOW_JUPYTER_USE_OAUTH
+    - name: SQLFLOW_JUPYTER_USE_GITHUB_OAUTH
       value: "false"
     ```
 
@@ -156,7 +156,7 @@ mode on your Kubernetes cluster. Next you can login on the web page and run quer
     to login. Wait a while, you would enter a Jupyter Notebook web page,
     and you can find many tutorials here.
 
-## Trouble shooting
+## Trouble Shooting
 
 1. Sometimes, you can't get the GitHub files with wget, like `https://raw.githubusercontent.com/argoproj/argo/v2.7.7/manifests/install.yaml`.
 
@@ -167,6 +167,7 @@ mode on your Kubernetes cluster. Next you can login on the web page and run quer
     Just kill them and re-forwarding.
 
 1. First time run Jupyter Notebook, reporting databse is not found.
+
     This may because you login and enter the notebook too fast, the MySQL
     service is not ready yet.
 

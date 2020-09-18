@@ -73,7 +73,7 @@ spec:
             value: /jupyter/certs/playground.sqlflow.tech.key
           - name: SQLFLOW_JUPYTER_SSL_CERT
             value: /jupyter/certs/playground.sqlflow.tech.pem
-          - name: SQLFLOW_JUPYTER_USE_OAUTH
+          - name: SQLFLOW_JUPYTER_USE_GITHUB_OAUTH
             value: "true"
           - name: SQLFLOW_JUPYTER_OAUTH_CLIENT_ID
             valueFrom:

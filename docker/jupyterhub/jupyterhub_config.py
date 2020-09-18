@@ -57,7 +57,7 @@ c.JupyterHub.hub_connect_ip = c.KubeSpawner.hub_connect_ip
 c.KubeSpawner.service_account = 'default'
 
 # use GitHub oauth
-if os.getenv("SQLFLOW_JUPYTER_USE_OAUTH") == "true":
+if os.getenv("SQLFLOW_JUPYTER_USE_GITHUB_OAUTH") == "true":
     c.JupyterHub.authenticator_class = GitHubOAuthenticator
     c.GitHubOAuthenticator.oauth_callback_url = 'https://playground.sqlflow.tech/hub/oauth_callback'
     c.GitHubOAuthenticator.client_id = os.getenv(
