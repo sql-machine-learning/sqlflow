@@ -921,32 +921,32 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 			return nil, err
 		}
 	}
-	// parse DTypeKey
-	dtypeKey := Int
+	// parse DTypeWeight
+	dtypeWeight := Int
 	if len(*el) == 7 {
-		dtypeKeyStr, err := expression2string((*el)[6])
+		dtypeWeightStr, err := expression2string((*el)[6])
 		if err != nil {
 			return nil, err
 		}
-		if strings.EqualFold(dtypeKeyStr, "float") {
-			dtypeKey = Float
-		} else if strings.EqualFold(dtypeKeyStr, "int") {
-			dtypeKey = Int
-		} else if strings.EqualFold(dtypeKeyStr, "string") {
-			dtypeKey = String
+		if strings.EqualFold(dtypeWeightStr, "float") {
+			dtypeWeight = Float
+		} else if strings.EqualFold(dtypeWeightStr, "int") {
+			dtypeWeight = Int
+		} else if strings.EqualFold(dtypeWeightStr, "string") {
+			dtypeWeight = String
 		} else {
-			return nil, fmt.Errorf("bad %s data key type %s", head, dtypeKeyStr)
+			return nil, fmt.Errorf("bad %s data key type %s", head, dtypeWeightStr)
 		}
 	}
 
 	return &FieldDesc{
-		Name:       name,
-		IsSparse:   isSparse,
-		Shape:      shape,
-		DType:      dtype,
-		Delimiter:  delimiter,
-		Delimiter2: delimiter2,
-		DTypeKey:   dtypeKey,
+		Name:        name,
+		IsSparse:    isSparse,
+		Shape:       shape,
+		DType:       dtype,
+		Delimiter:   delimiter,
+		Delimiter2:  delimiter2,
+		DTypeWeight: dtypeWeight,
 	}, nil
 }
 

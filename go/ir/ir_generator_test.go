@@ -49,7 +49,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 		INDICATOR(CATEGORY_ID(c3, 512)),
 		INDICATOR(c1),
 		INDICATOR(SPARSE(c2, 10000, COMMA, "int")),
-		WEIGHTED_CATEGORY(CATEGORY_ID(SPARSE(c2, 10000, "-", "int", ":", "string"), 128))
+		WEIGHTED_CATEGORY(CATEGORY_ID(SPARSE(c2, 10000, "-", "string", ":", "float"), 128))
 	LABEL c4
 	INTO mymodel;
 	`
@@ -190,7 +190,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.True(cc.FieldDesc.IsSparse)
 	a.Equal("-", cc.FieldDesc.Delimiter)
 	a.Equal(":", cc.FieldDesc.Delimiter2)
-	a.Equal(String, cc.FieldDesc.DTypeKey)
+	a.Equal(Float, cc.FieldDesc.DTypeWeight)
 
 	l, ok := trainStmt.Label.(*NumericColumn)
 	a.True(ok)

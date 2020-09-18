@@ -1022,3 +1022,18 @@ SELECT * FROM %[4]s;`
 		}
 	}
 }
+
+func caseWeightedKeyValueColumn(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s.weighted_key_value_train
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[64,32]
+COLUMN EMBEDDING(
+	WEIGHTED_CATEGORY(CATEGORY_HASH(SPARSE(feature, 10, ",", "string", ":", "float"), 10)),
+	32
+)
+LABEL label_col
+INTO %s;`, caseDB, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+}

@@ -104,6 +104,14 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		}
 		return fmt.Sprintf("%s.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=%s)",
 			module, c.FieldDesc.Name, c.BucketSize, dtype), nil
+	case *ir.WeightedCategoryColumn:
+		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
+		if err != nil {
+			return "", err
+		}
+		// automatically generate featurename_key as the weight key
+		return fmt.Sprintf("%s.feature_column.weighted_categorical_column(categorical_column=%s, weight_feature_key=\"%s_weight\")",
+			module, sourceCode, c.CategoryColumn.GetFieldDesc()[0].Name), nil
 	case *ir.CrossColumn:
 		if isXGBoostModule(module) {
 			return "", fmt.Errorf("CROSS is not supported in XGBoost models")

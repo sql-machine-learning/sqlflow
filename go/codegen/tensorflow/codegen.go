@@ -268,6 +268,7 @@ func Train(trainStmt *ir.TrainStmt, session *pb.Session) (string, error) {
 		paiTrainTable = trainStmt.TmpTrainTable
 		paiValidateTable = trainStmt.TmpValidateTable
 	}
+	fmt.Println(fieldDescs["feature_columns"][0].DType)
 
 	filler := trainFiller{
 		DataSource:          session.DbConnStr,

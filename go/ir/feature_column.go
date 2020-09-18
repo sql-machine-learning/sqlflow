@@ -33,14 +33,14 @@ type CategoryColumn interface {
 
 // FieldDesc describes a field used as the input to a feature column.
 type FieldDesc struct {
-	Name       string `json:"name"`       // the name for a field, e.g. "petal_length"
-	DType      int    `json:"dtype"`      // data type of the values, e.g. "float", "int32"
-	DTypeKey   int    `json:"dtype_key"`  // data type of the keys.
-	Delimiter  string `json:"delimiter"`  // Needs to be "," if the field saves strings like "1,23,42".
-	Delimiter2 string `json:"delimiter2"` // k-v list format like k:v-k:v, delimiter:"-", delimiter2:":"
-	Format     string `json:"format"`     // The data format, "", "csv" or "kv"
-	Shape      []int  `json:"shape"`      // [3] if the field saves strings of three numbers like "1,23,42".
-	IsSparse   bool   `json:"is_sparse"`  // If the field saves a sparse tensor.
+	Name        string `json:"name"`         // the name for a field, e.g. "petal_length"
+	DType       int    `json:"dtype"`        // data type of the values, e.g. "float", "int32"
+	DTypeWeight int    `json:"dtype_weight"` // data type of the keys.
+	Delimiter   string `json:"delimiter"`    // Needs to be "," if the field saves strings like "1,23,42".
+	Delimiter2  string `json:"delimiter2"`   // k-v list format like k:v-k:v, delimiter:"-", delimiter2:":"
+	Format      string `json:"format"`       // The data format, "", "csv" or "kv"
+	Shape       []int  `json:"shape"`        // [3] if the field saves strings of three numbers like "1,23,42".
+	IsSparse    bool   `json:"is_sparse"`    // If the field saves a sparse tensor.
 	// Vocabulary stores all possible enumerate values if the column type is string,
 	// e.g. the column values are: "MALE", "FEMALE", "NULL"
 	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication

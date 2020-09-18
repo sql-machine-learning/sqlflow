@@ -274,6 +274,9 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		// add a default ColumnSpec for updating.
 		if _, ok := fieldDescMap[fld]; !ok {
 			fieldDescMap[fld] = newDefaultFieldDesc(fld)
+		} else {
+			// keep user specified field desc
+			continue
 		}
 		// start the feature derivation routine
 		typeName := ct.DatabaseTypeName()

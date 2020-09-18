@@ -13,6 +13,7 @@
 
 import contextlib
 import re
+import sys
 
 import numpy as np
 import runtime.db_writer as db_writer
@@ -35,6 +36,7 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
     null_feature_error = ValueError(
         "column %s value is NULL, expected dense vector with delimiter %s" %
         (feature_name, feature_spec["delimiter"]))
+    sys.stderr.write("in read_feature... \n")
     if feature_spec["is_sparse"]:
         if feature_spec["format"] == "kv":
             if is_xgboost and raw_val is None:
@@ -60,10 +62,11 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                         item.split(feature_spec["delimiter2"])
                         for item in items
                     ]
-                    indices = np.array([int(item[0]) for item in items],
-                                       dtype=np.int64)
-                    values = np.array([float(item[1]) for item in items],
-                                      dtype=np.float32)
+                    sys.stderr.write("parsing kv items: %s\n" % items)
+                    indices = np.array([int(item[0]) for item in items])
+                    sys.stderr.write("parsing kv indices: %s\n" % indices)
+                    values = np.array([float(item[1]) for item in items])
+                    sys.stderr.write("parsing kv values: %s\n" % values)
                 else:
                     indices = np.fromstring(raw_val,
                                             dtype=int,

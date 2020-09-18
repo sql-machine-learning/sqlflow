@@ -457,6 +457,31 @@ USING e2etest_keras_dnn;`, caseTestTable, caseDB)
 	}
 }
 
+func CasePAIMaxComputeWeightedCategory(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+	trainSQL := `SELECT utdid,tv_style_prefer,film_style_prefer,tq_level_v2 FROM alifin_jtest_dev.dws_ali_cn_profile_feature_1d LIMIT 1000
+TO TRAIN DNNClassifier
+WITH model.n_classes = 2, model.hidden_units = [128, 64]
+COLUMN 
+	EMBEDDING(WEIGHTED_CATEGORY(CATEGORY_HASH(SPARSE(tv_style_prefer, 100, "| ", "float", ":: ", "string"), 100)), 32),
+	EMBEDDING(WEIGHTED_CATEGORY(CATEGORY_HASH(SPARSE(film_style_prefer, 100, "| ", "float", ":: ", "string"), 100)), 32)
+LABEL tq_level_v2
+INTO wuyi_test_weighted_emb;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	// 	predSQL := fmt.Sprintf(`SELECT * FROM %s
+	// TO PREDICT %s.keras_predict.class
+	// USING e2etest_keras_dnn;`, caseTestTable, caseDB)
+	// 	_, _, _, err = connectAndRunSQL(predSQL)
+	// 	if err != nil {
+	// 		a.Fail("run predSQL error: %v", err)
+	// 	}
+}
+
 // TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
 // environment variables to run the test:
 // SQLFLOW_submitter=pai
@@ -507,22 +532,24 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {
-		t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
-		t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
-		t.Run("CasePAIMaxComputeTrainDenseColWithoutIndicatingShape", CasePAIMaxComputeTrainDenseColWithoutIndicatingShape)
-		t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
-		t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
-		t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
-		t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
-		t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
-		t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
-		t.Run("CasePAIMaxComputeTrainPredictDiffColumns", CasePAIMaxComputeTrainPredictDiffColumns)
-		t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
-		// FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
-		// t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
-		t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
-		t.Run("CaseEnd2EndXGBoostDenseFeatureColumn", func(t *testing.T) {
-			caseEnd2EndXGBoostDenseFeatureColumn(t, true)
-		})
+		// t.Run("CasePAIMaxComputeDNNTrainPredictExplain", CasePAIMaxComputeDNNTrainPredictExplain)
+		// t.Run("CasePAIMaxComputeTrainDenseCol", CasePAIMaxComputeTrainDenseCol)
+		// t.Run("CasePAIMaxComputeTrainDenseColWithoutIndicatingShape", CasePAIMaxComputeTrainDenseColWithoutIndicatingShape)
+		// t.Run("CasePAIMaxComputeTrainXGBoost", CasePAIMaxComputeTrainXGBoost)
+		// t.Run("CasePAIMaxComputeTrainCustomModel", CasePAIMaxComputeTrainCustomModel)
+		// t.Run("CasePAIMaxComputeTrainDistributed", CasePAIMaxComputeTrainDistributed)
+		// t.Run("CasePAIMaxComputeTrainPredictCategoricalFeature", CasePAIMaxComputeTrainPredictCategoricalFeature)
+		// t.Run("CasePAIMaxComputeTrainTFBTDistributed", CasePAIMaxComputeTrainTFBTDistributed)
+		// t.Run("CasePAIMaxComputeTrainDistributedKeras", CasePAIMaxComputeTrainDistributedKeras)
+		// t.Run("CasePAIMaxComputeTrainPredictDiffColumns", CasePAIMaxComputeTrainPredictDiffColumns)
+		// t.Run("CasePAIMaxComputeTrainXGBDistributed", CasePAIMaxComputeTrainXGBDistributed)
+		// // FIXME(typhoonzero): Add this test back when we solve error: model already exist issue on the CI.
+		// // t.Run("CaseTrainPAIRandomForests", CaseTrainPAIRandomForests)
+		// t.Run("CaseXGBoostSparseKeyValueColumn", caseXGBoostSparseKeyValueColumn)
+		// t.Run("CaseEnd2EndXGBoostDenseFeatureColumn", func(t *testing.T) {
+		// 	caseEnd2EndXGBoostDenseFeatureColumn(t, true)
+		// })
+
+		t.Run("CasePAIMaxComputeWeightedCategory", CasePAIMaxComputeWeightedCategory)
 	})
 }
