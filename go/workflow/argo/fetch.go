@@ -50,7 +50,7 @@ func logViewURL(ns, wfID, podID string) (string, error) {
 	if dtmEp != "" {
 		// Set time interval to an hour for the first page, users can adjust
 		// this time on logview page
-		startTime, endTime := time.Now().Unix(), time.Now().Add(time.Hour).Unix()
+		startTime, endTime := time.Now().Unix()*1000, time.Now().Add(time.Hour).Unix()*1000
 		return fmt.Sprintf("%s?jobName=%s&taskName=%s&__envName=PROD&startTime=%d&endTime=%d",
 			dtmEp, wfID, podID, startTime, endTime), nil
 	}
