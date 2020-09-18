@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"strings"
 
 	"github.com/bitly/go-simplejson"
@@ -55,15 +56,11 @@ func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 }
 
 func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, string, error) {
-	isXGBoost := isXGBoostEstimator(trainStmt.Estimator)
-	if isXGBoost {
-		code, err := GenerateTrain(trainStmt, stepIndex, session)
-		if err != nil {
-			return "", "", err
-		}
-		return code, trainStmt.ModelImage, nil
+	code, err := GenerateTrain(trainStmt, stepIndex, session)
+	if err != nil {
+		return "", "", err
 	}
-	return "", "", fmt.Errorf("not implemented estimator type %s", trainStmt.Estimator)
+	return code, trainStmt.ModelImage, nil
 }
 
 func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
@@ -228,7 +225,7 @@ func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
 		// 	else if s.GetModelKind() == ir.KMeans {
 		// 		return pai.InitializeKMeansAttributes(s)
 		// 	}
-		// 	return tensorflow.InitializeAttributes(s)
+		return tensorflow.InitializeAttributes(s)
 		// case *ir.OptimizeStmt:
 		// 	return optimize.InitializeAttributes(s)
 	}
@@ -297,4 +294,30 @@ func generateFeatureColumnCode(fcMap map[string][]ir.FeatureColumn) string {
 		allFCCodes = append(allFCCodes, code)
 	}
 	return fmt.Sprintf("{%s}", strings.Join(allFCCodes, ","))
+}
+
+func categorizeAttributes(attrs map[string]interface{}) map[string]map[string]interface{} {
+	params := make(map[string]map[string]interface{})
+	prefixList := []string{"train.", "model.", "validation."}
+	for _, prefix := range prefixList {
+		params[prefix] = make(map[string]interface{})
+	}
+
+	for k, v := range attrs {
+		foundPrefix := false
+		for _, prefix := range prefixList {
+			if strings.HasPrefix(k, prefix) {
+				params[prefix][k[len(prefix):]] = v
+				foundPrefix = true
+				break
+			}
+		}
+
+		// all parameters without prefix are considered as
+		// model.xxx
+		if !foundPrefix {
+			params["model."][k] = v
+		}
+	}
+	return params
 }

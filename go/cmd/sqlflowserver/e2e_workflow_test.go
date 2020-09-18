@@ -90,6 +90,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	// test experimental workflow generation
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
 	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+	t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
 	t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
 }
@@ -410,8 +411,6 @@ WITH objective="multi:softmax",num_class=3
 COLUMN sepal_length, DENSE(sepal_width)
 LABEL class
 INTO %[2]s;
-
--- SELECT * FROM sqlflow_models.xgb_classification;
 `
 
 	sqlProgram := `
@@ -453,6 +452,21 @@ SELECT * FROM %[1]s.explain_result_table;
 	sql2 := fmt.Sprintf(sqlProgram, caseDB, caseTestTable, caseInto)
 	runSQLProgramAndCheck(t, sql1+sql2)
 	runSQLProgramAndCheck(t, sql2)
+}
+
+// TODO(sneaxiy): add more test cases
+func caseWorkflowTrainTensorFlow(t *testing.T) {
+	extraTrainSQLProgram := `SELECT * FROM %[1]s LIMIT 100;
+
+SELECT * FROM %[1]s
+TO TRAIN DNNClassifier
+WITH model.n_classes = 3, model.hidden_units = [10, 20]
+LABEL class
+INTO %[2]s;
+`
+
+	sql1 := fmt.Sprintf(extraTrainSQLProgram, caseTrainTable, caseInto)
+	runSQLProgramAndCheck(t, sql1)
 }
 
 func caseWorkflowOptimize(t *testing.T) {
