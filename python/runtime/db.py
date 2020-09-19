@@ -36,7 +36,6 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
     null_feature_error = ValueError(
         "column %s value is NULL, expected dense vector with delimiter %s" %
         (feature_name, feature_spec["delimiter"]))
-    sys.stderr.write("in read_feature... \n")
     if feature_spec["is_sparse"]:
         if feature_spec["format"] == "kv":
             if is_xgboost and raw_val is None:
@@ -54,19 +53,22 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                 indices = np.array([], dtype=int)
                 values = np.array([], dtype=np.int64)
             else:
-                # TODO(typhoonzero): unify with above kv format
-                if feature_spec[
-                        "delimiter2"] != "":  # "k:v,k:v" formated kv list
+                # TODO(typhoonzero): unify with xgboost kv format.
+                # "k:v,k:v" formated kv list
+                if feature_spec["delimiter2"] != "":
                     items = raw_val.split(feature_spec["delimiter"])
                     items = [
                         item.split(feature_spec["delimiter2"])
                         for item in items
                     ]
-                    sys.stderr.write("parsing kv items: %s\n" % items)
-                    indices = np.array([int(item[0]) for item in items])
-                    sys.stderr.write("parsing kv indices: %s\n" % indices)
-                    values = np.array([float(item[1]) for item in items])
-                    sys.stderr.write("parsing kv values: %s\n" % values)
+                    np_dtype_name = feature_spec["dtype"]
+                    if np_dtype_name == "string":
+                        np_dtype_name = "string_"  # numpy string array should use type name "string_"
+                    indices = np.array([item[0] for item in items],
+                                       dtype=np_dtype_name)
+                    values = np.array([float(item[1]) for item in items],
+                                      dtype=feature_spec["dtype_weight"])
+                    print("indices: ", indices, "values: ", values)
                 else:
                     indices = np.fromstring(raw_val,
                                             dtype=int,
@@ -77,6 +79,9 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return indices, values, dense_shape
     elif feature_spec["delimiter"] != "":
+        if feature_spec["delimiter2"] != "":
+            raise ValueError(
+                "not supported DENSE column with key:value list format.")
         # Dense string vector
         if feature_spec["dtype"] == "float32":
             if raw_val is None:

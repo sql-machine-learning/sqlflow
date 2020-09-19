@@ -1036,4 +1036,28 @@ LABEL label_col
 INTO %s;`, caseDB, caseInto)
 	_, _, _, err := connectAndRunSQL(trainSQL)
 	a.NoError(err)
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %[1]s.weighted_key_value_train
+TO PREDICT %[1]s.weighted_key_value_pred_result.label_col
+USING %[2]s;`, caseDB, caseInto)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
+
+	trainSQL = fmt.Sprintf(`SELECT * FROM %s.weighted_key_value_train_int
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[64,32]
+COLUMN EMBEDDING(
+	WEIGHTED_CATEGORY(CATEGORY_HASH(SPARSE(feature, 10, ",", "int", ":", "float"), 10)),
+	32
+)
+LABEL label_col
+INTO %s_int;`, caseDB, caseInto)
+	_, _, _, err = connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL = fmt.Sprintf(`SELECT * FROM %[1]s.weighted_key_value_train_int
+TO PREDICT %[1]s.weighted_key_value_pred_result_int.label_col
+USING %[2]s_int;`, caseDB, caseInto)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
 }

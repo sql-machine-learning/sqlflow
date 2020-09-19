@@ -25,16 +25,14 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name][
-                "delimiter2"] != "":  # kv list that should be parsed to two features.
+        if feature_metas[name]["delimiter2"] != "":
+            # kv list that should be parsed to two features.
             if feature_metas[name]["is_sparse"]:
-                ones = tf.ones(tf.size(col[0]), dtype=np.int64)
-                features_dict[name] = tf.SparseTensor(col[0], ones, col[2])
-                features_dict["_".join([name, "weight"])] = tf.SparseTensor(
-                    col[0], col[1], col[2])
-            else:
                 features_dict[name] = col[0]
                 features_dict["_".join([name, "weight"])] = col[1]
+            else:
+                raise ValueError(
+                    "not supported DENSE column with key:value list format.")
         else:
             if feature_metas[name]["is_sparse"]:
                 # NOTE(sneaxiy): be careful that not all feature column APIs accept
@@ -50,16 +48,14 @@ def parse_sparse_feature_predict(features, feature_column_names,
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name][
-                "delimiter2"] != "":  # kv list that should be parsed to two features.
+        if feature_metas[name]["delimiter2"] != "":
+            # kv list that should be parsed to two features.
             if feature_metas[name]["is_sparse"]:
-                ones = tf.ones(tf.size(col[0]), dtype=np.int64)
-                features_dict[name] = tf.SparseTensor(col[0], ones, col[2])
-                features_dict["_".join([name, "weight"])] = tf.SparseTensor(
-                    col[0], col[1], col[2])
+                features_dict[name] = col[0]
+                features_dict["_".join([name, "weight"])] = col[1]
             else:
-                features_dict[name] = col[1]
-                features_dict["_".join([name, "weight"])] = col[0]
+                raise ValueError(
+                    "not supported DENSE column with key:value list format.")
         else:
             if feature_metas[name]["is_sparse"]:
                 features_dict[name] = tf.SparseTensor(*col)
@@ -122,8 +118,15 @@ def input_fn(select,
     for name in feature_column_names:
         # NOTE: vector columns like 23,21,3,2,0,0 should use shape None
         if feature_metas[name]["is_sparse"]:
-            feature_types.append((tf.int64, tf.int32, tf.int64))
-            shapes.append((None, None, None))
+            if feature_metas[name]["delimiter2"]:
+                # extract two features from generator data.
+                feature_types.append(
+                    (get_dtype(feature_metas[name]["dtype"]),
+                     get_dtype(feature_metas[name]["dtype_weight"]), tf.int64))
+                shapes.append((None, None, None))
+            else:
+                feature_types.append((tf.int64, tf.int32, tf.int64))
+                shapes.append((None, None, None))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
@@ -163,7 +166,6 @@ def input_fn(select,
 
 def read_feature_as_tensor(raw_val, feature_spec, feature_name):
     # FIXME(typhoonzero): Should use correct dtype here.
-    print("in read_feature_as_tensor")
     if feature_spec["delimiter"] == "":
         return [raw_val]
     if feature_spec["is_sparse"]:
