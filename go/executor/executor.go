@@ -447,7 +447,10 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command(program, runStmt.Parameters[1:]...)
 		cmd.Dir = s.Cwd
 
-		_, e := s.runCommand(cmd, context, false)
+		errMsg, e := s.runCommand(cmd, context, false)
+		if e != nil {
+			s.Writer.Write(errMsg)
+		}
 
 		return e
 	} else if strings.EqualFold(fileExtension, ".py") {
@@ -458,7 +461,10 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command("python", pyCmdParams...)
 		cmd.Dir = s.Cwd
 
-		_, e := s.runCommand(cmd, context, false)
+		errMsg, e := s.runCommand(cmd, context, false)
+		if e != nil {
+			s.Writer.Write(errMsg)
+		}
 
 		return e
 	} else {
