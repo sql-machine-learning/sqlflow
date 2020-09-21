@@ -153,6 +153,10 @@ def submit_local_explain(datasource,
             model.get_type()))
 
 
+def submit_local_run():
+    pass
+
+
 def submit_local_show_train(datasource, model_name):
     meta = read_metadata_from_db(datasource, model_name)
     original_sql = meta.get("original_sql")
