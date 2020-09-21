@@ -293,9 +293,9 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 
 func caseWorkflowRunBinary(t *testing.T) {
 	runSQL := fmt.Sprintf(`
-	SELECT * FROM %s
-	TO RUN sqlflow/sqlflow:step
-	CMD "echo", "Hello World"
+SELECT * FROM %s
+TO RUN sqlflow/sqlflow:step
+CMD "echo", "Hello World"
 	`, caseTrainTable)
 
 	runSQLProgramAndCheck(t, runSQL)
@@ -303,14 +303,14 @@ func caseWorkflowRunBinary(t *testing.T) {
 
 func caseWorkflowRunPythonScript(t *testing.T) {
 	runSQL := fmt.Sprintf(`
-	SELECT * FROM %s
-	TO RUN sqlflow/runnable:v0.0.1
-	CMD "binning.py",
-		"--dbname=iris",
-		"--columns=sepal_length,sepal_width",
-		"--bin_method=bucket,log_bucket",
-		"--bin_num=10,5"
-	INTO train_binning_result;
+SELECT * FROM %s
+TO RUN sqlflow/runnable:v0.0.1
+CMD "binning.py",
+	"--dbname=iris",
+	"--columns=sepal_length,sepal_width",
+	"--bin_method=bucket,log_bucket",
+	"--bin_num=10,5"
+INTO train_binning_result;
 	`, caseTrainTable)
 
 	runSQLProgramAndCheck(t, runSQL)
