@@ -153,7 +153,11 @@ def submit_local_explain(datasource,
             model.get_type()))
 
 
-def submit_local_run():
+def submit_local_run(
+    select,
+    image_name,
+    params,
+    result_tables):
     pass
 
 
