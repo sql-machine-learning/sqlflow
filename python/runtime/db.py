@@ -13,7 +13,6 @@
 
 import contextlib
 import re
-import sys
 
 import numpy as np
 import runtime.db_writer as db_writer
@@ -66,9 +65,12 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                         np_dtype_name = "string_"  # numpy string array should use type name "string_"
                     indices = np.array([item[0] for item in items],
                                        dtype=np_dtype_name)
-                    values = np.array([float(item[1]) for item in items],
+                    # FIXME(typhoonzero): do we have other weight data type than float?
+                    values = np.array([
+                        float(item[1]) if len(item) == 2 else 1.0
+                        for item in items
+                    ],
                                       dtype=feature_spec["dtype_weight"])
-                    print("indices: ", indices, "values: ", values)
                 else:
                     indices = np.fromstring(raw_val,
                                             dtype=int,

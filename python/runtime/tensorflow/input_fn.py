@@ -13,7 +13,6 @@
 
 import copy
 import functools
-import sys
 
 import numpy as np
 import tensorflow as tf
@@ -177,13 +176,20 @@ def read_feature_as_tensor(raw_val, feature_spec, feature_name):
                 kvlist, feature_spec["delimiter2"],
                 result_type='RaggedTensor').to_tensor()
             # slice key tensor and value tensor
-            indices = tf.slice(kvsplited, [0, 0], [-1, 1])
-            values = tf.slice(kvsplited, [0, 1], [-1, 1])
+            indices = tf.reshape(tf.slice(kvsplited, [0, 0], [-1, 1]), [-1])
+            if feature_spec["dtype_weight"] != "float32":
+                raise ValueError(
+                    "key value column weight must be float type, but got: %s" %
+                    feature_spec["dtype_weight"])
+            values = tf.cond(
+                tf.equal(tf.shape(kvsplited)[1],
+                         2), lambda: tf.strings.to_number(
+                             tf.reshape(tf.slice(kvsplited, [0, 1], [-1, 1]),
+                                        [-1]), feature_spec["dtype_weight"]),
+                lambda: tf.ones_like(indices, dtype=tf.float32)
+            )  # default weight for empty cell or strings like "unknown"
             if feature_spec["dtype"] != "string":
                 indices = tf.strings.to_number(indices, feature_spec["dtype"])
-            if feature_spec["dtype_weight"] != "string":
-                values = tf.strings.to_number(values,
-                                              feature_spec["dtype_weight"])
         else:
             indices = tf.strings.to_number(
                 tf.strings.split(raw_val,
@@ -208,11 +214,10 @@ def parse_pai_dataset(feature_column_names, label_meta, feature_metas, *row):
         f = read_feature_as_tensor(row[i], spec, name)
         if spec["is_sparse"]:
             if spec["delimiter2"] != "":
-                sys.stderr.write("parse feature: %s\n" % f)
-                ones = tf.ones([tf.size(f[0])], dtype=tf.int64)
-                features[name] = tf.SparseTensor(f[0], ones, f[2])
-                features["_".join([name, "weight"
-                                   ])] = tf.SparseTensor(f[0], f[1], f[2])
+                # key-value format column, extract key and weight feature
+                # from generator.
+                features[name] = f[0]
+                features["_".join([name, "weight"])] = f[1]
             else:
                 features[name] = tf.SparseTensor(*f)
         else:
