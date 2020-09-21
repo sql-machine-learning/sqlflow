@@ -295,7 +295,7 @@ func caseWorkflowRunBinary(t *testing.T) {
 	runSQL := fmt.Sprintf(`
 SELECT * FROM %s
 TO RUN sqlflow/sqlflow:step
-CMD "echo", "Hello World"
+CMD "echo", "Hello World";
 	`, caseTrainTable)
 
 	runSQLProgramAndCheck(t, runSQL)
