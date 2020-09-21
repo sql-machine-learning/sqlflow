@@ -306,12 +306,12 @@ func caseWorkflowRunPythonScript(t *testing.T) {
 SELECT * FROM %s
 TO RUN sqlflow/runnable:v0.0.1
 CMD "binning.py",
-	"--dbname=iris",
+	"--dbname=%s",
 	"--columns=sepal_length,sepal_width",
 	"--bin_method=bucket,log_bucket",
 	"--bin_num=10,5"
 INTO train_binning_result;
-	`, caseTrainTable)
+	`, caseTrainTable, caseDB)
 
 	runSQLProgramAndCheck(t, runSQL)
 }
