@@ -87,6 +87,8 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
 	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
 	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+	t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
+	t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
 	// test experimental workflow generation
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
 	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
@@ -289,30 +291,29 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	a.NoError(checkWorkflow(ctx, cli, stream))
 }
 
-func CaseWorkflowRunBinary(t *testing.T) {
-	a := assert.New(t)
+func caseWorkflowRunBinary(t *testing.T) {
 	runSQL := fmt.Sprintf(`
 	SELECT * FROM %s
 	TO RUN sqlflow/sqlflow:step
 	CMD "echo", "Hello World"
 	`, caseTrainTable)
 
-	conn, err := createRPCConn()
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-	defer conn.Close()
+	runSQLProgramAndCheck(t, runSQL)
+}
 
-	cli := pb.NewSQLFlowClient(conn)
-	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
-	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
-	defer cancel()
+func caseWorkflowRunPythonScript(t *testing.T) {
+	runSQL := fmt.Sprintf(`
+	SELECT * FROM %s
+	TO RUN sqlflow/runnable:v0.0.1
+	CMD "binning.py",
+		"--dbname=iris",
+		"--columns=sepal_length,sepal_width",
+		"--bin_method=bucket,log_bucket",
+		"--bin_num=10,5"
+	INTO train_binning_result;
+	`, caseTrainTable)
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: runSQL, Session: &pb.Session{DbConnStr: testDatasource}})
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-	a.NoError(checkWorkflow(ctx, cli, stream))
+	runSQLProgramAndCheck(t, runSQL)
 }
 
 func CaseBackticksInSQL(t *testing.T) {
