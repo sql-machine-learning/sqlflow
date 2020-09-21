@@ -438,6 +438,8 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		sqlflowToRunContextKeyImage:  runStmt.ImageName,
 	}
 
+	var e error
+	var errMsg string
 	// The first parameter is the program name
 	program := runStmt.Parameters[0]
 	fileExtension := filepath.Ext(program)
@@ -447,12 +449,7 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command(program, runStmt.Parameters[1:]...)
 		cmd.Dir = s.Cwd
 
-		errMsg, e := s.runCommand(cmd, context, false)
-		if e != nil {
-			s.Writer.Write(errMsg)
-		}
-
-		return e
+		errMsg, e = s.runCommand(cmd, context, false)
 	} else if strings.EqualFold(fileExtension, ".py") {
 		// If the first parameter is a Python program
 		// Build the command
@@ -461,16 +458,17 @@ func (s *pythonExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 		cmd := exec.Command("python", pyCmdParams...)
 		cmd.Dir = s.Cwd
 
-		errMsg, e := s.runCommand(cmd, context, false)
-		if e != nil {
-			s.Writer.Write(errMsg)
-		}
-
-		return e
+		errMsg, e = s.runCommand(cmd, context, false)
 	} else {
 		// TODO(brightcoder01): Implement the execution of the program built using other script languages.
 		return fmt.Errorf("The other executable except Python program is not supported yet")
 	}
+
+	if e != nil {
+		s.Writer.Write(errMsg)
+	}
+
+	return e
 }
 
 func createEvaluationResultTable(db *database.DB, tableName string, metricNames []string) error {
