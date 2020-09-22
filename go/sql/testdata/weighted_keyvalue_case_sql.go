@@ -13,17 +13,13 @@
 
 package testdata
 
-// Sample data for testing tf.weighted_category_column feature parsing
-
+// weightedKeyValueInsertDataInt is sample data for testing tf.weighted_category_column
 const weightedKeyValueInsertData = `
-("a:0.1,b:0.5,c:0.9,d:0.8", 0),
-("c:0.2,d:0.1", 1),
-("a:0.1,c:0.8,d:0.9", 0)`
-
-const weightedKeyValueInsertDataInt = `
 ("1:0.1,2:0.5,3:0.9,4:0.8", 0),
 ("3:0.2,4:0.1", 1),
-("1:0.1,3:0.8,4:0.9", 0)`
+("1:0.1,3:0.8,4:0.9", 0),
+("2:0.3,39:0.2,16:0.29", 1),
+("7:0.17,23:0.13,2:0.9", 0)`
 
 // WeightedKeyValueCaseSQL is for mysql.
 var WeightedKeyValueCaseSQL = `
@@ -34,14 +30,7 @@ CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train(
     label_col INT
 );
 
-INSERT INTO %[1]s.weighted_key_value_train VALUES ` + weightedKeyValueInsertData + `;` + `
-
-CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train_int(
-    feature VARCHAR(255), 
-    label_col INT
-);
-
-INSERT INTO %[1]s.weighted_key_value_train_int VALUES ` + weightedKeyValueInsertDataInt + `;`
+INSERT INTO %[1]s.weighted_key_value_train VALUES ` + weightedKeyValueInsertData + `;`
 
 // WeightedKeyValueCaseSQLHive is for hive.
 var WeightedKeyValueCaseSQLHive = `
@@ -52,14 +41,7 @@ CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train(
     label_col INT
 );
 
-INSERT INTO %[1]s.weighted_key_value_train VALUES ` + weightedKeyValueInsertData + `;` + `
-
-CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train_int(
-    feature VARCHAR(255), 
-    label_col INT
-);
-
-INSERT INTO %[1]s.weighted_key_value_train_int VALUES ` + weightedKeyValueInsertDataInt + `;`
+INSERT INTO %[1]s.weighted_key_value_train VALUES ` + weightedKeyValueInsertData + `;`
 
 // WeightedKeyValueCaseSQLMaxCompute is for maxcompute.
 var WeightedKeyValueCaseSQLMaxCompute = `
@@ -70,11 +52,4 @@ CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train(
     label_col INT
 );
 
-INSERT INTO %[1]s.weighted_key_value_train VALUES ` + weightedKeyValueInsertData + `;` + `
-
-CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train_int(
-    feature STRING, 
-    label_col INT
-);
-
-INSERT INTO %[1]s.weighted_key_value_train_int VALUES ` + weightedKeyValueInsertDataInt + `;`
+INSERT INTO %[1]s.weighted_key_value_train VALUES ` + weightedKeyValueInsertData + `;`

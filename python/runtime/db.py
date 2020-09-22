@@ -41,48 +41,38 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                 indices = np.array([], dtype=np.int64)
                 values = np.array([], dtype=np.float32)
             else:
-                items = raw_val.split()
-                items = [item.split(':', 2) for item in items]
-                indices = np.array([int(item[0]) for item in items],
-                                   dtype=np.int64)
-                values = np.array([float(item[1]) for item in items],
-                                  dtype=np.float32)
-        else:
+                if feature_spec.get("delimiter2", "") != "":
+                    delim1 = feature_spec["delimiter"]
+                    delim2 = feature_spec["delimiter2"]
+                else:  # default libsvm kv format delimiters: "k:v k:v..."
+                    delim1 = " "
+                    delim2 = ":"
+                items = raw_val.split(delim1)
+                items = [item.split(delim2, 2) for item in items]
+                # NOTE(typhoonzero): dtype is already checked when compiling:
+                # ir_generator.go
+                indices = np.array([item[0] for item in items],
+                                   dtype=feature_spec["dtype"])
+                indices = indices.reshape(indices.size, 1)
+                values = np.array([
+                    float(item[1]) if len(item) == 2 else 1.0 for item in items
+                ],
+                                  dtype=feature_spec["dtype_weight"])
+        else:  # csv format
             if is_xgboost and raw_val is None:
                 indices = np.array([], dtype=int)
                 values = np.array([], dtype=np.int64)
             else:
-                # TODO(typhoonzero): unify with xgboost kv format.
-                # "k:v,k:v" formated kv list
-                if feature_spec["delimiter2"] != "":
-                    items = raw_val.split(feature_spec["delimiter"])
-                    items = [
-                        item.split(feature_spec["delimiter2"])
-                        for item in items
-                    ]
-                    np_dtype_name = feature_spec["dtype"]
-                    if np_dtype_name == "string":
-                        # numpy string array should use type name "string_"
-                        np_dtype_name = "string_"
-                    indices = np.array([item[0] for item in items],
-                                       dtype=np_dtype_name)
-                    # FIXME(typhoonzero): data type other than float?
-                    values = np.array([
-                        float(item[1]) if len(item) == 2 else 1.0
-                        for item in items
-                    ],
-                                      dtype=feature_spec["dtype_weight"])
-                else:
-                    indices = np.fromstring(raw_val,
-                                            dtype=int,
-                                            sep=feature_spec["delimiter"])
-                    indices = indices.reshape(indices.size, 1)
-                    values = np.ones([indices.size], dtype=np.int64)
+                indices = np.fromstring(raw_val,
+                                        dtype=int,
+                                        sep=feature_spec["delimiter"])
+                indices = indices.reshape(indices.size, 1)
+                values = np.ones([indices.size], dtype=np.int64)
 
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return indices, values, dense_shape
     elif feature_spec["delimiter"] != "":
-        if feature_spec["delimiter2"] != "":
+        if feature_spec.get("delimiter2", "") != "":
             raise ValueError(
                 "not supported DENSE column with key:value list format.")
         # Dense string vector

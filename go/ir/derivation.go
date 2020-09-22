@@ -228,6 +228,25 @@ const (
 	kv  = "kv"
 )
 
+func escapeDelimiter(delim string) string {
+	if delim == "|" {
+		return "\\|"
+	} else if delim == "." {
+		return "\\."
+	} else if delim == "+" {
+		return "\\+"
+	} else if delim == "?" {
+		return "\\?"
+	} else if delim == "*" {
+		return "\\*"
+	} else if delim == "$" {
+		return "\\$"
+	} else if delim == " " {
+		return "\\s"
+	}
+	return delim
+}
+
 func inferStringDataFormat(strData, delim1, delim2 string) string {
 	const realNumberRegex = "((\\+|-)?([0-9]+)(\\.[0-9]+)?)|((\\+|-)?\\.?[0-9]+)"
 
@@ -244,8 +263,10 @@ func inferStringDataFormat(strData, delim1, delim2 string) string {
 		return kv
 	}
 	if delim1 != "" && delim2 != "" {
+		delim1 = escapeDelimiter(delim1)
+		delim2 = escapeDelimiter(delim2)
 		// string in the form of "k1:v1,k2:v2,k3:v3", where delim1==",", delim2==":"
-		keyValueRegex = regexp.MustCompile(fmt.Sprintf("^((\\w|\\d)+%s?(%s)?%s?)+$", delim1, realNumberRegex, delim2))
+		keyValueRegex = regexp.MustCompile(fmt.Sprintf("^((\\w|\\d)+(%s)?(%s)?(%s)?)+$", delim2, realNumberRegex, delim1))
 		if keyValueRegex.MatchString(strData) {
 			return kv
 		}

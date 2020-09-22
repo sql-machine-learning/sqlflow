@@ -27,8 +27,10 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
         if feature_metas[name]["delimiter2"] != "":
             # kv list that should be parsed to two features.
             if feature_metas[name]["is_sparse"]:
-                features_dict[name] = col[0]
-                features_dict["_".join([name, "weight"])] = col[1]
+                features_dict[name] = tf.SparseTensor(
+                    col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
+                features_dict["_".join([name,
+                                        "weight"])] = tf.SparseTensor(*col)
             else:
                 raise ValueError(
                     "not supported DENSE column with key:value list format.")
@@ -50,8 +52,10 @@ def parse_sparse_feature_predict(features, feature_column_names,
         if feature_metas[name]["delimiter2"] != "":
             # kv list that should be parsed to two features.
             if feature_metas[name]["is_sparse"]:
-                features_dict[name] = col[0]
-                features_dict["_".join([name, "weight"])] = col[1]
+                features_dict[name] = tf.SparseTensor(
+                    col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
+                features_dict["_".join([name,
+                                        "weight"])] = tf.SparseTensor(*col)
             else:
                 raise ValueError(
                     "not supported DENSE column with key:value list format.")
@@ -177,19 +181,14 @@ def read_feature_as_tensor(raw_val, feature_spec, feature_name):
                 result_type='RaggedTensor').to_tensor()
             # slice key tensor and value tensor
             indices = tf.reshape(tf.slice(kvsplited, [0, 0], [-1, 1]), [-1])
-            if feature_spec["dtype_weight"] != "float32":
-                raise ValueError(
-                    "key value column weight must be float type, but got: %s" %
-                    feature_spec["dtype_weight"])
+            indices = tf.expand_dims(
+                tf.strings.to_number(indices, feature_spec["dtype"]), 1)
             values = tf.cond(
                 tf.equal(tf.shape(kvsplited)[1],
                          2), lambda: tf.strings.to_number(
                              tf.reshape(tf.slice(kvsplited, [0, 1], [-1, 1]),
                                         [-1]), feature_spec["dtype_weight"]),
-                lambda: tf.ones_like(indices, dtype=tf.float32)
-            )  # default weight for empty cell or strings like "unknown"
-            if feature_spec["dtype"] != "string":
-                indices = tf.strings.to_number(indices, feature_spec["dtype"])
+                lambda: tf.ones_like(indices, dtype=tf.float32))
         else:
             indices = tf.strings.to_number(
                 tf.strings.split(raw_val,
@@ -215,9 +214,11 @@ def parse_pai_dataset(feature_column_names, label_meta, feature_metas, *row):
         if spec["is_sparse"]:
             if spec["delimiter2"] != "":
                 # key-value format column, extract key and weight feature
-                # from generator.
-                features[name] = f[0]
-                features["_".join([name, "weight"])] = f[1]
+                # as sparse tensors.
+                features[name] = tf.SparseTensor(
+                    f[0], tf.ones_like(tf.reshape(f[0], [-1])), f[2])
+                features["_".join([name, "weight"
+                                   ])] = tf.SparseTensor(f[0], f[1], f[2])
             else:
                 features[name] = tf.SparseTensor(*f)
         else:

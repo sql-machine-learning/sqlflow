@@ -911,6 +911,9 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		} else {
 			return nil, fmt.Errorf("bad %s data value type %s", head, dtypeStr)
 		}
+		if len(*el) >= 6 && dtype != Int {
+			return nil, fmt.Errorf("when the column of a key-value list format, the key data type must be int, but got %s", dtypeStr)
+		}
 	}
 
 	// parse delimiter2
@@ -922,7 +925,7 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		}
 	}
 	// parse DTypeWeight
-	dtypeWeight := Int
+	dtypeWeight := Float
 	if len(*el) == 7 {
 		dtypeWeightStr, err := expression2string((*el)[6])
 		if err != nil {
@@ -930,12 +933,8 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		}
 		if strings.EqualFold(dtypeWeightStr, "float") {
 			dtypeWeight = Float
-		} else if strings.EqualFold(dtypeWeightStr, "int") {
-			dtypeWeight = Int
-		} else if strings.EqualFold(dtypeWeightStr, "string") {
-			dtypeWeight = String
 		} else {
-			return nil, fmt.Errorf("bad %s data key type %s", head, dtypeWeightStr)
+			return nil, fmt.Errorf("bad %s weight type %s, support float for weight only", head, dtypeWeightStr)
 		}
 	}
 

@@ -70,9 +70,13 @@ func TestKeyValueRegex(t *testing.T) {
 		"unknown", // will be parsed to {"unknown": 1.0}
 	}
 	for _, s := range generalKeyValueStrings {
-		if inferStringDataFormat(s, ":", ",") != kv {
+		if inferStringDataFormat(s, ",", ":") != kv {
 			t.Errorf("%s is not matched", s)
 		}
+	}
+	kvstr := "k::1.0|b::3.3|s::4.32"
+	if inferStringDataFormat(kvstr, "|", "::") != kv {
+		t.Errorf("%s is not matched", kvstr)
 	}
 	nonKeyValueStrings := []string{
 		"100",
