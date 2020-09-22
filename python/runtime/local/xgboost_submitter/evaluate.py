@@ -56,7 +56,7 @@ def evaluate(datasource,
              result_table,
              model,
              pred_label_name=None,
-             validation_metrics=["accuracy_score"]):
+             model_params=None):
     """
     Do evaluation to a trained XGBoost model.
 
@@ -66,7 +66,7 @@ def evaluate(datasource,
         result_table (str): the output data table.
         model (Model|str): the model object or where to load the model.
         pred_label_name (str): the label column name.
-        validation_metrics (list[str]): the evaluation metric names.
+        model_params (dict): the parameters for evaluation.
 
     Returns:
         None.
@@ -76,6 +76,12 @@ def evaluate(datasource,
     else:
         assert isinstance(model,
                           Model), "not supported model type %s" % type(model)
+
+    if model_params is None:
+        model_params = {}
+
+    validation_metrics = model_params.get("validation.metrics", "Accuracy")
+    validation_metrics = [m.strip() for m in validation_metrics.split(",")]
 
     model_params = model.get_meta("attributes")
     train_fc_map = model.get_meta("features")

@@ -475,6 +475,17 @@ INTO %[2]s;
 SELECT * FROM %[2]s
 TO PREDICT %[1]s.test_result_table.class
 USING %[3]s;
+
+SELECT * FROM %[2]s
+TO EVALUATE %[3]s
+WITH validation.metrics="Accuracy,Recall"
+LABEL class
+INTO %[1]s.evaluate_result_table;
+
+SELECT * FROM %[2]s
+TO EXPLAIN %[3]s
+WITH label_col=class
+INTO %[1]s.explain_result_table;
 `
 
 	sql1 := fmt.Sprintf(extraTrainSQLProgram, caseTrainTable, caseInto)

@@ -99,7 +99,7 @@ class TestXGBoostTrain(unittest.TestCase):
             self.assertEqual(len(diff_schema), 0)
 
             evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
-                     'class', ['accuracy_score'])
+                     'class', {'validation.metrics': 'accuracy_score'})
             eval_schema = self.get_table_schema(conn,
                                                 "iris.evaluate_result_table")
             self.assertEqual(eval_schema.keys(),
