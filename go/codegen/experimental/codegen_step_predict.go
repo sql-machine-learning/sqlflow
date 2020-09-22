@@ -34,7 +34,7 @@ type predStepFiller struct {
 	Submitter      string
 }
 
-// GeneratePredict generates the XGBoost prediction code.
+// GeneratePredict generates the prediction code.
 func GeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
 	dbConnStr, err := GeneratePyDbConnStr(session)
 	if err != nil {
