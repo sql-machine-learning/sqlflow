@@ -472,7 +472,15 @@ LABEL class
 INTO %[2]s;
 `
 
+	sqlProgram := `
+SELECT * FROM %[2]s
+TO PREDICT %[1]s.test_result_table.class
+USING %[3]s;
+`
+
 	sql1 := fmt.Sprintf(extraTrainSQLProgram, caseTrainTable, caseInto)
+	sql2 := fmt.Sprintf(sqlProgram, caseDB, caseTestTable, caseInto)
+	runSQLProgramAndCheck(t, sql1+sql2)
 	runSQLProgramAndCheck(t, sql1)
 }
 

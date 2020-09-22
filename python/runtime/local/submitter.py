@@ -13,6 +13,7 @@
 
 from runtime.dbapi import table_writer
 from runtime.feature.column import FeatureColumn
+from runtime.local.tensorflow_submitter.predict import pred as tf_pred
 from runtime.local.tensorflow_submitter.train import train as tf_train
 from runtime.local.xgboost_submitter.evaluate import \
     evaluate as xgboost_evaluate
@@ -103,10 +104,15 @@ def submit_local_pred(datasource,
                       user=""):
     model = Model.load_from_db(datasource, model_name)
     if model.get_type() == EstimatorType.XGBOOST:
-        xgboost_pred(datasource, select, result_table, label_column, model)
+        pred_func = xgboost_pred
     else:
-        raise NotImplementedError("not implemented model type: {}".format(
-            model.get_type()))
+        pred_func = tf_pred
+
+    pred_func(datasource=datasource,
+              select=select,
+              result_table=result_table,
+              pred_label_name=label_column,
+              model=model)
 
 
 def submit_local_evaluate(datasource,

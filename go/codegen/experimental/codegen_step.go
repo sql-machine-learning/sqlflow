@@ -65,28 +65,22 @@ func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *
 
 func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	image := ""
-	isXGBoost := false
 	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
 	if trainStmt != nil {
 		image = trainStmt.ModelImage
-		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
 	} else {
 		meta, err := getModelMetadata(session, predStmt.Using)
 		if err != nil {
 			return "", "", err
 		}
 		image = meta.imageName()
-		isXGBoost = meta.isXGBoostModel()
 	}
 
-	if isXGBoost {
-		code, err := GeneratePredict(predStmt, stepIndex, session)
-		if err != nil {
-			return "", "", err
-		}
-		return code, image, nil
+	code, err := GeneratePredict(predStmt, stepIndex, session)
+	if err != nil {
+		return "", "", err
 	}
-	return "", "", fmt.Errorf("not implemented model type")
+	return code, image, nil
 }
 
 func generateEvaluationCodeAndImage(evalStmt *ir.EvaluateStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
