@@ -103,7 +103,7 @@ class TestXGBoostTrain(unittest.TestCase):
 
         with temp_file.TemporaryDirectory(as_cwd=True):
             evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
-                     'class', ['accuracy_score'])
+                     'class', {'validation.metrics': 'accuracy_score'})
 
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
         self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))

@@ -122,7 +122,7 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 	return program.String(), nil
 }
 
-var coulerCodeTmpl = `
+const coulerCodeTmpl = `
 import couler.argo as couler
 import couler.pyfunc as pyfunc
 from os import path
