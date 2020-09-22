@@ -161,7 +161,6 @@ func TestStringInStringSQL(t *testing.T) {
 	a.NoError(err)
 	yaml, e := cg.GenYAML(code)
 	a.NoError(e)
-	println(yaml)
 	expect := `validation.select=\\\"select * from iris.train where\
             \ name like \\\\\\\"Versicolor\\\\\\\";\\\"`
 	a.True(strings.Contains(yaml, expect))
@@ -232,9 +231,9 @@ INTO sqlflow_models.my_xgboost_model;
 		Attributes:       attrs,
 		Features: map[string][]ir.FeatureColumn{
 			"feature_columns": {
-				&ir.NumericColumn{&ir.FieldDesc{"sepal_length", ir.Float, "", "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldDesc{"sepal_width", ir.Float, "", "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldDesc{"petal_length", ir.Float, "", "", []int{1}, false, nil, 0}},
-				&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, "", "", []int{1}, false, nil, 0}}}},
-		Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, "", "", []int{1}, false, nil, 0}}}
+				&ir.NumericColumn{&ir.FieldDesc{"sepal_length", ir.Float, ir.Float, "", "", "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"sepal_width", ir.Float, ir.Float, "", "", "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"petal_length", ir.Float, ir.Float, "", "", "", []int{1}, false, nil, 0}},
+				&ir.NumericColumn{&ir.FieldDesc{"petal_width", ir.Float, ir.Float, "", "", "", []int{1}, false, nil, 0}}}},
+		Label: &ir.NumericColumn{&ir.FieldDesc{"class", ir.Int, ir.Float, "", "", "", []int{1}, false, nil, 0}}}
 }

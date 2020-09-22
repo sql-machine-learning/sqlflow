@@ -27,8 +27,7 @@ const weightedKeyValueInsertDataInt = `
 
 // WeightedKeyValueCaseSQL is for mysql.
 var WeightedKeyValueCaseSQL = `
-DROP DATABASE IF EXISTS %[1]s;
-CREATE DATABASE %[1]s;
+CREATE DATABASE IF NOT EXISTS %[1]s;
 
 CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train(
     feature VARCHAR(255), 
@@ -46,8 +45,7 @@ INSERT INTO %[1]s.weighted_key_value_train_int VALUES ` + weightedKeyValueInsert
 
 // WeightedKeyValueCaseSQLHive is for hive.
 var WeightedKeyValueCaseSQLHive = `
-DROP DATABASE IF EXISTS %[1]s CASCADE;
-CREATE DATABASE %[1]s;
+CREATE DATABASE IF NOT EXISTS  %[1]s;
 
 CREATE TABLE IF NOT EXISTS %[1]s.weighted_key_value_train(
     feature VARCHAR(255), 
