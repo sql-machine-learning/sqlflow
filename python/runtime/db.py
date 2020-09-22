@@ -62,10 +62,11 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                     ]
                     np_dtype_name = feature_spec["dtype"]
                     if np_dtype_name == "string":
-                        np_dtype_name = "string_"  # numpy string array should use type name "string_"
+                        # numpy string array should use type name "string_"
+                        np_dtype_name = "string_"
                     indices = np.array([item[0] for item in items],
                                        dtype=np_dtype_name)
-                    # FIXME(typhoonzero): do we have other weight data type than float?
+                    # FIXME(typhoonzero): data type other than float?
                     values = np.array([
                         float(item[1]) if len(item) == 2 else 1.0
                         for item in items

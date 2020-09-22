@@ -34,8 +34,8 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
                     "not supported DENSE column with key:value list format.")
         else:
             if feature_metas[name]["is_sparse"]:
-                # NOTE(sneaxiy): be careful that not all feature column APIs accept
-                # SparseTensor.
+                # NOTE(sneaxiy): be careful that not all feature column APIs
+                # accept SparseTensor.
                 features_dict[name] = tf.SparseTensor(*col)
             else:
                 features_dict[name] = col
