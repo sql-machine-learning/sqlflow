@@ -18,13 +18,14 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.xgboost_submitter.evaluate import evaluate
-from runtime.local.xgboost_submitter.explain import explain
-from runtime.local.xgboost_submitter.predict import pred
-from runtime.local.xgboost_submitter.train import train
+from runtime.local.tensorflow_submitter.predict import pred
+from runtime.local.tensorflow_submitter.train import train
 
 
-class TestXGBoostTrain(unittest.TestCase):
+class TestTensorFlowLocalSubmitter(unittest.TestCase):
+    def setUp(self):
+        self.estimator = "DNNClassifier"
+
     def get_table_row_count(self, conn, table):
         ret = list(conn.query("SELECT COUNT(*) FROM %s" % table))
         self.assertEqual(len(ret), 1)
@@ -41,42 +42,39 @@ class TestXGBoostTrain(unittest.TestCase):
     def test_main(self):
         ds = testing.get_datasource()
         original_sql = """SELECT * FROM iris.train
-        TO TRAIN xgboost.gbtree
+        TO TRAIN %s
         WITH
-            objective="multi:softmax",
-            num_boost_round=20,
-            num_class=3,
+            model.hidden_units=[32,64],
+            model.n_classes=3,
             validation.select="SELECT * FROM iris.test"
         LABEL class
-        INTO iris.xgboost_train_model_test;
-        """
+        INTO iris.tensorflow_train_model_test;
+        """ % self.estimator
 
         select = "SELECT * FROM iris.train"
         val_select = "SELECT * FROM iris.test"
-        train_params = {"num_boost_round": 20}
-        model_params = {"num_class": 3, "objective": "multi:softmax"}
-        save_name = "iris.xgboost_train_model_test"
+        train_params = {"batch_size": 10}
+        model_params = {"n_classes": 3, "hidden_units": [32, 64]}
+        save_name = "iris.tensorflow_train_model_test"
         class_name = "class"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            eval_result = train(original_sql=original_sql,
-                                model_image="sqlflow:step",
-                                estimator_string="xgboost.gbtree",
-                                datasource=ds,
-                                select=select,
-                                validation_select=val_select,
-                                model_params=model_params,
-                                train_params=train_params,
-                                validation_params=None,
-                                feature_column_map=None,
-                                label_column=NumericColumn(
-                                    FieldDesc(name=class_name)),
-                                save=save_name)
-
-        self.assertLess(eval_result['train']['merror'][-1], 0.01)
-        self.assertLess(eval_result['validate']['merror'][-1], 0.01)
+            train(original_sql=original_sql,
+                  model_image="sqlflow:step",
+                  estimator_string="DNNClassifier",
+                  datasource=ds,
+                  select=select,
+                  validation_select=val_select,
+                  model_params=model_params,
+                  train_params=train_params,
+                  validation_params=None,
+                  feature_column_map=None,
+                  label_column=NumericColumn(
+                      FieldDesc(name=class_name, shape=[])),
+                  save=save_name)
 
         conn = db.connect_with_data_source(ds)
+
         pred_select = "SELECT * FROM iris.test"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
@@ -101,18 +99,10 @@ class TestXGBoostTrain(unittest.TestCase):
         diff_schema = schema2.keys() - schema1.keys()
         self.assertEqual(len(diff_schema), 0)
 
-        with temp_file.TemporaryDirectory(as_cwd=True):
-            evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
-                     'class', ['accuracy_score'])
 
-        eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
-        self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))
-
-        with temp_file.TemporaryDirectory(as_cwd=True):
-            explain(ds, select, "TreeExplainer", {"plot_type": "decision"},
-                    "iris.explain_result_table", save_name)
-            explain(ds, select, "XGBoostExplainer", {},
-                    "iris.explain_result_table", save_name)
+class TestKeras(TestTensorFlowLocalSubmitter):
+    def setUp(self):
+        self.estimator = "sqlflow_models.DNNClassifier"
 
 
 if __name__ == '__main__':

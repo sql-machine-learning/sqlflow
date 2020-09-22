@@ -21,7 +21,7 @@ import xgboost as xgb
 from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.feature.field_desc import DataType
+from runtime.local.create_result_table import create_predict_table
 from runtime.model.model import Model
 from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
@@ -65,7 +65,7 @@ def pred(datasource, select, result_table, pred_label_name, model):
     bst.load_model("my_model")
 
     conn = db.connect_with_data_source(datasource)
-    result_column_names, train_label_idx = _create_predict_table(
+    result_column_names, train_label_idx = create_predict_table(
         conn, select, result_table, train_label_desc, pred_label_name)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
@@ -154,47 +154,3 @@ def _store_predict_result(preds, result_table, result_column_names,
                 row.append(str(preds[line_no]))
                 w.write(row)
                 line_no += 1
-
-
-def _create_predict_table(conn, select, result_table, train_label_desc,
-                          pred_label_name):
-    """
-    Create the result prediction table.
-
-    Args:
-        conn: the database connection object.
-        select (str): the input data to predict.
-        result_table (str): the output data table.
-        train_label_desc (FieldDesc): the FieldDesc of the trained label.
-        pred_label_name (str): the output label name to predict.
-
-    Returns:
-        A tuple of (result_column_names, train_label_index).
-    """
-    name_and_types = db.selected_columns_and_types(conn, select)
-    train_label_index = -1
-    for i, (name, _) in enumerate(name_and_types):
-        if name == train_label_desc.name:
-            train_label_index = i
-            break
-
-    if train_label_index >= 0:
-        del name_and_types[train_label_index]
-
-    column_strs = []
-    for name, typ in name_and_types:
-        column_strs.append("%s %s" %
-                           (name, db.to_db_field_type(conn.driver, typ)))
-
-    train_label_field_type = DataType.to_db_field_type(conn.driver,
-                                                       train_label_desc.dtype)
-    column_strs.append("%s %s" % (pred_label_name, train_label_field_type))
-
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
-    create_sql = "CREATE TABLE %s (%s);" % (result_table,
-                                            ",".join(column_strs))
-    conn.execute(drop_sql)
-    conn.execute(create_sql)
-    result_column_names = [item[0] for item in name_and_types]
-    result_column_names.append(pred_label_name)
-    return result_column_names, train_label_index

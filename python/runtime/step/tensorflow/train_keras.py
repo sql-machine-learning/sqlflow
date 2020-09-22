@@ -27,7 +27,7 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
                          model_meta, is_pai):
     print("Start training using keras model...")
     classifier, has_none_optimizer = keras_compile(estimator, model_params,
-                                                   save, metric_names)
+                                                   metric_names)
     train_dataset = train_dataset_fn()
     if val_dataset_fn is not None:
         validate_dataset = val_dataset_fn()
