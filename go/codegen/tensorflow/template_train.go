@@ -36,7 +36,7 @@ type trainFiller struct {
 	OriginalSQL         string
 }
 
-const tfTrainTemplateText = `
+const tfTrainTemplateText = `# -*- coding: utf-8 -*-
 import copy
 import traceback
 import tensorflow as tf

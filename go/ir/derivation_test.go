@@ -35,7 +35,7 @@ func TestCSVRegex(t *testing.T) {
 		" 33 , -70 , 80,",
 	}
 	for _, s := range csvStings {
-		if inferStringDataFormat(s) != csv {
+		if inferStringDataFormat(s, "", "") != csv {
 			t.Errorf("%s is not matched", s)
 		}
 	}
@@ -47,20 +47,30 @@ func TestCSVRegex(t *testing.T) {
 		"1.23",
 	}
 	for _, s := range nonCSVStings {
-		if inferStringDataFormat(s) == csv {
+		if inferStringDataFormat(s, "", "") == csv {
 			t.Errorf("%s should not be matched", s)
 		}
 	}
 }
 
 func TestKeyValueRegex(t *testing.T) {
-	keyValueStrings := []string{
+	libsvmKeyValueStrings := []string{
 		"1:3 2:4\t 3:5  4:9",
 		"0:1.3 10:-3.2 20:132 7:32",
 		"3:33",
 	}
-	for _, s := range keyValueStrings {
-		if inferStringDataFormat(s) != kv {
+	for _, s := range libsvmKeyValueStrings {
+		if inferStringDataFormat(s, "", "") != kv {
+			t.Errorf("%s is not matched", s)
+		}
+	}
+	generalKeyValueStrings := []string{
+		"1:3,3:4.0,8:3.0",
+		"k:1.0,b:3.3,s:4.32",
+		"unknown", // will be parsed to {"unknown": 1.0}
+	}
+	for _, s := range generalKeyValueStrings {
+		if inferStringDataFormat(s, ":", ",") != kv {
 			t.Errorf("%s is not matched", s)
 		}
 	}
@@ -71,7 +81,7 @@ func TestKeyValueRegex(t *testing.T) {
 		"0:abc",
 	}
 	for _, s := range nonKeyValueStrings {
-		if inferStringDataFormat(s) == kv {
+		if inferStringDataFormat(s, "", "") == kv {
 			t.Errorf("%s should not be matched", s)
 		}
 	}
