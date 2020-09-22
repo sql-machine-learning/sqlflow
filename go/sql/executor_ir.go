@@ -136,6 +136,7 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	if err != nil {
 		return err
 	}
+
 	stmts, err := parser.Parse(db.DriverName, sqlProgram)
 	if err != nil {
 		return err
@@ -150,7 +151,6 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	// which depends on the execution of create table some_table as (select ...);.
 	sqls := RewriteStatementsWithHints(stmts, db.DriverName)
 	for _, sql := range sqls {
-		//fmt.Println(sql)
 		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session); err != nil {
 			return err
 		}
