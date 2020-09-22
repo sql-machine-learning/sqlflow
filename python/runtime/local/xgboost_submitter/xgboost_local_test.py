@@ -47,6 +47,7 @@ class TestXGBoostTrain(unittest.TestCase):
             num_boost_round=20,
             num_class=3,
             validation.select="SELECT * FROM iris.test"
+        LABEL class
         INTO iris.xgboost_train_model_test;
         """
 
@@ -71,40 +72,43 @@ class TestXGBoostTrain(unittest.TestCase):
                                 label_column=NumericColumn(
                                     FieldDesc(name=class_name)),
                                 save=save_name)
-            self.assertLess(eval_result['train']['merror'][-1], 0.01)
-            self.assertLess(eval_result['validate']['merror'][-1], 0.01)
 
-            conn = db.connect_with_data_source(ds)
+        self.assertLess(eval_result['train']['merror'][-1], 0.01)
+        self.assertLess(eval_result['validate']['merror'][-1], 0.01)
 
-            pred_select = "SELECT * FROM iris.test"
+        conn = db.connect_with_data_source(ds)
+        pred_select = "SELECT * FROM iris.test"
+
+        with temp_file.TemporaryDirectory(as_cwd=True):
             pred(ds, pred_select, "iris.predict_result_table", class_name,
                  save_name)
 
-            self.assertEqual(
-                self.get_table_row_count(conn, "iris.test"),
-                self.get_table_row_count(conn, "iris.predict_result_table"))
+        self.assertEqual(
+            self.get_table_row_count(conn, "iris.test"),
+            self.get_table_row_count(conn, "iris.predict_result_table"))
 
-            schema1 = self.get_table_schema(conn, "iris.test")
-            schema2 = self.get_table_schema(conn, "iris.predict_result_table")
-            self.assertEqual(len(schema1), len(schema2))
-            for name in schema1:
-                if name == 'class':
-                    self.assertEqual(schema2[name], "BIGINT")
-                    continue
+        schema1 = self.get_table_schema(conn, "iris.test")
+        schema2 = self.get_table_schema(conn, "iris.predict_result_table")
+        self.assertEqual(len(schema1), len(schema2))
+        for name in schema1:
+            if name == 'class':
+                self.assertEqual(schema2[name], "BIGINT")
+                continue
 
-                self.assertTrue(name in schema2)
-                self.assertEqual(schema1[name], schema2[name])
+            self.assertTrue(name in schema2)
+            self.assertEqual(schema1[name], schema2[name])
 
-            diff_schema = schema2.keys() - schema1.keys()
-            self.assertEqual(len(diff_schema), 0)
+        diff_schema = schema2.keys() - schema1.keys()
+        self.assertEqual(len(diff_schema), 0)
 
+        with temp_file.TemporaryDirectory(as_cwd=True):
             evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
                      'class', {'validation.metrics': 'accuracy_score'})
-            eval_schema = self.get_table_schema(conn,
-                                                "iris.evaluate_result_table")
-            self.assertEqual(eval_schema.keys(),
-                             set(['loss', 'accuracy_score']))
 
+        eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
+        self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))
+
+        with temp_file.TemporaryDirectory(as_cwd=True):
             explain(ds, select, "TreeExplainer", {"plot_type": "decision"},
                     "iris.explain_result_table", save_name)
             explain(ds, select, "XGBoostExplainer", {},

@@ -138,10 +138,9 @@ def write_cols_from_selected(result_col_name, selected_cols):
     return write_cols, target_col_index
 
 
-def estimator_predict(estimator, model_params, save, result_table,
-                      feature_column_names, feature_column_names_map,
-                      feature_columns, feature_metas, train_label_name,
-                      result_col_name, conn, predict_generator, selected_cols):
+def estimator_predict(result_table, feature_column_names, feature_metas,
+                      train_label_name, result_col_name, conn,
+                      predict_generator, selected_cols):
     write_cols = selected_cols[:]
     try:
         train_label_index = selected_cols.index(train_label_name)
@@ -245,10 +244,8 @@ def pred(datasource,
     else:
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
-        estimator_predict(estimator, model_params, save, result_table,
-                          feature_column_names, feature_column_names_map,
-                          feature_columns, feature_metas, train_label_name,
-                          result_col_name, conn, predict_generator,
-                          selected_cols)
+        estimator_predict(result_table, feature_column_names, feature_metas,
+                          train_label_name, result_col_name, conn,
+                          predict_generator, selected_cols)
 
     print("Done predicting. Predict table : %s" % result_table)

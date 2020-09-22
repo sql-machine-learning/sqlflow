@@ -29,7 +29,25 @@ except:  # noqa: E722
 # tensorflow is version 1.x.
 
 
+class DefaultFlags(object):
+    def __init__(self):
+        self.task_index = 0
+        self.ps_hosts = ""
+        self.worker_hosts = ""
+        self.job_name = ""
+        self.checkpointDir = ""
+        self.tables = ""
+        self.outputs = ""
+        self.sqlflow_oss_ak = ""
+        self.sqlflow_oss_sk = ""
+        self.sqlflow_oss_ep = ""
+        self.sqlflow_oss_modeldir = ""
+
+
 def define_tf_flags():
+    if os.environ.get("SQLFLOW_USE_DEFAULT_FLAGS", "").lower() == "true":
+        return DefaultFlags()
+
     # NOTE: make sure that tf.app.flags.FLAGS is only defined once
     if hasattr(tf.app.flags.FLAGS, "task_index"):
         return tf.app.flags.FLAGS
