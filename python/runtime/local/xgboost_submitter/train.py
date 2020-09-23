@@ -153,4 +153,5 @@ def train(original_sql,
     save_model_to_local_file(bst, model_params, file_name)
     model = Model(EstimatorType.XGBOOST, meta)
     model.save_to_db(datasource, save)
+    conn.close()
     return eval_result

@@ -219,6 +219,8 @@ def shap_explain(booster, datasource, select, summary_params, result_table,
             for row in to_write:
                 w.write(list(row))
 
+        conn.close()
+
     if summary_params.get("plot_type") == "decision":
         shap_interaction_values = tree_explainer.shap_interaction_values(
             dataset)

@@ -107,6 +107,7 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
         eval_schema = set([k.lower() for k in eval_schema.keys()])
         self.assertEqual(eval_schema, set(['loss', 'accuracy']))
+        conn.close()
 
 
 class TestKeras(TestTensorFlowLocalSubmitter):
