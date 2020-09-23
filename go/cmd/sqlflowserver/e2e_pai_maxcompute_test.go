@@ -407,6 +407,8 @@ INTO e2etest_xgb_classi_model;`, caseTrainTable, caseTestTable)
 
 	predSQL := fmt.Sprintf(`SELECT * FROM %s
 TO PREDICT %s.pai_xgb_predict.class
+WITH
+	predict.num_workers=2
 USING e2etest_xgb_classi_model;`, caseTestTable, caseDB)
 	_, _, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err, "Run predSQL error.")
