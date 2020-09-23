@@ -104,7 +104,7 @@ def train(datasource,
                              train_dataset_fn, val_dataset_fn, label_meta,
                              epoch, verbose, validation_metrics,
                              validation_steps, load_pretrained_model,
-                             model_meta)
+                             model_meta, is_pai)
     else:
         estimator_train_and_save(estimator, model_params, save, FLAGS,
                                  train_dataset_fn, val_dataset_fn,
