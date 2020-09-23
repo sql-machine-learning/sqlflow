@@ -25,7 +25,7 @@ from runtime.tensorflow.keras_with_feature_column_input import \
 from runtime.tensorflow.load_model import load_keras_model_weights
 
 
-def keras_compile(estimator, model_params, save, metric_names):
+def keras_compile(estimator, model_params, metric_names):
     # remove optimizer param from model_params and use it when call "compile()"
     optimizer = None
     loss = None
@@ -102,7 +102,7 @@ def keras_train_and_save(estimator, model_params, save, is_pai,
     print("Start training using keras model...")
     try:
         classifier, has_none_optimizer = keras_compile(estimator, model_params,
-                                                       save, metric_names)
+                                                       metric_names)
     except Exception as e:
         if hasattr(estimator, "sqlflow_train_loop"):
             sys.stderr.write(

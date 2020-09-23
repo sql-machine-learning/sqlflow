@@ -28,6 +28,19 @@ class DataType(object):
     STRING = 2
 
     @staticmethod
+    def to_string(dtype):
+        if dtype == DataType.INT64:
+            return "int64"
+
+        if dtype == DataType.FLOAT32:
+            return "float32"
+
+        if dtype == DataType.STRING:
+            return "string"
+
+        raise ValueError("unsupported data type {}".format(dtype))
+
+    @staticmethod
     def to_db_field_type(driver, dtype):
         """
         This method converts the dtype to a field type that the CREATE
@@ -106,7 +119,7 @@ class FieldDesc(object):
         self.vocabulary = vocabulary
         self.max_id = max_id
 
-    def to_dict(self):
+    def to_dict(self, dtype_to_string=False):
         """
         Convert the FieldDesc object to a Python dict.
 
@@ -123,7 +136,8 @@ class FieldDesc(object):
             # FIXME(typhoonzero): this line is used to be compatible to
             # current code, remove it after the refactor.
             "feature_name": self.name,
-            "dtype": self.dtype,
+            "dtype":
+            DataType.to_string(self.dtype) if dtype_to_string else self.dtype,
             "delimiter": self.delimiter,
             "format": self.format,
             "shape": self.shape,

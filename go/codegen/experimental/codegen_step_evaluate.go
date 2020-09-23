@@ -34,7 +34,7 @@ type evaluateStepFiller struct {
 	Submitter      string
 }
 
-// GenerateEvaluation generates the XGBoost evaluation code
+// GenerateEvaluation generates the evaluation code
 func GenerateEvaluation(evalStmt *ir.EvaluateStmt, stepIndex int, session *pb.Session) (string, error) {
 	ds, err := GeneratePyDbConnStr(session)
 	if err != nil {
@@ -87,7 +87,8 @@ def step_entry_{{.StepIndex}}():
     with temp_file.TemporaryDirectory(as_cwd=True):
         evaluate(datasource='''{{.DataSource}}''', 
                  original_sql='''{{.OriginalSQL}}''',
-                 select='''{{.Select}}''', 
+                 select='''{{.Select}}''',
+                 pred_label_name='''{{.PredLabelName}}''',
                  model_name='''{{.Load}}''',
                  model_params=model_params,
                  result_table='''{{.ResultTable}}''')

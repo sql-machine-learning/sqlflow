@@ -59,12 +59,20 @@ func (fd *FieldDesc) GenPythonCode() string {
 	for k := range fd.Vocabulary {
 		vocabList = append(vocabList, k)
 	}
+
+	var shapeStr string
+	if fd.Shape == nil {
+		shapeStr = "[]"
+	} else {
+		shapeStr = AttrToPythonValue(fd.Shape)
+	}
+
 	// pass format = "" to let runtime feature derivation to fill it in.
 	return fmt.Sprintf(`runtime.feature.field_desc.FieldDesc(name="%s", dtype=runtime.feature.field_desc.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s)`,
 		fd.Name,
 		strings.ToUpper(DTypeToString(fd.DType)),
 		fd.Delimiter,
-		AttrToPythonValue(fd.Shape),
+		shapeStr,
 		isSparseStr,
 		AttrToPythonValue(vocabList),
 	)

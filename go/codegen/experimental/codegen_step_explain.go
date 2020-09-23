@@ -34,7 +34,7 @@ type explainStepFiller struct {
 	Submitter      string
 }
 
-// GenerateExplain generates the XGBoost explain code
+// GenerateExplain generates the explain code
 func GenerateExplain(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Session) (string, error) {
 	ds, err := GeneratePyDbConnStr(session)
 	if err != nil {

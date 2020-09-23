@@ -39,4 +39,10 @@ python -c "import runtime.db"
 go generate ./...
 go install ./...
 gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 1500s  -v ./...
+
+# When running the following command, the TensorFlow FLAGS module would pass
+# ["discover", "-v", "python", "*_test.py"] as the sys.argv to init the
+# tf.app.flags.FLAGS, which would cause error. So we use the
+# SQLFLOW_USE_DEFAULT_FLAGS to avoid the parse error.
+export SQLFLOW_USE_DEFAULT_FLAGS=true
 coverage run -m unittest discover -v python "*_test.py"
