@@ -20,6 +20,7 @@ from runtime.local.create_result_table import create_predict_table
 from runtime.model.model import Model
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
+from runtime.tensorflow.load_model import pop_optimizer_and_loss
 from runtime.tensorflow.predict import estimator_predict, keras_predict
 
 
@@ -71,6 +72,7 @@ def pred(datasource, select, result_table, pred_label_name, model):
     is_estimator = is_tf_estimator(estimator)
     predict_generator = db.db_generator(conn, select)
 
+    pop_optimizer_and_loss(model_params)
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter

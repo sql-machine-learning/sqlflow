@@ -181,3 +181,4 @@ def train_step(original_sql,
             print("Model saved to db: %s" % save)
 
     print("Done training")
+    conn.close()

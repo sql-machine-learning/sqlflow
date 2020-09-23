@@ -18,6 +18,7 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
+from runtime.local.tensorflow_submitter.evaluate import evaluate
 from runtime.local.tensorflow_submitter.predict import pred
 from runtime.local.tensorflow_submitter.train import train
 
@@ -98,6 +99,14 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
 
         diff_schema = schema2.keys() - schema1.keys()
         self.assertEqual(len(diff_schema), 0)
+
+        with temp_file.TemporaryDirectory(as_cwd=True):
+            evaluate(ds, select, "iris.evaluate_result_table", save_name,
+                     class_name, {'validation.metrics': 'Accuracy'})
+
+        eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
+        eval_schema = set([k.lower() for k in eval_schema.keys()])
+        self.assertEqual(eval_schema, set(['loss', 'accuracy']))
 
 
 class TestKeras(TestTensorFlowLocalSubmitter):

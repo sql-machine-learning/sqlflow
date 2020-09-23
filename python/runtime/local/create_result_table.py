@@ -57,3 +57,30 @@ def create_predict_table(conn, select, result_table, train_label_desc,
     result_column_names = [item[0] for item in name_and_types]
     result_column_names.append(pred_label_name)
     return result_column_names, train_label_index
+
+
+def create_evaluate_table(conn, result_table, validation_metrics):
+    """
+    Create the result table to store the evaluation result.
+
+    Args:
+        conn: the database connection object.
+        result_table (str): the output data table.
+        validation_metrics (list[str]): the evaluation metric names.
+
+    Returns:
+        The column names of the created table.
+    """
+    result_columns = ['loss'] + validation_metrics
+    float_field_type = DataType.to_db_field_type(conn.driver, DataType.FLOAT32)
+    column_strs = [
+        "%s %s" % (name, float_field_type) for name in result_columns
+    ]
+
+    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
+    create_sql = "CREATE TABLE %s (%s);" % (result_table,
+                                            ",".join(column_strs))
+    conn.execute(drop_sql)
+    conn.execute(create_sql)
+
+    return result_columns
