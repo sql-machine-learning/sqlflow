@@ -53,7 +53,9 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                 # ir_generator.go
                 indices = np.array([item[0] for item in items],
                                    dtype=feature_spec["dtype"])
-                # indices = indices.reshape(indices.size, 1)
+                if not is_xgboost:
+                    # tf need sparse indices to be a column vector.
+                    indices = indices.reshape(indices.size, 1)
                 dtype_weight = feature_spec.get("dtype_weight", "float32")
                 values = np.array([
                     float(item[1]) if len(item) == 2 else 1.0 for item in items
