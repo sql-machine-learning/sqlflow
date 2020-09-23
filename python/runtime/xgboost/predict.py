@@ -33,7 +33,36 @@ def pred(datasource,
          model_params=None,
          train_params=None,
          transform_fn=None,
-         feature_column_code=""):
+         feature_column_code="",
+         flags=None):
+    rank = 0
+    nworkers = len(flags.worker_hosts.split(",")) if flags else 1
+    if nworkers > 1:
+        if not is_pai:
+            raise Exception("XGBoost distributed predict is only supported on PAI")
+        if flags.job_name != "worker":
+            return
+        rank = flags.task_index
+    pred_imp(datasource, select, feature_metas, feature_column_names, train_label_meta, pred_label_meta, result_table, is_pai, pai_table, model_params, train_params, transform_fn, feature_column_code, rank, nworkers)
+
+
+def pred_imp(datasource,
+         select,
+         feature_metas,
+         feature_column_names,
+         train_label_meta,
+         pred_label_meta,
+         result_table,
+         is_pai=False,
+         pai_table="",
+         model_params=None,
+         train_params=None,
+         transform_fn=None,
+         feature_column_code="",
+         rank=0,
+         nworkers=1):
+    print("w7u++++")
+    print("rank={} nworkers={}".format(rank, nworkers))
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
     else:
@@ -50,6 +79,8 @@ def pred(datasource,
         pai_single_file=True,
         cache=True,
         batch_size=DEFAULT_PREDICT_BATCH_SIZE,
+        rank=rank,
+        nworkers=nworkers,
         transform_fn=transform_fn,
         feature_column_code=feature_column_code,
         raw_data_dir="predict.raw.dir")  # NOTE: default to use external memory
@@ -71,6 +102,7 @@ def pred(datasource,
                                  feature_metas, is_pai, conn, result_table)
         feature_file_id += 1
     print("Done predicting. Predict table : %s" % result_table)
+    print("w7u---")
 
 
 def predict_and_store_result(bst, dpred, feature_file_id, model_params,
