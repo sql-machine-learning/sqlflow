@@ -13,6 +13,7 @@
 
 import numpy as np
 import xgboost as xgb
+from datetime import datetime
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.model.metadata import load_metadata
@@ -61,7 +62,6 @@ def pred_imp(datasource,
          feature_column_code="",
          rank=0,
          nworkers=1):
-    print("w7u++++")
     print("rank={} nworkers={}".format(rank, nworkers))
     if not is_pai:
         conn = db.connect_with_data_source(datasource)
@@ -86,7 +86,7 @@ def pred_imp(datasource,
         raw_data_dir="predict.raw.dir")  # NOTE: default to use external memory
     bst = xgb.Booster({'nthread': 4})  # init model
     bst.load_model("my_model")  # load data
-    print("Start predicting XGBoost model...")
+    print("{} Start predicting XGBoost model...".format(datetime.now()))
     if not model_params:
         model_params = load_metadata("model_meta.json")["attributes"]
 
@@ -101,8 +101,7 @@ def pred_imp(datasource,
                                  pred_label_name, feature_column_names,
                                  feature_metas, is_pai, conn, result_table)
         feature_file_id += 1
-    print("Done predicting. Predict table : %s" % result_table)
-    print("w7u---")
+    print("{} Done predicting. Predict table: {}".format(datetime.now(), result_table))
 
 
 def predict_and_store_result(bst, dpred, feature_file_id, model_params,
