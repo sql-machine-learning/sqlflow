@@ -49,7 +49,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 		INDICATOR(CATEGORY_ID(c3, 512)),
 		INDICATOR(c1),
 		INDICATOR(SPARSE(c2, 10000, COMMA, "int")),
-		WEIGHTED_CATEGORY(CATEGORY_ID(SPARSE(c2, 10000, "-", "string", ":", "float"), 128))
+		WEIGHTED_CATEGORY(CATEGORY_ID(SPARSE(c2, 10000, "-", "int", ":", "float"), 128))
 	LABEL c4
 	INTO mymodel;
 	`

@@ -658,7 +658,9 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 
 	hasModelTableFunc := func(table string) {
 		_, rows, _, err := connectAndRunSQL(fmt.Sprintf("SELECT * FROM %s LIMIT 1;", table))
-		a.NoError(err)
+		if err != nil {
+			a.FailNow("error: %s", err)
+		}
 		a.Equal(len(rows), 1)
 	}
 
@@ -675,8 +677,7 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		train.num_boost_round = 20
 	COLUMN SPARSE(c1%s)
 	LABEL label_col
-	INTO %s;
-	`
+	INTO %s;`
 
 	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, trainTable, "", trainedModel)
 	executeSQLFunc(trainSQL)

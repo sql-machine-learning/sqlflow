@@ -71,7 +71,6 @@ func TFTrainWithLoadAndSave(ir *ir.TrainStmt, session *pb.Session, modelPathToSa
 	}
 
 	fullCode := fmt.Sprintf("%s\n%s", loadCode, trainCode)
-	fmt.Println(fullCode)
 	return fullCode, nil
 }
 
