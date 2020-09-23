@@ -44,15 +44,17 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                 if feature_spec.get("delimiter2", "") != "":
                     delim1 = feature_spec["delimiter"]
                     delim2 = feature_spec["delimiter2"]
+                    indices_dtype = feature_spec["dtype"]
                 else:  # default libsvm kv format delimiters: "k:v k:v..."
                     delim1 = " "
                     delim2 = ":"
+                    indices_dtype = "int64"
                 items = raw_val.split(delim1)
                 items = [item.split(delim2, 2) for item in items]
                 # NOTE(typhoonzero): dtype is already checked when compiling:
                 # ir_generator.go
                 indices = np.array([item[0] for item in items],
-                                   dtype=feature_spec["dtype"])
+                                   dtype=indices_dtype)
                 if not is_xgboost:
                     # tf need sparse indices to be a column vector.
                     indices = indices.reshape(indices.size, 1)

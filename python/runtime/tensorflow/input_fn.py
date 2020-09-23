@@ -24,7 +24,7 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name]["delimiter2"] != "":
+        if feature_metas[name].get("delimiter2", "") != "":
             # kv list that should be parsed to two features.
             if feature_metas[name]["is_sparse"]:
                 features_dict[name] = tf.SparseTensor(
@@ -49,7 +49,7 @@ def parse_sparse_feature_predict(features, feature_column_names,
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name]["delimiter2"] != "":
+        if feature_metas[name].get("delimiter2", "") != "":
             # kv list that should be parsed to two features.
             if feature_metas[name]["is_sparse"]:
                 features_dict[name] = tf.SparseTensor(
