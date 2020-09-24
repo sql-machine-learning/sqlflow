@@ -37,7 +37,7 @@ type FieldDesc struct {
 	DType       int    `json:"dtype"`        // data type of the values, e.g. "float", "int32"
 	DTypeWeight int    `json:"dtype_weight"` // data type of the keys.
 	Delimiter   string `json:"delimiter"`    // Needs to be "," if the field saves strings like "1,23,42".
-	Delimiter2  string `json:"delimiter2"`   // k-v list format like k:v-k:v, delimiter:"-", delimiter2:":"
+	DelimiterKV string `json:"delimiter_kv"` // k-v list format like k:v-k:v, delimiter:"-", delimiter_kv:":"
 	Format      string `json:"format"`       // The data format, "", "csv" or "kv"
 	Shape       []int  `json:"shape"`        // [3] if the field saves strings of three numbers like "1,23,42".
 	IsSparse    bool   `json:"is_sparse"`    // If the field saves a sparse tensor.

@@ -318,7 +318,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 
 			// Infer feature column type when rowCount == 0
 			if rowCount == 0 {
-				fieldDescMap[fld].Format = inferStringDataFormat(*cellData, fieldDescMap[fld].Delimiter, fieldDescMap[fld].Delimiter2)
+				fieldDescMap[fld].Format = inferStringDataFormat(*cellData, fieldDescMap[fld].Delimiter, fieldDescMap[fld].DelimiterKV)
 			}
 
 			switch fieldDescMap[fld].Format {
@@ -334,7 +334,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 
 				// fill FieldDesc for libsvm kv, general kv cell used for weighted
 				// features need to set all attributes for SPARSE FieldDesc.
-				if fieldDescMap[fld].Delimiter2 == "" {
+				if fieldDescMap[fld].DelimiterKV == "" {
 					// TODO(sneaxiy): should we support int?
 					fieldDescMap[fld].DType = Float
 					// Only infer the dense shape when the original size is 1

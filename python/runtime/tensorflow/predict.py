@@ -162,7 +162,7 @@ def estimator_predict(result_table, feature_column_names, feature_metas,
         feature_name = feature_column_names[i]
         dtype_str = feature_metas[feature_name]["dtype"]
         if feature_metas[feature_name]["delimiter"] != "":
-            if feature_metas[feature_name]["delimiter2"] != "":
+            if feature_metas[feature_name]["delimiter_kv"] != "":
                 keys = x[0][i][0].flatten()
                 weights = x[0][i][1].flatten()
                 weight_dtype_str = feature_metas[feature_name]["dtype_weight"]

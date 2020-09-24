@@ -832,7 +832,7 @@ func parseIndicatorColumn(el *parser.ExprList) (*IndicatorColumn, error) {
 }
 
 func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
-	help := "DENSE|SPARSE(col_name[, SHAPE, DELIMITER, DTYPE, DELIMITER2, DTYPE_KEY])"
+	help := "DENSE|SPARSE(col_name[, SHAPE, DELIMITER, DTYPE, DELIMITER_KV, DTYPE_KEY])"
 
 	if len(*el) < 2 || len(*el) > 7 {
 		return nil, fmt.Errorf("bad DENSE|SPARSE format: %v, should be like: %s", *el, help)
@@ -853,7 +853,7 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		return nil, fmt.Errorf("bad DENSE|SPARSE format: %v, should be like: %s", *el, help)
 	}
 
-	help = head + "(col_name[, SHAPE, DELIMITER, DTYPE, DELIMITER2, DTYPE_KEY])"
+	help = head + "(col_name[, SHAPE, DELIMITER, DTYPE, DELIMITER_KV, DTYPE_KEY])"
 
 	name, err := expression2string((*el)[1])
 	if err != nil {
@@ -916,10 +916,10 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		}
 	}
 
-	// parse delimiter2
-	delimiter2 := ""
+	// parse delimiter_kv
+	delimiterKV := ""
 	if len(*el) >= 6 {
-		delimiter2, err = expression2string((*el)[5])
+		delimiterKV, err = expression2string((*el)[5])
 		if err != nil {
 			return nil, err
 		}
@@ -944,7 +944,7 @@ func parseFieldDesc(el *parser.ExprList) (*FieldDesc, error) {
 		Shape:       shape,
 		DType:       dtype,
 		Delimiter:   delimiter,
-		Delimiter2:  delimiter2,
+		DelimiterKV: delimiterKV,
 		DTypeWeight: dtypeWeight,
 	}, nil
 }

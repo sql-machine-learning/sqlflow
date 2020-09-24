@@ -41,9 +41,9 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                 indices = np.array([], dtype=np.int64)
                 values = np.array([], dtype=np.float32)
             else:
-                if feature_spec.get("delimiter2", "") != "":
+                if feature_spec.get("delimiter_kv", "") != "":
                     delim1 = feature_spec["delimiter"]
-                    delim2 = feature_spec["delimiter2"]
+                    delim2 = feature_spec["delimiter_kv"]
                     indices_dtype = feature_spec["dtype"]
                 else:  # default libsvm kv format delimiters: "k:v k:v..."
                     delim1 = " "
@@ -77,7 +77,7 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return indices, values, dense_shape
     elif feature_spec["delimiter"] != "":
-        if feature_spec.get("delimiter2", "") != "":
+        if feature_spec.get("delimiter_kv", "") != "":
             raise ValueError(
                 "not supported DENSE column with key:value list format.")
         # Dense string vector

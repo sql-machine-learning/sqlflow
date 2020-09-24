@@ -189,7 +189,7 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.True(ok)
 	a.True(cc.FieldDesc.IsSparse)
 	a.Equal("-", cc.FieldDesc.Delimiter)
-	a.Equal(":", cc.FieldDesc.Delimiter2)
+	a.Equal(":", cc.FieldDesc.DelimiterKV)
 	a.Equal(Float, cc.FieldDesc.DTypeWeight)
 
 	l, ok := trainStmt.Label.(*NumericColumn)
