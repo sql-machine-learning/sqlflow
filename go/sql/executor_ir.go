@@ -178,7 +178,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}
 	defer func(cwd string) {
 		if err := os.RemoveAll(cwd); err != nil {
-			e = fmt.Errorf("encounter %v when dealwith error: %s", e, err)
+			e = fmt.Errorf("encounter an error when removing temp files: %v", err)
 		}
 	}(cwd)
 	var r ir.SQLFlowStmt

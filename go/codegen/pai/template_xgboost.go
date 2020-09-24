@@ -65,7 +65,8 @@ pred(datasource='''{{.DataSource}}''',
     model_params=model_params,
     train_params=train_params,
     transform_fn=transform_fn,
-    feature_column_code=feature_column_code)
+    feature_column_code=feature_column_code,
+    flags=FLAGS)
 `
 
 type xgbExplainFiller struct {

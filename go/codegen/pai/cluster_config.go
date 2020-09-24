@@ -90,3 +90,33 @@ func GetClusterConfig(attrs map[string]interface{}) (*ClusterConfig, error) {
 	}
 	return cc, nil
 }
+
+// GetClusterConfig4Pred returns ClusterConfig object comes from WITH clause
+func GetClusterConfig4Pred(attrs map[string]interface{}) (*ClusterConfig, error) {
+	defaultMap := map[string]int{
+		"predict.num_workers": 1,
+	}
+	for k := range defaultMap {
+		attrValue, ok := attrs[k]
+		if ok {
+			intValue, intok := attrValue.(int)
+			if !intok {
+				return nil, fmt.Errorf("attribute %s must be int, got: %s", k, attrValue)
+			}
+			defaultMap[k] = intValue
+			delete(attrs, k)
+		}
+	}
+	cc := &ClusterConfig{
+		PS: PSConfig{
+			Count: 1,
+		},
+		Worker: WorkerConfig{
+			Count: defaultMap["predict.num_workers"],
+		},
+	}
+	if cc.Worker.Count < 1 {
+		return nil, fmt.Errorf("invalid predict.num_workers")
+	}
+	return cc, nil
+}

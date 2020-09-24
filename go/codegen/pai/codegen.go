@@ -148,9 +148,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, paramsFile, model
 		return
 	}
 	if modelType == model.PAIML {
-		if paiCmd, e = getPAIPredictCmd(ir, session); e != nil {
-			return
-		}
+		paiCmd, e = getPAIPredictCmd(ir, session)
 	} else if modelType == model.XGBOOST {
 		requirements, e = genRequirements(true)
 		ossURI := OSSModelURL(ossModelPath)
@@ -160,6 +158,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, paramsFile, model
 		if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
 			paiPredictTable = ir.TmpPredictTable
 		}
+
 		filler := &xgbPredictFiller{
 			OSSModelDir:      ossURI,
 			DataSource:       session.DbConnStr,
@@ -176,16 +175,13 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, paramsFile, model
 			return
 		}
 		code = xgbPredCode.String()
-
-		cc, err := GetClusterConfig(ir.Attributes)
+		cc, err := GetClusterConfig4Pred(ir.Attributes)
 		if err != nil {
 			return
 		}
 		// NOTE(typhoonzero): submit a PAI TF job to install xgboost and run.
-		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd); e != nil {
-			return
-		}
-	} else {
+		paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd)
+	} else { // model.TENSORFLOW
 		requirements, e = genRequirements(false)
 		cc, err := GetClusterConfig(ir.Attributes)
 		if err != nil {
@@ -194,9 +190,7 @@ func Predict(ir *ir.PredictStmt, session *pb.Session, tarball, paramsFile, model
 		if code, e = TFLoadAndPredict(ir, session, ossModelPath); e != nil {
 			return
 		}
-		if paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd); e != nil {
-			return
-		}
+		paiCmd, e = getTFPAICmd(cc, tarball, paramsFile, modelName, ossModelPath, ir.TmpPredictTable, "", ir.ResultTable, currProject, cwd)
 	}
 	return
 }
