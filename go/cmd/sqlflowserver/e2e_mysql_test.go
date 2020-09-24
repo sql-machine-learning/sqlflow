@@ -180,6 +180,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseCustomLoopModel", caseCustomLoopModel)
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", caseTrainRegression)
+	t.Run("CaseScoreCard", caseScoreCard)
 
 	// Cases using feature derivation
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)
@@ -213,6 +214,16 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
 	t.Run("CaseTestOptimizeClauseWithBinaryVarType", caseTestOptimizeClauseWithBinaryVarType)
 	t.Run("CaseTestOptimizeClauseWithoutConstraint", caseTestOptimizeClauseWithoutConstraint)
+}
+
+func caseScoreCard(t *testing.T) {
+	a := assert.New(t)
+	sql := `SELECT * FROM scorecard.train
+TO TRAIN sqlflow_models.ScoreCard
+LABEL serious_dlqin2yrs 
+INTO sqlflow_models.my_scorecard_model;`
+	_, _, _, err := connectAndRunSQL(sql)
+	a.NoError(err)
 }
 
 func CaseShouldError(t *testing.T) {
