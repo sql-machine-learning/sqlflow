@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import multiprocessing
 import unittest
 
 import runtime.db as db
@@ -38,7 +39,18 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         name_and_types = conn.get_table_schema(table)
         return dict(name_and_types)
 
+    # NOTE(sneaxiy): do not know why the xgboost explain ut would
+    # be conflict with the TensorFlow explain ut. The error is
+    # "summary.png" not found. I try to fix the ut by using
+    # another process to run them.
     def check_main(self, estimator):
+        p = multiprocessing.Process(target=self.check_main_impl,
+                                    args=(estimator, ))
+        p.start()
+        p.join()
+        self.assertEqual(p.exitcode, 0)
+
+    def check_main_impl(self, estimator):
         if testing.get_driver() != "mysql":
             return
 

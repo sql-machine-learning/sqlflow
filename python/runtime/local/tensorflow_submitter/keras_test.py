@@ -17,7 +17,7 @@ from runtime.local.tensorflow_submitter.local_test_base import \
     TestTensorFlowLocalSubmitter
 
 
-class TestEstimator(TestTensorFlowLocalSubmitter):
+class TestKeras(TestTensorFlowLocalSubmitter):
     def test_main(self):
         self.check_main('sqlflow_models.DNNClassifier')
 
