@@ -1,4 +1,4 @@
-# Training Credit ScoreCard Model with SQLFlow
+# Credit ScoreCard Model on SQLFlow
 
 The credit scorecard model is widely used in financial lending scenario, the model outputs a score that represents
 how likely the lender will be repaid on time. This tutorial introduces how to train a credit scorecard model with SQLFlow.
