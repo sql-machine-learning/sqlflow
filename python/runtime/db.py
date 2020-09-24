@@ -154,7 +154,9 @@ def selected_columns_and_types(conn, select):
     select = select.strip().rstrip(";")
     select = limit_select(select, 1)
     rs = conn.query(select)
-    return rs.column_info()
+    column_info = rs.column_info()
+    rs.close()
+    return column_info
 
 
 def selected_cols(conn, select):

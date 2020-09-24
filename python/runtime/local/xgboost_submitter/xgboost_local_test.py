@@ -26,7 +26,9 @@ from runtime.local.xgboost_submitter.train import train
 
 class TestXGBoostTrain(unittest.TestCase):
     def get_table_row_count(self, conn, table):
-        ret = list(conn.query("SELECT COUNT(*) FROM %s" % table))
+        rs = conn.query("SELECT COUNT(*) FROM %s" % table)
+        ret = list(rs)
+        rs.close()
         self.assertEqual(len(ret), 1)
         ret = ret[0]
         self.assertEqual(len(ret), 1)
@@ -111,9 +113,22 @@ class TestXGBoostTrain(unittest.TestCase):
         with temp_file.TemporaryDirectory(as_cwd=True):
             explain(ds, select, "TreeExplainer", {"plot_type": "decision"},
                     "iris.explain_result_table", save_name)
-            explain(ds, select, "XGBoostExplainer", {},
-                    "iris.explain_result_table", save_name)
 
+        explain_schema = self.get_table_schema(conn,
+                                               "iris.explain_result_table")
+        self.assertEqual(
+            explain_schema.keys(),
+            set(["petal_width", "petal_length", "sepal_width",
+                 "sepal_length"]))
+
+        with temp_file.TemporaryDirectory(as_cwd=True):
+            explain(ds, select, "XGBoostExplainer", {},
+                    "iris.explain_result_table_2", save_name)
+
+        explain_schema = self.get_table_schema(conn,
+                                               "iris.explain_result_table_2")
+        self.assertEqual(explain_schema.keys(),
+                         set(['feature', 'fscore', 'gain']))
         conn.close()
 
 
