@@ -19,16 +19,16 @@ import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
 from runtime.local.tensorflow_submitter.evaluate import evaluate
+from runtime.local.tensorflow_submitter.explain import explain
 from runtime.local.tensorflow_submitter.predict import pred
 from runtime.local.tensorflow_submitter.train import train
 
 
 class TestTensorFlowLocalSubmitter(unittest.TestCase):
-    def setUp(self):
-        self.estimator = "DNNClassifier"
-
     def get_table_row_count(self, conn, table):
-        ret = list(conn.query("SELECT COUNT(*) FROM %s" % table))
+        rs = conn.query("SELECT COUNT(*) FROM %s" % table)
+        ret = list(rs)
+        rs.close()
         self.assertEqual(len(ret), 1)
         ret = ret[0]
         self.assertEqual(len(ret), 1)
@@ -38,9 +38,10 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         name_and_types = conn.get_table_schema(table)
         return dict(name_and_types)
 
-    @unittest.skipUnless(testing.get_driver() == "mysql",
-                         "skip non mysql tests")
-    def test_main(self):
+    def check_main(self, estimator):
+        if testing.get_driver() != "mysql":
+            return
+
         ds = testing.get_datasource()
         original_sql = """SELECT * FROM iris.train
         TO TRAIN %s
@@ -50,7 +51,7 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
             validation.select="SELECT * FROM iris.test"
         LABEL class
         INTO iris.tensorflow_train_model_test;
-        """ % self.estimator
+        """ % estimator
 
         select = "SELECT * FROM iris.train"
         val_select = "SELECT * FROM iris.test"
@@ -62,7 +63,7 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         with temp_file.TemporaryDirectory(as_cwd=True):
             train(original_sql=original_sql,
                   model_image="sqlflow:step",
-                  estimator_string="DNNClassifier",
+                  estimator_string=estimator,
                   datasource=ds,
                   select=select,
                   validation_select=val_select,
@@ -107,13 +108,15 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
         eval_schema = set([k.lower() for k in eval_schema.keys()])
         self.assertEqual(eval_schema, set(['loss', 'accuracy']))
+
+        with temp_file.TemporaryDirectory(as_cwd=True):
+            explain(ds, select, None, {"plot_type": "bar"},
+                    "iris.explain_result_table", save_name)
+
+        explain_schema = self.get_table_schema(conn,
+                                               "iris.explain_result_table")
+        self.assertEqual(
+            explain_schema.keys(),
+            set(['petal_length', 'petal_width', 'sepal_length',
+                 'sepal_width']))
         conn.close()
-
-
-class TestKeras(TestTensorFlowLocalSubmitter):
-    def setUp(self):
-        self.estimator = "sqlflow_models.DNNClassifier"
-
-
-if __name__ == '__main__':
-    unittest.main()
