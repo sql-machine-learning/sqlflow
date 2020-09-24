@@ -479,7 +479,7 @@ USING %[3]s;
 
 SELECT * FROM %[2]s
 TO EVALUATE %[3]s
-WITH validation.metrics="Accuracy,Recall"
+WITH validation.metrics="Accuracy"
 LABEL class
 INTO %[1]s.evaluate_result_table;
 

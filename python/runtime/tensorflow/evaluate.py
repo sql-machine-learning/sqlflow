@@ -71,6 +71,7 @@ def evaluate(datasource,
         metric_name_list = ["loss"] + validation_metrics
         write_result_metrics(result_metrics, metric_name_list, result_table,
                              conn)
+    conn.close()
 
 
 def estimator_evaluate(estimator, eval_dataset, validation_metrics):

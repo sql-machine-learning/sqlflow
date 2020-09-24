@@ -114,6 +114,8 @@ class TestXGBoostTrain(unittest.TestCase):
             explain(ds, select, "XGBoostExplainer", {},
                     "iris.explain_result_table", save_name)
 
+        conn.close()
+
 
 if __name__ == '__main__':
     unittest.main()

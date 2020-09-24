@@ -23,6 +23,7 @@ from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
+from runtime.local.create_result_table import create_evaluate_table
 from runtime.local.xgboost_submitter.predict import _calc_predict_result
 from runtime.model.model import Model
 from runtime.xgboost.dataset import xgb_dataset
@@ -104,8 +105,8 @@ def evaluate(datasource,
     bst.load_model("my_model")
     conn = db.connect_with_data_source(datasource)
 
-    result_column_names = _create_evaluate_table(conn, result_table,
-                                                 validation_metrics)
+    result_column_names = create_evaluate_table(conn, result_table,
+                                                validation_metrics)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
@@ -128,33 +129,6 @@ def evaluate(datasource,
                                    validation_metrics, conn)
 
     conn.close()
-
-
-def _create_evaluate_table(conn, result_table, validation_metrics):
-    """
-    Create the result table to store the evaluation result.
-
-    Args:
-        conn: the database connection object.
-        result_table (str): the output data table.
-        validation_metrics (list[str]): the evaluation metric names.
-
-    Returns:
-        The column names of the created table.
-    """
-    result_columns = ['loss'] + validation_metrics
-    float_field_type = DataType.to_db_field_type(conn.driver, DataType.FLOAT32)
-    column_strs = [
-        "%s %s" % (name, float_field_type) for name in result_columns
-    ]
-
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
-    create_sql = "CREATE TABLE %s (%s);" % (result_table,
-                                            ",".join(column_strs))
-    conn.execute(drop_sql)
-    conn.execute(create_sql)
-
-    return result_columns
 
 
 def _store_evaluate_result(preds, feature_file_name, label_desc, result_table,
