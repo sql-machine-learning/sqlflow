@@ -66,7 +66,6 @@ func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) 
 		if image == "" {
 			image = defaultDockerImage
 		}
-		// TODO(typhoonzero): find out the image that should be used by the predict statements.
 		step := &stepContext{
 			Code:      stepCode,
 			Image:     image,
@@ -175,9 +174,14 @@ if step_log_file:
 		"sleep %d" % step_exit_time_wait,
 		"exit $exit_code"
 	])
-	couler.run_script(image="{{.Image}}", command="bash", source=code, env=step_envs, resources=resources)
 else:
-	couler.run_script(image="{{.Image}}", source=step_entry_{{.StepIndex}}, env=step_envs, resources=resources)
+    code = "\n".join([
+        "python <<EOF",
+        pyfunc.body(step_entry_{{.StepIndex}}),
+        "EOF",
+    ])
+
+couler.run_script(image="{{.Image}}", command="bash", source=code, env=step_envs, resources=resources)
 {{end}}
 `
 
