@@ -139,14 +139,14 @@ step_envs = dict()
 
 sqlflow_secret = None
 if "{{.SecretName}}" != "":
-	# note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
-	# we should create the secret before launching sqlflowserver
-	secret_data=json.loads('''{{.SecretData}}''')
-	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
+    # note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
+    # we should create the secret before launching sqlflowserver
+    secret_data=json.loads('''{{.SecretData}}''')
+    sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
 resources = None
 if '''{{.Resources}}''' != "":
-  resources=json.loads('''{{.Resources}}''')
+    resources=json.loads('''{{.Resources}}''')
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 
@@ -157,27 +157,27 @@ step_exit_time_wait = {{.StepExitTimeWait}}
 {{.Code}}
 
 codes = [
-	"python <<EOF",
-	pyfunc.body(step_entry_{{.StepIndex}}),
-	"EOF",
+    "python <<EOF",
+    pyfunc.body(step_entry_{{.StepIndex}}),
+    "EOF",
 ]
 
 if step_log_file:
-	log_dir = path.dirname(step_log_file)
-	codes = [
-		"if [[ -f /opt/sqlflow/init_step_container.sh ]]; then",
-		"  bash /opt/sqlflow/init_step_container.sh",
-		"fi",
-		"mkdir -p %s" % log_dir,
-		"set -o pipefail # fail when any sub-command fail",
-		"(",
-	] + codes + [
-		") 2>&1 | tee %s" % step_log_file,
-		"exit_code=$?",
-		"# sleep a while for finishing log collection",
-		"sleep %d" % step_exit_time_wait,
-		"exit $exit_code",
-	]
+    log_dir = path.dirname(step_log_file)
+    codes = [
+        "if [[ -f /opt/sqlflow/init_step_container.sh ]]; then",
+        "  bash /opt/sqlflow/init_step_container.sh",
+        "fi",
+        "mkdir -p %s" % log_dir,
+        "set -o pipefail # fail when any sub-command fail",
+        "(",
+    ] + codes + [
+        ") 2>&1 | tee %s" % step_log_file,
+        "exit_code=$?",
+        "# sleep a while for finishing log collection",
+        "sleep %d" % step_exit_time_wait,
+        "exit $exit_code",
+    ]
 
 couler.run_script(image="{{.Image}}", command="bash", source="\n".join(codes), env=step_envs, resources=resources)
 {{end}}
