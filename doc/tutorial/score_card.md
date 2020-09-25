@@ -1,7 +1,7 @@
 # Credit ScoreCard Model on SQLFlow
 
-The credit scorecard model is widely used in financial lending scenario, the model outputs a score that represents
-how likely the lender will be repaid on time. This tutorial introduces how to train a credit scorecard model with SQLFlow.
+The credit scorecard model is a common model in the financial lending scenario. A scorecard model outputs a score representing
+how likely the lender will repay on time. This tutorial introduces how to train a credit scorecard model with SQLFlow.
 
 ## Dataset Introduction
 
@@ -13,16 +13,16 @@ past due delinquency or worse. The description for each column as the table:
 | Column                                      | Description                                                  | Type        |
 | ------------------------------------------- | ------------------------------------------------------------ | --------------- |
 | serious_dlqin2yrs                           | Person experienced 90 days past due delinquency or worse     | 1/0 |
-| revolving_utilization_of_unsecured_lines    | Total balance on credit cards and personal lines of credit except real estate and no installment debt like car loans divided by the sum of credit limits | Float|
+| revolving_utilization_of_unsecured_lines    | Total balance on credit cards and personal lines of credit except for real estate and no installment debt like car loans divided by the sum of credit limits | Float|
 | age                                         | Age of borrower in years| Integer |
-| number_of_time30_59days_past_due_not_worse  | Number of times borrower has been 30-59 days past due but no worse in the last 2 years.| Integer |
-| debt_ratio                                  | Monthly debt payments, alimony,living costs divided by monthly gross income| Float          |
+| number_of_time30_59days_past_due_not_worse  | Number of times borrower has been 30-59 days past due but no worse in the last two years.| Integer |
+| debt_ratio                                  | Monthly debt payments, alimony, living costs divided by monthly gross income| Float          |
 | monthly_income                              | Monthly income| Integer|
 | number_of_open_credit_lines_and_loans       | Number of Open loans (installment like car loan or mortgage) and Lines of credit (e.g. credit cards) | Integer |
 | number_of_times_90_days_late                | Number of times borrower has been 90 days or more past due| Integer |
 | number_real_estate_loans_or_lines           | Number of mortgage and real estate loans including home equity lines of credit| Integer |
-| number_of_time60_89_days_past_due_not_worse | Number of times borrower has been 60-89 days past due but no worse in the last 2 years| Integer |
-| number_of_dependents                        | Number of dependents in family excluding themselves (spouse, children etc.)| Integer|
+| number_of_time60_89_days_past_due_not_worse | Number of times borrower has been 60-89 days past due but no worse in the last two years| Integer |
+| number_of_dependents                        | Number of dependents in family excluding themselves (spouse, children, etc.)| Integer|
 
 ## Dataset Loading and Preprocessing
 
@@ -30,7 +30,7 @@ Please note, you can skip this section and use the preprocessed dataset inner SQ
 
 Download and extract the zip file from the [download page](https://www.kaggle.com/c/GiveMeSomeCredit/data?select=cs-training.csv),
 and execute the Python script [give_me_some_credit.py](/doc/tutorial/scripts/give_me_some_credit.py) to finish the data preprocess.
-The Python scripts would output a CSV file `train.csv`, you can run the following SQL program to
+The Python scripts would output a CSV file `train.csv`, and you can run the following SQL program to
 popularize the training table `scorecard.train`.
 
 ``` sql
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS scorecard.train(
   number_of_time60_89_days_past_due_not_worse int,
   number_of_dependents float
 );
--- load train and test data from csv files
+-- load train and test data from CSV files
 LOAD DATA LOCAL INFILE '/tmp/train.csv' INTO TABLE scorecard.train FIELDS TERMINATED BY ',' ENCLOSED BY '"' LINES TERMINATED BY '\n' IGNORE 1 ROWS;
 ```
 
@@ -72,8 +72,8 @@ LABEL serious_dlqin2yrs
 INTO sqlflow_models.my_scorecard_model;
 ```
 
-The above `TRAIN` clause would outputs the scorecard as the following, the final total score
-is the sum of all scores based on the input values of the independent variables. The target score
+The above `TRAIN` clause would output the scorecard as the following. The final total score
+is the sum of all scores based on the independent variable's value. The target score
 is `600`, meaning that a user with a score higher than 600 will grant the credit.
 
 ``` text
