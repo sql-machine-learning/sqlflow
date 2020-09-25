@@ -82,19 +82,21 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
-	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
-	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
-	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
-	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
 	t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
 	t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
-	// test experimental workflow generation
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
-	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
-	t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
-	t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
-	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+	for i := 0; i < 2; i++ {
+		// test experimental workflow generation
+		t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
+		t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+		t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+		t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
+		t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+		t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+		t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
+		t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
+		os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+	}
 }
 
 func CaseWorkflowStepErrorMessage(t *testing.T) {
