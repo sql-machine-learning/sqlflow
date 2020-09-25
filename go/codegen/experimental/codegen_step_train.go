@@ -43,6 +43,7 @@ type trainStepFiller struct {
 }
 
 func escapeSpecialRunesAndTrimSpace(s string) string {
+	s = strings.TrimSpace(s)
 	s = strings.ReplaceAll(s, "\r", "\\r")
 	s = strings.ReplaceAll(s, "\n", "\\n")
 	s = strings.ReplaceAll(s, "`", "\\`")
