@@ -82,11 +82,15 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
+	// TODO(sneaxiy): move these 2 test cases inside the following for
+	// loop after refactoring TO RUN workflow code generation.
 	t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
 	t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
+
+	// test experimental workflow code generation when i == 0
+	// test old workflow code generation when i == 1
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
 	for i := 0; i < 2; i++ {
-		// test experimental workflow generation
 		t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 		t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
 		t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)

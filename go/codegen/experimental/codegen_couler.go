@@ -49,7 +49,10 @@ type coulerFiller struct {
 // 2. generate runtime code of each statement
 // 3. generate couler program to form a workflow
 func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) {
-	var defaultDockerImage = "sqlflow/sqlflow:step"
+	defaultDockerImage := os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
+	if defaultDockerImage == "" {
+		defaultDockerImage = "sqlflow/sqlflow:step"
+	}
 	stmts, err := parseToIR(sqlProgram, session)
 	if err != nil {
 		return "", err
