@@ -55,7 +55,7 @@ func generateNormalStmtStep(stmt string, stepIndex int, session *pb.Session) (st
 	filler := &normalStmtFiller{
 		StepIndex:  stepIndex,
 		DataSource: session.DbConnStr,
-		Stmt:       replaceNewLineRuneAndTrimSpace(stmt),
+		Stmt:       escapeSpecialRunesAndTrimSpace(stmt),
 	}
 	var program bytes.Buffer
 	if err := normalStmtStepTemplate.Execute(&program, filler); err != nil {

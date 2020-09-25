@@ -128,7 +128,7 @@ INTO %s;
 	}
 	e := checkWorkflow(ctx, cli, stream)
 	a.Error(e)
-	a.Contains(e.Error(), "runSQLProgram error: unsupported attribute model.no_exists_param")
+	a.Contains(e.Error(), "unsupported attribute model.no_exists_param")
 }
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {

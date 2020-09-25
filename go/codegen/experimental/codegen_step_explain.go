@@ -49,8 +49,8 @@ func GenerateExplain(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Ses
 	filler := &explainStepFiller{
 		StepIndex:      stepIndex,
 		DataSource:     ds,
-		OriginalSQL:    replaceNewLineRuneAndTrimSpace(explainStmt.OriginalSQL),
-		Select:         replaceNewLineRuneAndTrimSpace(explainStmt.Select),
+		OriginalSQL:    escapeSpecialRunesAndTrimSpace(explainStmt.OriginalSQL),
+		Select:         escapeSpecialRunesAndTrimSpace(explainStmt.Select),
 		Explainer:      explainStmt.Explainer,
 		AttributesJSON: string(attrJSON),
 		ResultTable:    explainStmt.Into,

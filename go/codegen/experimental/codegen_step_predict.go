@@ -49,8 +49,8 @@ func GeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Sessio
 	filler := &predStepFiller{
 		StepIndex:      stepIndex,
 		DataSource:     dbConnStr,
-		OriginalSQL:    replaceNewLineRuneAndTrimSpace(predStmt.OriginalSQL),
-		Select:         replaceNewLineRuneAndTrimSpace(predStmt.Select),
+		OriginalSQL:    escapeSpecialRunesAndTrimSpace(predStmt.OriginalSQL),
+		Select:         escapeSpecialRunesAndTrimSpace(predStmt.Select),
 		PredLabelName:  predStmt.ResultColumn,
 		ResultTable:    predStmt.ResultTable,
 		ModelParamJSON: string(modelParams),
