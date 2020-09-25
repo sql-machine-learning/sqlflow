@@ -437,7 +437,8 @@ SHOW TRAIN %[3]s;
 SELECT * FROM %[2]s
 TO EXPLAIN %[3]s
 WITH
-	summary.plot_type = bar
+	summary.plot_type = bar,
+	label_col = class
 INTO %[1]s.explain_result_table;
 
 SELECT * FROM %[1]s.explain_result_table;
@@ -445,7 +446,8 @@ SELECT * FROM %[1]s.explain_result_table;
 SELECT * FROM %[2]s
 TO EXPLAIN %[3]s
 WITH
-	summary.plot_type = bar
+	summary.plot_type = bar,
+	label_col = class
 USING XGBoostExplainer
 INTO %[1]s.explain_result_table;
 
