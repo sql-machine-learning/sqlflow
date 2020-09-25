@@ -36,7 +36,7 @@ type trainFiller struct {
 	OriginalSQL         string
 }
 
-const tfTrainTemplateText = `
+const tfTrainTemplateText = `# -*- coding: utf-8 -*-
 import copy
 import traceback
 import tensorflow as tf
@@ -88,7 +88,9 @@ feature_metas["{{$value.Name}}"] = {
     "delimiter": "{{$value.Delimiter}}",
     "format": "{{$value.Format}}",
     "shape": {{$value.Shape | intArrayToJSONString}},
-    "is_sparse": "{{$value.IsSparse}}" == "true"
+    "is_sparse": "{{$value.IsSparse}}" == "true",
+    "dtype_weight": "{{$value.DTypeWeight | DTypeToString}}",
+    "delimiter_kv": "{{$value.DelimiterKV}}"
 }
 {{end}}
 {{end}}
@@ -151,5 +153,6 @@ train(datasource="{{.DataSource}}",
       feature_columns_code=feature_columns_code,
       model_params_code_map=model_params,
       model_repo_image="{{.ModelRepoImage}}",
-      original_sql='''{{.OriginalSQL}}''')
+      original_sql='''{{.OriginalSQL}}''',
+      feature_column_names_map=feature_column_names_map)
 `

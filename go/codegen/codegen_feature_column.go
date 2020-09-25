@@ -48,10 +48,22 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		if err != nil {
 			return "", err
 		}
+		if module == "tf" {
+			dtype, err := toModuleDataType(c.FieldDesc.DType, module)
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s, dtype=%s)",
+				module,
+				c.FieldDesc.Name,
+				shapeStr,
+				dtype), nil
+		}
 		return fmt.Sprintf("%s.feature_column.numeric_column(\"%s\", shape=%s)",
 			module,
 			c.FieldDesc.Name,
 			shapeStr), nil
+
 	case *ir.BucketColumn:
 		sourceCode, err := GenerateFeatureColumnCode(c.SourceColumn, module)
 		if err != nil {
@@ -92,6 +104,14 @@ func GenerateFeatureColumnCode(fc ir.FeatureColumn, module string) (string, erro
 		}
 		return fmt.Sprintf("%s.feature_column.categorical_column_with_hash_bucket(key=\"%s\", hash_bucket_size=%d, dtype=%s)",
 			module, c.FieldDesc.Name, c.BucketSize, dtype), nil
+	case *ir.WeightedCategoryColumn:
+		sourceCode, err := GenerateFeatureColumnCode(c.CategoryColumn, module)
+		if err != nil {
+			return "", err
+		}
+		// automatically generate featurename_key as the weight key
+		return fmt.Sprintf("%s.feature_column.weighted_categorical_column(categorical_column=%s, weight_feature_key=\"%s_weight\")",
+			module, sourceCode, c.CategoryColumn.GetFieldDesc()[0].Name), nil
 	case *ir.CrossColumn:
 		if isXGBoostModule(module) {
 			return "", fmt.Errorf("CROSS is not supported in XGBoost models")

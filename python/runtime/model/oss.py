@@ -13,9 +13,9 @@
 
 import os
 import pickle
+import sys
 
 import oss2
-import six
 import tensorflow as tf
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.tensorflow import is_tf_estimator
@@ -119,13 +119,9 @@ def save_dir(oss_model_dir, local_dir):
     '''
     bucket = get_models_bucket()
     for (root, dirs, files) in os.walk(local_dir, topdown=True):
-        if not six.PY2:
-            root = root.decode("utf-8")
         dst_dir = "/".join([oss_model_dir.rstrip("/"), root])
         mkdir(bucket, dst_dir)
         for file_name in files:
-            if not six.PY2:
-                file_name = file_name.decode("utf-8")
             curr_file_path = os.path.join(root, file_name)
             remote_file_path = "/".join([dst_dir.rstrip("/"), file_name])
             remote_file_path = remove_bucket_prefix(remote_file_path)
@@ -133,10 +129,6 @@ def save_dir(oss_model_dir, local_dir):
 
 
 def load_dir(oss_model_dir):
-    import sys
-    sys.stderr.write("load oss dir: %s, cwd: %s\n" %
-                     (oss_model_dir, os.getcwd()))
-    sys.stderr.write("list cwd: %s\n" % os.listdir(os.getcwd()))
     bucket = get_models_bucket()
     path = remove_bucket_prefix(oss_model_dir)
     prefix = "/".join(path.split("/")[:-1]) + "/"
@@ -145,7 +137,6 @@ def load_dir(oss_model_dir):
         # remote: path/to/my/dir/
         # local: dir/
         if obj.key.endswith("/"):
-            sys.stderr.write("mkdir: %s\n" % obj.key.replace(prefix, ""))
             try:
                 os.makedirs(obj.key.replace(prefix, ""))
             except Exception as e:
@@ -291,6 +282,8 @@ def save_oss_model(oss_model_dir, model_name, is_estimator,
     if is_estimator:
         with open("exported_path", "rb") as fn:
             saved_model_path = fn.read()
+        if isinstance(saved_model_path, bytes):
+            saved_model_path = saved_model_path.decode("utf-8")
         save_dir(oss_model_dir, saved_model_path)
         save_file(oss_model_dir, "exported_path")
     else:

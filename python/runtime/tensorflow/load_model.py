@@ -20,4 +20,24 @@ import os
 # TensorFlow checkpoint. So we can load the weights which are saved
 # using model.save(...) method.
 def load_keras_model_weights(model, path):
+    """
+    Load Keras model weights from the path which is saved by
+    tf.keras.Model.save(...) method.
+
+    Args:
+        model (tf.keras.Model): the Keras model to load weights.
+        path (str): the weight path which is saved by
+            tf.keras.Model.save(...) method.
+    """
     return model.load_weights(os.path.join(path, "variables/variables"))
+
+
+def pop_optimizer_and_loss(model_params):
+    """
+    Remove optimizer and loss parameters in model_params.
+
+    Args:
+        model_params (dict): the model parameters.
+    """
+    for param in ["optimizer", "dnn_optimizer", "linear_optimizer", "loss"]:
+        model_params.pop(param, None)

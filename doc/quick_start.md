@@ -13,5 +13,6 @@ For advanced usage, you might want to go on reading
 - [Language Guide](language_guide.md)
 - [SQLFlow Playground](https://github.com/sql-machine-learning/playground/blob/master/dev.md#for-end-users)
 - [Run on Kubernetes](run/kubernetes.md)
+- [Export Trained Models](export_model.md)
 - [Run with command-line tool](run/cli.md)
 - Run SQLFlow with Different DataSources (comming soon)

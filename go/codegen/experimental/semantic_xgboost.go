@@ -70,7 +70,7 @@ func updateIfKeyDoesNotExist(current, add map[string]interface{}) {
 	}
 }
 
-func resolveModelParams(ir *ir.TrainStmt) error {
+func resolveXGBoostModelParams(ir *ir.TrainStmt) error {
 	switch strings.ToUpper(ir.Estimator) {
 	case "XGBOOST.XGBREGRESSOR", "XGBREGRESSOR":
 		defaultAttributes := map[string]interface{}{"objective": "reg:squarederror"}
@@ -100,20 +100,6 @@ func resolveModelParams(ir *ir.TrainStmt) error {
 		return fmt.Errorf("unsupported model name %v, currently supports xgboost.gbtree, xgboost.gblinear, xgboost.dart", ir.Estimator)
 	}
 	return nil
-}
-
-func parseAttribute(attrs map[string]interface{}) map[string]map[string]interface{} {
-	params := map[string]map[string]interface{}{"": {}, "train.": {}}
-	paramPrefix := []string{"train.", ""} // use slice to assure traverse order, this is necessary because all string starts with ""
-	for key, attr := range attrs {
-		for _, pp := range paramPrefix {
-			if strings.HasPrefix(key, pp) {
-				params[pp][key[len(pp):]] = attr
-				break
-			}
-		}
-	}
-	return params
 }
 
 func init() {

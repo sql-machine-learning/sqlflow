@@ -21,11 +21,13 @@ import shap
 import tensorflow as tf
 from runtime import explainer
 from runtime.db import buffered_db_writer, connect_with_data_source
+from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
+from runtime.tensorflow.load_model import pop_optimizer_and_loss
 
 sns_colors = sns.color_palette('colorblind')
 # Disable TensorFlow INFO and WARNING logs
@@ -59,17 +61,17 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
     estimator_cls = import_model(estimator_string)
-    model_params['model_dir'] = save
+    if is_tf_estimator(estimator_cls):
+        model_params['model_dir'] = save
     model_params.update(feature_columns)
+    pop_optimizer_and_loss(model_params)
 
     def _input_fn():
         dataset = input_fn(select, datasource, feature_column_names,
                            feature_metas, label_meta)
         return dataset.batch(1).cache()
 
-    estimator = init_model_with_feature_column(estimator_cls,
-                                               model_params,
-                                               is_training=False)
+    estimator = init_model_with_feature_column(estimator_cls, model_params)
     conn = connect_with_data_source(datasource)
 
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
@@ -87,6 +89,8 @@ def explain(datasource,
         explain_dnns(datasource, estimator, shap_dataset, plot_type,
                      result_table, feature_column_names, conn, oss_dest,
                      oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
+
+    conn.close()
 
 
 def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
@@ -119,6 +123,9 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
                 dict(pd.DataFrame(d,
                                   columns=shap_dataset.columns))).batch(1000)
 
+        if isinstance(estimator, tf.keras.Model):
+            return np.array(estimator.predict(input_fn()))
+
         if plot_type == 'bar':
             predictions = [
                 p['logits'] if 'logits' in p else p['predictions']
@@ -148,7 +155,6 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
 
 
 def create_explain_result_table(conn, result_table):
-    column_clause = ""
     if conn.driver == "mysql":
         column_clause = "(feature VARCHAR(255), dfc float, gain float)"
     else:

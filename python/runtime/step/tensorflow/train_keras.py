@@ -24,10 +24,10 @@ from runtime.tensorflow.train_keras import keras_compile, keras_train_compiled
 def keras_train_and_save(estimator, model_params, save, FLAGS,
                          train_dataset_fn, val_dataset_fn, label_meta, epochs,
                          verbose, metric_names, validation_steps, load,
-                         model_meta):
+                         model_meta, is_pai):
     print("Start training using keras model...")
     classifier, has_none_optimizer = keras_compile(estimator, model_params,
-                                                   save, metric_names)
+                                                   metric_names)
     train_dataset = train_dataset_fn()
     if val_dataset_fn is not None:
         validate_dataset = val_dataset_fn()
@@ -42,15 +42,17 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
 
     if len(FLAGS.worker_hosts.split(",")) > 1:
         keras_train_distributed(classifier, model_params, save, model_meta,
-                                FLAGS, train_dataset_fn, val_dataset_fn)
+                                FLAGS, train_dataset_fn, val_dataset_fn,
+                                is_pai)
     else:
         keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                              label_meta, epochs, verbose, model_meta,
                              validation_steps, has_none_optimizer)
 
-    print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-    oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
-    oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
+    if is_pai:
+        print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
+        oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
+        oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
 
 def keras_train_distributed(classifier,

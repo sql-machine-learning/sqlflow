@@ -15,6 +15,7 @@ package experimental
 
 import (
 	"bytes"
+	"encoding/json"
 	"text/template"
 
 	"sqlflow.org/sqlflow/go/ir"
@@ -22,32 +23,39 @@ import (
 )
 
 type predStepFiller struct {
-	StepIndex     int
-	DataSource    string
-	OriginalSQL   string
-	Select        string
-	PredLabelName string
-	ResultTable   string
-	Load          string
-	Submitter     string
+	StepIndex      int
+	DataSource     string
+	OriginalSQL    string
+	Select         string
+	PredLabelName  string
+	ResultTable    string
+	ModelParamJSON string
+	Load           string
+	Submitter      string
 }
 
-// GeneratePredict generates the XGBoost prediction code.
+// GeneratePredict generates the prediction code.
 func GeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session) (string, error) {
 	dbConnStr, err := GeneratePyDbConnStr(session)
 	if err != nil {
 		return "", err
 	}
 
+	modelParams, err := json.Marshal(predStmt.Attributes)
+	if err != nil {
+		return "", err
+	}
+
 	filler := &predStepFiller{
-		StepIndex:     stepIndex,
-		DataSource:    dbConnStr,
-		OriginalSQL:   replaceNewLineRuneAndTrimSpace(predStmt.OriginalSQL),
-		Select:        replaceNewLineRuneAndTrimSpace(predStmt.Select),
-		PredLabelName: predStmt.ResultColumn,
-		ResultTable:   predStmt.ResultTable,
-		Load:          predStmt.Using,
-		Submitter:     getSubmitter(session),
+		StepIndex:      stepIndex,
+		DataSource:     dbConnStr,
+		OriginalSQL:    replaceNewLineRuneAndTrimSpace(predStmt.OriginalSQL),
+		Select:         replaceNewLineRuneAndTrimSpace(predStmt.Select),
+		PredLabelName:  predStmt.ResultColumn,
+		ResultTable:    predStmt.ResultTable,
+		ModelParamJSON: string(modelParams),
+		Load:           predStmt.Using,
+		Submitter:      getSubmitter(session),
 	}
 
 	var program bytes.Buffer
@@ -61,14 +69,17 @@ func GeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Sessio
 
 const predStepTemplate = `
 def step_entry_{{.StepIndex}}():
+    import json
     import runtime.temp_file as temp_file
     from runtime.{{.Submitter}} import pred
+
+    model_params = json.loads('''{{.ModelParamJSON}}''')
     with temp_file.TemporaryDirectory(as_cwd=True):
         pred(datasource='''{{.DataSource}}''', 
              original_sql='''{{.OriginalSQL}}''',
              select='''{{.Select}}''', 
              model_name='''{{.Load}}''',
              label_column='''{{.PredLabelName}}''',
-             model_params={},
+             model_params=model_params,
              result_table='''{{.ResultTable}}''')
 `

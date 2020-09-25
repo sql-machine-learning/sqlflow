@@ -12,7 +12,10 @@
 # limitations under the License.
 
 from runtime.dbapi import table_writer
-from runtime.feature.column import FeatureColumn
+from runtime.local.tensorflow_submitter.evaluate import evaluate as tf_evaluate
+from runtime.local.tensorflow_submitter.explain import explain as tf_explain
+from runtime.local.tensorflow_submitter.predict import pred as tf_pred
+from runtime.local.tensorflow_submitter.train import train as tf_train
 from runtime.local.xgboost_submitter.evaluate import \
     evaluate as xgboost_evaluate
 from runtime.local.xgboost_submitter.explain import explain as xgboost_explain
@@ -32,6 +35,7 @@ def submit_local_train(datasource,
                        label_column,
                        model_params,
                        train_params,
+                       validation_params,
                        save,
                        load,
                        user=""):
@@ -62,6 +66,8 @@ def submit_local_train(datasource,
             - disk_cache: Use dmatrix disk cache if True, default: False.
             - batch_size: Split data to batches and train, default: 1.
             - epoch: Epochs to train, default: 1.
+        validation_params: dict
+            Params for validation.
         save: string
             Model name to be saved.
         load: string
@@ -70,21 +76,23 @@ def submit_local_train(datasource,
             Not used for local submitter, used in runtime.pai only.
     """
     if estimator_string.lower().startswith("xgboost"):
-        return xgboost_train(original_sql,
-                             model_image,
-                             estimator_string,
-                             datasource,
-                             select,
-                             validation_select,
-                             model_params,
-                             train_params,
-                             feature_column_map,
-                             label_column,
-                             save,
-                             load=load)
+        train_func = xgboost_train
     else:
-        raise NotImplementedError("not implemented model type: %s" %
-                                  estimator_string)
+        train_func = tf_train
+
+    return train_func(original_sql=original_sql,
+                      model_image=model_image,
+                      estimator_string=estimator_string,
+                      datasource=datasource,
+                      select=select,
+                      validation_select=validation_select,
+                      model_params=model_params,
+                      train_params=train_params,
+                      validation_params=validation_params,
+                      feature_column_map=feature_column_map,
+                      label_column=label_column,
+                      save=save,
+                      load=load)
 
 
 def submit_local_pred(datasource,
@@ -97,31 +105,37 @@ def submit_local_pred(datasource,
                       user=""):
     model = Model.load_from_db(datasource, model_name)
     if model.get_type() == EstimatorType.XGBOOST:
-        xgboost_pred(datasource, select, result_table, label_column, model)
+        pred_func = xgboost_pred
     else:
-        raise NotImplementedError("not implemented model type: {}".format(
-            model.get_type()))
+        pred_func = tf_pred
+
+    pred_func(datasource=datasource,
+              select=select,
+              result_table=result_table,
+              pred_label_name=label_column,
+              model=model)
 
 
 def submit_local_evaluate(datasource,
                           original_sql,
                           select,
+                          pred_label_name,
                           model_name,
                           model_params,
                           result_table,
                           user=""):
     model = Model.load_from_db(datasource, model_name)
-    validation_metrics = model_params.get("validation.metrics",
-                                          "Accuracy").split(",")
-    label_fc = model.get_meta("label")
-    assert isinstance(label_fc, FeatureColumn)
-    pred_label_name = label_fc.get_field_desc()[0].name
     if model.get_type() == EstimatorType.XGBOOST:
-        xgboost_evaluate(datasource, select, result_table, model,
-                         pred_label_name, validation_metrics)
+        evaluate_func = xgboost_evaluate
     else:
-        raise NotImplementedError("not implemented model type: {}".format(
-            model.get_type()))
+        evaluate_func = tf_evaluate
+
+    evaluate_func(datasource=datasource,
+                  select=select,
+                  result_table=result_table,
+                  model=model,
+                  pred_label_name=pred_label_name,
+                  model_params=model_params)
 
 
 def submit_local_explain(datasource,
@@ -133,18 +147,17 @@ def submit_local_explain(datasource,
                          explainer="TreeExplainer",
                          user=""):
     model = Model.load_from_db(datasource, model_name)
-    summary_params = dict()
-    for k in model_params:
-        if k.startswith("summary."):
-            summary_key = k.replace("summary.", "")
-            summary_params[summary_key] = model_params[k]
-
     if model.get_type() == EstimatorType.XGBOOST:
-        xgboost_explain(datasource, select, explainer, summary_params,
-                        result_table, model)
+        explain_func = xgboost_explain
     else:
-        raise NotImplementedError("not implemented model type: {}".format(
-            model.get_type()))
+        explain_func = tf_explain
+
+    explain_func(datasource=datasource,
+                 select=select,
+                 explainer=explainer,
+                 model_params=model_params,
+                 result_table=result_table,
+                 model=model)
 
 
 def submit_local_show_train(datasource, model_name):

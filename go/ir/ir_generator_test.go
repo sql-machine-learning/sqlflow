@@ -48,7 +48,8 @@ func TestGenerateTrainStmt(t *testing.T) {
 		EMBEDDING(SPARSE(c2, 10000, COMMA, "int"), 128, sum),
 		INDICATOR(CATEGORY_ID(c3, 512)),
 		INDICATOR(c1),
-		INDICATOR(SPARSE(c2, 10000, COMMA, "int"))
+		INDICATOR(SPARSE(c2, 10000, COMMA, "int")),
+		WEIGHTED_CATEGORY(CATEGORY_ID(SPARSE(c2, 10000, "-", "int", ":", "float"), 128))
 	LABEL c4
 	INTO mymodel;
 	`
@@ -179,6 +180,17 @@ func TestGenerateTrainStmt(t *testing.T) {
 	a.True(catCol.FieldDesc.IsSparse)
 	a.Equal("c2", catCol.FieldDesc.Name)
 	a.Equal(10000, catCol.FieldDesc.Shape[0])
+
+	// WEIGHTED_CATEGORY(CATEGORY_ID(SPARSE(c2, 10000, "-", "int", ":", "string"), 128)) verify
+	// sparse with two delimiters (k:v-k:v-k:v)
+	wcc, ok := trainStmt.Features["feature_columns"][15].(*WeightedCategoryColumn)
+	a.True(ok)
+	cc, ok = wcc.CategoryColumn.(*CategoryIDColumn)
+	a.True(ok)
+	a.True(cc.FieldDesc.IsSparse)
+	a.Equal("-", cc.FieldDesc.Delimiter)
+	a.Equal(":", cc.FieldDesc.DelimiterKV)
+	a.Equal(Float, cc.FieldDesc.DTypeWeight)
 
 	l, ok := trainStmt.Label.(*NumericColumn)
 	a.True(ok)

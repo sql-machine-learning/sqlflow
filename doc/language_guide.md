@@ -20,8 +20,8 @@ Instead of writing a Python program with a lot of boilerplate code, this can be 
 
 ```sql
 SELECT * FROM iris.train
-TO TRAIN DNNClassifer
-WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10
+TO TRAIN DNNClassifier
+WITH model.hidden_units = [10, 10], model.n_classes = 3, train.epoch= 10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;
@@ -80,7 +80,7 @@ TO TRAIN ...
 
 ### Train Clause
 
-The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifer WITH hidden_units = [10, 10], n_classes = 3, EPOCHS = 10`.
+The *train clause* describes the specific model type and the way the model is trained, e.g. `TO TRAIN DNNClassifier WITH model.hidden_units = [10, 10], model.n_classes = 3, train.epoch= 10`.
 
 ```sql
 TO TRAIN model_identifier
@@ -97,7 +97,7 @@ For example, if you want to train a `DNNClassifier`, which has two hidden layers
 
 ```sql
 SELECT ...
-TO TRAIN DNNClassifer
+TO TRAIN DNNClassifier
 WITH
   model.hidden_units = [10, 10],
   model.n_classes = 3,
@@ -364,10 +364,13 @@ FROM table_references
 TO EVALUATE model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
+LABEL class
 INTO evaluate_result_table;
 ```
 
 The SELECT statement before TO EVALUATE must generate the same data schema as that used in training. Please be aware that, by the machine learning theory, you are not supposed to use the training dataset for evaluation. If you do that, you are likely to see a very good evaluation result, which indeed, doesn't tell much useful information. Please write a SELECT statement as the prefix that generates different dataset but have the same schema.
+
+The LABEL clause specify the name of table column which contains the ground truth label.
 
 The INTO clause names the table for saving evaluation results, which, in this example, is `evaluate_result_table`.
 

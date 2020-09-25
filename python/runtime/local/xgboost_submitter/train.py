@@ -36,6 +36,7 @@ def train(original_sql,
           validation_select,
           model_params,
           train_params,
+          validation_params,
           feature_column_map,
           label_column,
           save,
@@ -54,6 +55,8 @@ def train(original_sql,
         train_params (dict): the training parameters, can have
                              disk_cache(bool), batch_size(int), epoch(int)
                              settings in the dict.
+        validation_params (dict): the validation parameters. Not used
+                                  currently.
         feature_column_map (dict): the feature column map to do derivation.
         label_column (FeatureColumn): the label column.
         save (str): the table name to save the trained model and meta.
@@ -82,15 +85,10 @@ def train(original_sql,
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *feature_column_list)
 
-    disk_cache = False
-    batch_size = None
-    epoch = 1
-    if "disk_cache" in train_params:
-        disk_cache = train_params.pop("disk_cache")
-    if "batch_size" in train_params:
-        batch_size = train_params.pop("batch_size")
-    if "epoch" in train_params:
-        epoch = train_params.pop("epoch")
+    disk_cache = train_params.pop("disk_cache", False)
+    batch_size = train_params.pop("batch_size", None)
+    epoch = train_params.pop("epoch", 1)
+    num_workers = train_params.pop("num_workers", 1)
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,
@@ -150,9 +148,10 @@ def train(original_sql,
                             features=fc_map_ir,
                             label=fc_label_ir,
                             evaluation=eval_result,
-                            num_workers=1)
+                            num_workers=num_workers)
 
     save_model_to_local_file(bst, model_params, file_name)
     model = Model(EstimatorType.XGBOOST, meta)
     model.save_to_db(datasource, save)
+    conn.close()
     return eval_result

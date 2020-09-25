@@ -41,11 +41,12 @@ python -m pip install --quiet \
     PyUtilib==5.8.0 \
     pyomo==5.6.9 \
     mysqlclient==1.4.4 \
-    pytest
+    pytest \
+    pytest-cov
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
-git checkout v0.0.6 -b v0.0.6 && \
+git checkout 2aec0a13d95388d66cb778b7e13cbf919e4690da && \
 python setup.py install)
 
 protoc --python_out=python/runtime/dbapi/table_writer/ -I go/proto sqlflow.proto

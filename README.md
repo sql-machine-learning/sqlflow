@@ -1,6 +1,6 @@
 # SQLFlow
 
-![CI](https://github.com/sql-machine-learning/sqlflow/workflows/CI/badge.svg)
+[![CI](https://github.com/sql-machine-learning/sqlflow/workflows/CI/badge.svg)](https://github.com/sql-machine-learning/sqlflow/actions)
 [![codecov](https://codecov.io/gh/sql-machine-learning/sqlflow/branch/develop/graph/badge.svg)](https://codecov.io/gh/sql-machine-learning/sqlflow)
 [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE) 
@@ -30,7 +30,7 @@ None of the existing solution solves our pain point, instead we want it to be fu
 
 ## Quick Overview
 
-Here are examples for training a TensorFlow [DNNClassifer](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using sample data Iris.train, and running prediction using the trained model. You can see how cool it is to write some elegant ML code using SQL:
+Here are examples for training a TensorFlow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using sample data Iris.train, and running prediction using the trained model. You can see how cool it is to write some elegant ML code using SQL:
 
 ```sql
 sqlflow> SELECT *

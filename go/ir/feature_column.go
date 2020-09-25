@@ -33,12 +33,14 @@ type CategoryColumn interface {
 
 // FieldDesc describes a field used as the input to a feature column.
 type FieldDesc struct {
-	Name      string `json:"name"`      // the name for a field, e.g. "petal_length"
-	DType     int    `json:"dtype"`     // e.g. "float", "int32"
-	Delimiter string `json:"delimiter"` // Needs to be "," if the field saves strings like "1,23,42".
-	Format    string `json:"format"`    // The data format, "", "csv" or "kv"
-	Shape     []int  `json:"shape"`     // [3] if the field saves strings of three numbers like "1,23,42".
-	IsSparse  bool   `json:"is_sparse"` // If the field saves a sparse tensor.
+	Name        string `json:"name"`         // the name for a field, e.g. "petal_length"
+	DType       int    `json:"dtype"`        // data type of the values, e.g. "float", "int32"
+	DTypeWeight int    `json:"dtype_weight"` // data type of the keys.
+	Delimiter   string `json:"delimiter"`    // Needs to be "," if the field saves strings like "1,23,42".
+	DelimiterKV string `json:"delimiter_kv"` // k-v list format like k:v-k:v, delimiter:"-", delimiter_kv:":"
+	Format      string `json:"format"`       // The data format, "", "csv" or "kv"
+	Shape       []int  `json:"shape"`        // [3] if the field saves strings of three numbers like "1,23,42".
+	IsSparse    bool   `json:"is_sparse"`    // If the field saves a sparse tensor.
 	// Vocabulary stores all possible enumerate values if the column type is string,
 	// e.g. the column values are: "MALE", "FEMALE", "NULL"
 	Vocabulary map[string]string `json:"vocabulary"` // use a map to generate a list without duplication
@@ -57,12 +59,20 @@ func (fd *FieldDesc) GenPythonCode() string {
 	for k := range fd.Vocabulary {
 		vocabList = append(vocabList, k)
 	}
+
+	var shapeStr string
+	if fd.Shape == nil {
+		shapeStr = "[]"
+	} else {
+		shapeStr = AttrToPythonValue(fd.Shape)
+	}
+
 	// pass format = "" to let runtime feature derivation to fill it in.
 	return fmt.Sprintf(`runtime.feature.field_desc.FieldDesc(name="%s", dtype=runtime.feature.field_desc.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s)`,
 		fd.Name,
 		strings.ToUpper(DTypeToString(fd.DType)),
 		fd.Delimiter,
-		AttrToPythonValue(fd.Shape),
+		shapeStr,
 		isSparseStr,
 		AttrToPythonValue(vocabList),
 	)
@@ -389,6 +399,62 @@ func (c *IndicatorColumn) GenPythonCode() string {
 		catColCode = c.CategoryColumn.GenPythonCode()
 	}
 	code := fmt.Sprintf(`runtime.feature.column.IndicatorColumn(category_column=%s, name="%s")`,
+		catColCode,
+		c.Name,
+	)
+	return code
+}
+
+// WeightedCategoryColumn represents `tf.feature_column.weighted_categorical_column`
+// ref: https://www.tensorflow.org/api_docs/python/tf/feature_column/weighted_categorical_column
+type WeightedCategoryColumn struct {
+	CategoryColumn
+	// only used when WEIGHTED_CATEGORY(col_name, ...) this will set CategoryColumn = nil
+	// will fill the feature column details using feature_derivation
+	Name string
+}
+
+// GetFieldDesc returns FieldDesc member
+func (c *WeightedCategoryColumn) GetFieldDesc() []*FieldDesc {
+	if c.CategoryColumn == nil {
+		return []*FieldDesc{}
+	}
+	return c.CategoryColumn.GetFieldDesc()
+}
+
+// NumClass returns class number of CategoryIDColumn
+func (c *WeightedCategoryColumn) NumClass() int64 {
+	return c.CategoryColumn.NumClass()
+}
+
+// ApplyTo applies the FeatureColumn to a new field
+func (c *WeightedCategoryColumn) ApplyTo(other *FieldDesc) (FeatureColumn, error) {
+	ret := &WeightedCategoryColumn{Name: other.Name}
+	if c.CategoryColumn != nil {
+		fc, err := c.CategoryColumn.ApplyTo(other)
+		if err != nil {
+			return nil, err
+		}
+
+		if catColumn, ok := fc.(CategoryColumn); ok {
+			ret.CategoryColumn = catColumn
+		} else {
+			return nil, fmt.Errorf("WeightedCategoryColumn.ApplyTo should return CategoryColumn")
+		}
+	}
+	return ret, nil
+}
+
+// GenPythonCode generate Python code to construct a runtime.feature.column.*
+func (c *WeightedCategoryColumn) GenPythonCode() string {
+	catColCode := ""
+	if c.CategoryColumn == nil {
+		catColCode = "None"
+	} else {
+		catColCode = c.CategoryColumn.GenPythonCode()
+	}
+	// FIXME(typhoonzero): add runtime.feature.column.WeightedCategoryColumn
+	code := fmt.Sprintf(`runtime.feature.column.WeightedCategoryColumn(category_column=%s, name="%s")`,
 		catColCode,
 		c.Name,
 	)

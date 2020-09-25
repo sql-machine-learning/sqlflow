@@ -26,7 +26,8 @@ from runtime.tensorflow.input_fn import (get_dtype,
                                          tf_generator)
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from runtime.tensorflow.load_model import load_keras_model_weights
+from runtime.tensorflow.load_model import (load_keras_model_weights,
+                                           pop_optimizer_and_loss)
 
 # Disable TensorFlow INFO and WARNING logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -42,10 +43,8 @@ else:
 def keras_predict(estimator, model_params, save, result_table,
                   feature_column_names, feature_metas, train_label_name,
                   result_col_name, conn, predict_generator, selected_cols):
-
-    classifier = init_model_with_feature_column(estimator,
-                                                model_params,
-                                                is_training=False)
+    pop_optimizer_and_loss(model_params)
+    classifier = init_model_with_feature_column(estimator, model_params)
 
     def eval_input_fn(batch_size, cache=False):
         feature_types = []
@@ -139,10 +138,9 @@ def write_cols_from_selected(result_col_name, selected_cols):
     return write_cols, target_col_index
 
 
-def estimator_predict(estimator, model_params, save, result_table,
-                      feature_column_names, feature_column_names_map,
-                      feature_columns, feature_metas, train_label_name,
-                      result_col_name, conn, predict_generator, selected_cols):
+def estimator_predict(result_table, feature_column_names, feature_metas,
+                      train_label_name, result_col_name, conn,
+                      predict_generator, selected_cols):
     write_cols = selected_cols[:]
     try:
         train_label_index = selected_cols.index(train_label_name)
@@ -164,39 +162,44 @@ def estimator_predict(estimator, model_params, save, result_table,
         feature_name = feature_column_names[i]
         dtype_str = feature_metas[feature_name]["dtype"]
         if feature_metas[feature_name]["delimiter"] != "":
-            # NOTE(typhoonzero): sparse feature will get
-            # (indices,values,shape) here, use indices only
-            values = x[0][i][0].flatten()
-            if (dtype_str == "float32" or dtype_str == "float64"
-                    or dtype_str == DataType.FLOAT32):
-                example.features.feature[feature_name].float_list.value.extend(
-                    list(values))
-            elif (dtype_str == "int32" or dtype_str == "int64"
-                  or dtype_str == DataType.INT64):
-                example.features.feature[feature_name].int64_list.value.extend(
-                    list(values))
-        else:
-            if "feature_columns" in feature_columns:
-                idx = feature_column_names.index(feature_name)
-                fc = feature_columns["feature_columns"][idx]
-            else:
-                # DNNLinearCombinedXXX have dnn_feature_columns and
-                # linear_feature_columns param.
-                idx = -1
-                try:
-                    idx = feature_column_names_map[
-                        "dnn_feature_columns"].index(feature_name)
-                    fc = feature_columns["dnn_feature_columns"][idx]
-                except:  # noqa: E722
-                    try:
-                        idx = feature_column_names_map[
-                            "linear_feature_columns"].index(feature_name)
-                        fc = feature_columns["linear_feature_columns"][idx]
-                    except:  # noqa: E722
-                        pass
-                if idx == -1:
+            if feature_metas[feature_name]["delimiter_kv"] != "":
+                keys = x[0][i][0].flatten()
+                weights = x[0][i][1].flatten()
+                weight_dtype_str = feature_metas[feature_name]["dtype_weight"]
+                if (dtype_str == "float32" or dtype_str == "float64"
+                        or dtype_str == DataType.FLOAT32):
                     raise ValueError(
-                        "can not found feature %s in all feature columns")
+                        "not supported key-value feature with key type float")
+                elif (dtype_str == "int32" or dtype_str == "int64"
+                      or dtype_str == DataType.INT64):
+                    example.features.feature[
+                        feature_name].int64_list.value.extend(list(keys))
+                elif (dtype_str == "string" or dtype_str == DataType.STRING):
+                    example.features.feature[
+                        feature_name].bytes_list.value.extend(list(keys))
+                if (weight_dtype_str == "float32"
+                        or weight_dtype_str == "float64"
+                        or weight_dtype_str == DataType.FLOAT32):
+                    example.features.feature["_".join(
+                        [feature_name,
+                         "weight"])].float_list.value.extend(list(weights))
+                else:
+                    raise ValueError(
+                        "not supported key value column weight data type: %s" %
+                        weight_dtype_str)
+            else:
+                # NOTE(typhoonzero): sparse feature will get
+                # (indices,values,shape) here, use indices only
+                values = x[0][i][0].flatten()
+                if (dtype_str == "float32" or dtype_str == "float64"
+                        or dtype_str == DataType.FLOAT32):
+                    example.features.feature[
+                        feature_name].float_list.value.extend(list(values))
+                elif (dtype_str == "int32" or dtype_str == "int64"
+                      or dtype_str == DataType.INT64):
+                    example.features.feature[
+                        feature_name].int64_list.value.extend(list(values))
+        else:
             if (dtype_str == "float32" or dtype_str == "float64"
                     or dtype_str == DataType.FLOAT32):
                 # need to pass a tuple(float, )
@@ -204,15 +207,8 @@ def estimator_predict(estimator, model_params, save, result_table,
                     (float(x[0][i][0]), ))
             elif (dtype_str == "int32" or dtype_str == "int64"
                   or dtype_str == DataType.INT64):
-                numeric_type = type(tf.feature_column.numeric_column("tmp"))
-                if type(fc) == numeric_type:
-                    example.features.feature[
-                        feature_name].float_list.value.extend(
-                            (float(x[0][i][0]), ))
-                else:
-                    example.features.feature[
-                        feature_name].int64_list.value.extend(
-                            (int(x[0][i][0]), ))
+                example.features.feature[feature_name].int64_list.value.extend(
+                    (int(x[0][i][0]), ))
             elif dtype_str == "string" or dtype_str == DataType.STRING:
                 example.features.feature[feature_name].bytes_list.value.extend(
                     x[0][i])
@@ -274,10 +270,8 @@ def pred(datasource,
     else:
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
-        estimator_predict(estimator, model_params, save, result_table,
-                          feature_column_names, feature_column_names_map,
-                          feature_columns, feature_metas, train_label_name,
-                          result_col_name, conn, predict_generator,
-                          selected_cols)
+        estimator_predict(result_table, feature_column_names, feature_metas,
+                          train_label_name, result_col_name, conn,
+                          predict_generator, selected_cols)
 
     print("Done predicting. Predict table : %s" % result_table)

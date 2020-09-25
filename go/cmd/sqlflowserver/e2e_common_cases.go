@@ -73,6 +73,7 @@ func caseShowDatabases(t *testing.T) {
 		"sqlflow_public_models":       "",
 		"xgboost_sparse_data_test_db": "",
 		"cora":                        "",
+		"scorecard":                   "",
 	}
 	for i := 0; i < len(resp); i++ {
 		AssertContainsAny(a, expectedDBs, resp[i][0])
@@ -658,7 +659,9 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 
 	hasModelTableFunc := func(table string) {
 		_, rows, _, err := connectAndRunSQL(fmt.Sprintf("SELECT * FROM %s LIMIT 1;", table))
-		a.NoError(err)
+		if err != nil {
+			a.FailNow("error: %s", err)
+		}
 		a.Equal(len(rows), 1)
 	}
 
@@ -675,8 +678,7 @@ func caseXGBoostSparseKeyValueColumn(t *testing.T) {
 		train.num_boost_round = 20
 	COLUMN SPARSE(c1%s)
 	LABEL label_col
-	INTO %s;
-	`
+	INTO %s;`
 
 	trainSQL := fmt.Sprintf(trainSQLTemplate, dbName, trainTable, "", trainedModel)
 	executeSQLFunc(trainSQL)
@@ -1021,4 +1023,25 @@ SELECT * FROM %[4]s;`
 			a.Fail(fmt.Sprintf("Run SQL failure:\n%s\n%s", sql, err.Error()))
 		}
 	}
+}
+
+func caseWeightedKeyValueColumn(t *testing.T) {
+	a := assert.New(t)
+	trainSQL := fmt.Sprintf(`SELECT * FROM %s.weighted_key_value_train
+TO TRAIN DNNClassifier
+WITH model.hidden_units=[64,32], train.batch_size=2
+COLUMN EMBEDDING(
+	WEIGHTED_CATEGORY(CATEGORY_HASH(SPARSE(feature, 10, ",", "int", ":", "float"), 10)),
+	32
+)
+LABEL label_col
+INTO %s;`, caseDB, caseInto)
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predSQL := fmt.Sprintf(`SELECT * FROM %[1]s.weighted_key_value_train
+TO PREDICT %[1]s.weighted_key_value_pred_result.label_col
+USING %[2]s;`, caseDB, caseInto)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
 }

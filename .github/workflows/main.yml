@@ -14,6 +14,7 @@ jobs:
     env:
       SQLFLOW_PARSER_SERVER_PORT: 12300
       SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
     - uses: actions/checkout@v1
     - name: pre-commit
@@ -33,13 +34,14 @@ jobs:
         docker rm mysql || true
         docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow:mysql
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
-        # bash scripts/travis/upload_codecov.sh
         bash scripts/test/ipython.sh
+        bash <(curl -s https://codecov.io/bash)
   test-hive-java:
     runs-on: [self-hosted, linux]
     env:
       SQLFLOW_PARSER_SERVER_PORT: 12300
       SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
     - uses: actions/checkout@v1
     - name: hive unit test
@@ -52,7 +54,7 @@ jobs:
         docker rm hive || true
         docker run --rm -d --name=hive --net=host sqlflow/gohive:dev python3 -m http.server 8899
         PYTHONPATH=${{ github.workspace }}/python scripts/test/hive.sh
-        # bash scripts/travis/upload_codecov.sh
+        bash <(curl -s https://codecov.io/bash)
     # FIXME(typhoonzero): maxcompute test often fails because connection timeout, we can add a
     # maxcompute service close to the CI server and add this test back.
     # - name: maxcompute unit test
@@ -73,6 +75,7 @@ jobs:
     env:
       SQLFLOW_PARSER_SERVER_PORT: 12300
       SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
     - uses: actions/checkout@v1
     - name: build mysql image
@@ -87,7 +90,7 @@ jobs:
         docker pull sqlflow/sqlflow:step
         docker build --cache-from sqlflow/sqlflow:step -t sqlflow/sqlflow:step --build-arg FIND_FASTED_MIRROR="false" -f docker/step/Dockerfile .
         bash scripts/test/workflow.sh
-        # bash scripts/travis/upload_codecov.sh
+        bash <(curl -s https://codecov.io/bash)
   push-images:
     runs-on: [self-hosted, linux]
     needs: [test-mysql, test-hive-java, test-workflow]
