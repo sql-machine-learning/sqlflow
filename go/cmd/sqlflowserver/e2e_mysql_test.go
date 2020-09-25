@@ -185,6 +185,8 @@ func TestEnd2EndMySQL(t *testing.T) {
 	// Cases using feature derivation
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)
 
+	t.Run("caseWeightedKeyValueColumn", caseWeightedKeyValueColumn)
+
 	// xgboost cases
 	t.Run("caseTrainXGBoostWithNull", caseTrainXGBoostWithNull)
 	t.Run("caseTrainXGBoostMultiClass", caseTrainXGBoostMultiClass)

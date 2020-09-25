@@ -65,7 +65,9 @@ feature_metas["{{$value.Name}}"] = {
     "delimiter": "{{$value.Delimiter}}",
     "format": "{{$value.Format}}",
     "shape": {{$value.Shape | intArrayToJSONString}},
-    "is_sparse": "{{$value.IsSparse}}" == "true"
+    "is_sparse": "{{$value.IsSparse}}" == "true",
+    "dtype_weight": "{{$value.DTypeWeight | DTypeToString}}",
+    "delimiter_kv": "{{$value.DelimiterKV}}"
 }
 {{end}}
 {{end}}

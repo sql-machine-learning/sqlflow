@@ -228,7 +228,7 @@ model.hidden_units = [10, 20],
 train.epoch = 200,
 train.batch_size = 10,
 train.verbose = 1
-COLUMN DENSE(dense, 4)
+COLUMN DENSE(dense, 4, COMMA)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model;`
 		stream := RunSQLProgram(trainSQL, "", database.GetSessionFromTestingDB())

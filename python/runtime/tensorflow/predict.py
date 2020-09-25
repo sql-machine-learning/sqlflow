@@ -162,17 +162,43 @@ def estimator_predict(result_table, feature_column_names, feature_metas,
         feature_name = feature_column_names[i]
         dtype_str = feature_metas[feature_name]["dtype"]
         if feature_metas[feature_name]["delimiter"] != "":
-            # NOTE(typhoonzero): sparse feature will get
-            # (indices,values,shape) here, use indices only
-            values = x[0][i][0].flatten()
-            if (dtype_str == "float32" or dtype_str == "float64"
-                    or dtype_str == DataType.FLOAT32):
-                example.features.feature[feature_name].float_list.value.extend(
-                    list(values))
-            elif (dtype_str == "int32" or dtype_str == "int64"
-                  or dtype_str == DataType.INT64):
-                example.features.feature[feature_name].int64_list.value.extend(
-                    list(values))
+            if feature_metas[feature_name]["delimiter_kv"] != "":
+                keys = x[0][i][0].flatten()
+                weights = x[0][i][1].flatten()
+                weight_dtype_str = feature_metas[feature_name]["dtype_weight"]
+                if (dtype_str == "float32" or dtype_str == "float64"
+                        or dtype_str == DataType.FLOAT32):
+                    raise ValueError(
+                        "not supported key-value feature with key type float")
+                elif (dtype_str == "int32" or dtype_str == "int64"
+                      or dtype_str == DataType.INT64):
+                    example.features.feature[
+                        feature_name].int64_list.value.extend(list(keys))
+                elif (dtype_str == "string" or dtype_str == DataType.STRING):
+                    example.features.feature[
+                        feature_name].bytes_list.value.extend(list(keys))
+                if (weight_dtype_str == "float32"
+                        or weight_dtype_str == "float64"
+                        or weight_dtype_str == DataType.FLOAT32):
+                    example.features.feature["_".join(
+                        [feature_name,
+                         "weight"])].float_list.value.extend(list(weights))
+                else:
+                    raise ValueError(
+                        "not supported key value column weight data type: %s" %
+                        weight_dtype_str)
+            else:
+                # NOTE(typhoonzero): sparse feature will get
+                # (indices,values,shape) here, use indices only
+                values = x[0][i][0].flatten()
+                if (dtype_str == "float32" or dtype_str == "float64"
+                        or dtype_str == DataType.FLOAT32):
+                    example.features.feature[
+                        feature_name].float_list.value.extend(list(values))
+                elif (dtype_str == "int32" or dtype_str == "int64"
+                      or dtype_str == DataType.INT64):
+                    example.features.feature[
+                        feature_name].int64_list.value.extend(list(values))
         else:
             if (dtype_str == "float32" or dtype_str == "float64"
                     or dtype_str == DataType.FLOAT32):

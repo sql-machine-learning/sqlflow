@@ -48,11 +48,11 @@ INTO my_dnn_model;
 		TmpValidateTable: "iris.test",
 		Features: map[string][]FeatureColumn{
 			"feature_columns": {
-				&NumericColumn{&FieldDesc{"sepal_length", Float, "", "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldDesc{"sepal_width", Float, "", "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldDesc{"petal_length", Float, "", "", []int{1}, false, nil, 0}},
-				&NumericColumn{&FieldDesc{"petal_width", Float, "", "", []int{1}, false, nil, 0}}}},
-		Label: &NumericColumn{&FieldDesc{"class", Int, "", "", []int{1}, false, nil, 0}}}
+				&NumericColumn{&FieldDesc{"sepal_length", Float, Int, "", "", "", []int{1}, false, nil, 0}},
+				&NumericColumn{&FieldDesc{"sepal_width", Float, Int, "", "", "", []int{1}, false, nil, 0}},
+				&NumericColumn{&FieldDesc{"petal_length", Float, Int, "", "", "", []int{1}, false, nil, 0}},
+				&NumericColumn{&FieldDesc{"petal_width", Float, Int, "", "", "", []int{1}, false, nil, 0}}}},
+		Label: &NumericColumn{&FieldDesc{"class", Int, Int, "", "", "", []int{1}, false, nil, 0}}}
 }
 
 // MockPredStmt generates a sample PredictStmt for test.

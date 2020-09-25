@@ -459,6 +459,30 @@ USING e2etest_keras_dnn;`, caseTestTable, caseDB)
 	}
 }
 
+func CasePAIMaxComputeWeightedCategory(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	trainSQL := `SELECT * FROM alifin_jtest_dev.weighted_key_value_train
+TO TRAIN DNNClassifier
+WITH model.n_classes = 2, model.hidden_units = [64,32],train.batch_size=128,train.epoch=2
+COLUMN EMBEDDING(WEIGHTED_CATEGORY(CATEGORY_HASH(SPARSE(feature, 128, ",", "int", ":", "float"), 128)), 32)
+LABEL label_col
+INTO e2etest_weighted_emb;`
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	if err != nil {
+		a.Fail("run trainSQL error: %v", err)
+	}
+
+	predSQL := `SELECT * FROM alifin_jtest_dev.weighted_key_value_train
+TO PREDICT alifin_jtest_dev.weighted_emb.label_col
+USING e2etest_weighted_emb;`
+	_, _, _, err = connectAndRunSQL(predSQL)
+	if err != nil {
+		a.Fail("run predSQL error: %v", err)
+	}
+}
+
 // TestEnd2EndMaxComputePAI test cases that runs on PAI. Need to set below
 // environment variables to run the test:
 // SQLFLOW_submitter=pai
@@ -526,5 +550,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.Run("CaseEnd2EndXGBoostDenseFeatureColumn", func(t *testing.T) {
 			caseEnd2EndXGBoostDenseFeatureColumn(t, true)
 		})
+
+		t.Run("CasePAIMaxComputeWeightedCategory", CasePAIMaxComputeWeightedCategory)
 	})
 }
