@@ -156,32 +156,30 @@ step_exit_time_wait = {{.StepExitTimeWait}}
 {{ range $ss := .StepList }}
 {{.Code}}
 
+codes = [
+	"python <<EOF",
+	pyfunc.body(step_entry_{{.StepIndex}}),
+	"EOF",
+]
+
 if step_log_file:
 	log_dir = path.dirname(step_log_file)
-	code = "\n".join([
+	codes = [
 		"if [[ -f /opt/sqlflow/init_step_container.sh ]]; then",
 		"  bash /opt/sqlflow/init_step_container.sh",
 		"fi",
 		"mkdir -p %s" % log_dir,
 		"set -o pipefail # fail when any sub-command fail",
 		"(",
-		"python <<EOF",
-		pyfunc.body(step_entry_{{.StepIndex}}),
-		"EOF",
+	] + codes + [
 		") 2>&1 | tee %s" % step_log_file,
 		"exit_code=$?",
 		"# sleep a while for finishing log collection",
 		"sleep %d" % step_exit_time_wait,
-		"exit $exit_code"
-	])
-else:
-    code = "\n".join([
-        "python <<EOF",
-        pyfunc.body(step_entry_{{.StepIndex}}),
-        "EOF",
-    ])
+		"exit $exit_code",
+	]
 
-couler.run_script(image="{{.Image}}", command="bash", source=code, env=step_envs, resources=resources)
+couler.run_script(image="{{.Image}}", command="bash", source="\n".join(codes), env=step_envs, resources=resources)
 {{end}}
 `
 
