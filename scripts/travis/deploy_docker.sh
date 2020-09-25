@@ -69,11 +69,13 @@ function push_image() {
     echo "docker push sqlflow/sqlflow:$REMOTE_TAG ..."
     docker tag sqlflow:"$LOCAL_TAG" sqlflow/sqlflow:"$REMOTE_TAG"
     docker push sqlflow/sqlflow:"$REMOTE_TAG"
+    docker rmi sqlflow/sqlflow:"$REMOTE_TAG"
 
     # push SQLFlow image to Aliyun Docker Hub
     echo "docker push registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:$REMOTE_TAG  ..."
     docker tag sqlflow:"$LOCAL_TAG" registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG"
-    docker push registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG" 
+    docker push registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG"
+    docker rmi registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:"$REMOTE_TAG"
 }
 
 echo "$DOCKER_PASSWORD" |
