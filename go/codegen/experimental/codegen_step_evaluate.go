@@ -56,8 +56,8 @@ func GenerateEvaluation(evalStmt *ir.EvaluateStmt, stepIndex int, session *pb.Se
 	filler := &evaluateStepFiller{
 		StepIndex:      stepIndex,
 		DataSource:     ds,
-		OriginalSQL:    replaceNewLineRuneAndTrimSpace(evalStmt.OriginalSQL),
-		Select:         replaceNewLineRuneAndTrimSpace(evalStmt.Select),
+		OriginalSQL:    escapeSpecialRunesAndTrimSpace(evalStmt.OriginalSQL),
+		Select:         escapeSpecialRunesAndTrimSpace(evalStmt.Select),
 		ResultTable:    evalStmt.Into,
 		PredLabelName:  labelName,
 		Load:           evalStmt.ModelName,

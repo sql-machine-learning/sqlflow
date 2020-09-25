@@ -82,19 +82,21 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
-	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
-	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
-	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
-	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
 	t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
 	t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
-	// test experimental workflow generation
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
-	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
-	t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
-	t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
-	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+	for i := 0; i < 2; i++ {
+		// test experimental workflow generation
+		t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
+		t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+		t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+		t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
+		t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+		t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+		t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
+		t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
+		os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+	}
 }
 
 func CaseWorkflowStepErrorMessage(t *testing.T) {
@@ -126,7 +128,7 @@ INTO %s;
 	}
 	e := checkWorkflow(ctx, cli, stream)
 	a.Error(e)
-	a.Contains(e.Error(), "runSQLProgram error: unsupported attribute model.no_exists_param")
+	a.Contains(e.Error(), "unsupported attribute model.no_exists_param")
 }
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
@@ -435,7 +437,8 @@ SHOW TRAIN %[3]s;
 SELECT * FROM %[2]s
 TO EXPLAIN %[3]s
 WITH
-	summary.plot_type = bar
+	summary.plot_type = bar,
+	label_col = class
 INTO %[1]s.explain_result_table;
 
 SELECT * FROM %[1]s.explain_result_table;
@@ -443,7 +446,8 @@ SELECT * FROM %[1]s.explain_result_table;
 SELECT * FROM %[2]s
 TO EXPLAIN %[3]s
 WITH
-	summary.plot_type = bar
+	summary.plot_type = bar,
+	label_col = class
 USING XGBoostExplainer
 INTO %[1]s.explain_result_table;
 
