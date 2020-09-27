@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"strings"
 	"sync"
 
@@ -166,6 +167,28 @@ type pythonExecutor struct {
 	Session  *pb.Session
 }
 
+func (s *pythonExecutor) experimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) error {
+	// NOTE(sneaxiy): should use the image here
+	stepCode, _, err := experimental.GenerateStepCodeAndImage(sqlStmt, 0, s.Session, nil)
+	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
+	if err != nil {
+		return err
+	}
+
+	const bashCodeTmpl = `python <<EOF
+%s
+EOF
+`
+
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(bashCodeTmpl, stepFuncCode))
+	cmd.Dir = s.Cwd
+	errorLog, err := s.runCommand(cmd, nil, logStderr)
+	if err != nil {
+		return fmt.Errorf("%v\n%s", err, errorLog)
+	}
+	return nil
+}
+
 func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
 	// cwd is used to store train scripts and save output models.
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
@@ -225,7 +248,7 @@ func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, lo
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
-	return runNormalStmt(s.Writer, string(*stmt), s.Db)
+	return s.experimentalExecute(stmt, false)
 }
 
 func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {

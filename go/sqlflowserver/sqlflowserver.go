@@ -27,6 +27,7 @@ import (
 	"sqlflow.org/sqlflow/go/log"
 	"sqlflow.org/sqlflow/go/workflow"
 
+	"github.com/golang/protobuf/proto"
 	submitter "sqlflow.org/sqlflow/go/executor"
 	"sqlflow.org/sqlflow/go/parser"
 	"sqlflow.org/sqlflow/go/pipe"
@@ -78,7 +79,11 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 		case submitter.Figures:
 			res, err = pb.EncodeMessage(s.Image)
 		case string:
-			res, err = pb.EncodeMessage(s)
+			res = &pb.Response{}
+			err = proto.UnmarshalText(s, res)
+			if err != nil {
+				res, err = pb.EncodeMessage(s)
+			}
 		case pb.Job:
 			res = &pb.Response{Response: &pb.Response_Job{Job: &s}}
 		case sf.EndOfExecution:
