@@ -7,8 +7,8 @@ how likely the lender will repay on time. This tutorial introduces how to train 
 
 This tutorial using a public dataset [Give Me Some Credit](https://www.kaggle.com/c/GiveMeSomeCredit/data)
 on the [Kaggle](https://www.kaggle.com) website. The dataset contains 150,000 rows training data,
-each row includes 11 columns, where `serious_dlqin2yrs` is the target column, represents person experienced 90 days
-past due delinquency or worse. The description for each column as the table:
+and each row includes 11 columns, where `serious_dlqin2yrs` is the target column and represents person experienced 90 days
+past due delinquency or worse. The description for each column is as the table:
 
 | Column                                      | Description                                                  | Type        |
 | ------------------------------------------- | ------------------------------------------------------------ | --------------- |
@@ -74,7 +74,7 @@ INTO sqlflow_models.my_scorecard_model;
 
 The above `TRAIN` clause would output the scorecard as the following. The final total score
 is the sum of all scores based on the independent variable's value. The target score
-is `600`, meaning that a user with a score higher than 600 will grant the credit.
+is **600**, meaning that a user with a score higher than 600 will grant the credit.
 
 ``` text
  TARGET SCORE: 600
