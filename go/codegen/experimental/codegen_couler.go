@@ -49,7 +49,10 @@ type coulerFiller struct {
 // 2. generate runtime code of each statement
 // 3. generate couler program to form a workflow
 func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) {
-	var defaultDockerImage = "sqlflow/sqlflow:step"
+	defaultDockerImage := os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
+	if defaultDockerImage == "" {
+		defaultDockerImage = "sqlflow/sqlflow:step"
+	}
 	stmts, err := parseToIR(sqlProgram, session)
 	if err != nil {
 		return "", err
@@ -63,7 +66,6 @@ func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) 
 		if image == "" {
 			image = defaultDockerImage
 		}
-		// TODO(typhoonzero): find out the image that should be used by the predict statements.
 		step := &stepContext{
 			Code:      stepCode,
 			Image:     image,
@@ -122,7 +124,7 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 	return program.String(), nil
 }
 
-var coulerCodeTmpl = `
+const coulerCodeTmpl = `
 import couler.argo as couler
 import couler.pyfunc as pyfunc
 from os import path
@@ -137,14 +139,14 @@ step_envs = dict()
 
 sqlflow_secret = None
 if "{{.SecretName}}" != "":
-	# note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
-	# we should create the secret before launching sqlflowserver
-	secret_data=json.loads('''{{.SecretData}}''')
-	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
+    # note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
+    # we should create the secret before launching sqlflowserver
+    secret_data=json.loads('''{{.SecretData}}''')
+    sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
 resources = None
 if '''{{.Resources}}''' != "":
-  resources=json.loads('''{{.Resources}}''')
+    resources=json.loads('''{{.Resources}}''')
 
 couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
 
@@ -154,27 +156,30 @@ step_exit_time_wait = {{.StepExitTimeWait}}
 {{ range $ss := .StepList }}
 {{.Code}}
 
+codes = [
+    "python <<EOF",
+    pyfunc.body(step_entry_{{.StepIndex}}),
+    "EOF",
+]
+
 if step_log_file:
-	log_dir = path.dirname(step_log_file)
-	code = "\n".join([
-		"if [[ -f /opt/sqlflow/init_step_container.sh ]]; then",
-		"  bash /opt/sqlflow/init_step_container.sh",
-		"fi",
-		"mkdir -p %s" % log_dir,
-		"set -o pipefail # fail when any sub-command fail",
-		"(",
-		"python <<EOF",
-		pyfunc.body(step_entry_{{.StepIndex}}),
-		"EOF",
-		") 2>&1 | tee %s" % step_log_file,
-		"exit_code=$?",
-		"# sleep a while for finishing log collection",
-		"sleep %d" % step_exit_time_wait,
-		"exit $exit_code"
-	])
-	couler.run_script(image="{{.Image}}", command="bash", source=code, env=step_envs, resources=resources)
-else:
-	couler.run_script(image="{{.Image}}", source=step_entry_{{.StepIndex}}, env=step_envs, resources=resources)
+    log_dir = path.dirname(step_log_file)
+    codes = [
+        "if [[ -f /opt/sqlflow/init_step_container.sh ]]; then",
+        "  bash /opt/sqlflow/init_step_container.sh",
+        "fi",
+        "mkdir -p %s" % log_dir,
+        "set -o pipefail # fail when any sub-command fail",
+        "(",
+    ] + codes + [
+        ") 2>&1 | tee %s" % step_log_file,
+        "exit_code=$?",
+        "# sleep a while for finishing log collection",
+        "sleep %d" % step_exit_time_wait,
+        "exit $exit_code",
+    ]
+
+couler.run_script(image="{{.Image}}", command="bash", source="\n".join(codes), env=step_envs, resources=resources)
 {{end}}
 `
 

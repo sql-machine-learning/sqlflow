@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/bitly/go-simplejson"
-	"sqlflow.org/sqlflow/go/model"
 	"sqlflow.org/sqlflow/go/sqlfs"
 
 	"sqlflow.org/sqlflow/go/database"
@@ -65,80 +64,62 @@ func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *
 
 func generatePredictCodeAndImage(predStmt *ir.PredictStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	image := ""
-	isXGBoost := false
 	trainStmt := findModelGenerationTrainStmt(predStmt.Using, stepIndex, sqlStmts)
 	if trainStmt != nil {
 		image = trainStmt.ModelImage
-		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
 	} else {
 		meta, err := getModelMetadata(session, predStmt.Using)
 		if err != nil {
 			return "", "", err
 		}
 		image = meta.imageName()
-		isXGBoost = meta.isXGBoostModel()
 	}
 
-	if isXGBoost {
-		code, err := GeneratePredict(predStmt, stepIndex, session)
-		if err != nil {
-			return "", "", err
-		}
-		return code, image, nil
+	code, err := GeneratePredict(predStmt, stepIndex, session)
+	if err != nil {
+		return "", "", err
 	}
-	return "", "", fmt.Errorf("not implemented model type")
+	return code, image, nil
 }
 
 func generateEvaluationCodeAndImage(evalStmt *ir.EvaluateStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	image := ""
-	isXGBoost := false
 	trainStmt := findModelGenerationTrainStmt(evalStmt.ModelName, stepIndex, sqlStmts)
 	if trainStmt != nil {
 		image = trainStmt.ModelImage
-		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
 	} else {
 		meta, err := getModelMetadata(session, evalStmt.ModelName)
 		if err != nil {
 			return "", "", err
 		}
 		image = meta.imageName()
-		isXGBoost = meta.isXGBoostModel()
 	}
 
-	if isXGBoost {
-		code, err := GenerateEvaluation(evalStmt, stepIndex, session)
-		if err != nil {
-			return "", "", err
-		}
-		return code, image, nil
+	code, err := GenerateEvaluation(evalStmt, stepIndex, session)
+	if err != nil {
+		return "", "", err
 	}
-	return "", "", fmt.Errorf("not implemented model type")
+	return code, image, nil
 }
 
 func generateExplainCodeAndImage(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	image := ""
-	isXGBoost := false
 	trainStmt := findModelGenerationTrainStmt(explainStmt.ModelName, stepIndex, sqlStmts)
 	if trainStmt != nil {
 		image = trainStmt.ModelImage
-		isXGBoost = isXGBoostEstimator(trainStmt.Estimator)
 	} else {
 		meta, err := getModelMetadata(session, explainStmt.ModelName)
 		if err != nil {
 			return "", "", err
 		}
 		image = meta.imageName()
-		isXGBoost = meta.isXGBoostModel()
 	}
 
-	if isXGBoost {
-		code, err := GenerateExplain(explainStmt, stepIndex, session)
-		if err != nil {
-			return "", "", err
-		}
-		return code, image, nil
+	code, err := GenerateExplain(explainStmt, stepIndex, session)
+	if err != nil {
+		return "", "", err
 	}
-	return "", "", fmt.Errorf("not implemented model type")
+	return code, image, nil
 }
 
 // findModelGenerationTrainStmt finds the *ir.TrainStmt that generates the model named `modelName`.
@@ -163,10 +144,6 @@ type metadata simplejson.Json
 
 func (m *metadata) imageName() string {
 	return (*simplejson.Json)(m).Get("model_repo_image").MustString()
-}
-
-func (m *metadata) isXGBoostModel() bool {
-	return (*simplejson.Json)(m).Get("model_type").MustInt() == model.XGBOOST
 }
 
 func getModelMetadata(session *pb.Session, table string) (*metadata, error) {

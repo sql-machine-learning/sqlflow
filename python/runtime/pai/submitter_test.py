@@ -246,7 +246,7 @@ INTO alifin_jtest_dev.e2etest_random_forest_explain_result;"""
                      "skip non PAI tests")
 class LocalRunPAITrainTask(TestCase):
     def test_pai_train_step(self):
-        from runtime.pai.tensorflow_submitter.train import train_step
+        from runtime.step.tensorflow.train import train_step
         model_params = dict()
         model_params["hidden_units"] = [10, 20]
         model_params["n_classes"] = 3

@@ -178,17 +178,16 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}
 	defer func(cwd string) {
 		if err := os.RemoveAll(cwd); err != nil {
-			e = fmt.Errorf("encounter %v when dealwith error: %s", e, err)
+			e = fmt.Errorf("encounter an error when removing temp files: %v", err)
 		}
 	}(cwd)
+
 	var r ir.SQLFlowStmt
-
-	generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
-
 	if sql.IsExtendedSyntax() {
+		generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
 		if sql.Train {
-			loadPreTrainModel := generateTrainStmtFromModel
-			r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, loadPreTrainModel, true)
+			// generateTrainStmtFromModel refers to if a pre-trained model
+			r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel, true)
 		} else if sql.ShowTrain {
 			r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
@@ -202,7 +201,6 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 		} else if sql.Run {
 			r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
 		}
-
 	} else {
 		standardSQL := ir.NormalStmt(sql.Original)
 		r = &standardSQL

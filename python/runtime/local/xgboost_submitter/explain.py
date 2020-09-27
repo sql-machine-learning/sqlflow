@@ -219,6 +219,8 @@ def shap_explain(booster, datasource, select, summary_params, result_table,
             for row in to_write:
                 w.write(list(row))
 
+        conn.close()
+
     if summary_params.get("plot_type") == "decision":
         shap_interaction_values = tree_explainer.shap_interaction_values(
             dataset)
@@ -253,8 +255,16 @@ def shap_explain(booster, datasource, select, summary_params, result_table,
     print(img)
 
 
-def explain(datasource, select, explainer, summary_params, result_table,
-            model):
+def explain(datasource, select, explainer, model_params, result_table, model):
+    if model_params is None:
+        model_params = {}
+
+    summary_params = dict()
+    for k in model_params:
+        if k.startswith("summary."):
+            summary_key = k.replace("summary.", "")
+            summary_params[summary_key] = model_params[k]
+
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
     else:

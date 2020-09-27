@@ -174,7 +174,7 @@ class Connection(object):
         except Exception as e:  # noqa: E722
             raise e
         finally:
-            if rs:
+            if rs is not None:
                 rs.close()
 
     def get_table_schema(self, table_name):
@@ -187,7 +187,9 @@ class Connection(object):
             A list of (column_name, column_type) tuples
         """
         rs = self.query("SELECT * FROM %s limit 0" % table_name)
-        return rs.column_info()
+        column_info = rs.column_info()
+        rs.close()
+        return column_info
 
     @abstractmethod
     def close(self):

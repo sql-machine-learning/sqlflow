@@ -146,7 +146,7 @@ values(1.0,1,'a','1:1.0 2:2.0','1,2,3',0), (NULL,NULL,NULL,NULL,'1,2,3',1)"""
             "f4sparse": {
                 "feature_name": "f4sparse",
                 "delimiter": "",
-                "dtype": "string",
+                "dtype": "float32",
                 "is_sparse": True,
                 "shape": [],
                 "format": "kv"
@@ -173,7 +173,7 @@ values(1.0,1,'a','1:1.0 2:2.0','1,2,3',0), (NULL,NULL,NULL,NULL,'1,2,3',1)"""
                 self.assertEqual(1, features[1][0])
                 self.assertEqual('a', features[2][0])
                 self.assertTrue(
-                    np.array_equal(np.array([1, 2]), features[3][0]))
+                    np.array_equal(np.array([[1], [2]]), features[3][0]))
                 self.assertTrue(
                     np.array_equal(np.array([1., 2.], dtype=np.float32),
                                    features[3][1]))
@@ -219,18 +219,19 @@ class TestConnectWithDataSource(TestCase):
             "name": "kv_feature_name",
             "is_sparse": True,
             "format": "kv",
-            "dtype": "float",
+            "dtype": "float32",
             "shape": [10],
             "delimiter": ""
         }
 
         raw_val = "0:1 3:4 4:6"
         indices, values, shape = read_feature(raw_val, feature_spec,
-                                              feature_spec["name"], False)
-        self.assertTrue(np.array_equal(indices, np.array([0, 3, 4],
-                                                         dtype=int)))
-        self.assertTrue(np.array_equal(values, np.array([1, 4, 6], dtype=int)))
-        self.assertTrue(np.array_equal(shape, np.array([10], dtype='float')))
+                                              feature_spec["name"], True)
+        self.assertTrue(
+            np.array_equal(indices, np.array([0, 3, 4], dtype='int64')))
+        self.assertTrue(
+            np.array_equal(values, np.array([1, 4, 6], dtype='float32')))
+        self.assertTrue(np.array_equal(shape, np.array([10], dtype='float32')))
 
 
 class TestGetTableSchema(TestCase):

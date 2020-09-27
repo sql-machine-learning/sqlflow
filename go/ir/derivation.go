@@ -228,7 +228,26 @@ const (
 	kv  = "kv"
 )
 
-func inferStringDataFormat(strData string) string {
+func escapeDelimiter(delim string) string {
+	if delim == "|" {
+		return "\\|"
+	} else if delim == "." {
+		return "\\."
+	} else if delim == "+" {
+		return "\\+"
+	} else if delim == "?" {
+		return "\\?"
+	} else if delim == "*" {
+		return "\\*"
+	} else if delim == "$" {
+		return "\\$"
+	} else if delim == " " {
+		return "\\s"
+	}
+	return delim
+}
+
+func inferStringDataFormat(strData, delim1, delim2 string) string {
 	const realNumberRegex = "((\\+|-)?([0-9]+)(\\.[0-9]+)?)|((\\+|-)?\\.?[0-9]+)"
 
 	// string in the form of "3,5,7"
@@ -237,10 +256,20 @@ func inferStringDataFormat(strData string) string {
 		return csv
 	}
 
-	// string in the form of "0:3.2 5:-0.5 7:9"
+	// string in the form of "0:3.2 5:-0.5 7:9", default libsvm kv format have
+	// delimi1==" ", delim2==":"
 	keyValueRegex := regexp.MustCompile(fmt.Sprintf("^([0-9]+:(%s)\\s*)+$", realNumberRegex))
 	if keyValueRegex.MatchString(strData) {
 		return kv
+	}
+	if delim1 != "" && delim2 != "" {
+		delim1 = escapeDelimiter(delim1)
+		delim2 = escapeDelimiter(delim2)
+		// string in the form of "k1:v1,k2:v2,k3:v3", where delim1==",", delim2==":"
+		keyValueRegex = regexp.MustCompile(fmt.Sprintf("^((\\w|\\d)+(%s)?(%s)?(%s)?)+$", delim2, realNumberRegex, delim1))
+		if keyValueRegex.MatchString(strData) {
+			return kv
+		}
 	}
 	return ""
 }
@@ -289,7 +318,7 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 
 			// Infer feature column type when rowCount == 0
 			if rowCount == 0 {
-				fieldDescMap[fld].Format = inferStringDataFormat(*cellData)
+				fieldDescMap[fld].Format = inferStringDataFormat(*cellData, fieldDescMap[fld].Delimiter, fieldDescMap[fld].DelimiterKV)
 			}
 
 			switch fieldDescMap[fld].Format {
@@ -303,20 +332,24 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 					return fmt.Errorf(`should use "COLUMN SPARSE(%s)" for the key-value format data`, fld)
 				}
 
-				// TODO(sneaxiy): should we support int?
-				fieldDescMap[fld].DType = Float
-				// Only infer the dense shape when the original size is 1
-				if size, ok := originalSizes[fld]; !ok || size == 1 {
-					if rowCount == 0 {
-						fieldDescMap[fld].Shape = []int{1}
-					}
+				// fill FieldDesc for libsvm kv, general kv cell used for weighted
+				// features need to set all attributes for SPARSE FieldDesc.
+				if fieldDescMap[fld].DelimiterKV == "" {
+					// TODO(sneaxiy): should we support int?
+					fieldDescMap[fld].DType = Float
+					// Only infer the dense shape when the original size is 1
+					if size, ok := originalSizes[fld]; !ok || size == 1 {
+						if rowCount == 0 {
+							fieldDescMap[fld].Shape = []int{1}
+						}
 
-					curMaxIndex, err := getMaxIndexOfKeyValueData(*cellData)
-					if err != nil {
-						return err
-					}
-					if curMaxIndex+1 > fieldDescMap[fld].Shape[0] {
-						fieldDescMap[fld].Shape[0] = curMaxIndex + 1
+						curMaxIndex, err := getMaxIndexOfKeyValueData(*cellData)
+						if err != nil {
+							return err
+						}
+						if curMaxIndex+1 > fieldDescMap[fld].Shape[0] {
+							fieldDescMap[fld].Shape[0] = curMaxIndex + 1
+						}
 					}
 				}
 			default:

@@ -82,17 +82,25 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
-	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
-	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
-	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
-	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
-	// test experimental workflow generation
+	// TODO(sneaxiy): move these 2 test cases inside the following for
+	// loop after refactoring TO RUN workflow code generation.
+	t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
+	t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
+
+	// test experimental workflow code generation when i == 0
+	// test old workflow code generation when i == 1
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
-	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
-	t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
-	t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
-	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+	for i := 0; i < 2; i++ {
+		t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
+		t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+		t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+		t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
+		t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+		t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+		t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
+		t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
+		os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+	}
 }
 
 func CaseWorkflowStepErrorMessage(t *testing.T) {
@@ -124,7 +132,7 @@ INTO %s;
 	}
 	e := checkWorkflow(ctx, cli, stream)
 	a.Error(e)
-	a.Contains(e.Error(), "runSQLProgram error: unsupported attribute model.no_exists_param")
+	a.Contains(e.Error(), "unsupported attribute model.no_exists_param")
 }
 
 func CaseWorkflowTrainAndPredictDNN(t *testing.T) {
@@ -289,30 +297,29 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	a.NoError(checkWorkflow(ctx, cli, stream))
 }
 
-func CaseWorkflowRunBinary(t *testing.T) {
-	a := assert.New(t)
+func caseWorkflowRunBinary(t *testing.T) {
 	runSQL := fmt.Sprintf(`
-	SELECT * FROM %s
-	TO RUN sqlflow/sqlflow:step
-	CMD "echo", "Hello World"
+SELECT * FROM %s
+TO RUN sqlflow/sqlflow:step
+CMD "echo", "Hello World";
 	`, caseTrainTable)
 
-	conn, err := createRPCConn()
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-	defer conn.Close()
+	runSQLProgramAndCheck(t, runSQL)
+}
 
-	cli := pb.NewSQLFlowClient(conn)
-	// wait 1h for the workflow execution since it may take time to allocate enough nodes.
-	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
-	defer cancel()
+func caseWorkflowRunPythonScript(t *testing.T) {
+	runSQL := fmt.Sprintf(`
+SELECT * FROM %s
+TO RUN sqlflow/runnable:v0.0.1
+CMD "binning.py",
+	"--dbname=%s",
+	"--columns=sepal_length,sepal_width",
+	"--bin_method=bucket,log_bucket",
+	"--bin_num=10,5"
+INTO train_binning_result;
+	`, caseTrainTable, caseDB)
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: runSQL, Session: &pb.Session{DbConnStr: testDatasource}})
-	if err != nil {
-		a.Fail("Create gRPC client error: %v", err)
-	}
-	a.NoError(checkWorkflow(ctx, cli, stream))
+	runSQLProgramAndCheck(t, runSQL)
 }
 
 func CaseBackticksInSQL(t *testing.T) {
@@ -434,7 +441,8 @@ SHOW TRAIN %[3]s;
 SELECT * FROM %[2]s
 TO EXPLAIN %[3]s
 WITH
-	summary.plot_type = bar
+	summary.plot_type = bar,
+	label_col = class
 INTO %[1]s.explain_result_table;
 
 SELECT * FROM %[1]s.explain_result_table;
@@ -442,7 +450,8 @@ SELECT * FROM %[1]s.explain_result_table;
 SELECT * FROM %[2]s
 TO EXPLAIN %[3]s
 WITH
-	summary.plot_type = bar
+	summary.plot_type = bar,
+	label_col = class
 USING XGBoostExplainer
 INTO %[1]s.explain_result_table;
 
@@ -471,7 +480,26 @@ LABEL class
 INTO %[2]s;
 `
 
+	sqlProgram := `
+SELECT * FROM %[2]s
+TO PREDICT %[1]s.test_result_table.class
+USING %[3]s;
+
+SELECT * FROM %[2]s
+TO EVALUATE %[3]s
+WITH validation.metrics="Accuracy"
+LABEL class
+INTO %[1]s.evaluate_result_table;
+
+SELECT * FROM %[2]s
+TO EXPLAIN %[3]s
+WITH label_col=class
+INTO %[1]s.explain_result_table;
+`
+
 	sql1 := fmt.Sprintf(extraTrainSQLProgram, caseTrainTable, caseInto)
+	sql2 := fmt.Sprintf(sqlProgram, caseDB, caseTestTable, caseInto)
+	runSQLProgramAndCheck(t, sql1+sql2)
 	runSQLProgramAndCheck(t, sql1)
 }
 

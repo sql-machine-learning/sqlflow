@@ -34,7 +34,7 @@ type explainStepFiller struct {
 	Submitter      string
 }
 
-// GenerateExplain generates the XGBoost explain code
+// GenerateExplain generates the explain code
 func GenerateExplain(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Session) (string, error) {
 	ds, err := GeneratePyDbConnStr(session)
 	if err != nil {
@@ -49,8 +49,8 @@ func GenerateExplain(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Ses
 	filler := &explainStepFiller{
 		StepIndex:      stepIndex,
 		DataSource:     ds,
-		OriginalSQL:    replaceNewLineRuneAndTrimSpace(explainStmt.OriginalSQL),
-		Select:         replaceNewLineRuneAndTrimSpace(explainStmt.Select),
+		OriginalSQL:    escapeSpecialRunesAndTrimSpace(explainStmt.OriginalSQL),
+		Select:         escapeSpecialRunesAndTrimSpace(explainStmt.Select),
 		Explainer:      explainStmt.Explainer,
 		AttributesJSON: string(attrJSON),
 		ResultTable:    explainStmt.Into,

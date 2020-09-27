@@ -35,7 +35,7 @@ func TestExperimentalXGBCodegen(t *testing.T) {
 	if err != nil {
 		t.Errorf("error %s", err)
 	}
-	a.True(strings.Contains(coulerCode, `couler.run_script(image="sqlflow/sqlflow:step", source=step_entry_0, env=step_envs, resources=resources)`))
+	a.True(strings.Contains(coulerCode, `couler.run_script(image="sqlflow/sqlflow:step", command="bash", source="\n".join(codes), env=step_envs, resources=resources)`))
 
 	// test with COLUMN clause
 	sql = "SELECT * FROM iris.train TO TRAIN xgboost.gbtree WITH objective=\"multi:softmax\",num_class=3 COLUMN petal_length LABEL class INTO sqlflow_models.xgb_classification;"

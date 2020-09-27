@@ -24,12 +24,23 @@ def parse_sparse_feature(features, label, feature_column_names, feature_metas):
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name]["is_sparse"]:
-            # NOTE(sneaxiy): be careful that not all feature column APIs accept
-            # SparseTensor.
-            features_dict[name] = tf.SparseTensor(*col)
+        if feature_metas[name].get("delimiter_kv", "") != "":
+            # kv list that should be parsed to two features.
+            if feature_metas[name]["is_sparse"]:
+                features_dict[name] = tf.SparseTensor(
+                    col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
+                features_dict["_".join([name,
+                                        "weight"])] = tf.SparseTensor(*col)
+            else:
+                raise ValueError(
+                    "not supported DENSE column with key:value list format.")
         else:
-            features_dict[name] = col
+            if feature_metas[name]["is_sparse"]:
+                # NOTE(sneaxiy): be careful that not all feature column APIs
+                # accept SparseTensor.
+                features_dict[name] = tf.SparseTensor(*col)
+            else:
+                features_dict[name] = col
     return features_dict, label
 
 
@@ -38,10 +49,21 @@ def parse_sparse_feature_predict(features, feature_column_names,
     features_dict = dict()
     for idx, col in enumerate(features):
         name = feature_column_names[idx]
-        if feature_metas[name]["is_sparse"]:
-            features_dict[name] = tf.SparseTensor(*col)
+        if feature_metas[name].get("delimiter_kv", "") != "":
+            # kv list that should be parsed to two features.
+            if feature_metas[name]["is_sparse"]:
+                features_dict[name] = tf.SparseTensor(
+                    col[0], tf.ones_like(tf.reshape(col[0], [-1])), col[2])
+                features_dict["_".join([name,
+                                        "weight"])] = tf.SparseTensor(*col)
+            else:
+                raise ValueError(
+                    "not supported DENSE column with key:value list format.")
         else:
-            features_dict[name] = col
+            if feature_metas[name]["is_sparse"]:
+                features_dict[name] = tf.SparseTensor(*col)
+            else:
+                features_dict[name] = col
     return features_dict
 
 
@@ -99,8 +121,15 @@ def input_fn(select,
     for name in feature_column_names:
         # NOTE: vector columns like 23,21,3,2,0,0 should use shape None
         if feature_metas[name]["is_sparse"]:
-            feature_types.append((tf.int64, tf.int32, tf.int64))
-            shapes.append((None, None, None))
+            if feature_metas[name]["delimiter_kv"]:
+                # extract two features from generator data.
+                feature_types.append(
+                    (get_dtype(feature_metas[name]["dtype"]),
+                     get_dtype(feature_metas[name]["dtype_weight"]), tf.int64))
+                shapes.append((None, None, None))
+            else:
+                feature_types.append((tf.int64, tf.int32, tf.int64))
+                shapes.append((None, None, None))
         else:
             feature_types.append(get_dtype(feature_metas[name]["dtype"]))
             shapes.append(feature_metas[name]["shape"])
@@ -143,12 +172,33 @@ def read_feature_as_tensor(raw_val, feature_spec, feature_name):
     if feature_spec["delimiter"] == "":
         return [raw_val]
     if feature_spec["is_sparse"]:
-        indices = tf.strings.to_number(
-            tf.strings.split(raw_val,
-                             feature_spec["delimiter"],
-                             result_type='RaggedTensor'), tf.int64)
-        values = tf.fill(tf.shape(indices), 1)
-        indices = tf.expand_dims(indices, 1)
+        if feature_spec["delimiter_kv"] != "":
+            kvlist = tf.strings.split(raw_val,
+                                      feature_spec["delimiter"],
+                                      result_type='RaggedTensor')
+            kvsplited = tf.strings.split(
+                kvlist,
+                feature_spec["delimiter_kv"],
+                result_type='RaggedTensor').to_tensor()
+            # slice key tensor and value tensor
+            indices = tf.reshape(tf.slice(kvsplited, [0, 0], [-1, 1]), [-1])
+            indices = tf.expand_dims(
+                tf.strings.to_number(indices, feature_spec["dtype"]), 1)
+            # deal with empty strings or strings like "unkown", which
+            # tf.shape(kvsplited)[1] != 2
+            values = tf.cond(
+                tf.equal(tf.shape(kvsplited)[1],
+                         2), lambda: tf.strings.to_number(
+                             tf.reshape(tf.slice(kvsplited, [0, 1], [-1, 1]),
+                                        [-1]), feature_spec["dtype_weight"]),
+                lambda: tf.ones_like(indices, dtype=tf.float32))
+        else:
+            indices = tf.strings.to_number(
+                tf.strings.split(raw_val,
+                                 feature_spec["delimiter"],
+                                 result_type='RaggedTensor'), tf.int64)
+            values = tf.fill(tf.shape(indices), 1)
+            indices = tf.expand_dims(indices, 1)
         dense_shape = np.array(feature_spec["shape"], dtype=np.int64)
         return (indices, values, dense_shape)
     else:  # Dense string vector
@@ -164,7 +214,18 @@ def parse_pai_dataset(feature_column_names, label_meta, feature_metas, *row):
     for i, name in enumerate(feature_column_names):
         spec = feature_metas[name]
         f = read_feature_as_tensor(row[i], spec, name)
-        features[name] = tf.SparseTensor(*f) if spec["is_sparse"] else f
+        if spec["is_sparse"]:
+            if spec["delimiter_kv"] != "":
+                # key-value format column, extract key and weight feature
+                # as sparse tensors.
+                features[name] = tf.SparseTensor(
+                    f[0], tf.ones_like(tf.reshape(f[0], [-1])), f[2])
+                features["_".join([name, "weight"
+                                   ])] = tf.SparseTensor(f[0], f[1], f[2])
+            else:
+                features[name] = tf.SparseTensor(*f)
+        else:
+            features[name] = f
     label = row[-1] if label_meta["feature_name"] else -1
     if label_meta and label_meta["delimiter"] != "":
         # FIXME(typhoonzero): the label in the yielded row may not be the last

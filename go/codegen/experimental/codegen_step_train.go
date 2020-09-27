@@ -42,9 +42,11 @@ type trainStepFiller struct {
 	Submitter            string
 }
 
-func replaceNewLineRuneAndTrimSpace(s string) string {
-	s = strings.ReplaceAll(s, "\r", " ")
-	s = strings.ReplaceAll(s, "\n", " ")
+func escapeSpecialRunesAndTrimSpace(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, "\r", "\\r")
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "`", "\\`")
 	return strings.TrimSpace(s)
 }
 
@@ -84,12 +86,12 @@ func GenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) 
 
 	filler := trainStepFiller{
 		StepIndex:            stepIndex,
-		OriginalSQL:          replaceNewLineRuneAndTrimSpace(trainStmt.OriginalSQL),
+		OriginalSQL:          escapeSpecialRunesAndTrimSpace(trainStmt.OriginalSQL),
 		ModelImage:           trainStmt.ModelImage,
 		Estimator:            trainStmt.Estimator,
 		DataSource:           dbConnStr,
-		Select:               replaceNewLineRuneAndTrimSpace(trainStmt.Select),
-		ValidationSelect:     replaceNewLineRuneAndTrimSpace(trainStmt.ValidationSelect),
+		Select:               escapeSpecialRunesAndTrimSpace(trainStmt.Select),
+		ValidationSelect:     escapeSpecialRunesAndTrimSpace(trainStmt.ValidationSelect),
 		ModelParamsJSON:      string(mp),
 		TrainParamsJSON:      string(tp),
 		ValidationParamsJSON: string(vp),

@@ -100,7 +100,7 @@ else
             # Refer to https://github.com/codecov/example-go for merging coverage
             # from multiple runs of tests.
             gotest -p 1 -covermode=count -coverprofile=profile.out -v \
-                -run TestEnd2EndWorkflow -timeout 1200s ./go/cmd/...
+                -run TestEnd2EndWorkflow -timeout 2400s ./go/cmd/...
             if [ -f profile.out ]; then
                 cat profile.out > coverage.txt
                 rm profile.out

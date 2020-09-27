@@ -35,7 +35,7 @@ func generateOptimizeCode(stmt *ir.OptimizeStmt, stepIndex int, session *pb.Sess
 	filler := &optimizeFiller{
 		StepIndex:       stepIndex,
 		DataSource:      ds,
-		Select:          replaceNewLineRuneAndTrimSpace(stmt.Select),
+		Select:          escapeSpecialRunesAndTrimSpace(stmt.Select),
 		UserID:          session.UserId,
 		Variables:       ir.AttrToPythonValue(stmt.Variables),
 		ResultValueName: stmt.ResultValueName,

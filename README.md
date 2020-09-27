@@ -1,6 +1,6 @@
 # SQLFlow
 
-![CI](https://github.com/sql-machine-learning/sqlflow/workflows/CI/badge.svg)
+[![CI](https://github.com/sql-machine-learning/sqlflow/workflows/CI/badge.svg)](https://github.com/sql-machine-learning/sqlflow/actions)
 [![codecov](https://codecov.io/gh/sql-machine-learning/sqlflow/branch/develop/graph/badge.svg)](https://codecov.io/gh/sql-machine-learning/sqlflow)
 [![GoDoc](https://godoc.org/github.com/sql-machine-learning/sqlflow?status.svg)](https://godoc.org/github.com/sql-machine-learning/sqlflow) 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE) 

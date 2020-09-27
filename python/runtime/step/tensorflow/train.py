@@ -45,6 +45,15 @@ def train_step(original_sql,
                load=None,
                pai_table=None,
                pai_val_table=None):
+    if model_params is None:
+        model_params = {}
+
+    if train_params is None:
+        train_params = {}
+
+    if validation_params is None:
+        validation_params = {}
+
     conn = db.connect_with_data_source(datasource)
     fc_map_ir, fc_label_ir = infer_feature_columns(conn,
                                                    select,
@@ -141,18 +150,19 @@ def train_step(original_sql,
     # FIXME(typhoonzero): avoid save model_meta twice, keras_train_and_save,
     # estimator_train_and_save also dumps model_meta to a file under cwd.
     # should only keep the model.save_to_db part.
+    save_dir = "model_save"
     if not is_estimator:
         if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
             model_params_constructed["field_metas"] = feature_metas
-        keras_train_and_save(estimator, model_params_constructed, save, FLAGS,
-                             train_dataset_fn, val_dataset_fn, label_meta,
-                             epoch, verbose, validation_metrics,
+        keras_train_and_save(estimator, model_params_constructed, save_dir,
+                             FLAGS, train_dataset_fn, val_dataset_fn,
+                             label_meta, epoch, verbose, validation_metrics,
                              validation_steps, load, model_meta, is_pai)
     else:
         estimator_train_and_save(
-            estimator, model_params_constructed, save, FLAGS, train_dataset_fn,
-            val_dataset_fn, log_every_n_iter, max_steps,
+            estimator, model_params_constructed, save_dir, FLAGS,
+            train_dataset_fn, val_dataset_fn, log_every_n_iter, max_steps,
             validation_start_delay_secs, validation_throttle_secs,
             save_checkpoints_steps, validation_metrics, load, model_meta)
 
@@ -171,3 +181,4 @@ def train_step(original_sql,
             print("Model saved to db: %s" % save)
 
     print("Done training")
+    conn.close()
