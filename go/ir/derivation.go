@@ -320,7 +320,6 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 			if rowCount == 0 {
 				fieldDescMap[fld].Format = inferStringDataFormat(*cellData, fieldDescMap[fld].Delimiter, fieldDescMap[fld].DelimiterKV)
 			}
-
 			switch fieldDescMap[fld].Format {
 			case csv:
 				err := fillCSVFieldDesc(*cellData, fieldDescMap, fld)
@@ -535,7 +534,6 @@ func updateFeatureColumn(fcList []FeatureColumn, fmMap FieldDescMap) error {
 				if !ok {
 					return fmt.Errorf("column not found or inferred: %s", c.Name)
 				}
-				// FIXME(typhoonzero): when to use sequence_category_id_column?
 				// if column fieldDesc is SPARSE, the sparse shape should be in cs.Shape[0]
 				bucketSize := int64(cs.Shape[0])
 				// if the column is inferred as DENSE, use inferred MaxID as the
@@ -546,9 +544,21 @@ func updateFeatureColumn(fcList []FeatureColumn, fmMap FieldDescMap) error {
 					}
 					bucketSize = cs.MaxID + 1
 				}
-				c.CategoryColumn = &CategoryIDColumn{
-					FieldDesc:  cs,
-					BucketSize: bucketSize,
+
+				if cs.Format == "kv" && cs.DelimiterKV != "" {
+					c.CategoryColumn = &WeightedCategoryColumn{
+						CategoryColumn: &CategoryIDColumn{
+							FieldDesc:  cs,
+							BucketSize: bucketSize,
+						},
+						Name: cs.Name,
+					}
+				} else {
+					// FIXME(typhoonzero): when to use sequence_category_id_column?
+					c.CategoryColumn = &CategoryIDColumn{
+						FieldDesc:  cs,
+						BucketSize: bucketSize,
+					}
 				}
 			}
 		case *IndicatorColumn:
@@ -588,16 +598,32 @@ func newFeatureColumn(fcTargetMap map[string][]FeatureColumn, fmMap FieldDescMap
 				FieldDesc: cs,
 			})
 	} else {
-		fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
-			&EmbeddingColumn{
-				CategoryColumn: &CategoryIDColumn{
-					FieldDesc:  cs,
-					BucketSize: int64(len(cs.Vocabulary)),
-				},
-				// NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
-				Dimension: 128,
-				Combiner:  "sum",
-			})
+		if cs.Format == "kv" && cs.DelimiterKV != "" {
+			// generate embedding(weighted_categorical_column()) for key value columns.
+			fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
+				&EmbeddingColumn{
+					CategoryColumn: &WeightedCategoryColumn{
+						CategoryColumn: &CategoryIDColumn{
+							FieldDesc:  cs,
+							BucketSize: int64(len(cs.Vocabulary)),
+						},
+						Name: fieldName},
+					// NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
+					Dimension: 128,
+					Combiner:  "sum",
+				})
+		} else {
+			fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
+				&EmbeddingColumn{
+					CategoryColumn: &CategoryIDColumn{
+						FieldDesc:  cs,
+						BucketSize: int64(len(cs.Vocabulary)),
+					},
+					// NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
+					Dimension: 128,
+					Combiner:  "sum",
+				})
+		}
 	}
 	return nil
 }
