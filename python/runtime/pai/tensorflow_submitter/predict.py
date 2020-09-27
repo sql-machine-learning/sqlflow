@@ -124,10 +124,8 @@ def _predict(datasource,
     else:
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
-        estimator_predict(estimator, model_params, save, result_table,
-                          feature_column_names, feature_column_names_map,
-                          feature_columns, feature_metas, train_label_name,
-                          result_col_name, conn, predict_generator,
-                          selected_cols)
+        estimator_predict(result_table, feature_column_names, feature_metas,
+                          train_label_name, result_col_name, conn,
+                          predict_generator, selected_cols)
 
     print("Done predicting. Predict table : %s" % result_table)
