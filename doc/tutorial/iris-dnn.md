@@ -1,5 +1,9 @@
 # Classify Iris Dataset Using DNNClassifer
 
+<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/iris-dnn.ipynb&fileName=sqlflow_tutorial_iris_dnn.ipynb">
+  <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
+</a>
+
 This tutorial demonstrates how to
 - Train a DNNClassifer on the [Iris flower dataset](https://en.wikipedia.org/wiki/Iris_flower_data_set).
 - Use the trained DNNClassifer to predict the three species of Iris(Iris setosa, Iris virginica and Iris versicolor).

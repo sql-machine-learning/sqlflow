@@ -1,5 +1,9 @@
 # Use SQLFlow to Solve Optimization Problems
 
+<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/optimization_guide.ipynb&fileName=sqlflow_tutorial_optimization.ipynb">
+  <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
+</a>
+
 This document explains how to use the SQLFlow to solve the optimization problems.
 
 ## The Optimization SQL Syntax

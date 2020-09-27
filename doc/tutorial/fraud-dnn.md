@@ -1,5 +1,9 @@
 # The Credit Card Fraud Detection Example
 
+<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/fraud-dnn.ipynb&fileName=sqlflow_tutorial_fraud_dnn.ipynb">
+  <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
+</a>
+
 The sample data already loaded in MySQL comes from [Kaggle](https://www.kaggle.com/mlg-ulb/creditcardfraud). To train the model using the full dataset, you need to download the dataset and load the dataset into MySQL manually.
 
 You can verify the sample data content in MySQL using:

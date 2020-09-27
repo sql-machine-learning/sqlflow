@@ -1,5 +1,9 @@
 # XGBoost on SQLFlow Tutorial
 
+<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/housing-xgboost.ipynb&fileName=sqlflow_tutorial_housing_xgboost.ipynb">
+  <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
+</a>
+
 This is a tutorial on train/predict XGBoost model in SQLFLow, you can find more SQLFlow usage from the [Language Guide](../language_guide.md), in this tutorial you will learn how to:
 - Train a XGBoost model to fit the boston housing dataset; and
 - Predict the housing price using the trained model;
