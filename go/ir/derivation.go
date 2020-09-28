@@ -544,21 +544,10 @@ func updateFeatureColumn(fcList []FeatureColumn, fmMap FieldDescMap) error {
 					}
 					bucketSize = cs.MaxID + 1
 				}
-
-				if cs.Format == "kv" && cs.DelimiterKV != "" {
-					c.CategoryColumn = &WeightedCategoryColumn{
-						CategoryColumn: &CategoryIDColumn{
-							FieldDesc:  cs,
-							BucketSize: bucketSize,
-						},
-						Name: cs.Name,
-					}
-				} else {
-					// FIXME(typhoonzero): when to use sequence_category_id_column?
-					c.CategoryColumn = &CategoryIDColumn{
-						FieldDesc:  cs,
-						BucketSize: bucketSize,
-					}
+				// FIXME(typhoonzero): when to use sequence_category_id_column?
+				c.CategoryColumn = &CategoryIDColumn{
+					FieldDesc:  cs,
+					BucketSize: bucketSize,
 				}
 			}
 		case *IndicatorColumn:
@@ -598,32 +587,16 @@ func newFeatureColumn(fcTargetMap map[string][]FeatureColumn, fmMap FieldDescMap
 				FieldDesc: cs,
 			})
 	} else {
-		if cs.Format == "kv" && cs.DelimiterKV != "" {
-			// generate embedding(weighted_categorical_column()) for key value columns.
-			fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
-				&EmbeddingColumn{
-					CategoryColumn: &WeightedCategoryColumn{
-						CategoryColumn: &CategoryIDColumn{
-							FieldDesc:  cs,
-							BucketSize: int64(len(cs.Vocabulary)),
-						},
-						Name: fieldName},
-					// NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
-					Dimension: 128,
-					Combiner:  "sum",
-				})
-		} else {
-			fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
-				&EmbeddingColumn{
-					CategoryColumn: &CategoryIDColumn{
-						FieldDesc:  cs,
-						BucketSize: int64(len(cs.Vocabulary)),
-					},
-					// NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
-					Dimension: 128,
-					Combiner:  "sum",
-				})
-		}
+		fcTargetMap[fieldName] = append(fcTargetMap[fieldName],
+			&EmbeddingColumn{
+				CategoryColumn: &CategoryIDColumn{
+					FieldDesc:  cs,
+					BucketSize: int64(len(cs.Vocabulary)),
+				},
+				// NOTE(typhoonzero): a default embedding size of 128 is enough for most cases.
+				Dimension: 128,
+				Combiner:  "sum",
+			})
 	}
 	return nil
 }
