@@ -3,10 +3,14 @@
 Data analysis can help us understand what is in the dataset and the
 characteristics of the data.
 
-We can use TO RUN statement to execute the runnable which is released
-in the form of Docker image. SQLFlow provides some premade runnables
-in sqlflow/runnable including the binning runnable. We can invoke it
-using the following statement.
+Data binning is a common used data analysis way. It can group continous values
+into a small number of discretized bins. We will get the distribution of the
+data from the binning result.
+
+We can use SQLFlow TO RUN statement to execute the runnable which is released in the
+form of Docker image. SQLFlow provides some premade runnables in
+sqlflow/runnable including the binning runnable. Please use the following SQL
+statement to do the data binning.
 
 ```SQL
 SELECT * FROM creditcard.creditcard
