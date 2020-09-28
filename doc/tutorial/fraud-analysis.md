@@ -24,3 +24,11 @@ CMD "two_dim_binning.py",
     "--bin_num=10,5"
 INTO creditcard_stats_result,creditcard_two_dim_prob,creditcard_two_dim_binning_cumsum_prob;
 ```
+
+```SQL
+SELECT * FROM creditcard.creditcard_two_dim_prob LIMIT 10;
+```
+
+```SQL
+SELECT * FROM creditcard.creditcard_two_dim_binning_cumsum_prob LIMIT 10;
+```
