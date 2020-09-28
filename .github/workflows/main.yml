@@ -143,6 +143,7 @@ jobs:
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_client.sh
+        bash scripts/travis/deploy_tutorials.sh
   # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
   macos-client:
     runs-on: macos-latest
