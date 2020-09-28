@@ -167,7 +167,7 @@ type pythonExecutor struct {
 	Session  *pb.Session
 }
 
-func useExperimentalExecutor(exec Executor) (bool, error) {
+func useExperimentalExecutor(exec Executor, stmt ir.SQLFlowStmt) (bool, error) {
 	if pyExec, ok := exec.(*pythonExecutor); ok {
 		dialect, _, err := database.ParseURL(pyExec.Session.DbConnStr)
 		if err != nil {
@@ -178,17 +178,28 @@ func useExperimentalExecutor(exec Executor) (bool, error) {
 		if dialect == "alisa" {
 			return false, nil
 		}
+		if _, ok := stmt.(*ir.RunStmt); ok {
+			return false, nil
+		}
 		return true, nil
 	}
 	return false, nil
 }
 
-func (s *pythonExecutor) experimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) error {
+func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
+	ok, err := useExperimentalExecutor(s, sqlStmt)
+	if err != nil {
+		return true, err
+	}
+	if !ok {
+		return false, nil
+	}
+
 	// NOTE(sneaxiy): should use the image here
 	stepCode, _, err := experimental.GenerateStepCodeAndImage(sqlStmt, 0, s.Session, nil)
 	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
 	if err != nil {
-		return err
+		return true, err
 	}
 
 	const bashCodeTmpl = `python <<EOF
@@ -200,9 +211,9 @@ EOF
 	cmd.Dir = s.Cwd
 	errorLog, err := s.runCommand(cmd, nil, logStderr)
 	if err != nil {
-		return fmt.Errorf("%v\n%s", err, errorLog)
+		return true, fmt.Errorf("%v\n%s", err, errorLog)
 	}
-	return nil
+	return true, nil
 }
 
 func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
@@ -264,12 +275,8 @@ func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, lo
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
-	ok, err := useExperimentalExecutor(s)
-	if err != nil {
+	if ok, err := s.tryExperimentalExecute(stmt, false); ok {
 		return err
-	}
-	if ok {
-		return s.experimentalExecute(stmt, false)
 	}
 	return runNormalStmt(s.Writer, string(*stmt), s.Db)
 }
