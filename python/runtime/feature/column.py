@@ -357,6 +357,51 @@ class CrossColumn(CategoryColumn):
         return CrossColumn(keys, hash_bucket_size)
 
 
+class WeightedCategoryColumn(CategoryColumn):
+    def __init__(self, category_column=None, name=""):
+        if category_column is not None:
+            assert isinstance(category_column, CategoryColumn)
+        self.category_column = category_column
+        self.name = name
+
+    def get_field_desc(self):
+        return self.category_column.get_field_desc()
+
+    def new_feature_column_from(self, field_desc):
+        if self.category_column is not None:
+            category_column = self.category_column.new_feature_column_from(
+                field_desc)
+            assert isinstance(category_column, CategoryColumn)
+        else:
+            category_column = None
+
+        return WeightedCategoryColumn(category_column=category_column,
+                                      name=self.name)
+
+    def num_class(self):
+        return self.category_column.num_class()
+
+    def _to_dict(self):
+        category_column = None
+        if self.category_column is not None:
+            category_column = FeatureColumn.to_dict(self.category_column)
+
+        return {
+            "category_column": category_column,
+            "name": self.name,
+        }
+
+    @classmethod
+    def _from_dict(cls, d):
+        category_column = d["category_column"]
+        if category_column is not None:
+            category_column = FeatureColumn.from_dict_or_feature_column(
+                category_column)
+
+        return WeightedCategoryColumn(category_column=category_column,
+                                      name=d["name"])
+
+
 class EmbeddingColumn(FeatureColumn):
     """
     EmbeddingColumn represents an embedding feature column.
@@ -516,6 +561,7 @@ SUPPORTED_CONCRETE_FEATURE_COLUMNS = [
     'CrossColumn',
     'EmbeddingColumn',
     'IndicatorColumn',
+    'WeightedCategoryColumn',
 ]
 
 
