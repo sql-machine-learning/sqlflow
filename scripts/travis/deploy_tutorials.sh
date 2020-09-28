@@ -15,6 +15,9 @@
 
 set -e
 
+# This script push our tutorials to QiNiu Cloud, these tutorials
+# can then be used by DSW (https://dsw-dev.data.aliyun.com/).
+
 # For more informaiton about deployment with Travis CI, please refer
 # to the file header of deploy_docker.sh
 
