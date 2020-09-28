@@ -49,7 +49,7 @@ export PATH=$GOPATH/bin:$PATH
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."
 cd "$TRAVIS_BUILD_DIR"
-mkdir -p build
+mkdir -p build/tutorial
 for file in doc/tutorial/*.md; do
     base=$(basename -- "$file")
     output=build/tutorial/${base%.*}."ipynb"
