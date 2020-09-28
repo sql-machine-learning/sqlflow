@@ -53,6 +53,9 @@ class ResultSet(six.Iterator):
         """
         pass
 
+    def raw_column_info(self):
+        return self.column_info()
+
     @abstractmethod
     def column_info(self):
         """Get the result column meta, type in the meta maybe DB-specific

@@ -21,7 +21,7 @@ class ProtobufWriter(object):
         head = sqlflow_pb2.Head()
         if header is None:
             assert isinstance(result_set, ResultSet)
-            column_info = result_set.column_info()
+            column_info = result_set.raw_column_info()
             for field_name, _ in column_info:
                 head.column_names.append(field_name)
         else:
@@ -43,7 +43,7 @@ class ProtobufWriter(object):
         if isinstance(value, bool):
             v = wrappers_pb2.BoolValue(value=value)
         elif isinstance(value, int):
-            v = wrappers_pb2.Int32Value(value=value)
+            v = wrappers_pb2.Int64Value(value=value)
         elif isinstance(value, float):
             v = wrappers_pb2.FloatValue(value=value)
         elif isinstance(value, str):
