@@ -24,7 +24,7 @@ from runtime.tensorflow.train_estimator import estimator_train_and_save
 from runtime.tensorflow.train_keras import keras_train_and_save
 
 # Disable TensorFlow INFO and WARNING logs
-# os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 
 def train(datasource,
