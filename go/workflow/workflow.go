@@ -56,6 +56,10 @@ func New(backend string) (Codegen, Workflow, error) {
 
 // Run compiles a SQL program to IRs and submits workflow YAML to Kubernetes
 func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
+	if backend != "couler" {
+		return "", fmt.Errorf("only couler backend is supported")
+	}
+
 	driverName, _, e := database.ParseURL(session.DbConnStr)
 	if e != nil {
 		return "", e
@@ -68,7 +72,8 @@ func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Log
 	var yaml string
 	var wf Workflow
 
-	if backend == "couler" {
+	useExperimentalCodegen := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+	if !useExperimentalCodegen {
 		stmts, e := parser.Parse(driverName, sqlProgram)
 		if e != nil {
 			return "", e
@@ -94,7 +99,7 @@ func Run(backend string, sqlProgram string, session *pb.Session, logger *log.Log
 		if e != nil {
 			return "", e
 		}
-	} else if backend == "experimental" {
+	} else {
 		// FIXME(typhoonzero): refactor this later
 		wf = &argo.Workflow{}
 		py, e := experimental.GenerateCodeCouler(sqlProgram, session)

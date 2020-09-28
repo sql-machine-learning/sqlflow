@@ -168,6 +168,10 @@ type pythonExecutor struct {
 }
 
 func useExperimentalExecutor(exec Executor) (bool, error) {
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") != "true" {
+		return false, nil
+	}
+
 	if pyExec, ok := exec.(*pythonExecutor); ok {
 		dialect, _, err := database.ParseURL(pyExec.Session.DbConnStr)
 		if err != nil {
