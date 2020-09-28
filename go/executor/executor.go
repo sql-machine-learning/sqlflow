@@ -167,12 +167,22 @@ type pythonExecutor struct {
 	Session  *pb.Session
 }
 
-func (s *pythonExecutor) experimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) error {
+func (s *pythonExecutor) experimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
+	dialect, _, err := database.ParseURL(s.Session.DbConnStr)
+	if err != nil {
+		return true, err
+	}
+
+	// TODO(sneaxiy): remove this line when PyAlisa is ready.
+	if dialect == "alisa" {
+		return false, nil
+	}
+
 	// NOTE(sneaxiy): should use the image here
 	stepCode, _, err := experimental.GenerateStepCodeAndImage(sqlStmt, 0, s.Session, nil)
 	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
 	if err != nil {
-		return err
+		return true, err
 	}
 
 	const bashCodeTmpl = `python <<EOF
@@ -184,9 +194,9 @@ EOF
 	cmd.Dir = s.Cwd
 	errorLog, err := s.runCommand(cmd, nil, logStderr)
 	if err != nil {
-		return fmt.Errorf("%v\n%s", err, errorLog)
+		return true, fmt.Errorf("%v\n%s", err, errorLog)
 	}
-	return nil
+	return true, nil
 }
 
 func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
@@ -248,7 +258,10 @@ func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, lo
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
-	return s.experimentalExecute(stmt, false)
+	if ok, err := s.experimentalExecute(stmt, false); ok {
+		return err
+	}
+	return runNormalStmt(s.Writer, string(*stmt), s.Db)
 }
 
 func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
