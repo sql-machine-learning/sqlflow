@@ -203,7 +203,7 @@ TO TRAIN LinearRegressor
 WITH 
   model.label_dimension = 1, 
   train.batch_size = 16,
-  train.epoch = 100
+  train.epoch = 10
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_regression_model;`)

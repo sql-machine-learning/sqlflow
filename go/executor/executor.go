@@ -77,7 +77,7 @@ func New(executor string) Executor {
 		executor = os.Getenv("SQLFLOW_submitter")
 	}
 	switch executor {
-	case "default":
+	case "default", "local":
 		return &pythonExecutor{}
 	case "pai":
 		return &paiExecutor{&pythonExecutor{}}
@@ -167,22 +167,28 @@ type pythonExecutor struct {
 	Session  *pb.Session
 }
 
-func (s *pythonExecutor) experimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
-	dialect, _, err := database.ParseURL(s.Session.DbConnStr)
-	if err != nil {
-		return true, err
-	}
+func useExperimentalExecutor(exec Executor) (bool, error) {
+	if pyExec, ok := exec.(*pythonExecutor); ok {
+		dialect, _, err := database.ParseURL(pyExec.Session.DbConnStr)
+		if err != nil {
+			return false, err
+		}
 
-	// TODO(sneaxiy): remove this line when PyAlisa is ready.
-	if dialect == "alisa" {
-		return false, nil
+		// TODO(sneaxiy): remove this line when PyAlisa is ready.
+		if dialect == "alisa" {
+			return false, nil
+		}
+		return true, nil
 	}
+	return false, nil
+}
 
+func (s *pythonExecutor) experimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) error {
 	// NOTE(sneaxiy): should use the image here
 	stepCode, _, err := experimental.GenerateStepCodeAndImage(sqlStmt, 0, s.Session, nil)
 	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
 	if err != nil {
-		return true, err
+		return err
 	}
 
 	const bashCodeTmpl = `python <<EOF
@@ -194,9 +200,9 @@ EOF
 	cmd.Dir = s.Cwd
 	errorLog, err := s.runCommand(cmd, nil, logStderr)
 	if err != nil {
-		return true, fmt.Errorf("%v\n%s", err, errorLog)
+		return fmt.Errorf("%v\n%s", err, errorLog)
 	}
-	return true, nil
+	return nil
 }
 
 func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
@@ -258,8 +264,12 @@ func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, lo
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
-	if ok, err := s.experimentalExecute(stmt, false); ok {
+	ok, err := useExperimentalExecutor(s)
+	if err != nil {
 		return err
+	}
+	if ok {
+		return s.experimentalExecute(stmt, false)
 	}
 	return runNormalStmt(s.Writer, string(*stmt), s.Db)
 }
