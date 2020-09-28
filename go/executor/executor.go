@@ -167,7 +167,7 @@ type pythonExecutor struct {
 	Session  *pb.Session
 }
 
-func useExperimentalExecutor(exec Executor, stmt ir.SQLFlowStmt) (bool, error) {
+func useExperimentalExecutor(exec Executor) (bool, error) {
 	if pyExec, ok := exec.(*pythonExecutor); ok {
 		dialect, _, err := database.ParseURL(pyExec.Session.DbConnStr)
 		if err != nil {
@@ -178,16 +178,13 @@ func useExperimentalExecutor(exec Executor, stmt ir.SQLFlowStmt) (bool, error) {
 		if dialect == "alisa" {
 			return false, nil
 		}
-		if _, ok := stmt.(*ir.RunStmt); ok {
-			return false, nil
-		}
 		return true, nil
 	}
 	return false, nil
 }
 
 func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
-	ok, err := useExperimentalExecutor(s, sqlStmt)
+	ok, err := useExperimentalExecutor(s)
 	if err != nil {
 		return true, err
 	}
