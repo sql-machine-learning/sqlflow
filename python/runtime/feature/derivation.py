@@ -129,7 +129,17 @@ BLANK_PATTERN = re.compile("\\s+")
 INT64_TYPE = long if six.PY2 else int  # noqa: F821
 
 
-def infer_string_data_format(str_data):
+def escape_delimiter(delimiter):
+    if delimiter in ["|", ".", "+", "?", "*", "$"]:
+        return "\\" + delimiter
+
+    if delimiter == " ":
+        return "\\s"
+
+    return delimiter
+
+
+def infer_string_data_format(str_data, delimiter="", delimiter_kv=""):
     """
     Infer the data format of the given string.
 
@@ -144,6 +154,15 @@ def infer_string_data_format(str_data):
 
     if KV_PATTERN.fullmatch(str_data):
         return DataFormat.KV
+
+    if delimiter and delimiter_kv:
+        delimiter = escape_delimiter(delimiter)
+        delimiter_kv = escape_delimiter(delimiter_kv)
+        pattern = "((\\w|\\d)+(%s)?(%s)?(%s)?)+" % (
+            delimiter_kv, REAL_NUMBER_PATTERN.pattern, delimiter)
+        kv_regex = re.compile(pattern)
+        if kv_regex.fullmatch(str_data):
+            return DataFormat.KV
 
     return DataFormat.PLAIN
 
@@ -223,6 +242,10 @@ def fill_kv_field_desc(cell, field_desc):
     Returns:
         None.
     """
+    # TODO(sneaxiy): support other delimiter_kv in feature derivation
+    if field_desc.delimiter_kv not in [None, ""]:
+        return
+
     # split and remove empty string
     split = [s for s in BLANK_PATTERN.split(cell) if s]
     max_idx = field_desc.shape[0]
