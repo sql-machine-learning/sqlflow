@@ -1,7 +1,12 @@
 # Customize Data Analysis on SQLFlow Tutorial
 
-Data analysis can give us some insight on the source data. It can help
-us make
+Data analysis can help us understand what is in the dataset and the
+characteristics of the data.
+
+We can use TO RUN statement to execute the runnable which is released
+in the form of Docker image. SQLFlow provides some premade runnables
+in sqlflow/runnable including the binning runnable. We can invoke it
+using the following statement.
 
 ```SQL
 SELECT * FROM creditcard.creditcard
@@ -12,6 +17,10 @@ CMD "binning.py",
     "--bin_method=bucket",
     "--bin_num=10"
 INTO creditcard_binning_result;
+```
+
+```SQL
+SELECT * FROM creditcard.creditcard_binning_result LIMIT 10;
 ```
 
 ```SQL
