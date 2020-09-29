@@ -1,6 +1,6 @@
 # Explaining Model on SQLFlow Tutorial
 
-<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/housing-explain.ipynb&fileName=sqlflow_tutorial_housing_explain.ipynb">
+<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/housing-explain.ipynb&fileName=sqlflow_tutorial_housing_explain.ipynb">
   <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
 </a>
 

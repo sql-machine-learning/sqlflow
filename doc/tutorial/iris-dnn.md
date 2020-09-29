@@ -1,6 +1,6 @@
 # Classify Iris Dataset Using DNNClassifer
 
-<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/iris-dnn.ipynb&fileName=sqlflow_tutorial_iris_dnn.ipynb">
+<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/iris-dnn.ipynb&fileName=sqlflow_tutorial_iris_dnn.ipynb">
   <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
 </a>
 

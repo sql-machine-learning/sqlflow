@@ -1,6 +1,6 @@
 # The Credit Card Fraud Detection Example
 
-<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/fraud-dnn.ipynb&fileName=sqlflow_tutorial_fraud_dnn.ipynb">
+<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/fraud-dnn.ipynb&fileName=sqlflow_tutorial_fraud_dnn.ipynb">
   <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
 </a>
 
