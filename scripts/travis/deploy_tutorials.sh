@@ -66,14 +66,17 @@ fi
 export PATH=$PWD:$PATH
 $F account "$QINIU_AK" "$QINIU_SK" "wu"
 
-retry=0
-while [[ $retry -lt 5 ]]; do
-  if $F rput --overwrite \
-        sqlflow-release-na \
-        "sqlflow/tutorials/latest/" \
-        "$PWD"/build/tutorial/*.ipynb; then
-    break
-  fi
-  retry=$(( retry + 1 ))
-  sleep 3
+for path in build/tutorial/*.ipynb; do
+    retry=0
+    file=$(basename "$path")
+    while [[ $retry -lt 5 ]]; do
+        if $F rput --overwrite \
+                sqlflow-release-na \
+                "sqlflow/tutorials/latest/$file" \
+                "$path"; then
+            break
+        fi
+    retry=$(( retry + 1 ))
+    sleep 3
+    done
 done
