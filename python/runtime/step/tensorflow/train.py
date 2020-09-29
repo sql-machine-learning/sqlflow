@@ -14,6 +14,7 @@
 import copy
 import types
 
+import tensorflow.keras.losses as tf_loss
 from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import (get_ordered_field_descs,
@@ -23,9 +24,23 @@ from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.step.tensorflow.train_estimator import estimator_train_and_save
 from runtime.step.tensorflow.train_keras import keras_train_and_save
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
+from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
+
+if tf_is_version2():
+    import tensorflow.keras.optimizers as tf_optimizers
+else:
+    import tensorflow.train as tf_optimizers
+
+
+def get_tf_optimizer(optimizer):
+    return getattr(tf_optimizers, optimizer)
+
+
+def get_tf_loss(loss):
+    return getattr(tf_loss, loss)
 
 
 # TODO(typhoonzero): used for codegen/experimental, called by
@@ -79,11 +94,11 @@ def train_step(original_sql,
     model_params_constructed = copy.deepcopy(model_params)
     for optimizer_arg in ["optimizer", "dnn_optimizer", "linear_optimizer"]:
         if optimizer_arg in model_params_constructed:
-            model_params_constructed[optimizer_arg] = eval(
+            model_params_constructed[optimizer_arg] = get_tf_optimizer(
                 model_params_constructed[optimizer_arg])
 
     if "loss" in model_params_constructed:
-        model_params_constructed["loss"] = eval(
+        model_params_constructed["loss"] = get_tf_loss(
             model_params_constructed["loss"])
 
     # extract params for training.
