@@ -95,8 +95,6 @@ def train_step(original_sql,
     if max_steps is not None and max_steps <= 0:
         max_steps = None
 
-    log_every_n_iter = train_params.get("log_every_n_iter", 10)
-
     validation_metrics = validation_params.get("metrics", "Accuracy")
     validation_metrics = [v.strip() for v in validation_metrics.split(",")]
     validation_steps = validation_params.get("steps", 1)
