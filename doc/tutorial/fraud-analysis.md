@@ -30,7 +30,7 @@ each bin and also some common used statistical results.
 SELECT * FROM creditcard.creditcard_binning_result LIMIT 10;
 ```
 
-What's more, we can use `two_dim_binning` runnable to calculate the 2D
+What's more, we can also use `two_dim_binning` runnable to calculate the 2D
 distribution for the combination of two variables.
 
 ```SQL
