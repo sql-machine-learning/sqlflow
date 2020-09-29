@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"strings"
 	"sync"
 
@@ -76,7 +77,7 @@ func New(executor string) Executor {
 		executor = os.Getenv("SQLFLOW_submitter")
 	}
 	switch executor {
-	case "default":
+	case "default", "local":
 		return &pythonExecutor{}
 	case "pai":
 		return &paiExecutor{&pythonExecutor{}}
@@ -166,6 +167,56 @@ type pythonExecutor struct {
 	Session  *pb.Session
 }
 
+func useExperimentalExecutor(exec Executor) (bool, error) {
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") != "true" {
+		return false, nil
+	}
+
+	if pyExec, ok := exec.(*pythonExecutor); ok {
+		dialect, _, err := database.ParseURL(pyExec.Session.DbConnStr)
+		if err != nil {
+			return false, err
+		}
+
+		// TODO(sneaxiy): remove this line when PyAlisa is ready.
+		if dialect == "alisa" {
+			return false, nil
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
+func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
+	ok, err := useExperimentalExecutor(s)
+	if err != nil {
+		return true, err
+	}
+	if !ok {
+		return false, nil
+	}
+
+	// NOTE(sneaxiy): should use the image here
+	stepCode, _, err := experimental.GenerateStepCodeAndImage(sqlStmt, 0, s.Session, nil)
+	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
+	if err != nil {
+		return true, err
+	}
+
+	const bashCodeTmpl = `python <<EOF
+%s
+EOF
+`
+
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(bashCodeTmpl, stepFuncCode))
+	cmd.Dir = s.Cwd
+	errorLog, err := s.runCommand(cmd, nil, logStderr)
+	if err != nil {
+		return true, fmt.Errorf("%v\n%s", err, errorLog)
+	}
+	return true, nil
+}
+
 func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
 	// cwd is used to store train scripts and save output models.
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
@@ -225,6 +276,9 @@ func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, lo
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
+	if ok, err := s.tryExperimentalExecute(stmt, false); ok {
+		return err
+	}
 	return runNormalStmt(s.Writer, string(*stmt), s.Db)
 }
 

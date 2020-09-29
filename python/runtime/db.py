@@ -274,7 +274,11 @@ def db_generator(conn, statement, label_meta=None):
 
 
 @contextlib.contextmanager
-def buffered_db_writer(conn, table_name, table_schema, buff_size=100):
+def buffered_db_writer(conn,
+                       table_name,
+                       table_schema,
+                       buff_size=100,
+                       slice_id=0):
     driver = conn.driver
     if driver == "maxcompute":
         w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema,
@@ -285,7 +289,7 @@ def buffered_db_writer(conn, table_name, table_schema, buff_size=100):
         w = db_writer.HiveDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "paiio":
         w = db_writer.PAIMaxComputeDBWriter(table_name, table_schema,
-                                            buff_size)
+                                            buff_size, slice_id)
     else:
         raise ValueError("unrecognized database driver: %s" % driver)
 

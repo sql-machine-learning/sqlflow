@@ -99,18 +99,25 @@ class FieldDesc(object):
     def __init__(self,
                  name="",
                  dtype=DataType.INT64,
+                 dtype_weight=DataType.INT64,
                  delimiter="",
+                 delimiter_kv="",
                  format=DataFormat.PLAIN,
                  shape=None,
                  is_sparse=False,
                  vocabulary=None,
                  max_id=0):
         assert dtype in [DataType.INT64, DataType.FLOAT32, DataType.STRING]
+        assert dtype_weight in [
+            DataType.INT64, DataType.FLOAT32, DataType.STRING
+        ]
         assert format in [DataFormat.CSV, DataFormat.KV, DataFormat.PLAIN]
 
         self.name = name
         self.dtype = dtype
+        self.dtype_weight = dtype_weight
         self.delimiter = delimiter
+        self.delimiter_kv = delimiter_kv
         self.format = format
         self.shape = shape
         self.is_sparse = is_sparse
@@ -131,14 +138,22 @@ class FieldDesc(object):
             vocab = list(self.vocabulary)
             vocab.sort()
 
+        if dtype_to_string:
+            dtype = DataType.to_string(self.dtype)
+            dtype_weight = DataType.to_string(self.dtype_weight)
+        else:
+            dtype = self.dtype
+            dtype_weight = self.dtype_weight
+
         return {
             "name": self.name,
             # FIXME(typhoonzero): this line is used to be compatible to
             # current code, remove it after the refactor.
             "feature_name": self.name,
-            "dtype":
-            DataType.to_string(self.dtype) if dtype_to_string else self.dtype,
+            "dtype": dtype,
+            "dtype_weight": dtype_weight,
             "delimiter": self.delimiter,
+            "delimiter_kv": self.delimiter_kv,
             "format": self.format,
             "shape": self.shape,
             "is_sparse": self.is_sparse,
@@ -156,7 +171,9 @@ class FieldDesc(object):
         """
         return FieldDesc(name=d["name"],
                          dtype=d["dtype"],
+                         dtype_weight=d["dtype_weight"],
                          delimiter=d["delimiter"],
+                         delimiter_kv=d["delimiter_kv"],
                          format=d["format"],
                          shape=d["shape"],
                          is_sparse=d["is_sparse"],

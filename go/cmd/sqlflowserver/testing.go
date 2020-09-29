@@ -148,7 +148,21 @@ func AssertGreaterEqualAny(a *assert.Assertions, actual *any.Any, expected inter
 	case "type.googleapis.com/google.protobuf.FloatValue":
 		b := wrappers.FloatValue{}
 		ptypes.UnmarshalAny(actual, &b)
-		a.GreaterOrEqual(b.Value, float32(expected.(float64)))
+		if f64, ok := expected.(float64); ok {
+			a.GreaterOrEqual(b.Value, float32(f64))
+		} else {
+			a.GreaterOrEqual(b.Value, expected.(float32))
+		}
+	case "type.googleapis.com/google.protobuf.DoubleValue":
+		b := wrappers.DoubleValue{}
+		ptypes.UnmarshalAny(actual, &b)
+		if f64, ok := expected.(float64); ok {
+			a.GreaterOrEqual(b.Value, float64(float32(f64)))
+		} else {
+			a.GreaterOrEqual(b.Value, float64(expected.(float32)))
+		}
+	default:
+		a.Fail(fmt.Sprintf("unsupported type comparison %v %T", actual.TypeUrl, expected))
 	}
 }
 

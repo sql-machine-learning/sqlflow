@@ -62,6 +62,19 @@ class TestKeyValueRegex(unittest.TestCase):
         for s in kv_strs:
             self.assertEqual(fd.infer_string_data_format(s), DataFormat.KV)
 
+        general_kv_strs = [
+            "1:3,3:4.0,8:3.0",
+            "k:1.0,b:3.3,s:4.32",
+            "unknown",  # will be parsed to {"unknown": 1.0}
+        ]
+        for s in general_kv_strs:
+            self.assertEqual(fd.infer_string_data_format(s, ",", ":"),
+                             DataFormat.KV)
+
+        kv_str = "k::1.0|b::3.3|s::4.32"
+        self.assertEqual(fd.infer_string_data_format(kv_str, "|", "::"),
+                         DataFormat.KV)
+
     def test_non_kv_strings(self):
         non_kv_strs = [
             "100",

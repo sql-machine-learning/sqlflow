@@ -40,6 +40,8 @@ export SQLFLOW_HIVE_LOCATION_ROOT_PATH=/sqlflow
 export SQLFLOW_TEST_NAMENODE_ADDR="127.0.0.1:8020"
 
 export SQLFLOW_TEST_DB=hive
+export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true
+
 # NOTE: we have already installed runtime under Python installation
 # path using latest develop branch, but when testing on CI, we need to use the
 # code in the current pull request.

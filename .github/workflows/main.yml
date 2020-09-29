@@ -34,6 +34,7 @@ jobs:
         docker rm mysql || true
         docker run --rm --name mysql -d -p 13306:3306 -v ${{ github.workspace }}:/work sqlflow:mysql
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
+        bash scripts/test/ipython.sh
         bash <(curl -s https://codecov.io/bash)
   test-hive-java:
     runs-on: [self-hosted, linux]
@@ -143,6 +144,7 @@ jobs:
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         bash scripts/travis/deploy_client.sh
+        bash scripts/travis/deploy_tutorials.sh
   # TODO(typhoonzero): remove travis envs when we have moved to github actions completely
   macos-client:
     runs-on: macos-latest

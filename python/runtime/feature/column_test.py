@@ -155,6 +155,31 @@ class TestFeatureColumn(unittest.TestCase):
             self.assertEqual(d["value"]["bucket_size"], bucket_size)
             self.check_serialize(cc)
 
+    def test_weighted_category_column(self):
+        desc = self.new_field_desc()
+        cc = fc.CategoryIDColumn(desc, 16)
+
+        wcc = fc.WeightedCategoryColumn(cc)
+        self.assertEqual(wcc.num_class(), 16)
+        self.assertEqual(len(wcc.get_field_desc()), 1)
+        d = fc.FeatureColumn.to_dict(wcc)
+        self.assertEqual(d["type"], fc.WeightedCategoryColumn.__name__)
+        self.assertEqual(d["value"]["category_column"],
+                         fc.FeatureColumn.to_dict(cc))
+        self.assertEqual(d["value"]["name"], "")
+        self.check_serialize(wcc)
+        wcc_new = wcc.new_feature_column_from(self.new_field_desc())
+        self.assertEqual(d, fc.FeatureColumn.to_dict(wcc_new))
+
+        wcc = fc.WeightedCategoryColumn(name="abc")
+        d = fc.FeatureColumn.to_dict(wcc)
+        self.assertEqual(d["type"], fc.WeightedCategoryColumn.__name__)
+        self.assertEqual(d["value"]["category_column"], None)
+        self.assertEqual(d["value"]["name"], "abc")
+        self.check_serialize(wcc)
+        wcc_new = wcc.new_feature_column_from(self.new_field_desc())
+        self.assertEqual(d, fc.FeatureColumn.to_dict(wcc_new))
+
     def test_cross_column(self):
         desc = self.new_field_desc()
         nc = fc.NumericColumn(desc)

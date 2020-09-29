@@ -131,7 +131,7 @@ func TestRunStmt(t *testing.T) {
 	// TODO(yancey1989): assert should not panics in repl
 	output, err := step.GetStdout(func() error { return runStmt(clientOpts, "show tables", true) })
 	a.Error(err)
-	a.Contains(output, "Error 1046: No database selected")
+	a.Contains(output, "Exception: execute query error: (1046, 'No database selected')")
 	output, err = step.GetStdout(func() error { return runStmt(clientOpts, "use iris", true) })
 	a.NoError(err)
 	a.Contains(output, "Database changed to iris")
