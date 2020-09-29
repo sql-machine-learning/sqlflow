@@ -43,8 +43,8 @@ def get_tf_loss(loss):
     return getattr(tf_loss, loss)
 
 
-# TODO(typhoonzero): used for codegen/experimental, called by
-# `runtime.pai.entry` and `runtime.local.train`.
+# NOTE(typhoonzero): workflow step entry for codegen/experimental,
+# called by `runtime.pai.submitter` and `runtime.local.submitter`.
 def train_step(original_sql,
                model_image,
                estimator_string,
@@ -110,8 +110,6 @@ def train_step(original_sql,
     if max_steps is not None and max_steps <= 0:
         max_steps = None
 
-    log_every_n_iter = train_params.get("log_every_n_iter", 10)
-
     validation_metrics = validation_params.get("metrics", "Accuracy")
     validation_metrics = [v.strip() for v in validation_metrics.split(",")]
     validation_steps = validation_params.get("steps", 1)
@@ -175,11 +173,12 @@ def train_step(original_sql,
                              label_meta, epoch, verbose, validation_metrics,
                              validation_steps, load, model_meta, is_pai)
     else:
-        estimator_train_and_save(
-            estimator, model_params_constructed, save_dir, FLAGS,
-            train_dataset_fn, val_dataset_fn, log_every_n_iter, max_steps,
-            validation_start_delay_secs, validation_throttle_secs,
-            save_checkpoints_steps, validation_metrics, load, model_meta)
+        estimator_train_and_save(estimator, model_params_constructed, save_dir,
+                                 FLAGS, train_dataset_fn, val_dataset_fn,
+                                 max_steps, validation_start_delay_secs,
+                                 validation_throttle_secs,
+                                 save_checkpoints_steps, validation_metrics,
+                                 load, model_meta)
 
     # save model to DB
     if num_workers == 1 or worker_id == 0:

@@ -83,8 +83,7 @@ def keras_train_distributed(classifier,
         keras_estimator,
         train_dataset_fn,
         val_dataset_fn,
-        # TODO(typhoonzero): do pass train settings.
-        100,
+        # TODO(typhoonzero): pass train settings.
         None,
         60,
         120)
