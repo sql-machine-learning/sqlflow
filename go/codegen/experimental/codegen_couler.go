@@ -16,8 +16,11 @@ package experimental
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"strconv"
+	"strings"
 	"text/template"
 
 	pb "sqlflow.org/sqlflow/go/proto"
@@ -59,7 +62,7 @@ func GenerateCodeCouler(sqlProgram string, session *pb.Session) (string, error) 
 	}
 	var stepList []*stepContext
 	for idx, stmt := range stmts {
-		stepCode, image, err := generateStepCodeAndImage(stmt, idx, session, stmts)
+		stepCode, image, err := GenerateStepCodeAndImage(stmt, idx, session, stmts)
 		if err != nil {
 			return "", err
 		}
@@ -122,6 +125,39 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 		return "", err
 	}
 	return program.String(), nil
+}
+
+// GetPyFuncBody gets the Python function body
+func GetPyFuncBody(program string, funcName string) (string, error) {
+	const coulerGetPyFuncCodeImpl = `
+%s
+
+import couler.pyfunc as pyfunc
+print(pyfunc.body(%s))
+`
+
+	tmpFile, err := ioutil.TempFile("/tmp", "sqlflow-couler-tmp")
+	if err != nil {
+		return "", err
+	}
+
+	defer tmpFile.Close()
+	defer os.RemoveAll(tmpFile.Name())
+
+	coulerCode := fmt.Sprintf(coulerGetPyFuncCodeImpl, program, funcName)
+	_, err = tmpFile.Write([]byte(coulerCode))
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("python", tmpFile.Name())
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%v: %s\nCode is:\n%s", err, stderr, coulerCode)
+	}
+	return strings.TrimSpace(stdout.String()), nil
 }
 
 const coulerCodeTmpl = `

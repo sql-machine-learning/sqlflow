@@ -89,7 +89,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 
 	// test experimental workflow code generation when i == 0
 	// test old workflow code generation when i == 1
-	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
+	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "true")
 	for i := 0; i < 2; i++ {
 		t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 		t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
@@ -99,7 +99,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
 		t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
 		t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
-		os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+		os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
 	}
 }
 
