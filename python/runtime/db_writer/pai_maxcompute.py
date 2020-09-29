@@ -15,8 +15,7 @@ from .base import BufferedDBWriter
 
 
 class PAIMaxComputeDBWriter(BufferedDBWriter):
-    def __init__(self, table_name, table_schema, buff_size):
-        import paiio
+    def __init__(self, table_name, table_schema, buff_size, slice_id=0):
         super(PAIMaxComputeDBWriter, self).__init__(None, table_name,
                                                     table_schema, buff_size)
         table_name_parts = table_name.split(".")
@@ -24,10 +23,10 @@ class PAIMaxComputeDBWriter(BufferedDBWriter):
         table_name_formatted = "odps://%s/tables/%s" % (table_name_parts[0],
                                                         table_name_parts[1])
         try:
-            self.writer = paiio.TableWriter(table_name_formatted, slice_id=0)
+            from paiio import TableWriter
         except Exception:
-            self.writer = paiio.python_io.TableWriter(table_name_formatted,
-                                                      slice_id=0)
+            from paiio.python_io import TableWriter
+        self.writer = TableWriter(table_name_formatted, slice_id)
         self.writer_indices = list(range(len(table_schema)))
 
     def flush(self):
