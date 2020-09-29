@@ -30,15 +30,15 @@ fi
 echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
 echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
 
-#if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-#    echo "Skip deployment on pull request"
-#    exit 0
-#fi
-#
-#if [[ "$TRAVIS_BRANCH" != "develop" &&  "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
-#    echo "Skip tutorial deployment on non-nightly build"
-#    exit 0
-#fi
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+    echo "Skip deployment on pull request"
+    exit 0
+fi
+
+if [[ "$TRAVIS_BRANCH" != "develop" &&  "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
+    echo "Skip tutorial deployment on non-nightly build"
+    exit 0
+fi
 
 echo "Install markdown-to-ipynb tool ..."
 if [ "$GOPATH" == "" ]; then
