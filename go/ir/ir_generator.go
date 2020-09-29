@@ -764,9 +764,19 @@ func buildCategoryIDForEmbeddingOrIndicator(el *parser.ExprList) (CategoryColumn
 		if len(fd.Shape) < 1 {
 			return nil, "", fmt.Errorf("invalid FieldDesc Shape: %v", sourceExprList)
 		}
-		catColumn = &CategoryIDColumn{
-			FieldDesc:  fd,
-			BucketSize: int64(fd.Shape[0]),
+		if fd.DelimiterKV != "" {
+			catColumn = &WeightedCategoryColumn{
+				CategoryColumn: &CategoryIDColumn{
+					FieldDesc:  fd,
+					BucketSize: int64(fd.Shape[0]),
+				},
+				Name: fd.Name,
+			}
+		} else {
+			catColumn = &CategoryIDColumn{
+				FieldDesc:  fd,
+				BucketSize: int64(fd.Shape[0]),
+			}
 		}
 	} else {
 		// 3. source is a FeatureColumn like EMBEDDING(CATEGORY_ID(...), size)

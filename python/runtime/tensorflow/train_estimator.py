@@ -73,7 +73,7 @@ def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
                              eval_start_delay_secs, eval_throttle_secs):
     if val_dataset_fn is not None:
         train_spec = tf.estimator.TrainSpec(
-            input_fn=lambda: train_dataset_fn(), max_steps=None)
+            input_fn=lambda: train_dataset_fn(), max_steps=train_max_steps)
         eval_spec = tf.estimator.EvalSpec(
             input_fn=lambda: val_dataset_fn(),
             start_delay_secs=eval_start_delay_secs,
