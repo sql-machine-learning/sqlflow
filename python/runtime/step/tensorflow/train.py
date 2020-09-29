@@ -28,8 +28,8 @@ from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
 
 
-# TODO(typhoonzero): used for codegen/experimental, called by
-# `runtime.pai.entry` and `runtime.local.train`.
+# NOTE(typhoonzero): workflow step entry for codegen/experimental,
+# called by `runtime.pai.submitter` and `runtime.local.submitter`.
 def train_step(original_sql,
                model_image,
                estimator_string,
@@ -160,11 +160,12 @@ def train_step(original_sql,
                              label_meta, epoch, verbose, validation_metrics,
                              validation_steps, load, model_meta, is_pai)
     else:
-        estimator_train_and_save(
-            estimator, model_params_constructed, save_dir, FLAGS,
-            train_dataset_fn, val_dataset_fn, log_every_n_iter, max_steps,
-            validation_start_delay_secs, validation_throttle_secs,
-            save_checkpoints_steps, validation_metrics, load, model_meta)
+        estimator_train_and_save(estimator, model_params_constructed, save_dir,
+                                 FLAGS, train_dataset_fn, val_dataset_fn,
+                                 max_steps, validation_start_delay_secs,
+                                 validation_throttle_secs,
+                                 save_checkpoints_steps, validation_metrics,
+                                 load, model_meta)
 
     # save model to DB
     if num_workers == 1 or worker_id == 0:

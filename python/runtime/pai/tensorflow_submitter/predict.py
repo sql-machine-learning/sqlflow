@@ -57,8 +57,6 @@ def predict_step(datasource, select, data_table, result_table, label_column,
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
 
-    # NOTE(typhoonzero): No need to eval model_params["optimizer"] and
-    # model_params["loss"] because predicting do not need these parameters.
     is_estimator = is_tf_estimator(import_model(estimator))
 
     # Keras single node is using h5 format to save the model, no need to deal
