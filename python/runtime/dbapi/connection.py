@@ -173,9 +173,11 @@ class Connection(object):
         rs = None
         try:
             rs = self._get_result_set(statement)
-            return rs.success()
-        except Exception as e:  # noqa: E722
-            raise e
+            if rs.success():
+                self.commit()
+                return True
+            else:
+                raise ValueError(rs.error())
         finally:
             if rs is not None:
                 rs.close()
@@ -200,6 +202,9 @@ class Connection(object):
         Close the connection, implementation should support
         close multi-times
         """
+        pass
+
+    def commit(self):
         pass
 
     def __del__(self):
