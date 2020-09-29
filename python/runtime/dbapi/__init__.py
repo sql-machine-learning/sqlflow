@@ -11,17 +11,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from runtime.dbapi.hive import HiveConnection
-from runtime.dbapi.maxcompute import MaxComputeConnection
-from runtime.dbapi.mysql import MySQLConnection
-from runtime.dbapi.paiio import PaiIOConnection
 
-DRIVER_MAP = {
-    "mysql": MySQLConnection,
-    "hive": HiveConnection,
-    "maxcompute": MaxComputeConnection,
-    "paiio": PaiIOConnection
-}
+# NOTE(sneaxiy): do not import the XxxConnection object outside the
+# following method. It is because those imports are quite slow (about 1-2s),
+# making that the normal SQL statement runs very slow.
+def get_connection_object(driver):
+    if driver == "mysql":
+        from runtime.dbapi.mysql import MySQLConnection
+        return MySQLConnection
+    elif driver == "hive":
+        from runtime.dbapi.hive import HiveConnection
+        return HiveConnection
+    elif driver == "maxcompute":
+        from runtime.dbapi.maxcompute import MaxComputeConnection
+        return MaxComputeConnection
+    elif driver == "paiio":
+        from runtime.dbapi.paiio import PaiIOConnection
+        return PaiIOConnection
+    else:
+        raise ValueError("unsupported driver type %s" % driver)
 
 
 def connect(uri):
@@ -39,6 +47,4 @@ def connect(uri):
     parts = uri.split("://")
     if len(parts) < 2:
         raise ValueError("Input should be a valid uri.", uri)
-    if parts[0] not in DRIVER_MAP:
-        raise ValueError("Can't find driver for scheme: %s" % parts[0])
-    return DRIVER_MAP[parts[0]](uri)
+    return get_connection_object(parts[0])(uri)
