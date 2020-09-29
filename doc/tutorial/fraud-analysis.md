@@ -23,9 +23,15 @@ CMD "binning.py",
 INTO creditcard_binning_result;
 ```
 
+The result table contains the binning boundaries, proability distribution for
+each bin and also some common used statistical results.
+
 ```SQL
 SELECT * FROM creditcard.creditcard_binning_result LIMIT 10;
 ```
+
+What's more, we can use `two_dim_binning` runnable to calculate the 2D
+distribution for the combination of two variables.
 
 ```SQL
 SELECT * FROM creditcard.creditcard
@@ -36,12 +42,4 @@ CMD "two_dim_binning.py",
     "--bin_method=bucket,bucket",
     "--bin_num=10,5"
 INTO creditcard_stats_result,creditcard_two_dim_prob,creditcard_two_dim_binning_cumsum_prob;
-```
-
-```SQL
-SELECT * FROM creditcard.creditcard_two_dim_prob LIMIT 10;
-```
-
-```SQL
-SELECT * FROM creditcard.creditcard_two_dim_binning_cumsum_prob LIMIT 10;
 ```
