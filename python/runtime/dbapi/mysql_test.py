@@ -69,8 +69,8 @@ class TestMySQLConnection(TestCase):
         self.assertTrue(2, len(rows))
         rs = conn.execute("drop table test_exec")
         self.assertTrue(rs)
-        rs = conn.execute("drop table not_exist")
-        self.assertFalse(rs)
+        with self.assertRaises(Exception):
+            conn.execute("drop table not_exist")
 
     def test_get_table_schema(self):
         conn = MySQLConnection(testing.get_datasource())
