@@ -94,8 +94,9 @@ func caseSelect(t *testing.T) {
 		"petal_width",
 		"class",
 	}
+	dialect := os.Getenv("SQLFLOW_TEST_DB")
 	for idx, headCell := range head {
-		if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+		if dialect == "hive" {
 			a.Equal("train."+expectedHeads[idx], headCell)
 		} else {
 			a.Equal(expectedHeads[idx], headCell)
@@ -109,6 +110,12 @@ func caseSelect(t *testing.T) {
 		for colIdx, rowCell := range row {
 			a.True(EqualAny(expectedRows[rowIdx][colIdx], rowCell))
 		}
+	}
+
+	if dialect == "mysql" || dialect == "hive" {
+		describeSQL := fmt.Sprintf(`DESCRIBE %s;`, caseTrainTable)
+		_, _, _, err := connectAndRunSQL(describeSQL)
+		a.NoError(err)
 	}
 }
 

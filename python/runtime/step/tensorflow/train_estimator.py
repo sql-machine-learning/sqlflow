@@ -21,8 +21,7 @@ from runtime.tensorflow.train_estimator import (estimator_save,
 
 
 def estimator_train_and_save(estimator, model_params, save, FLAGS,
-                             train_dataset_fn, val_dataset_fn,
-                             log_every_n_iter, train_max_steps,
+                             train_dataset_fn, val_dataset_fn, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs,
                              save_checkpoints_steps, metric_names, load,
                              model_meta):
@@ -51,8 +50,8 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
             classifier, metrics.get_tf_metrics(metric_names))
 
     estimator_train_compiled(classifier, train_dataset_fn, val_dataset_fn,
-                             log_every_n_iter, train_max_steps,
-                             eval_start_delay_secs, eval_throttle_secs)
+                             train_max_steps, eval_start_delay_secs,
+                             eval_throttle_secs)
 
     if FLAGS.task_index != 0:
         print("skip exporting model on worker != 0")

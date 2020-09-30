@@ -104,16 +104,26 @@ def pred_imp(datasource,
         predict_and_store_result(bst, pred_dmatrix, feature_file_id,
                                  model_params, selected_cols, train_label_name,
                                  pred_label_name, feature_column_names,
-                                 feature_metas, is_pai, conn, result_table)
+                                 feature_metas, is_pai, conn, result_table,
+                                 rank)
         feature_file_id += 1
     print("{} Done predicting. Predict table: {}".format(
         datetime.now(), result_table))
 
 
-def predict_and_store_result(bst, dpred, feature_file_id, model_params,
-                             selected_cols, train_label_name, pred_label_name,
-                             feature_column_names, feature_metas, is_pai, conn,
-                             result_table):
+def predict_and_store_result(bst,
+                             dpred,
+                             feature_file_id,
+                             model_params,
+                             selected_cols,
+                             train_label_name,
+                             pred_label_name,
+                             feature_column_names,
+                             feature_metas,
+                             is_pai,
+                             conn,
+                             result_table,
+                             slice_id=0):
     preds = bst.predict(dpred)
     if model_params:
         obj = model_params["objective"]
@@ -149,8 +159,8 @@ def predict_and_store_result(bst, dpred, feature_file_id, model_params,
     result_column_names.append(pred_label_name)
 
     line_no = 0
-    with db.buffered_db_writer(conn, result_table, result_column_names,
-                               100) as w:
+    with db.buffered_db_writer(conn, result_table, result_column_names, 100,
+                               slice_id) as w:
         while True:
             line = feature_file_read.readline()
             if not line:
