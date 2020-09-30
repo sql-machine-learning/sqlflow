@@ -30,9 +30,11 @@ class TestMaxComputeConnection(TestCase):
 
     def test_query(self):
         conn = MaxComputeConnection(testing.get_datasource())
-        with self.assertRaises(Exception):
+        try:
             conn.query("select * from notexist limit 1")
-        self.assertTrue("Table not found" in rs.error())
+            self.assertTrue(False)
+        except Exception as e:
+            self.assertTrue("Table not found" in str(e))
 
         rs = conn.query(
             "select * from alifin_jtest_dev.sqlflow_iris_train limit 1")

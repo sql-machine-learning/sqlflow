@@ -29,9 +29,11 @@ class TestHiveConnection(TestCase):
 
     def test_query(self):
         conn = HiveConnection(testing.get_datasource())
-        with self.assertRaises(Exception):
+        try:
             conn.query("select * from notexist limit 1")
-        self.assertTrue("Table not found" in rs.error())
+            self.assertTrue(False)
+        except Exception as e:
+            self.assertTrue("Table not found" in str(e))
 
         rs = conn.query("select * from train limit 1")
         self.assertTrue(rs.success())
