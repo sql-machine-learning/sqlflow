@@ -53,7 +53,8 @@ def pred(datasource, select, result_table, pred_label_name, model):
 
     field_descs = get_ordered_field_descs(train_fc_map)
     feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
+                          for fd in field_descs])
     feature_columns = compile_ir_feature_columns(train_fc_map,
                                                  model.get_type())
 
