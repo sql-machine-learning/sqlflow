@@ -3,14 +3,15 @@
 Data analysis can help us understand what is in the dataset and the
 characteristics of the data.
 
-Data binning is a common used data analysis way. It can group continous values
+Data binning is a commonly-used data analysis technique. It groups continous values
 into a small number of discretized bins. We will get the distribution of the
 data from the binning result.
 
-We can use SQLFlow TO RUN statement to execute the runnable which is released in the
-form of Docker image. SQLFlow provides some premade runnables in
-sqlflow/runnable including the binning runnable. Please use the following SQL
-statement to do the data binning.
+We can use SQLFlow TO RUN statement to call the SQLFlow runnable which is
+released in the form of Docker image. SQLFlow provides some premade runnables
+in sqlflow/runnable including the binning runnable. Please use the following
+SQL statement to do the data binning. All the table columns specified in the
+`--column` parameters will be bucketized to 10 bins.
 
 ```SQL
 SELECT * FROM creditcard.creditcard
@@ -31,7 +32,9 @@ SELECT * FROM creditcard.creditcard_binning_result LIMIT 10;
 ```
 
 What's more, we can also use `two_dim_binning` runnable to calculate the 2D
-distribution for the combination of two variables.
+distribution for the combination of two variables. In the following SQL
+statement, `v1` will bucketized to 10 bins and `v2` will be bucketized to 5
+bins.
 
 ```SQL
 SELECT * FROM creditcard.creditcard
