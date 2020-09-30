@@ -241,7 +241,7 @@ FROM housing.predict LIMIT 5;`)
 
 	for _, row := range rows {
 		// NOTE: predict result maybe random. Since it is
-		// a regression model. The predict result may be
+		// a regression model, the predict result may be
 		// negative. Here we fix the TensorFlow random
 		// seed to get the deterministic result.
 		AssertGreaterEqualAny(a, row[13], float64(0))

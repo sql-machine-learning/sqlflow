@@ -174,6 +174,10 @@ class Connection(object):
         try:
             rs = self._get_result_set(statement)
             if rs.success():
+                # NOTE(sneaxiy): must execute commit!
+                # Otherwise, the `INSERT` statement
+                # would have no effect even though
+                # the connection is closed.
                 self.commit()
                 return True
             else:
