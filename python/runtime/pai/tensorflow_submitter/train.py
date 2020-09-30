@@ -68,8 +68,8 @@ def train(datasource,
     estimator = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator)
 
-    if verbose < 1:  # always use verbose == 1 when using PAI to get more logs
-        verbose = 1
+    if verbose < 1:  # always use verbose == 2 when using PAI to get INFO logs
+        verbose = 2
     set_log_level(verbose, is_estimator)
     model_params.update(feature_columns)
 
@@ -107,8 +107,7 @@ def train(datasource,
                              model_meta, is_pai)
     else:
         estimator_train_and_save(estimator, model_params, save, FLAGS,
-                                 train_dataset_fn, val_dataset_fn,
-                                 log_every_n_iter, max_steps,
+                                 train_dataset_fn, val_dataset_fn, max_steps,
                                  validation_start_delay_secs,
                                  validation_throttle_secs,
                                  save_checkpoints_steps, validation_metrics,

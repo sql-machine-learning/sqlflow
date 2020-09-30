@@ -22,13 +22,13 @@ import (
 
 const normalStmtStepTmpl = `
 def step_entry_{{.StepIndex}}():
-    import runtime
-    import runtime.dbapi
-    from runtime.dbapi import table_writer
-
-    conn = runtime.dbapi.connect("{{.DataSource}}")
+    from runtime.dbapi import connect
+    conn = connect("{{.DataSource}}")
     stmt = """{{.Stmt}}"""
     if conn.is_query(stmt):
+        # Importing table_writer is slow. So only
+        # import it when needed.
+        from runtime.dbapi import table_writer
         rs = conn.query(stmt)
         if rs.error():
             raise Exception("execute query error: %s\n%s " % (stmt, rs.error()))
