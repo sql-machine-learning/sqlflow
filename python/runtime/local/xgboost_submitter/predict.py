@@ -52,7 +52,8 @@ def pred(datasource, select, result_table, pred_label_name, model):
 
     field_descs = get_ordered_field_descs(train_fc_map)
     feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
+                          for fd in field_descs])
 
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
