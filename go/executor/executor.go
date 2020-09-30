@@ -199,6 +199,10 @@ func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStder
 
 	// NOTE(sneaxiy): should use the image here
 	stepCode, _, err := experimental.GenerateStepCodeAndImage(sqlStmt, 0, s.Session, nil)
+	if err != nil {
+		return true, err
+	}
+
 	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
 	if err != nil {
 		return true, err
