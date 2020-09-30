@@ -16,17 +16,17 @@ from .base import BufferedDBWriter
 
 class PAIMaxComputeDBWriter(BufferedDBWriter):
     def __init__(self, table_name, table_schema, buff_size, slice_id=0):
+        import paiio
         super(PAIMaxComputeDBWriter, self).__init__(None, table_name,
                                                     table_schema, buff_size)
-        table_name_parts = table_name.split(".")
-        assert len(table_name_parts) == 2
-        table_name_formatted = "odps://%s/tables/%s" % (table_name_parts[0],
-                                                        table_name_parts[1])
+        splits = table_name.split(".")
+        assert len(splits) == 2
+        table_name_formatted = "odps://%s/tables/%s" % (splits[0], splits[1])
         try:
-            from paiio import TableWriter
+            wr = paiio.TableWriter
         except Exception:
-            from paiio.python_io import TableWriter
-        self.writer = TableWriter(table_name_formatted, slice_id)
+            wr = paiio.python_io.TableWriter
+        self.writer = wr(table_name_formatted, slice_id)
         self.writer_indices = list(range(len(table_schema)))
 
     def flush(self):

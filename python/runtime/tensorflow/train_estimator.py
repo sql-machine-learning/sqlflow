@@ -14,17 +14,21 @@
 import tensorflow as tf
 from runtime.diagnostics import init_model, load_pretrained_model_estimator
 from runtime.model import save_metadata
+from runtime.seeding import get_tf_random_seed
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.metrics import get_tf_metrics
 
 
 def estimator_train_and_save(estimator, model_params, save, train_dataset_fn,
-                             val_dataset_fn, log_every_n_iter, train_max_steps,
+                             val_dataset_fn, train_max_steps,
                              eval_start_delay_secs, eval_throttle_secs,
                              save_checkpoints_steps, metric_names,
                              load_pretrained_model, model_meta):
     print("Start training using estimator model...")
     model_params["model_dir"] = save
+    model_params["config"] = tf.estimator.RunConfig(
+        tf_random_seed=get_tf_random_seed(),
+        save_checkpoints_steps=save_checkpoints_steps)
 
     warm_start_from = save if load_pretrained_model else None
     if warm_start_from:
@@ -40,8 +44,8 @@ def estimator_train_and_save(estimator, model_params, save, train_dataset_fn,
                                               get_tf_metrics(metric_names))
 
     estimator_train_compiled(classifier, train_dataset_fn, val_dataset_fn,
-                             log_every_n_iter, train_max_steps,
-                             eval_start_delay_secs, eval_throttle_secs)
+                             train_max_steps, eval_start_delay_secs,
+                             eval_throttle_secs)
     estimator_save(classifier, save, model_params, model_meta)
 
 
@@ -69,8 +73,8 @@ def estimator_save(classifier, save, model_params, model_meta):
 
 
 def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
-                             log_every_n_iter, train_max_steps,
-                             eval_start_delay_secs, eval_throttle_secs):
+                             train_max_steps, eval_start_delay_secs,
+                             eval_throttle_secs):
     if val_dataset_fn is not None:
         train_spec = tf.estimator.TrainSpec(
             input_fn=lambda: train_dataset_fn(), max_steps=train_max_steps)
@@ -84,5 +88,5 @@ def estimator_train_compiled(estimator, train_dataset_fn, val_dataset_fn,
             print(result[0])
     else:
         # NOTE(typhoonzero): if only do training, no validation result will be
-        # printed.
+        # printed, checkout the training log by setting train.verbose=2.
         estimator.train(lambda: train_dataset_fn(), max_steps=train_max_steps)

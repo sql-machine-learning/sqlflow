@@ -13,6 +13,8 @@
 
 from google.protobuf import text_format, wrappers_pb2
 from runtime.dbapi.connection import ResultSet
+# NOTE(sneaxiy): importing sqlflow_pb2 consumes about
+# 0.24s. Do not know how to shorten the import time.
 from runtime.dbapi.table_writer import sqlflow_pb2
 
 
@@ -40,7 +42,9 @@ class ProtobufWriter(object):
 
     @staticmethod
     def pod_to_pb_any(value):
-        if isinstance(value, bool):
+        if value is None:
+            v = sqlflow_pb2.Row.Null()
+        elif isinstance(value, bool):
             v = wrappers_pb2.BoolValue(value=value)
         elif isinstance(value, int):
             v = wrappers_pb2.Int64Value(value=value)
