@@ -14,7 +14,6 @@
 import base64
 import json
 
-import numpy as np
 import six
 from runtime.db import buffered_db_writer, connect_with_data_source
 from runtime.diagnostics import SQLFlowDiagnostic
@@ -108,20 +107,16 @@ def _encode_metadata(metadata):
     if six.PY3:
         # make sure that metadata_json has no non-ascii characters
         metadata_json = bytes(metadata_json, encoding='utf-8')
-
-    len_arr = np.array(len(metadata_json), dtype=np.int64)
-    if six.PY3:
-        len_arr = len_arr.tobytes()
-    else:
-        len_arr = len_arr.tostring()
-
-    result = len_arr + metadata_json
+    # encode length to an hex string
+    # a string like 0x0000ffff (length 10) is able to represent int64.
+    len_magic = "{0:#0{1}x}".format(len(metadata_json), 10)
+    result = len_magic + metadata_json
     return result
 
 
 def _read_metadata(reader):
-    length = reader.read(8)
-    length = np.frombuffer(length, dtype=np.int64)[0]
+    length = reader.read(10)
+    length = int(length, 16)
     metadata_json = reader.read(length)
     return json.loads(metadata_json, cls=JSONDecoderWithFeatureColumn)
 

@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bitly/go-simplejson"
@@ -304,6 +305,45 @@ func ExtractMetaFromTarball(tarballName, cwd string) (*Model, error) {
 	metaPath := path.Join(cwd, modelMetaFileName)
 	defer os.Remove(metaPath)
 	return loadMeta(metaPath)
+}
+
+// DumpDBModelExperimental returns the dumped model tar file name and model meta (JSON serialized).
+func DumpDBModelExperimental(db *database.DB, table, cwd string) (string, *Model, error) {
+	sqlf, err := sqlfs.Open(db.DB, table)
+	if err != nil {
+		return "", nil, fmt.Errorf("Can't open sqlfs %s, %v", table, err)
+	}
+	defer sqlf.Close()
+	lengthHexStr := make([]byte, 10)
+	n, err := sqlf.Read(lengthHexStr)
+	if err != nil || n != 10 {
+		return "", nil, fmt.Errorf("read meta length from db error: %v", err)
+	}
+	metaLength, err := strconv.ParseInt(string(lengthHexStr), 0, 64)
+	if err != nil {
+		return "", nil, fmt.Errorf("convert length head error: %v", err)
+	}
+	metaStr := make([]byte, metaLength)
+	_, err = sqlf.Read(metaStr)
+	if err != nil {
+		return "", nil, fmt.Errorf("read meta json from db error: %v", err)
+	}
+
+	model := &Model{}
+	if model.Meta, err = simplejson.NewJson(metaStr); err != nil {
+		return "", nil, fmt.Errorf("model meta json parse error: %v", err)
+	}
+	model.TrainSelect = model.GetMetaAsString("original_sql")
+
+	fileName := filepath.Join(cwd, "model_dump.tar.gz")
+	file, err := os.Create(fileName)
+	if err != nil {
+		return "", nil, fmt.Errorf("Can't careate model file: %v", err)
+	}
+	if _, err = io.Copy(file, sqlf); err != nil {
+		return "", nil, fmt.Errorf("Can't dump model to local file")
+	}
+	return fileName, model, nil
 }
 
 func loadMeta(metaFileName string) (*Model, error) {
