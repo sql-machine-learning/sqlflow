@@ -203,6 +203,10 @@ LABEL class INTO sqlflow_models.my_adanet_model;`, // train adanet
 }
 
 func caseTrainRegression(t *testing.T) {
+	seedEnvKey := "SQLFLOW_TF_RANDOM_SEED"
+	os.Setenv(seedEnvKey, "1")
+	defer os.Unsetenv(seedEnvKey)
+
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM housing.train
@@ -236,9 +240,10 @@ FROM housing.predict LIMIT 5;`)
 	}
 
 	for _, row := range rows {
-		// NOTE: predict result maybe random, only check predicted
-		// class >=0, need to change to more flexible checks than
-		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		// NOTE: predict result maybe random. Since it is
+		// a regression model. The predict result may be
+		// negative. Here we fix the TensorFlow random
+		// seed to get the deterministic result.
 		AssertGreaterEqualAny(a, row[13], float64(0))
 
 		// avoiding nil features in predict result
