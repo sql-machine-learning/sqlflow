@@ -524,4 +524,18 @@ func caseWorkflowOptimize(t *testing.T) {
 `
 
 	runSQLProgramAndCheck(t, sqlProgram)
+
+	const sqlProgramTmpl = `
+SELECT * FROM optimize_test_db.woodcarving
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * %[1]s)
+CONSTRAINT SUM(finishing * %[1]s) <= 100, SUM(carpentry * %[1]s) <= 80, %[1]s <= max_num
+WITH 
+	variables="%[1]s(product)",
+	var_type="NonNegativeIntegers"
+USING glpk
+INTO optimize_test_db.woodcarving_result;
+`
+
+	runSQLProgramAndCheck(t, fmt.Sprintf(sqlProgramTmpl, "product"))
+	runSQLProgramAndCheck(t, fmt.Sprintf(sqlProgramTmpl, "amount"))
 }
