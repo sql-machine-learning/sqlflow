@@ -30,8 +30,8 @@ class TestMaxComputeConnection(TestCase):
 
     def test_query(self):
         conn = MaxComputeConnection(testing.get_datasource())
-        rs = conn.query("select * from notexist limit 1")
-        self.assertFalse(rs.success())
+        with self.assertRaises(Exception):
+            conn.query("select * from notexist limit 1")
         self.assertTrue("Table not found" in rs.error())
 
         rs = conn.query(

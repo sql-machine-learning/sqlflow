@@ -38,8 +38,8 @@ class TestMySQLConnection(TestCase):
 
     def test_query(self):
         conn = MySQLConnection(testing.get_datasource())
-        rs = conn.query("select * from notexist limit 1")
-        self.assertFalse(rs.success())
+        with self.assertRaises(Exception):
+            conn.query("select * from notexist limit 1")
 
         rs = conn.query("select * from train limit 1")
         self.assertTrue(rs.success())
