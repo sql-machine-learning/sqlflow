@@ -45,7 +45,7 @@ class TestXGBoostTrain(unittest.TestCase):
         original_sql = """SELECT * FROM iris.train
         TO TRAIN xgboost.gbtree
         WITH
-            objective="multi:softmax",
+            objective="multi:softprob",
             num_boost_round=20,
             num_class=3,
             validation.select="SELECT * FROM iris.test"
@@ -56,7 +56,7 @@ class TestXGBoostTrain(unittest.TestCase):
         select = "SELECT * FROM iris.train"
         val_select = "SELECT * FROM iris.test"
         train_params = {"num_boost_round": 20}
-        model_params = {"num_class": 3, "objective": "multi:softmax"}
+        model_params = {"num_class": 3, "objective": "multi:softprob"}
         save_name = "iris.xgboost_train_model_test"
         class_name = "class"
 

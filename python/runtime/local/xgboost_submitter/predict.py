@@ -109,6 +109,7 @@ def _calc_predict_result(bst, dpred, model_params):
         The prediction result.
     """
     preds = bst.predict(dpred)
+    preds = np.array(preds)
 
     # TODO(yancey1989): should save train_params and model_params
     # not only on PAI submitter
@@ -117,8 +118,10 @@ def _calc_predict_result(bst, dpred, model_params):
     objective = model_params.get("objective", "")
     if objective.startswith("binary:"):
         preds = (preds > 0.5).astype(np.int64)
-    elif objective.startswith("multi:") and len(preds) == 2:
-        preds = np.argmax(np.array(preds), axis=1)
+    elif objective.startswith("multi:") and preds.ndim == 2:
+        preds = np.argmax(preds, axis=1)
+    elif preds.ndim == 2:
+        preds = np.argmax(preds, axis=1)
 
     return preds
 
