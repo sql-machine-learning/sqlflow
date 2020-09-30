@@ -181,7 +181,8 @@ class Connection(object):
                 self.commit()
                 return True
             else:
-                raise ValueError(rs.error())
+                raise Exception('Execute %s error\n%s',
+                                (statement, rs.error()))
         finally:
             if rs is not None:
                 rs.close()
