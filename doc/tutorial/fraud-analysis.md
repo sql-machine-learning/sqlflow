@@ -13,7 +13,8 @@ in sqlflow/runnable including the binning runnable. Please use the following
 SQL statement to do the data binning. All the table columns specified in the
 `--column` parameters will be bucketized to 10 bins.
 
-```SQL
+```sql
+%%sqlflow
 SELECT * FROM creditcard.creditcard
 TO RUN sqlflow/runnable:v0.0.1
 CMD "binning.py",
@@ -27,7 +28,8 @@ INTO creditcard_binning_result;
 The result table contains the binning boundaries, proability distribution for
 each bin and also some common used statistical results.
 
-```SQL
+```sql
+%%sqlflow
 SELECT * FROM creditcard.creditcard_binning_result LIMIT 10;
 ```
 
@@ -36,7 +38,8 @@ distribution for the combination of two variables. In the following SQL
 statement, `v1` will bucketized to 10 bins and `v2` will be bucketized to 5
 bins.
 
-```SQL
+```sql
+%%sqlflow
 SELECT * FROM creditcard.creditcard
 TO RUN sqlflow/runnable:v0.0.1
 CMD "two_dim_binning.py",
