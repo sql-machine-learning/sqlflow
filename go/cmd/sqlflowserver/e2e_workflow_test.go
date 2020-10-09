@@ -89,7 +89,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 
 	// test experimental workflow code generation when i == 0
 	// test old workflow code generation when i == 1
-	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "experimental")
+	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "true")
 	for i := 0; i < 2; i++ {
 		t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 		t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
@@ -99,7 +99,7 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
 		t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
 		t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
-		os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "")
+		os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
 	}
 }
 
@@ -524,4 +524,18 @@ func caseWorkflowOptimize(t *testing.T) {
 `
 
 	runSQLProgramAndCheck(t, sqlProgram)
+
+	const sqlProgramTmpl = `
+SELECT * FROM optimize_test_db.woodcarving
+TO MAXIMIZE SUM((price - materials_cost - other_cost) * %[1]s)
+CONSTRAINT SUM(finishing * %[1]s) <= 100, SUM(carpentry * %[1]s) <= 80, %[1]s <= max_num
+WITH 
+	variables="%[1]s(product)",
+	var_type="NonNegativeIntegers"
+USING glpk
+INTO optimize_test_db.woodcarving_result;
+`
+
+	runSQLProgramAndCheck(t, fmt.Sprintf(sqlProgramTmpl, "product"))
+	runSQLProgramAndCheck(t, fmt.Sprintf(sqlProgramTmpl, "amount"))
 }

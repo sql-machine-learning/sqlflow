@@ -31,6 +31,11 @@ def _create_result_table(datasource, select, variables, result_value_name,
     for var in variables:
         field_type = db.to_db_field_type(conn.driver, name_and_types.get(var))
         columns.append("%s %s" % (var, field_type))
+
+    if len(variables) == 1 and variables[0].lower() == result_value_name.lower(
+    ):
+        result_value_name += "_value"
+
     columns.append("%s %s" %
                    (result_value_name,
                     DataType.to_db_field_type(conn.driver, result_type)))

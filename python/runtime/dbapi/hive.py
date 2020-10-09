@@ -23,10 +23,27 @@ class HiveResultSet(ResultSet):
         super(HiveResultSet, self).__init__()
         self._cursor = cursor
         self._column_info = None
+        self._raw_column_info = None
         self._err = err
 
     def _fetch(self, fetch_size):
         return self._cursor.fetchmany(fetch_size)
+
+    def _fill_column_info(self):
+        columns = []
+        raw_columns = []
+        for desc in self._cursor.description:
+            name = desc[0].split('.')[-1]
+            columns.append((name, desc[1]))
+            raw_columns.append((desc[0], desc[1]))
+        self._column_info = columns
+        self._raw_column_info = raw_columns
+
+    def raw_column_info(self):
+        if self._raw_column_info is None:
+            self._fill_column_info()
+
+        return self._raw_column_info
 
     def column_info(self):
         """Get the result column meta, type in the meta maybe DB-specific
@@ -35,14 +52,9 @@ class HiveResultSet(ResultSet):
             A list of column metas, like [(field_a, INT), (field_b, STRING)]
         """
 
-        if self._column_info is not None:
-            return self._column_info
+        if self._column_info is None:
+            self._fill_column_info()
 
-        columns = []
-        for desc in self._cursor.description:
-            name = desc[0].split('.')[-1]
-            columns.append((name, desc[1]))
-        self._column_info = columns
         return self._column_info
 
     def success(self):

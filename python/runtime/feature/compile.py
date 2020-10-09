@@ -16,7 +16,8 @@ import six
 from runtime.feature.column import (BucketColumn, CategoryHashColumn,
                                     CategoryIDColumn, CrossColumn,
                                     EmbeddingColumn, IndicatorColumn,
-                                    NumericColumn, SeqCategoryIDColumn)
+                                    NumericColumn, SeqCategoryIDColumn,
+                                    WeightedCategoryColumn)
 from runtime.feature.field_desc import DataType
 from runtime.model.model import EstimatorType
 
@@ -67,7 +68,10 @@ def compile_feature_column(ir_fc, model_type, package):
 
     if isinstance(ir_fc, NumericColumn):
         fd = ir_fc.get_field_desc()[0]
-        return fc_package.numeric_column(fd.name, shape=fd.shape)
+        return fc_package.numeric_column(fd.name,
+                                         shape=fd.shape,
+                                         dtype=to_package_dtype(
+                                             fd.dtype, package))
 
     if isinstance(ir_fc, BucketColumn):
         source_fc = compile_feature_column(ir_fc.source_column, model_type,
@@ -96,6 +100,13 @@ def compile_feature_column(ir_fc, model_type, package):
         dtype = to_package_dtype(fd.dtype, package)
         return fc_package.categorical_column_with_hash_bucket(
             key=fd.name, hash_bucket_size=ir_fc.bucket_size, dtype=dtype)
+
+    if isinstance(ir_fc, WeightedCategoryColumn):
+        assert model_type != EstimatorType.XGBOOST, \
+            "WEIGHTED_CATEGORY is not supported in XGBoost models"
+        return fc_package.weighted_categorical_column(
+            categorical_column=ir_fc.category_column,
+            weight_feature_key=ir_fc.get_field_desc()[0].name)
 
     if isinstance(ir_fc, CrossColumn):
         assert model_type != EstimatorType.XGBOOST, \

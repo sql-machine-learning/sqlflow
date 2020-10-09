@@ -94,8 +94,9 @@ func caseSelect(t *testing.T) {
 		"petal_width",
 		"class",
 	}
+	dialect := os.Getenv("SQLFLOW_TEST_DB")
 	for idx, headCell := range head {
-		if os.Getenv("SQLFLOW_TEST_DB") == "hive" {
+		if dialect == "hive" {
 			a.Equal("train."+expectedHeads[idx], headCell)
 		} else {
 			a.Equal(expectedHeads[idx], headCell)
@@ -109,6 +110,12 @@ func caseSelect(t *testing.T) {
 		for colIdx, rowCell := range row {
 			a.True(EqualAny(expectedRows[rowIdx][colIdx], rowCell))
 		}
+	}
+
+	if dialect == "mysql" || dialect == "hive" {
+		describeSQL := fmt.Sprintf(`DESCRIBE %s;`, caseTrainTable)
+		_, _, _, err := connectAndRunSQL(describeSQL)
+		a.NoError(err)
 	}
 }
 
@@ -196,11 +203,18 @@ LABEL class INTO sqlflow_models.my_adanet_model;`, // train adanet
 }
 
 func caseTrainRegression(t *testing.T) {
+	seedEnvKey := "SQLFLOW_TF_RANDOM_SEED"
+	os.Setenv(seedEnvKey, "1")
+	defer os.Unsetenv(seedEnvKey)
+
 	a := assert.New(t)
 	trainSQL := fmt.Sprintf(`SELECT *
 FROM housing.train
 TO TRAIN LinearRegressor
-WITH model.label_dimension=1
+WITH 
+  model.label_dimension = 1, 
+  train.batch_size = 16,
+  train.epoch = 10
 COLUMN f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13
 LABEL target
 INTO sqlflow_models.my_regression_model;`)
@@ -226,9 +240,10 @@ FROM housing.predict LIMIT 5;`)
 	}
 
 	for _, row := range rows {
-		// NOTE: predict result maybe random, only check predicted
-		// class >=0, need to change to more flexible checks than
-		// checking expectedPredClasses := []int64{2, 1, 0, 2, 0}
+		// NOTE: predict result maybe random. Since it is
+		// a regression model, the predict result may be
+		// negative. Here we fix the TensorFlow random
+		// seed to get the deterministic result.
 		AssertGreaterEqualAny(a, row[13], float64(0))
 
 		// avoiding nil features in predict result

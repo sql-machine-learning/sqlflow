@@ -30,7 +30,8 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-func generateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
+// GenerateStepCodeAndImage generates step code and image
+func GenerateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
 	switch stmt := sqlStmt.(type) {
 	case *ir.TrainStmt:
 		return generateTrainCodeAndImage(stmt, stepIndex, session)

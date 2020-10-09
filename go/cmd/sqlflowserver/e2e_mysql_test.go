@@ -170,6 +170,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 
 	t.Run("CaseShowDatabases", caseShowDatabases)
 	t.Run("CaseSelect", caseSelect)
+	t.Run("CaseInsert", caseInsert)
 	t.Run("CaseShouldError", CaseShouldError)
 	t.Run("CaseTrainSQL", caseTrainSQL)
 	t.Run("caseCoverageCommon", caseCoverageCommon)
@@ -216,6 +217,25 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseTestOptimizeClauseWithGroupBy", caseTestOptimizeClauseWithGroupBy)
 	t.Run("CaseTestOptimizeClauseWithBinaryVarType", caseTestOptimizeClauseWithBinaryVarType)
 	t.Run("CaseTestOptimizeClauseWithoutConstraint", caseTestOptimizeClauseWithoutConstraint)
+}
+
+func caseInsert(t *testing.T) {
+	const sqlTmpl = `DROP TABLE IF EXISTS %[1]s;
+	CREATE TABLE %[1]s (c BIGINT);
+	INSERT INTO %[1]s VALUES('1');`
+
+	table := caseDB + ".non_exist_table_name"
+	dropTableSQL := fmt.Sprintf(`DROP TABLE %s;`, table)
+	defer connectAndRunSQL(dropTableSQL)
+
+	a := assert.New(t)
+	_, _, _, err := connectAndRunSQL(fmt.Sprintf(sqlTmpl, table))
+	a.NoError(err)
+
+	countSQL := fmt.Sprintf(`SELECT * FROM %s;`, table)
+	_, rows, _, err := connectAndRunSQL(countSQL)
+	a.NoError(err)
+	a.Equal(1, len(rows))
 }
 
 func caseScoreCard(t *testing.T) {

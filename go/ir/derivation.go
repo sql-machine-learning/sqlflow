@@ -320,7 +320,6 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 			if rowCount == 0 {
 				fieldDescMap[fld].Format = inferStringDataFormat(*cellData, fieldDescMap[fld].Delimiter, fieldDescMap[fld].DelimiterKV)
 			}
-
 			switch fieldDescMap[fld].Format {
 			case csv:
 				err := fillCSVFieldDesc(*cellData, fieldDescMap, fld)
@@ -535,7 +534,6 @@ func updateFeatureColumn(fcList []FeatureColumn, fmMap FieldDescMap) error {
 				if !ok {
 					return fmt.Errorf("column not found or inferred: %s", c.Name)
 				}
-				// FIXME(typhoonzero): when to use sequence_category_id_column?
 				// if column fieldDesc is SPARSE, the sparse shape should be in cs.Shape[0]
 				bucketSize := int64(cs.Shape[0])
 				// if the column is inferred as DENSE, use inferred MaxID as the
@@ -546,6 +544,7 @@ func updateFeatureColumn(fcList []FeatureColumn, fmMap FieldDescMap) error {
 					}
 					bucketSize = cs.MaxID + 1
 				}
+				// FIXME(typhoonzero): when to use sequence_category_id_column?
 				c.CategoryColumn = &CategoryIDColumn{
 					FieldDesc:  cs,
 					BucketSize: bucketSize,

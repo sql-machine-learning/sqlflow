@@ -68,3 +68,27 @@ func TestGeneratePyDbConnStr(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, `hive://root:root@127.0.0.1:10000/iris?auth=NOSASL&hdfs_namenode_addr=192.168.1.1%3A8020&hdfs_pass=sqlflow_pass&hdfs_user=sqlflow_admin&hive_location=%2Fsqlflowtmp`, dbConnStr)
 }
+
+func TestGetPyFuncBody(t *testing.T) {
+	program := `
+def test1():
+    return "test1"
+
+def test2():
+    a = "test2"
+    return "test2"
+`
+
+	code1, err := GetPyFuncBody(program, "test1")
+	assert.NoError(t, err)
+	assert.Equal(t, `return "test1"`, code1)
+
+	code2, err := GetPyFuncBody(program, "test2")
+	assert.NoError(t, err)
+	assert.Equal(t, `a = "test2"
+return "test2"`, code2)
+
+	_, err = GetPyFuncBody(program, "test3")
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), program))
+}

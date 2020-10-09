@@ -68,9 +68,10 @@ class CategoricalColumnTransformer(BaseColumnTransformer):
 
 
 class NumericColumnTransformer(BaseColumnTransformer):
-    def __init__(self, key, shape=(1, )):
+    def __init__(self, key, shape=(1, ), dtype='float32'):
         self.key = key
         self.shape = shape
+        self.dtype = dtype
 
     def _set_feature_column_names(self, names):
         BaseColumnTransformer._set_feature_column_names(self, names)
@@ -83,8 +84,8 @@ class NumericColumnTransformer(BaseColumnTransformer):
         return [self.key]
 
 
-def numeric_column(key, shape=(1, )):
-    return NumericColumnTransformer(key, shape)
+def numeric_column(key, shape=(1, ), dtype='float32'):
+    return NumericColumnTransformer(key, shape, dtype)
 
 
 class BucketizedColumnTransformer(CategoricalColumnTransformer):

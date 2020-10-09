@@ -22,7 +22,7 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
-// parseToIR parse the sql program to genreate a list of IR.
+// parseToIR parse the sql program to generate a list of IR.
 func parseToIR(sqlProgram string, session *pb.Session) ([]ir.SQLFlowStmt, error) {
 	var dbDriver string
 	var r ir.SQLFlowStmt

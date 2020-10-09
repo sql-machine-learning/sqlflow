@@ -53,6 +53,8 @@ class SQLFSWriter(object):
 
     def write(self, content):
         block = base64.b64encode(content)
+        if six.PY3 and isinstance(block, bytes):
+            block = block.decode("utf-8")
         self.writer.write([self.row_idx, block])
         self.row_idx += 1
 
@@ -66,10 +68,27 @@ class SQLFSWriter(object):
         self.context_manager.__exit__(*args, **kwargs)
 
 
+def _build_ordered_reader(reader):
+    block_dict = dict()
+    cur_id = 0
+    for id, block in reader:
+        block_dict[id] = block
+        while True:
+            next_block = block_dict.pop(cur_id, None)
+            if next_block is None:
+                break
+
+            yield cur_id, next_block
+            cur_id += 1
+
+    assert not block_dict, "invalid model db format"
+
+
 class SQLFSReader(object):
     def __init__(self, conn, table):
-        sql = "SELECT block FROM {0} ORDER BY id".format(table)
-        self.rs = conn.query(sql)
+        sql = "SELECT id, block FROM {};".format(table)
+        self.raw_rs = conn.query(sql)
+        self.rs = _build_ordered_reader(self.raw_rs)
         self.reader = iter(self.rs)
         self.buffer = b''
 
@@ -85,7 +104,7 @@ class SQLFSReader(object):
             if new_buffer is None:
                 break
 
-            new_buffer = base64.b64decode(new_buffer[0])
+            new_buffer = base64.b64decode(new_buffer[1])
             self.buffer += new_buffer
 
         read_length = min(n, len(self.buffer))
@@ -94,7 +113,7 @@ class SQLFSReader(object):
         return result
 
     def close(self):
-        self.rs.close()
+        self.raw_rs.close()
 
     def __enter__(self, *args, **kwargs):
         return self

@@ -32,6 +32,7 @@ while true; do
 done
 
 export SQLFLOW_TEST_DB=mysql
+export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true
 
 python -c "import sqlflow_models"
 python -c "import runtime.db"

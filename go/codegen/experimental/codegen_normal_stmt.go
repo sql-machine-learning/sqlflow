@@ -22,24 +22,22 @@ import (
 
 const normalStmtStepTmpl = `
 def step_entry_{{.StepIndex}}():
-    import runtime
-    import runtime.dbapi
-    from runtime.dbapi import table_writer
-
-    conn = runtime.dbapi.connect("{{.DataSource}}")
+    from runtime.dbapi import connect
+    conn = connect("{{.DataSource}}")
     stmt = """{{.Stmt}}"""
     if conn.is_query(stmt):
-        rs = conn.query(stmt)
-        if rs.error():
-            raise Exception("execute query error: %s " % rs.error())
+        # Importing table_writer is slow. So only
+        # import it when needed.
+        from runtime.dbapi import table_writer
+        rs = conn.query(stmt)  # Exception would raise if error
         tw = table_writer.ProtobufWriter(rs)
         lines = tw.dump_strings()
         for l in lines:
             print(l)
     else:
-        success = conn.execute(stmt)
-        if not success:
-            raise Exception("execute statment error: %s" % stmt)
+        conn.execute(stmt)  # Exception would raise if error
+
+    conn.close()
 `
 
 var normalStmtStepTemplate = template.Must(template.New("NormalStmtStep").Parse(normalStmtStepTmpl))
