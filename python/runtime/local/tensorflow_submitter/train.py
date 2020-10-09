@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime.model.model import Model
 from runtime.step.tensorflow.train import train_step
 
 
@@ -27,6 +28,12 @@ def train(original_sql,
           label_column,
           save,
           load=None):
+    if load:
+        Model.load_from_db(datasource, load)
+        load = "model_save"
+    else:
+        load = None
+
     train_step(original_sql=original_sql,
                model_image=model_image,
                estimator_string=estimator_string,
