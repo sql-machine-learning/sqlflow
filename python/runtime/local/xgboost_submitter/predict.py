@@ -52,7 +52,8 @@ def pred(datasource, select, result_table, pred_label_name, model):
 
     field_descs = get_ordered_field_descs(train_fc_map)
     feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
+                          for fd in field_descs])
 
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
@@ -109,16 +110,20 @@ def _calc_predict_result(bst, dpred, model_params):
         The prediction result.
     """
     preds = bst.predict(dpred)
+    preds = np.array(preds)
 
     # TODO(yancey1989): should save train_params and model_params
     # not only on PAI submitter
     # TODO(yancey1989): output the original result for various
     # objective function.
-    objective = model_params.get("objective", "")
-    if objective.startswith("binary:"):
-        preds = (preds > 0.5).astype(np.int64)
-    elif objective.startswith("multi:") and len(preds) == 2:
+    obj = model_params.get("objective", "")
+    # binary:hinge output class labels
+    if obj.startswith("binary:logistic"):
+        preds = (preds > 0.5).astype(int)
+    # multi:softmax output class labels
+    elif obj.startswith("multi:softprob"):
         preds = np.argmax(np.array(preds), axis=1)
+    # TODO(typhoonzero): deal with binary:logitraw when needed.
 
     return preds
 

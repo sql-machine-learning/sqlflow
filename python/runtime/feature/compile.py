@@ -68,7 +68,10 @@ def compile_feature_column(ir_fc, model_type, package):
 
     if isinstance(ir_fc, NumericColumn):
         fd = ir_fc.get_field_desc()[0]
-        return fc_package.numeric_column(fd.name, shape=fd.shape)
+        return fc_package.numeric_column(fd.name,
+                                         shape=fd.shape,
+                                         dtype=to_package_dtype(
+                                             fd.dtype, package))
 
     if isinstance(ir_fc, BucketColumn):
         source_fc = compile_feature_column(ir_fc.source_column, model_type,

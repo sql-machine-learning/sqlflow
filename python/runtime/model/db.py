@@ -14,7 +14,6 @@
 import base64
 import json
 
-import numpy as np
 import six
 from runtime.db import buffered_db_writer, connect_with_data_source
 from runtime.diagnostics import SQLFlowDiagnostic
@@ -53,6 +52,8 @@ class SQLFSWriter(object):
 
     def write(self, content):
         block = base64.b64encode(content)
+        if six.PY3 and isinstance(block, bytes):
+            block = block.decode("utf-8")
         self.writer.write([self.row_idx, block])
         self.row_idx += 1
 
@@ -66,10 +67,27 @@ class SQLFSWriter(object):
         self.context_manager.__exit__(*args, **kwargs)
 
 
+def _build_ordered_reader(reader):
+    block_dict = dict()
+    cur_id = 0
+    for id, block in reader:
+        block_dict[id] = block
+        while True:
+            next_block = block_dict.pop(cur_id, None)
+            if next_block is None:
+                break
+
+            yield cur_id, next_block
+            cur_id += 1
+
+    assert not block_dict, "invalid model db format"
+
+
 class SQLFSReader(object):
     def __init__(self, conn, table):
-        sql = "SELECT block FROM {0} ORDER BY id".format(table)
-        self.rs = conn.query(sql)
+        sql = "SELECT id, block FROM {};".format(table)
+        self.raw_rs = conn.query(sql)
+        self.rs = _build_ordered_reader(self.raw_rs)
         self.reader = iter(self.rs)
         self.buffer = b''
 
@@ -85,7 +103,7 @@ class SQLFSReader(object):
             if new_buffer is None:
                 break
 
-            new_buffer = base64.b64decode(new_buffer[0])
+            new_buffer = base64.b64decode(new_buffer[1])
             self.buffer += new_buffer
 
         read_length = min(n, len(self.buffer))
@@ -94,7 +112,7 @@ class SQLFSReader(object):
         return result
 
     def close(self):
-        self.rs.close()
+        self.raw_rs.close()
 
     def __enter__(self, *args, **kwargs):
         return self
@@ -108,20 +126,18 @@ def _encode_metadata(metadata):
     if six.PY3:
         # make sure that metadata_json has no non-ascii characters
         metadata_json = bytes(metadata_json, encoding='utf-8')
-
-    len_arr = np.array(len(metadata_json), dtype=np.int64)
+    # encode length to an hex string
+    # a string like 0x0000ffff (length 10) is able to represent int64.
+    len_magic = "{0:#0{1}x}".format(len(metadata_json), 10)
     if six.PY3:
-        len_arr = len_arr.tobytes()
-    else:
-        len_arr = len_arr.tostring()
-
-    result = len_arr + metadata_json
+        len_magic = bytes(len_magic, encoding='utf-8')
+    result = len_magic + metadata_json
     return result
 
 
 def _read_metadata(reader):
-    length = reader.read(8)
-    length = np.frombuffer(length, dtype=np.int64)[0]
+    length = reader.read(10)
+    length = int(length, 16)
     metadata_json = reader.read(length)
     return json.loads(metadata_json, cls=JSONDecoderWithFeatureColumn)
 

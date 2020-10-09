@@ -23,6 +23,7 @@ import (
 	"github.com/argoproj/pkg/file"
 	"github.com/stretchr/testify/assert"
 	"sqlflow.org/sqlflow/go/database"
+	"sqlflow.org/sqlflow/go/sqlfs"
 )
 
 const modelMeta = `
@@ -123,4 +124,39 @@ func TestModelDBStore(t *testing.T) {
 	a.NoError(err)
 	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMetaAsString("estimator"))
 	a.Equal("SELECT * FROM iris.train where class!=2", model.GetMetaAsString("select"))
+}
+
+func TestDumpDBModelExperimental(t *testing.T) {
+	a := assert.New(t)
+	metaLen := len(modelMeta)
+	metaLenStr := fmt.Sprintf("0x%08x", metaLen)
+	a.Equal(684, metaLen)
+	a.Equal("0x000002ac", metaLenStr)
+
+	session := database.GetSessionFromTestingDB()
+	db, err := database.OpenAndConnectDB(session.DbConnStr)
+	table := "iris.test_dump_model_experimental"
+	a.NoError(err)
+	sqlf, e := sqlfs.Create(db, table, session)
+	a.NoError(e)
+
+	sqlf.Write([]byte(metaLenStr))
+	sqlf.Write([]byte(modelMeta))
+	fakeData := make([]byte, 1024)
+	for i := 0; i < 1024; i++ {
+		fakeData[i] = 0
+	}
+	sqlf.Write(fakeData) // fake data
+	sqlf.Close()
+
+	ws, err := ioutil.TempDir("/tmp", "model_ws")
+	a.NoError(err)
+	defer os.RemoveAll(ws)
+	fn, model, err := DumpDBModelExperimental(db, table, ws)
+	if err != nil {
+		a.FailNow("error: %v", err)
+	}
+
+	a.Equal(ws+"/model_dump.tar.gz", fn)
+	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMetaAsString("estimator"))
 }

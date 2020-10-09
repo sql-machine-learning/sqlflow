@@ -38,8 +38,8 @@ class TestMySQLConnection(TestCase):
 
     def test_query(self):
         conn = MySQLConnection(testing.get_datasource())
-        rs = conn.query("select * from notexist limit 1")
-        self.assertFalse(rs.success())
+        with self.assertRaises(Exception):
+            conn.query("select * from notexist limit 1")
 
         rs = conn.query("select * from train limit 1")
         self.assertTrue(rs.success())
@@ -69,8 +69,8 @@ class TestMySQLConnection(TestCase):
         self.assertTrue(2, len(rows))
         rs = conn.execute("drop table test_exec")
         self.assertTrue(rs)
-        rs = conn.execute("drop table not_exist")
-        self.assertFalse(rs)
+        with self.assertRaises(Exception):
+            conn.execute("drop table not_exist")
 
     def test_get_table_schema(self):
         conn = MySQLConnection(testing.get_datasource())

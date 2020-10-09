@@ -92,7 +92,8 @@ def evaluate(datasource,
 
     field_descs = get_ordered_field_descs(train_fc_map)
     feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
+                          for fd in field_descs])
 
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
@@ -111,15 +112,16 @@ def evaluate(datasource,
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
 
-        dpred = xgb_dataset(datasource=datasource,
-                            fn=pred_fn,
-                            dataset_sql=select,
-                            feature_metas=feature_metas,
-                            feature_column_names=feature_column_names,
-                            label_meta=train_label_desc.to_dict(),
-                            cache=True,
-                            batch_size=10000,
-                            transform_fn=transform_fn)
+        dpred = xgb_dataset(
+            datasource=datasource,
+            fn=pred_fn,
+            dataset_sql=select,
+            feature_metas=feature_metas,
+            feature_column_names=feature_column_names,
+            label_meta=train_label_desc.to_dict(dtype_to_string=True),
+            cache=True,
+            batch_size=10000,
+            transform_fn=transform_fn)
 
         for i, pred_dmatrix in enumerate(dpred):
             feature_file_name = pred_fn + "_%d" % i

@@ -145,7 +145,11 @@ class Connection(object):
             A ResultSet object which is iteratable, each generated
             record in the iterator is a result-row wrapped by list
         """
-        return self._get_result_set(statement)
+        rs = self._get_result_set(statement)
+        if rs.success():
+            return rs
+        else:
+            raise Exception('Execute "%s" error\n%s' % (statement, rs.error()))
 
     def is_query(self, statement):
         """Return true if the statement is a query SQL statement."""
@@ -173,9 +177,16 @@ class Connection(object):
         rs = None
         try:
             rs = self._get_result_set(statement)
-            return rs.success()
-        except Exception as e:  # noqa: E722
-            raise e
+            if rs.success():
+                # NOTE(sneaxiy): must execute commit!
+                # Otherwise, the `INSERT` statement
+                # would have no effect even though
+                # the connection is closed.
+                self.commit()
+                return True
+            else:
+                raise Exception('Execute "%s" error\n%s' %
+                                (statement, rs.error()))
         finally:
             if rs is not None:
                 rs.close()
@@ -200,6 +211,9 @@ class Connection(object):
         Close the connection, implementation should support
         close multi-times
         """
+        pass
+
+    def commit(self):
         pass
 
     def __del__(self):

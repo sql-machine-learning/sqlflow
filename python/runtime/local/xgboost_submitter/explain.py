@@ -181,11 +181,13 @@ def xgb_native_explain(booster, datasource, result_table):
 def shap_explain(booster, datasource, select, summary_params, result_table,
                  model):
     train_fc_map = model.get_meta("features")
-    label_meta = model.get_meta("label").get_field_desc()[0].to_dict()
+    label_meta = model.get_meta("label").get_field_desc()[0].to_dict(
+        dtype_to_string=True)
 
     field_descs = get_ordered_field_descs(train_fc_map)
     feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
+                          for fd in field_descs])
 
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
