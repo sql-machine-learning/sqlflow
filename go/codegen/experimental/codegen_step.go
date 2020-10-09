@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 	"strings"
+
+	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 
 	"github.com/bitly/go-simplejson"
 	"sqlflow.org/sqlflow/go/sqlfs"
@@ -243,6 +244,9 @@ func GeneratePyDbConnStr(session *pb.Session) (string, error) {
 	query.Set("hdfs_pass", session.HdfsPass)
 
 	u.RawQuery = query.Encode()
+
+	fmt.Printf("The Python db connection string is %s", u.String())
+
 	return u.String(), nil
 }
 
