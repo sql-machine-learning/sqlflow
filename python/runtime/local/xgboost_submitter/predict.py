@@ -118,7 +118,8 @@ def _calc_predict_result(bst, dpred, model_params):
     objective = model_params.get("objective", "")
     if objective.startswith("binary:"):
         preds = (preds > 0.5).astype(np.int64)
-    elif objective.startswith("multi:") and preds.ndim == 2:
+    elif objective.startswith("multi:softprob"):
+        # multi:softprob outputs probability
         preds = np.argmax(preds, axis=1)
     elif preds.ndim == 2:
         preds = np.argmax(preds, axis=1)
