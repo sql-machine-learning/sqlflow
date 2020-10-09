@@ -14,12 +14,13 @@
 package experimental
 
 import (
-	"encoding/binary"
 	"fmt"
 	"net/url"
 	"os"
-	"sqlflow.org/sqlflow/go/codegen/tensorflow"
+	"strconv"
 	"strings"
+
+	"sqlflow.org/sqlflow/go/codegen/tensorflow"
 
 	"github.com/bitly/go-simplejson"
 	"sqlflow.org/sqlflow/go/sqlfs"
@@ -168,24 +169,24 @@ func getModelMetadataFromDB(dbConnStr, table string) (*metadata, error) {
 	}
 	defer fs.Close()
 
-	lengthBytes := make([]byte, 8)
-	readCnt, err := fs.Read(lengthBytes)
-	if err != nil {
-		return nil, err
+	lengthHexStr := make([]byte, 10)
+	n, err := fs.Read(lengthHexStr)
+	if err != nil || n != 10 {
+		return nil, fmt.Errorf("read meta length from db error: %v", err)
 	}
-	if readCnt != 8 {
-		return nil, fmt.Errorf("invalid model table")
+	metaLength, err := strconv.ParseInt(string(lengthHexStr), 0, 64)
+	if err != nil {
+		return nil, fmt.Errorf("convert length head error: %v", err)
+	}
+	jsonBytes := make([]byte, metaLength)
+	l, err := fs.Read(jsonBytes)
+	if err != nil {
+		return nil, fmt.Errorf("read meta json from db error: %v", err)
+	}
+	if int64(l) != metaLength {
+		return nil, fmt.Errorf("read meta json from db error: invalid meta length read %d", l)
 	}
 
-	length := binary.LittleEndian.Uint64(lengthBytes)
-	jsonBytes := make([]byte, length)
-	readCnt, err = fs.Read(jsonBytes)
-	if err != nil {
-		return nil, err
-	}
-	if uint64(readCnt) != length {
-		return nil, fmt.Errorf("invalid model metadata")
-	}
 	json, err := simplejson.NewJson(jsonBytes)
 	if err != nil {
 		return nil, err

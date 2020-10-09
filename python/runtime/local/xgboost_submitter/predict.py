@@ -110,16 +110,20 @@ def _calc_predict_result(bst, dpred, model_params):
         The prediction result.
     """
     preds = bst.predict(dpred)
+    preds = np.array(preds)
 
     # TODO(yancey1989): should save train_params and model_params
     # not only on PAI submitter
     # TODO(yancey1989): output the original result for various
     # objective function.
-    objective = model_params.get("objective", "")
-    if objective.startswith("binary:"):
-        preds = (preds > 0.5).astype(np.int64)
-    elif objective.startswith("multi:") and len(preds) == 2:
+    obj = model_params.get("objective", "")
+    # binary:hinge output class labels
+    if obj.startswith("binary:logistic"):
+        preds = (preds > 0.5).astype(int)
+    # multi:softmax output class labels
+    elif obj.startswith("multi:softprob"):
         preds = np.argmax(np.array(preds), axis=1)
+    # TODO(typhoonzero): deal with binary:logitraw when needed.
 
     return preds
 

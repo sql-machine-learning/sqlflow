@@ -60,6 +60,11 @@ Done predicting. Predict table : iris.predict
 
 - [Quick Start](/doc/quick_start.md)
 - [Language Guide](/doc/language_guide.md)
+- [DNN Classification example on Iris dataset](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/iris-dnn.ipynb&fileName=iris-dnn.ipynb#/)
+- [DNN Classification example on fraud detection](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/fraud-dnn.ipynb&fileName=fraud-dnn.ipynb#/)
+- [Housing Price Prediction with XGBoost](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/housing-xgboost.ipynb&fileName=housing-xgboost.ipynb#/)
+- [Housing Price Prediction Explanation](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/housing-explain.ipynb&fileName=housing-explain.ipynb#/)
+- [Optimization Guide](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/optimization_guide.ipynb&fileName=optimization_guide.ipynb#/)
 
 ## Contributing Guidelines
 

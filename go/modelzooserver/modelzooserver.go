@@ -357,14 +357,26 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		return nil, err
 	}
 	defer os.RemoveAll(dir)
-	tarFile, err := model.DumpDBModel(db, req.Name, dir)
-	if err != nil {
-		return nil, err
+	var tarFile string
+	var modelMeta *model.Model
+	// TODO(typhoonzero): change to os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+	// after https://github.com/sql-machine-learning/sqlflow/pull/2970 was merged.
+	if false {
+		tarFile, modelMeta, err = model.DumpDBModelExperimental(db, req.Name, dir)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tarFile, err = model.DumpDBModel(db, req.Name, dir)
+		if err != nil {
+			return nil, err
+		}
+		modelMeta, err = model.ExtractMetaFromTarball(tarFile, dir)
+		if err != nil {
+			return nil, err
+		}
 	}
-	modelMeta, err := model.ExtractMetaFromTarball(tarFile, dir)
-	if err != nil {
-		return nil, err
-	}
+
 	sendFile, err := os.Open(tarFile)
 	if err != nil {
 		return nil, err
