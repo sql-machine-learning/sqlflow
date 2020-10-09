@@ -179,9 +179,12 @@ func getModelMetadataFromDB(dbConnStr, table string) (*metadata, error) {
 		return nil, fmt.Errorf("convert length head error: %v", err)
 	}
 	jsonBytes := make([]byte, metaLength)
-	_, err = fs.Read(jsonBytes)
+	l, err := fs.Read(jsonBytes)
 	if err != nil {
 		return nil, fmt.Errorf("read meta json from db error: %v", err)
+	}
+	if int64(l) != metaLength {
+		return nil, fmt.Errorf("read meta json from db error: invalid meta length read %d", l)
 	}
 
 	json, err := simplejson.NewJson(jsonBytes)

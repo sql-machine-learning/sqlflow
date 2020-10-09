@@ -324,9 +324,12 @@ func DumpDBModelExperimental(db *database.DB, table, cwd string) (string, *Model
 		return "", nil, fmt.Errorf("convert length head error: %v", err)
 	}
 	metaStr := make([]byte, metaLength)
-	_, err = sqlf.Read(metaStr)
+	l, err := sqlf.Read(metaStr)
 	if err != nil {
 		return "", nil, fmt.Errorf("read meta json from db error: %v", err)
+	}
+	if int64(l) != metaLength {
+		return "", nil, fmt.Errorf("read meta json from db error: invalid meta length read %d", l)
 	}
 
 	model := &Model{}
