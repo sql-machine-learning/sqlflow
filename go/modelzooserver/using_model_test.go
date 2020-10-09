@@ -16,7 +16,6 @@ package modelzooserver
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -175,7 +174,6 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 	err = releaseDemoModelRepo(modelZooClient)
 	a.NoError(err)
 
-	fmt.Println("before release model")
 	req := &proto.ReleaseModelRequest{
 		Name:        "sqlflow_models.modelzoo_model_iris",
 		Tag:         "v0.1",
