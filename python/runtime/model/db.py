@@ -110,6 +110,8 @@ def _encode_metadata(metadata):
     # encode length to an hex string
     # a string like 0x0000ffff (length 10) is able to represent int64.
     len_magic = "{0:#0{1}x}".format(len(metadata_json), 10)
+    if six.PY3:
+        len_magic = bytes(len_magic, encoding='utf-8')
     result = len_magic + metadata_json
     return result
 
