@@ -14,7 +14,7 @@
 import copy
 import types
 
-import tensorflow.keras.losses as tf_loss
+import tensorflow.keras.losses as tf_loss  # noqa: F401
 from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import (get_ordered_field_descs,
@@ -30,17 +30,17 @@ from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
 
 if tf_is_version2():
-    import tensorflow.keras.optimizers as tf_optimizers
+    import tensorflow.keras.optimizers as tf_optimizers  # noqa: F401
 else:
-    import tensorflow.train as tf_optimizers
+    import tensorflow.train as tf_optimizers  # noqa: F401
 
 
 def get_tf_optimizer(optimizer):
-    return getattr(tf_optimizers, optimizer)
+    return eval("tf_optimizers." + optimizer)
 
 
 def get_tf_loss(loss):
-    return getattr(tf_loss, loss)
+    return eval("tf_loss." + loss)
 
 
 # NOTE(typhoonzero): workflow step entry for codegen/experimental,
