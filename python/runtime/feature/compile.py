@@ -104,9 +104,14 @@ def compile_feature_column(ir_fc, model_type, package):
     if isinstance(ir_fc, WeightedCategoryColumn):
         assert model_type != EstimatorType.XGBOOST, \
             "WEIGHTED_CATEGORY is not supported in XGBoost models"
-        return fc_package.weighted_categorical_column(
-            categorical_column=ir_fc.category_column,
-            weight_feature_key=ir_fc.get_field_desc()[0].name)
+        cc = ir_fc.category_column
+        if cc is not None:
+            cc = compile_feature_column(cc, model_type, package)
+
+        key = "%s_weight" % ir_fc.get_field_desc()[0].name
+
+        return fc_package.weighted_categorical_column(categorical_column=cc,
+                                                      weight_feature_key=key)
 
     if isinstance(ir_fc, CrossColumn):
         assert model_type != EstimatorType.XGBOOST, \
