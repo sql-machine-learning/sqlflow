@@ -190,7 +190,7 @@ func (c *CrossColumn) GenPythonCode() string {
 	keysCode := []string{}
 	for _, k := range c.Keys {
 		if strKey, ok := k.(string); ok {
-			keysCode = append(keysCode, strKey)
+			keysCode = append(keysCode, fmt.Sprintf(`"%s"`, strKey))
 		} else if nc, ok := k.(*NumericColumn); ok {
 			keysCode = append(keysCode, nc.GenPythonCode())
 		}

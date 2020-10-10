@@ -38,7 +38,7 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
     model_params["model_dir"] = FLAGS.checkpointDir
 
     if load:
-        load_pretrained_model_estimator(estimator, model_params)
+        load_pretrained_model_estimator(estimator, model_params, load)
     classifier = init_model(estimator, model_params)
 
     # do not add default Accuracy metric when using estimator to train,
