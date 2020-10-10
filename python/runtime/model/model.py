@@ -198,6 +198,10 @@ class Model(object):
         if local_dir is None:
             local_dir = os.getcwd()
 
+        idx = table.rfind('/')
+        if idx >= 0:
+            table = table[idx + 1:]
+
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             gen, metadata = read_with_generator_and_metadata(datasource, table)

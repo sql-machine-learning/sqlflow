@@ -56,6 +56,24 @@ func GenerateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 	}
 }
 
+func decomposeModelName(modelName string) (string, string) {
+	idx := strings.LastIndex(modelName, "/")
+	if idx >= 0 {
+		return modelName[0:idx], modelName[idx+1:]
+	}
+	return "", modelName
+}
+
+func isSameModelName(modelName1, modelName2 string) bool {
+	url1, name1 := decomposeModelName(modelName1)
+	url2, name2 := decomposeModelName(modelName2)
+	if name1 != name2 {
+		return false
+	}
+
+	return url1 == url2 || (url1 == "" || url2 == "")
+}
+
 func generateTrainCodeAndImage(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) (string, string, error) {
 	code, err := GenerateTrain(trainStmt, stepIndex, session)
 	if err != nil {
@@ -130,7 +148,7 @@ func findModelGenerationTrainStmt(modelName string, idx int, sqlStmts []ir.SQLFl
 	idx--
 	for idx >= 0 {
 		trainStmt, ok := sqlStmts[idx].(*ir.TrainStmt)
-		if ok && trainStmt.Into == modelName {
+		if ok && isSameModelName(trainStmt.Into, modelName) {
 			return trainStmt
 		}
 		idx--
@@ -151,6 +169,7 @@ func (m *metadata) imageName() string {
 func getModelMetadata(session *pb.Session, table string) (*metadata, error) {
 	submitter := getSubmitter(session)
 	if submitter == "local" {
+		_, table = decomposeModelName(table)
 		return getModelMetadataFromDB(session.DbConnStr, table)
 	}
 	return nil, fmt.Errorf("not supported submitter %s", submitter)

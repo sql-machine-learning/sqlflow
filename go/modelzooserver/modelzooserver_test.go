@@ -14,11 +14,14 @@
 package modelzooserver
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"sqlflow.org/sqlflow/go/sqlfs"
 	"testing"
 
 	"github.com/bitly/go-simplejson"
@@ -58,6 +61,40 @@ func mockTmpModelRepo() (string, error) {
 	}
 
 	return dir, nil
+}
+
+func saveModelExperimental(connStr, table, dir string, meta []byte) error {
+	db, err := database.OpenAndConnectDB(connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	sqlf, e := sqlfs.Create(db, table, nil)
+	if e != nil {
+		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
+	}
+	defer sqlf.Close()
+
+	metaLen := len(meta)
+	metaLenStr := fmt.Sprintf("0x%08x", metaLen)
+	_, e = sqlf.Write([]byte(metaLenStr))
+	if e != nil {
+		return e
+	}
+	_, e = sqlf.Write(meta)
+	if e != nil {
+		return e
+	}
+
+	cmd := exec.Command("tar", "czf", "-", "-C", dir, ".")
+	cmd.Stdout = sqlf
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
+	}
+	return nil
 }
 
 func TestModelZooServer(t *testing.T) {
@@ -126,19 +163,26 @@ func TestModelZooServer(t *testing.T) {
 			"class_name": "DNNClassifier",
 			"model_repo_image": "sqlflow/my_test_model:v0.1"
 		}`)
-		jsonMeta, err := simplejson.NewJson(modelMetaStr)
-		err = ioutil.WriteFile(dir+"/model_meta.json", modelMetaStr, 0755)
-		a.NoError(err)
-		token := make([]byte, 256)
-		rand.Read(token)
-		err = ioutil.WriteFile(dir+"/model_save.bin", token, 0755)
-		a.NoError(err)
-		sampleModel := model.New(dir, "SAMPLE TRAIN SELECT")
-		sampleModel.Meta = jsonMeta
 		modelTableName := "sqlflow_models.model_zoo_sample_model"
-		err = sampleModel.Save(modelTableName, &pb.Session{
-			DbConnStr: dbConnStr,
-		})
+
+		// TODO(typhoonzero): change to os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+		// after https://github.com/sql-machine-learning/sqlflow/pull/2970 was merged.
+		if false {
+			err = saveModelExperimental(dbConnStr, modelTableName, dir, modelMetaStr)
+		} else {
+			jsonMeta, err := simplejson.NewJson(modelMetaStr)
+			err = ioutil.WriteFile(dir+"/model_meta.json", modelMetaStr, 0755)
+			a.NoError(err)
+			token := make([]byte, 256)
+			rand.Read(token)
+			err = ioutil.WriteFile(dir+"/model_save.bin", token, 0755)
+			a.NoError(err)
+			sampleModel := model.New(dir, "SAMPLE TRAIN SELECT")
+			sampleModel.Meta = jsonMeta
+			err = sampleModel.Save(modelTableName, &pb.Session{
+				DbConnStr: dbConnStr,
+			})
+		}
 		a.NoError(err)
 
 		req := &pb.ReleaseModelRequest{
