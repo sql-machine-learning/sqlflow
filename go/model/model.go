@@ -261,19 +261,45 @@ func loadModelFromDB(db *database.DB, table, cwd string) (*Model, error) {
 		}
 		defer os.RemoveAll(cwd)
 	}
-	tarFile, err := DumpDBModel(db, table, cwd)
+	tarFile, err := dumpDBModel(db, table, cwd)
 	if err != nil {
 		return nil, err
 	}
 	if !unzipModel {
-		return ExtractMetaFromTarball(tarFile, cwd)
+		return extractMetaFromTarball(tarFile, cwd)
 	}
 	return loadTar(path.Dir(tarFile), path.Base(tarFile), cwd)
 }
 
-// DumpDBModel dumps a model tarball from database to local
+// DumpDBModelAndExtractMeta dumps db model into a tar file and extracts the metadata
+func DumpDBModelAndExtractMeta(db *database.DB, table, cwd string, getMeta bool) (string, *Model, error) {
+	// TODO(typhoonzero): change to os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+	// after https://github.com/sql-machine-learning/sqlflow/pull/2970 was merged.
+	if false {
+		tarFile, meta, err := dumpDBModelExperimental(db, table, cwd)
+		if !getMeta {
+			meta = nil
+		}
+		return tarFile, meta, err
+	}
+
+	tarFile, err := dumpDBModel(db, table, cwd)
+	if err != nil {
+		return "", nil, err
+	}
+	var meta *Model
+	if getMeta {
+		meta, err = extractMetaFromTarball(tarFile, cwd)
+		if err != nil {
+			return "", nil, err
+		}
+	}
+	return tarFile, meta, nil
+}
+
+// dumpDBModel dumps a model tarball from database to local
 // file system and return the file name
-func DumpDBModel(db *database.DB, table, cwd string) (string, error) {
+func dumpDBModel(db *database.DB, table, cwd string) (string, error) {
 	sqlf, err := sqlfs.Open(db.DB, table)
 	if err != nil {
 		return "", fmt.Errorf("Can't open sqlfs %s, %v", table, err)
@@ -290,10 +316,10 @@ func DumpDBModel(db *database.DB, table, cwd string) (string, error) {
 	return fileName, nil
 }
 
-// ExtractMetaFromTarball extract metadata from given tarball
+// extractMetaFromTarball extract metadata from given tarball
 // and return the metadata json string. This function do not
 // unzip the whole model tarball
-func ExtractMetaFromTarball(tarballName, cwd string) (*Model, error) {
+func extractMetaFromTarball(tarballName, cwd string) (*Model, error) {
 	if !strings.HasSuffix(tarballName, ".tar.gz") {
 		return nil, fmt.Errorf("given file should be a .tar.gz file")
 	}
@@ -307,8 +333,8 @@ func ExtractMetaFromTarball(tarballName, cwd string) (*Model, error) {
 	return loadMeta(metaPath)
 }
 
-// DumpDBModelExperimental returns the dumped model tar file name and model meta (JSON serialized).
-func DumpDBModelExperimental(db *database.DB, table, cwd string) (string, *Model, error) {
+// dumpDBModelExperimental returns the dumped model tar file name and model meta (JSON serialized).
+func dumpDBModelExperimental(db *database.DB, table, cwd string) (string, *Model, error) {
 	sqlf, err := sqlfs.Open(db.DB, table)
 	if err != nil {
 		return "", nil, fmt.Errorf("Can't open sqlfs %s, %v", table, err)

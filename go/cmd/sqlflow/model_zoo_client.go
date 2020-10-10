@@ -105,11 +105,7 @@ func releaseModelFromLocal(opts *options) error {
 		return err
 	}
 	defer os.RemoveAll(dir)
-	tarFile, err := model.DumpDBModel(db, opts.ModelName, dir)
-	if err != nil {
-		return err
-	}
-	model, err := model.ExtractMetaFromTarball(tarFile, dir)
+	tarFile, model, err := model.DumpDBModelAndExtractMeta(db, opts.ModelName, dir, true)
 	if err != nil {
 		return err
 	}

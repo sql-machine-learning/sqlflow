@@ -152,7 +152,7 @@ func TestDumpDBModelExperimental(t *testing.T) {
 	ws, err := ioutil.TempDir("/tmp", "model_ws")
 	a.NoError(err)
 	defer os.RemoveAll(ws)
-	fn, model, err := DumpDBModelExperimental(db, table, ws)
+	fn, model, err := dumpDBModelExperimental(db, table, ws)
 	if err != nil {
 		a.FailNow("error: %v", err)
 	}

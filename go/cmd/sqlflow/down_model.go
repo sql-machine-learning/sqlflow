@@ -38,7 +38,7 @@ func downloadModelFromDB(opts *options) error {
 	if err != nil {
 		return err
 	}
-	filename, err := model.DumpDBModel(db, opts.ModelName, cwd)
+	filename, _, err := model.DumpDBModelAndExtractMeta(db, opts.ModelName, cwd, false)
 	if err != nil {
 		return err
 	}
