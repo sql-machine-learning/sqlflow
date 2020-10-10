@@ -119,6 +119,10 @@ func releaseDemoModelRepo(client proto.ModelZooServerClient) error {
 }
 
 func TestUsingModelZooModel(t *testing.T) {
+	oldEnv := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN")
+	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
+	defer os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", oldEnv)
+
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
