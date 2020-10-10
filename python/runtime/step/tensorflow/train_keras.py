@@ -11,11 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
+import six
 import tensorflow as tf
 from runtime.model import oss, save_metadata
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
+from runtime.tensorflow.keras_with_feature_column_input import \
+    init_model_with_feature_column
 from runtime.tensorflow.load_model import load_keras_model_weights
 from runtime.tensorflow.train_estimator import estimator_train_compiled
 from runtime.tensorflow.train_keras import keras_compile, keras_train_compiled
@@ -26,8 +31,20 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
                          verbose, metric_names, validation_steps, load,
                          model_meta, is_pai):
     print("Start training using keras model...")
-    classifier, has_none_optimizer = keras_compile(estimator, model_params,
-                                                   metric_names)
+    try:
+        classifier, has_none_optimizer = keras_compile(estimator, model_params,
+                                                       metric_names)
+    except Exception:
+        if hasattr(estimator, "sqlflow_train_loop"):
+            sys.stderr.write(
+                "compile keras model failed, ignoring this error "
+                "since the model seems to defined sqlflow_train_loop.")
+            classifier = init_model_with_feature_column(
+                estimator, model_params, has_none_optimizer=True)
+            has_none_optimizer = True
+        else:
+            six.reraise(*sys.exc_info())
+
     train_dataset = train_dataset_fn()
     if val_dataset_fn is not None:
         validate_dataset = val_dataset_fn()

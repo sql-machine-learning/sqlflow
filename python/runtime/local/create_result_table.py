@@ -12,7 +12,7 @@
 # limitations under the License.
 
 from runtime import db
-from runtime.feature.field_desc import DataType
+from runtime.feature.field_desc import DataFormat, DataType
 
 
 def create_predict_table(conn, select, result_table, train_label_desc,
@@ -45,8 +45,13 @@ def create_predict_table(conn, select, result_table, train_label_desc,
         column_strs.append("%s %s" %
                            (name, db.to_db_field_type(conn.driver, typ)))
 
-    train_label_field_type = DataType.to_db_field_type(conn.driver,
-                                                       train_label_desc.dtype)
+    if train_label_desc.format == DataFormat.PLAIN:
+        train_label_field_type = DataType.to_db_field_type(
+            conn.driver, train_label_desc.dtype)
+    else:
+        train_label_field_type = DataType.to_db_field_type(
+            conn.driver, DataType.STRING)
+
     column_strs.append("%s %s" % (pred_label_name, train_label_field_type))
 
     drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
