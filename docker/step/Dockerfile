@@ -57,7 +57,8 @@ RUN bash -c 'pip install --no-cache-dir --prefix=/install \
     sklearn2pmml==0.56.0 \
     shap==0.30.1 \
     PyUtilib==5.8.0 \
-    pyomo==5.6.9'
+    pyomo==5.6.9 \
+    grpcio-tools==1.30.0'
 
 RUN py3clean /install /usr/lib/python3.6
 
