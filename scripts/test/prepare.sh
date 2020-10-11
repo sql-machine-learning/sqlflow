@@ -41,6 +41,7 @@ python -m pip install --quiet \
     PyUtilib==5.8.0 \
     pyomo==5.6.9 \
     mysqlclient==1.4.4 \
+    grpcio-tools==1.32.0 \
     pytest \
     pytest-cov
 
