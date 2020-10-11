@@ -16,10 +16,13 @@ package modelzooserver
 import (
 	"context"
 	"fmt"
+	"github.com/bitly/go-simplejson"
 	"io"
 	"io/ioutil"
 	"net"
 	"os"
+	"sqlflow.org/sqlflow/go/codegen/experimental"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -357,17 +360,24 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		return nil, err
 	}
 	defer os.RemoveAll(dir)
-	var tarFile string
 	var modelMeta *model.Model
-	// TODO(typhoonzero): change to os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
-	// after https://github.com/sql-machine-learning/sqlflow/pull/2970 was merged.
-	if false {
-		tarFile, modelMeta, err = model.DumpDBModelExperimental(db, req.Name, dir)
+	var sendFile io.ReadCloser
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true" {
+		meta, err := experimental.GetModelMetadataFromDB(req.DbConnStr, req.Name)
+		if err != nil {
+			return nil, err
+		}
+		modelMeta = &model.Model{
+			Meta: (*simplejson.Json)(meta),
+		}
+		modelMeta.TrainSelect = modelMeta.GetMetaAsString("original_sql")
+
+		sendFile, err = sqlfs.Open(db.DB, req.Name)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		tarFile, err = model.DumpDBModel(db, req.Name, dir)
+		tarFile, err := model.DumpDBModel(db, req.Name, dir)
 		if err != nil {
 			return nil, err
 		}
@@ -375,12 +385,13 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		if err != nil {
 			return nil, err
 		}
+
+		sendFile, err = os.Open(tarFile)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	sendFile, err := os.Open(tarFile)
-	if err != nil {
-		return nil, err
-	}
 	defer sendFile.Close()
 
 	// store modelname:tag as a unique name to the database, format the name like db_table_tag
@@ -413,14 +424,20 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 	defer sqlf.Close()
 
 	buf := make([]byte, 4096)
-	for {
-		n, e := sendFile.Read(buf)
-		if e == io.EOF {
-			break
-		}
-		_, err = sqlf.Write(buf[:n])
-		if err != nil {
+	eof := false
+	for !eof {
+		n, err := sendFile.Read(buf)
+		if err == io.EOF {
+			eof = true
+		} else if err != nil {
 			return nil, fmt.Errorf("get user model source code error %v", err)
+		}
+
+		if n > 0 {
+			_, err = sqlf.Write(buf[:n])
+			if err != nil {
+				return nil, fmt.Errorf("get user model source code error %v", err)
+			}
 		}
 	}
 
@@ -583,19 +600,42 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 	modelTableName := strings.ReplaceAll(modelName, ".", "_")
 	modelTag := req.Tag
 
+	if modelTag == "" {
+		tag, err := s.findLatestTag(modelName)
+		if err != nil {
+			return err
+		}
+		modelTag = tag
+	}
+
 	if err := checkNameAndTag(modelName, modelTag); err != nil {
 		return err
 	}
 
 	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s_%s", publicModelDB, modelTableName, strings.ReplaceAll(modelTag, ".", "_")))
 	if err != nil {
-		// Model not exported to model zoo? Try download directly
-		sqlf, err = sqlfs.Open(s.DB.DB, modelName)
-		if err != nil {
-			return err
-		}
+		return err
 	}
 	defer sqlf.Close()
+
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true" {
+		lengthHexStr := make([]byte, 10)
+		n, err := sqlf.Read(lengthHexStr)
+		if err != nil || n != 10 {
+			return fmt.Errorf("read length head error: %v", err)
+		}
+		metaLength, err := strconv.ParseInt(string(lengthHexStr), 0, 64)
+		if err != nil {
+			return fmt.Errorf("convert length head error: %v", err)
+		}
+
+		metaHead := make([]byte, metaLength)
+		metaN, err := sqlf.Read(metaHead)
+		if err != nil || int64(metaN) != metaLength {
+			return fmt.Errorf("read meta data error: %v", err)
+		}
+	}
+
 	// Note that modelBuf is a gob encoded struct
 	eof := false
 	for {
@@ -613,7 +653,7 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 				Tag:               modelTag,
 				ModelClassName:    "", // FIXME(typhoonzero): not used.
 				ModelRepoImageUrl: "",
-				ContentTar:        buf,
+				ContentTar:        buf[0:n],
 			})
 			if err != nil {
 				return err
@@ -626,4 +666,52 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 	}
 
 	return nil
+}
+
+func (s *modelZooServer) findLatestTag(name string) (string, error) {
+	findLatestVersionSQL := fmt.Sprintf(`SELECT id, version FROM %s WHERE name="%s" ORDER BY id DESC LIMIT 1;`, trainedModelTable, name)
+	rows, err := s.DB.Query(findLatestVersionSQL)
+	if err != nil {
+		return "", fmt.Errorf("execute SQL '%s' error: %v", findLatestVersionSQL, err)
+	}
+	var id int
+	var tag string
+	if !rows.Next() {
+		return "", fmt.Errorf("no model %s found", name)
+	}
+	err = rows.Scan(&id, &tag)
+	if err != nil {
+		return "", err
+	}
+	return tag, nil
+}
+
+func (s *modelZooServer) GetModelMeta(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.GetModelMetaResponse, error) {
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") != "true" {
+		return nil, fmt.Errorf("only support when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true")
+	}
+
+	if req.Tag == "" {
+		tag, err := s.findLatestTag(req.Name)
+		if err != nil {
+			return nil, err
+		}
+		req.Tag = tag
+	}
+
+	modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))
+	meta, err := experimental.GetModelMetadataFromDB(s.DB.URL(), modelTableName)
+	if err != nil {
+		return nil, err
+	}
+
+	encoded, err := (*simplejson.Json)(meta).Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetModelMetaResponse{
+		Meta: string(encoded),
+		Tag:  req.Tag,
+	}, nil
 }

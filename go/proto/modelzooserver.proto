@@ -111,6 +111,11 @@ message ListModelResponse {
     int64 size = 2;
 }
 
+message GetModelMetaResponse {
+    string meta = 1;
+    string tag = 2;
+}
+
 service ModelZooServer {
     // Returns the list of public available model definitions.
     rpc ListModelRepos (ListModelRequest) returns (ListModelRepoResponse);
@@ -133,4 +138,8 @@ service ModelZooServer {
     rpc DropModel (ReleaseModelRequest) returns (ReleaseResponse);
     // Download a model
     rpc DownloadModel (ReleaseModelRequest) returns (stream DownloadModelResponse);
+
+    // Get model metadata of a trained model.
+    // Only valid when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true currently.
+    rpc GetModelMeta (ReleaseModelRequest) returns (GetModelMetaResponse);
 }
