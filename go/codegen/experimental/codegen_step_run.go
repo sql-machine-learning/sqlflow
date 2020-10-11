@@ -47,11 +47,11 @@ func GenerateRun(runStmt *ir.RunStmt, stepIndex int, session *pb.Session) (strin
 
 const runStepTemplate = `
 def step_entry_{{.StepIndex}}():
-	from runtime.{{.Submitter}} import run
+    from runtime.{{.Submitter}} import run
 
-	run(datasource='''{{.DataSource}}''',
-		select='''{{.Select}}''',
-		image_name='''{{.ImageName}}''',
-		params='''{{.Parameters}}''',
-		into='''{{.Into}}''')
+    run(datasource='''{{.DataSource}}''',
+        select='''{{.Select}}''',
+        image_name='''{{.ImageName}}''',
+        params='''{{.Parameters}}''',
+        into='''{{.Into}}''')
 `
