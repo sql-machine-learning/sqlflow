@@ -195,28 +195,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	if useExperimentalExecutor {
 		r, err = experimental.GenerateIRStatement(sql, session)
 	} else {
-		if sql.IsExtendedSyntax() {
-			generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
-			if sql.Train {
-				// generateTrainStmtFromModel refers to if a pre-trained model
-				r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel, true)
-			} else if sql.ShowTrain {
-				r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
-			} else if sql.Explain {
-				r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
-			} else if sql.Predict {
-				r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
-			} else if sql.Evaluate {
-				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
-			} else if sql.Optimize {
-				r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
-			} else if sql.Run {
-				r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
-			}
-		} else {
-			standardSQL := ir.NormalStmt(sql.Original)
-			r = &standardSQL
-		}
+		r, err = legacyGenerateIRStatement(sql, session, modelDir, cwd)
 	}
 	if err != nil {
 		return err
@@ -228,6 +207,34 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
 	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
 	return executor.Run(exec, r)
+}
+
+func legacyGenerateIRStatement(sql *parser.SQLFlowStmt, session *pb.Session, modelDir, cwd string) (ir.SQLFlowStmt, error) {
+	var r ir.SQLFlowStmt
+	var err error
+	if sql.IsExtendedSyntax() {
+		generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
+		if sql.Train {
+			// generateTrainStmtFromModel refers to if a pre-trained model
+			r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel, true)
+		} else if sql.ShowTrain {
+			r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
+		} else if sql.Explain {
+			r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+		} else if sql.Predict {
+			r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+		} else if sql.Evaluate {
+			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+		} else if sql.Optimize {
+			r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
+		} else if sql.Run {
+			r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
+		}
+	} else {
+		standardSQL := ir.NormalStmt(sql.Original)
+		r = &standardSQL
+	}
+	return r, err
 }
 
 // RewriteStatementsWithHints combines the hints into the standard SQL(s)

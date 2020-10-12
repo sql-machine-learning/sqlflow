@@ -119,11 +119,6 @@ func releaseDemoModelRepo(client proto.ModelZooServerClient) error {
 }
 
 func TestUsingModelZooModel(t *testing.T) {
-	// FIXME(sneaxiy): run this test when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true
-	oldEnv := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN")
-	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
-	defer os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", oldEnv)
-
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}
@@ -186,6 +181,11 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 		DbConnStr:   database.GetTestingMySQLURL(),
 	}
 	_, err = modelZooClient.ReleaseModel(context.Background(), req)
+	a.NoError(err)
+
+	// NOTE: drop the local model db to make sure that the following
+	// SQL statements run with the model in model zoo server.
+	_, err = db.Exec("DROP TABLE sqlflow_models.modelzoo_model_iris;")
 	a.NoError(err)
 
 	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train

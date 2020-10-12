@@ -199,27 +199,18 @@ class Model(object):
         if local_dir is None:
             local_dir = os.getcwd()
 
+        model_zoo_addr, table, tag = _decompose_model_name(table)
+        if model_zoo_addr:
+            gen, metadata = load_model_from_model_zoo(model_zoo_addr, table,
+                                                      tag)
+        else:
+            gen, metadata = read_with_generator_and_metadata(datasource, table)
+
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
-            idx = table.rfind('/')
-            if idx >= 0:
-                model_zoo_addr = table[0:idx]
-                table = table[idx + 1:]
-                idx = table.rfind(":")
-                if idx >= 0:
-                    table = table[0:idx]
-                    tag = table[idx + 1:]
-                else:
-                    tag = ""
-
-                metadata = load_model_from_model_zoo(model_zoo_addr, table,
-                                                     tag, tarball)
-            else:
-                gen, metadata = read_with_generator_and_metadata(
-                    datasource, table)
-                with open(tarball, "wb") as f:
-                    for data in gen():
-                        f.write(bytes(data))
+            with open(tarball, "wb") as f:
+                for data in gen():
+                    f.write(bytes(data))
 
             Model._unzip(local_dir, tarball, load_from_db=True)
 
@@ -267,3 +258,19 @@ class Model(object):
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
             return Model._unzip(local_dir, tarball)
+
+
+def _decompose_model_name(name):
+    idx = name.rfind("/")
+    if idx < 0:
+        return "", name, ""
+
+    model_zoo_addr = name[0:idx]
+    name = name[idx + 1:]
+    tag = ""
+    idx = name.rfind(":")
+    if idx >= 0:
+        tag = name[idx + 1:]
+        name = name[0:idx]
+
+    return model_zoo_addr, name, tag
