@@ -119,6 +119,7 @@ func releaseDemoModelRepo(client proto.ModelZooServerClient) error {
 }
 
 func TestUsingModelZooModel(t *testing.T) {
+	// FIXME(sneaxiy): run this test when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true
 	oldEnv := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN")
 	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
 	defer os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", oldEnv)
@@ -189,7 +190,7 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 
 	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train
 TO PREDICT iris.modelzoo_predict.class
-USING localhost:50056/sqlflow_models.modelzoo_model_iris;`)
+USING localhost:50056/sqlflow_models.modelzoo_model_iris:v0.1;`)
 	a.NoError(err)
 
 	_, err = modelZooClient.DropModel(context.Background(), &proto.ReleaseModelRequest{

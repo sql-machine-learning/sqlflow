@@ -140,9 +140,7 @@ func TestModelZooServer(t *testing.T) {
 		sampleModel := model.New(dir, "SAMPLE TRAIN SELECT")
 		sampleModel.Meta = jsonMeta
 		modelTableName := "sqlflow_models.model_zoo_sample_model"
-		// NOTE(typhoonzero): change to if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
-		// when switch to refactored code.
-		if false {
+		if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true" {
 			err = sampleModel.SaveDBExperimental(dbConnStr, modelTableName, &pb.Session{
 				DbConnStr: dbConnStr,
 			})

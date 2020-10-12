@@ -69,6 +69,15 @@ echo "Generate Python protobuf ..."
 protoc --python_out=$SQLFLOWPATH/python/runtime/dbapi/table_writer \
         -I $SQLFLOWPATH/go/proto/ sqlflow.proto
 
+python -m grpc_tools.protoc \
+    --python_out=$SQLFLOWPATH/python/runtime/model/ \
+    --grpc_python_out=$SQLFLOWPATH/python/runtime/model/ \
+    -I $SQLFLOWPATH/go/proto modelzooserver.proto
+
+# A workaround for the issue: https://github.com/protocolbuffers/protobuf/issues/1491
+sed -i 's/import modelzooserver_pb2/from . import modelzooserver_pb2/g' \
+    $SQLFLOWPATH/python/runtime/model/modelzooserver_pb2_grpc.py
+
 echo "Build model zoo ..."
 cd $SQLFLOW_BIN
 if [[ ! -d models ]]; then

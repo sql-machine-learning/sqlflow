@@ -21,6 +21,7 @@ from runtime.feature.column import (JSONDecoderWithFeatureColumn,
 from runtime.model import oss
 from runtime.model.db import (read_with_generator_and_metadata,
                               write_with_generator_and_metadata)
+from runtime.model.modelzoo import load_model_from_model_zoo
 from runtime.model.tar import unzip_dir, zip_dir
 
 # archive the current work director into a tarball
@@ -200,10 +201,25 @@ class Model(object):
 
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
-            gen, metadata = read_with_generator_and_metadata(datasource, table)
-            with open(tarball, "wb") as f:
-                for data in gen():
-                    f.write(bytes(data))
+            idx = table.rfind('/')
+            if idx >= 0:
+                model_zoo_addr = table[0:idx]
+                table = table[idx + 1:]
+                idx = table.rfind(":")
+                if idx >= 0:
+                    table = table[0:idx]
+                    tag = table[idx + 1:]
+                else:
+                    tag = ""
+
+                metadata = load_model_from_model_zoo(model_zoo_addr, table,
+                                                     tag, tarball)
+            else:
+                gen, metadata = read_with_generator_and_metadata(
+                    datasource, table)
+                with open(tarball, "wb") as f:
+                    for data in gen():
+                        f.write(bytes(data))
 
             Model._unzip(local_dir, tarball, load_from_db=True)
 
