@@ -30,7 +30,7 @@ func GenerateRun(runStmt *ir.RunStmt, stepIndex int, session *pb.Session) (strin
 		DataSource: ds,
 		Select:     runStmt.Select,
 		ImageName:  runStmt.ImageName,
-		Parameters: runStmt.Parameters[0],
+		Parameters: ir.AttrToPythonValue(runStmt.Parameters),
 		Into:       runStmt.Into,
 		Submitter:  getSubmitter(session),
 	}
