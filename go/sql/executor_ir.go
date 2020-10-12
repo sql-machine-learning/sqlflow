@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"strings"
 	"time"
 
@@ -182,7 +183,35 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 		}
 	}(cwd)
 
+	exec := executor.New(session.Submitter)
+	exec.Setup(wr, db, modelDir, cwd, session)
+
+	useExperimentalExecutor, err := executor.UseExperimentalExecutor(exec)
+	if err != nil {
+		return err
+	}
+
 	var r ir.SQLFlowStmt
+	if useExperimentalExecutor {
+		r, err = experimental.GenerateIRStatement(sql, session)
+	} else {
+		r, err = legacyGenerateIRStatement(sql, session, modelDir, cwd)
+	}
+	if err != nil {
+		return err
+	}
+	if err = initializeAndCheckAttributes(r); err != nil {
+		return err
+	}
+	r.SetOriginalSQL(sql.Original)
+	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
+	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
+	return executor.Run(exec, r)
+}
+
+func legacyGenerateIRStatement(sql *parser.SQLFlowStmt, session *pb.Session, modelDir, cwd string) (ir.SQLFlowStmt, error) {
+	var r ir.SQLFlowStmt
+	var err error
 	if sql.IsExtendedSyntax() {
 		generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
 		if sql.Train {
@@ -205,19 +234,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 		standardSQL := ir.NormalStmt(sql.Original)
 		r = &standardSQL
 	}
-	if err != nil {
-		return err
-	}
-	if err = initializeAndCheckAttributes(r); err != nil {
-		return err
-	}
-	r.SetOriginalSQL(sql.Original)
-	// TODO(typhoonzero): can run feature.LogDerivationResult(wr, trainStmt) here to send
-	// feature derivation logs to client, yet we disable it for now so that it's less annoying.
-
-	exec := executor.New(session.Submitter)
-	exec.Setup(wr, db, modelDir, cwd, session)
-	return executor.Run(exec, r)
+	return r, err
 }
 
 // RewriteStatementsWithHints combines the hints into the standard SQL(s)

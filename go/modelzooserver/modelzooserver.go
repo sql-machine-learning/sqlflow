@@ -16,10 +16,13 @@ package modelzooserver
 import (
 	"context"
 	"fmt"
+	"github.com/bitly/go-simplejson"
 	"io"
 	"io/ioutil"
 	"net"
 	"os"
+	"sqlflow.org/sqlflow/go/codegen/experimental"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -357,17 +360,24 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		return nil, err
 	}
 	defer os.RemoveAll(dir)
-	var tarFile string
 	var modelMeta *model.Model
-	// TODO(typhoonzero): change to os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
-	// after https://github.com/sql-machine-learning/sqlflow/pull/2970 was merged.
-	if false {
-		tarFile, modelMeta, err = model.DumpDBModelExperimental(db, req.Name, dir)
+	var sendFile io.ReadCloser
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true" {
+		meta, err := experimental.GetModelMetadataFromDB(req.DbConnStr, req.Name)
+		if err != nil {
+			return nil, err
+		}
+		modelMeta = &model.Model{
+			Meta: (*simplejson.Json)(meta),
+		}
+		modelMeta.TrainSelect = modelMeta.GetMetaAsString("original_sql")
+
+		sendFile, err = sqlfs.Open(db.DB, req.Name)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		tarFile, err = model.DumpDBModel(db, req.Name, dir)
+		tarFile, err := model.DumpDBModel(db, req.Name, dir)
 		if err != nil {
 			return nil, err
 		}
@@ -375,17 +385,17 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		if err != nil {
 			return nil, err
 		}
+
+		sendFile, err = os.Open(tarFile)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	sendFile, err := os.Open(tarFile)
-	if err != nil {
-		return nil, err
-	}
 	defer sendFile.Close()
 
-	// model name is the original INTO clause, it can be like db.table
-	// reformat it to db_table as the table name in model zoo database.
-	modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
+	// store modelname:tag as a unique name to the database, format the name like db_table_tag
+	modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))
 	modelRepoImage := modelMeta.GetMetaAsString("model_repo_image")
 	if modelRepoImage == "" {
 		// use a default model repo image: sqlflow/sqlflow:latest
@@ -414,14 +424,20 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 	defer sqlf.Close()
 
 	buf := make([]byte, 4096)
-	for {
-		n, e := sendFile.Read(buf)
-		if e == io.EOF {
-			break
-		}
-		_, err = sqlf.Write(buf[:n])
-		if err != nil {
+	eof := false
+	for !eof {
+		n, err := sendFile.Read(buf)
+		if err == io.EOF {
+			eof = true
+		} else if err != nil {
 			return nil, fmt.Errorf("get user model source code error %v", err)
+		}
+
+		if n > 0 {
+			_, err = sqlf.Write(buf[:n])
+			if err != nil {
+				return nil, fmt.Errorf("get user model source code error %v", err)
+			}
 		}
 	}
 
@@ -492,7 +508,8 @@ func (s *modelZooServer) ReleaseModelFromLocal(stream pb.ModelZooServer_ReleaseM
 		}
 		req = streamReq
 		if sqlf == nil {
-			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
+			// store modelname:tag as a unique name to the database, format the name like db_table_tag
+			modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))
 			// FIXME(typhoonzero): only hive need to pass session
 			sqlf, err = sqlfs.Create(s.DB, modelTableName, nil)
 			if err != nil {
@@ -575,6 +592,9 @@ func (s *modelZooServer) DropModel(ctx context.Context, req *pb.ReleaseModelRequ
 	return &pb.ReleaseResponse{Success: true, Message: ""}, nil
 }
 
+// DownloadModel downloads the model from modelzoo.
+// If the model is not present in the modelzoo storage,
+// try download the model directly from the database, so that previously trained model can also be exported.
 func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream pb.ModelZooServer_DownloadModelServer) error {
 	modelName := req.Name
 	modelTableName := strings.ReplaceAll(modelName, ".", "_")
@@ -584,11 +604,30 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 		return err
 	}
 
-	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s", publicModelDB, modelTableName))
+	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s_%s", publicModelDB, modelTableName, strings.ReplaceAll(modelTag, ".", "_")))
 	if err != nil {
 		return err
 	}
 	defer sqlf.Close()
+
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true" {
+		lengthHexStr := make([]byte, 10)
+		n, err := sqlf.Read(lengthHexStr)
+		if err != nil || n != 10 {
+			return fmt.Errorf("read length head error: %v", err)
+		}
+		metaLength, err := strconv.ParseInt(string(lengthHexStr), 0, 64)
+		if err != nil {
+			return fmt.Errorf("convert length head error: %v", err)
+		}
+
+		metaHead := make([]byte, metaLength)
+		metaN, err := sqlf.Read(metaHead)
+		if err != nil || int64(metaN) != metaLength {
+			return fmt.Errorf("read meta data error: %v", err)
+		}
+	}
+
 	// Note that modelBuf is a gob encoded struct
 	eof := false
 	for {
@@ -606,7 +645,7 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 				Tag:               modelTag,
 				ModelClassName:    "", // FIXME(typhoonzero): not used.
 				ModelRepoImageUrl: "",
-				ContentTar:        buf,
+				ContentTar:        buf[0:n],
 			})
 			if err != nil {
 				return err
@@ -619,4 +658,32 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 	}
 
 	return nil
+}
+
+// TODO(typhoonzero): Note that the current user may not have access to modelTableName,
+// it may be trained by other users. We need to store the metadata in the model zoo table
+// and get it directly.
+func (s *modelZooServer) GetModelMeta(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.GetModelMetaResponse, error) {
+	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") != "true" {
+		return nil, fmt.Errorf("only support when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true")
+	}
+
+	if err := checkNameAndTag(req.Name, req.Tag); err != nil {
+		return nil, err
+	}
+
+	modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))
+	meta, err := experimental.GetModelMetadataFromDB(s.DB.URL(), modelTableName)
+	if err != nil {
+		return nil, err
+	}
+
+	encoded, err := (*simplejson.Json)(meta).Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.GetModelMetaResponse{
+		Meta: string(encoded),
+	}, nil
 }

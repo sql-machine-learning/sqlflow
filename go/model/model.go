@@ -229,6 +229,45 @@ func (m *Model) saveDB(connStr, table string, session *pb.Session) (e error) {
 	return nil
 }
 
+// SaveDBExperimental save the model to database with metadata using the refactored format.
+func (m *Model) SaveDBExperimental(connStr, table string, session *pb.Session) (e error) {
+	db, err := database.OpenAndConnectDB(connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	sqlf, e := sqlfs.Create(db, table, session)
+	if e != nil {
+		return fmt.Errorf("cannot create sqlfs file %s: %v", table, e)
+	}
+	defer sqlf.Close()
+
+	metaJSONStr, err := m.Meta.Encode()
+	if err != nil {
+		return err
+	}
+	metaLen := len(metaJSONStr)
+	metaLenHex := fmt.Sprintf("0x%08x", metaLen)
+	sqlf.Write([]byte(metaLenHex))
+	sqlf.Write([]byte(metaJSONStr))
+
+	// model and its metadata are both zipped into a tarball
+	cmd := exec.Command("tar", "czf", "-", "-C", m.workDir, ".")
+	cmd.Stdout = sqlf
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+
+	if e := cmd.Run(); e != nil {
+		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
+	}
+
+	if e := sqlf.Close(); e != nil {
+		return fmt.Errorf("close sqlfs error: %v", e)
+	}
+	return nil
+}
+
 func (m *Model) saveTar(modelDir, save string) (string, error) {
 	save = strings.TrimSuffix(save, ".tar.gz")
 	modelFile := filepath.Join(modelDir, save+".tar.gz")
