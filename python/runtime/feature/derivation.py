@@ -344,7 +344,9 @@ def fill_field_descs(generator, fd_map):
         row_data = [row_data[i] for i in str_column_indices]
         if row_idx == 0:
             for i, cell in enumerate(row_data):
-                format[i] = infer_string_data_format(cell)
+                format[i] = infer_string_data_format(
+                    cell, field_descs[i].delimiter,
+                    field_descs[i].delimiter_kv)
                 field_descs[i].format = format[i]
 
         for i, cell in enumerate(row_data):
@@ -400,7 +402,7 @@ def update_feature_column(fc, fd_map):
         if field_desc is None:
             raise ValueError("column not found or inferred: %s" % fc.name)
 
-        assert field_desc.is_sparse, \
+        assert not field_desc.is_sparse, \
             "cannot use sparse column with indicator column"
         assert field_desc.max_id > 0, \
             "use indicator column but did not got a correct MaxID"
@@ -470,21 +472,21 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
                                  field_name)
 
             field_pattern = re.compile(field_name, flags=re.I)
-            match_field_name = None
+            found = False
             for selected_field_name in selected_field_names:
-                if field_pattern.fullmatch(selected_field_name):
-                    assert match_field_name is None, \
-                        "%s matches duplicate fields" % field_name
-                    match_field_name = selected_field_name
+                if not field_pattern.fullmatch(selected_field_name):
+                    continue
 
-            if match_field_name is None:
+                new_fc = fc_target_map[field_name][0].new_feature_column_from(
+                    fd_map[selected_field_name])
+                new_fc_target_map[selected_field_name] = [new_fc]
+                found = True
+
+            if not found:
                 raise ValueError(
                     "'%s' in COLUMN clause does not match any selected fields"
                     % field_name)
 
-            new_fc = fc_target_map[match_field_name][
-                0].new_feature_column_from(fd_map[match_field_name])
-            new_fc_target_map[match_field_name] = [new_fc]
             del fd_map[field_name]
 
         # ================== MAIN LOOP ==================
@@ -493,7 +495,7 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
             if label_name == selected_field_name:
                 continue  # ignore label field
 
-            fc_list = new_fc_target_map.get(selected_field_name)
+            fc_list = new_fc_target_map.get(selected_field_name, None)
             if fc_list is not None:
                 for fc in fc_list:
                     update_feature_column(fc, fd_map)
@@ -503,7 +505,7 @@ def derive_feature_columns(targets, fc_map, fd_map, selected_field_names,
                     # should specify the full list of the columns to use.
                     continue
 
-                field_desc = fd_map[selected_field_name]
+                field_desc = fd_map.get(selected_field_name, None)
                 if field_desc is None:
                     raise ValueError("column not found or inferred: %s" %
                                      selected_field_name)
@@ -546,10 +548,9 @@ def update_ir_feature_columns(features, fc_map, selected_field_names,
             if field_name == label_name:
                 continue
 
-            fc_list = target_fc_map[field_name]
+            fc_list = target_fc_map.get(field_name, None)
             if fc_list is None:
-                raise ValueError("column not found or inferred: %s" %
-                                 field_name)
+                continue
 
             for fc in fc_list:
                 if fc not in new_fc_list:

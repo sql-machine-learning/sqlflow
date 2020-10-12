@@ -68,10 +68,12 @@ func (fd *FieldDesc) GenPythonCode() string {
 	}
 
 	// pass format = "" to let runtime feature derivation to fill it in.
-	return fmt.Sprintf(`runtime.feature.field_desc.FieldDesc(name="%s", dtype=runtime.feature.field_desc.DataType.%s, delimiter="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s)`,
+	return fmt.Sprintf(`runtime.feature.field_desc.FieldDesc(name="%s", dtype=runtime.feature.field_desc.DataType.%s, dtype_weight=runtime.feature.field_desc.DataType.%s, delimiter="%s", delimiter_kv="%s", format="", shape=%s, is_sparse=%s, vocabulary=%s)`,
 		fd.Name,
 		strings.ToUpper(DTypeToString(fd.DType)),
+		strings.ToUpper(DTypeToString(fd.DTypeWeight)),
 		fd.Delimiter,
+		fd.DelimiterKV,
 		shapeStr,
 		isSparseStr,
 		AttrToPythonValue(vocabList),
@@ -188,7 +190,7 @@ func (c *CrossColumn) GenPythonCode() string {
 	keysCode := []string{}
 	for _, k := range c.Keys {
 		if strKey, ok := k.(string); ok {
-			keysCode = append(keysCode, strKey)
+			keysCode = append(keysCode, fmt.Sprintf(`"%s"`, strKey))
 		} else if nc, ok := k.(*NumericColumn); ok {
 			keysCode = append(keysCode, nc.GenPythonCode())
 		}

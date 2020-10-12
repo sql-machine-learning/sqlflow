@@ -78,7 +78,7 @@ def train(original_sql,
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
                           for fd in field_descs])
-    label_meta = label_column.get_field_desc()[0].to_dict(dtype_to_string=True)
+    label_meta = fc_label_ir.get_field_desc()[0].to_dict(dtype_to_string=True)
 
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process

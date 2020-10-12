@@ -357,23 +357,34 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		return nil, err
 	}
 	defer os.RemoveAll(dir)
-	tarFile, err := model.DumpDBModel(db, req.Name, dir)
-	if err != nil {
-		return nil, err
+	var tarFile string
+	var modelMeta *model.Model
+	// TODO(typhoonzero): change to os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+	// after https://github.com/sql-machine-learning/sqlflow/pull/2970 was merged.
+	if false {
+		tarFile, modelMeta, err = model.DumpDBModelExperimental(db, req.Name, dir)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tarFile, err = model.DumpDBModel(db, req.Name, dir)
+		if err != nil {
+			return nil, err
+		}
+		modelMeta, err = model.ExtractMetaFromTarball(tarFile, dir)
+		if err != nil {
+			return nil, err
+		}
 	}
-	modelMeta, err := model.ExtractMetaFromTarball(tarFile, dir)
-	if err != nil {
-		return nil, err
-	}
+
 	sendFile, err := os.Open(tarFile)
 	if err != nil {
 		return nil, err
 	}
 	defer sendFile.Close()
 
-	// model name is the original INTO clause, it can be like db.table
-	// reformat it to db_table as the table name in model zoo database.
-	modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
+	// store modelname:tag as a unique name to the database, format the name like db_table_tag
+	modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))
 	modelRepoImage := modelMeta.GetMetaAsString("model_repo_image")
 	if modelRepoImage == "" {
 		// use a default model repo image: sqlflow/sqlflow:latest
@@ -480,7 +491,8 @@ func (s *modelZooServer) ReleaseModelFromLocal(stream pb.ModelZooServer_ReleaseM
 		}
 		req = streamReq
 		if sqlf == nil {
-			modelTableName := fmt.Sprintf("%s.%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"))
+			// store modelname:tag as a unique name to the database, format the name like db_table_tag
+			modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))
 			// FIXME(typhoonzero): only hive need to pass session
 			sqlf, err = sqlfs.Create(s.DB, modelTableName, nil)
 			if err != nil {
@@ -563,6 +575,9 @@ func (s *modelZooServer) DropModel(ctx context.Context, req *pb.ReleaseModelRequ
 	return &pb.ReleaseResponse{Success: true, Message: ""}, nil
 }
 
+// DownloadModel downloads the model from modelzoo.
+// If the model is not present in the modelzoo storage,
+// try download the model directly from the database, so that previously trained model can also be exported.
 func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream pb.ModelZooServer_DownloadModelServer) error {
 	modelName := req.Name
 	modelTableName := strings.ReplaceAll(modelName, ".", "_")
@@ -572,9 +587,13 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 		return err
 	}
 
-	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s", publicModelDB, modelTableName))
+	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s_%s", publicModelDB, modelTableName, strings.ReplaceAll(modelTag, ".", "_")))
 	if err != nil {
-		return err
+		// Model not exported to model zoo? Try download directly
+		sqlf, err = sqlfs.Open(s.DB.DB, modelName)
+		if err != nil {
+			return err
+		}
 	}
 	defer sqlf.Close()
 	// Note that modelBuf is a gob encoded struct

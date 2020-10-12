@@ -34,11 +34,12 @@ def estimator_train_and_save(estimator, model_params, save, FLAGS,
         estimator,
         is_distributed,
         save_checkpoints_steps=save_checkpoints_steps)
-    print("Using checkpoint path: %s" % FLAGS.checkpointDir)
-    model_params["model_dir"] = FLAGS.checkpointDir
+    ckpt_dir = FLAGS.checkpointDir if FLAGS.checkpointDir else save
+    print("Using checkpoint path: %s" % ckpt_dir)
+    model_params["model_dir"] = ckpt_dir
 
     if load:
-        load_pretrained_model_estimator(estimator, model_params)
+        load_pretrained_model_estimator(estimator, model_params, load)
     classifier = init_model(estimator, model_params)
 
     # do not add default Accuracy metric when using estimator to train,
