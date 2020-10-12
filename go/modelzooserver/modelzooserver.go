@@ -660,9 +660,16 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 	return nil
 }
 
+// TODO(typhoonzero): Note that the current user may not have access to modelTableName,
+// it may be trained by other users. We need to store the metadata in the model zoo table
+// and get it directly.
 func (s *modelZooServer) GetModelMeta(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.GetModelMetaResponse, error) {
 	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") != "true" {
 		return nil, fmt.Errorf("only support when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true")
+	}
+
+	if err := checkNameAndTag(req.Name, req.Tag); err != nil {
+		return nil, err
 	}
 
 	modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))
