@@ -21,8 +21,8 @@ from runtime.feature.column import (JSONDecoderWithFeatureColumn,
 from runtime.model import oss
 from runtime.model.db import (read_with_generator_and_metadata,
                               write_with_generator_and_metadata)
+from runtime.model.modelzoo import load_model_from_model_zoo
 from runtime.model.tar import unzip_dir, zip_dir
-from runtime.modelzoo.load import load_model_from_model_zoo
 
 # archive the current work director into a tarball
 TARBALL_NAME = "model.tar.gz"

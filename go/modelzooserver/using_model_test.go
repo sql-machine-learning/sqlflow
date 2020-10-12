@@ -190,11 +190,6 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 
 	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train
 TO PREDICT iris.modelzoo_predict.class
-USING localhost:50056/sqlflow_models.modelzoo_model_iris;`)
-	a.NoError(err)
-
-	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train
-TO PREDICT iris.modelzoo_predict.class
 USING localhost:50056/sqlflow_models.modelzoo_model_iris:v0.1;`)
 	a.NoError(err)
 

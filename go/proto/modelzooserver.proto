@@ -113,7 +113,6 @@ message ListModelResponse {
 
 message GetModelMetaResponse {
     string meta = 1;
-    string tag = 2;
 }
 
 service ModelZooServer {

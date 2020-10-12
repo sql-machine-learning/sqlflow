@@ -600,14 +600,6 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 	modelTableName := strings.ReplaceAll(modelName, ".", "_")
 	modelTag := req.Tag
 
-	if modelTag == "" {
-		tag, err := s.findLatestTag(modelName)
-		if err != nil {
-			return err
-		}
-		modelTag = tag
-	}
-
 	if err := checkNameAndTag(modelName, modelTag); err != nil {
 		return err
 	}
@@ -668,35 +660,9 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 	return nil
 }
 
-func (s *modelZooServer) findLatestTag(name string) (string, error) {
-	findLatestVersionSQL := fmt.Sprintf(`SELECT id, version FROM %s WHERE name="%s" ORDER BY id DESC LIMIT 1;`, trainedModelTable, name)
-	rows, err := s.DB.Query(findLatestVersionSQL)
-	if err != nil {
-		return "", fmt.Errorf("execute SQL '%s' error: %v", findLatestVersionSQL, err)
-	}
-	var id int
-	var tag string
-	if !rows.Next() {
-		return "", fmt.Errorf("no model %s found", name)
-	}
-	err = rows.Scan(&id, &tag)
-	if err != nil {
-		return "", err
-	}
-	return tag, nil
-}
-
 func (s *modelZooServer) GetModelMeta(ctx context.Context, req *pb.ReleaseModelRequest) (*pb.GetModelMetaResponse, error) {
 	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") != "true" {
 		return nil, fmt.Errorf("only support when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true")
-	}
-
-	if req.Tag == "" {
-		tag, err := s.findLatestTag(req.Name)
-		if err != nil {
-			return nil, err
-		}
-		req.Tag = tag
 	}
 
 	modelTableName := fmt.Sprintf("%s.%s_%s", publicModelDB, strings.ReplaceAll(req.Name, ".", "_"), strings.ReplaceAll(req.Tag, ".", "_"))

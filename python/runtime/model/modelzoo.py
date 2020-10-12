@@ -14,20 +14,20 @@
 import json
 
 import grpc
-import runtime.modelzoo.modelzooserver_pb2 as mz
-import runtime.modelzoo.modelzooserver_pb2_grpc as mz_grpc
 from runtime.feature.column import JSONDecoderWithFeatureColumn
+from runtime.model.modelzooserver_pb2 import ReleaseModelRequest
+from runtime.model.modelzooserver_pb2_grpc import ModelZooServerStub
 
 
 def load_model_from_model_zoo(address, table, tag, tarball_path):
     with grpc.insecure_channel(address) as channel:
-        stub = mz_grpc.ModelZooServerStub(channel)
+        stub = ModelZooServerStub(channel)
 
-        meta_req = mz.ReleaseModelRequest(name=table, tag=tag)
+        meta_req = ReleaseModelRequest(name=table, tag=tag)
         meta_resp = stub.GetModelMeta(meta_req)
         meta = json.loads(meta_resp.meta, cls=JSONDecoderWithFeatureColumn)
 
-        tar_req = mz.ReleaseModelRequest(name=table, tag=meta_resp.tag)
+        tar_req = ReleaseModelRequest(name=table, tag=tag)
         tar_resp = stub.DownloadModel(tar_req)
         with open(tarball_path, "wb") as f:
             for each_resp in tar_resp:
