@@ -33,7 +33,6 @@ import (
 
 // GenerateStepCodeAndImage generates step code and image
 func GenerateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb.Session, sqlStmts []ir.SQLFlowStmt) (string, string, error) {
-	fmt.Printf("Generate the code for the statement %s", sqlStmt)
 	switch stmt := sqlStmt.(type) {
 	case *ir.TrainStmt:
 		return generateTrainCodeAndImage(stmt, stepIndex, session)
@@ -256,8 +255,6 @@ func GeneratePyDbConnStr(session *pb.Session) (string, error) {
 	query.Set("hdfs_pass", session.HdfsPass)
 
 	u.RawQuery = query.Encode()
-
-	fmt.Printf("The Python db connection string is %s", u.String())
 
 	return u.String(), nil
 }
