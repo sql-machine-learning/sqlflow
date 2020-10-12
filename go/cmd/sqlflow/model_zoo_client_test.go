@@ -152,6 +152,11 @@ func caseListRepos(t *testing.T) {
 }
 
 func TestModelZooOperation(t *testing.T) {
+	// FIXME(sneaxiy): run this test when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true
+	oldEnv := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN")
+	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
+	defer os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", oldEnv)
+
 	a := assert.New(t)
 	startTestModelZooServer()
 	stopServer := startServer()
