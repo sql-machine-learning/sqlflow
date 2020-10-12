@@ -49,6 +49,12 @@ export PYTHONPATH=$GOPATH/src/sqlflow.org/sqlflow/python:$PYTHONPATH
 
 go generate ./...
 go install ./...
-gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 1800s  -v ./...
+
+for USE_EXPERIMENTAL_CODEGEN in "true" ""; do
+    export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$USE_EXPERIMENTAL_CODEGEN
+    echo "Run go tests when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$SQLFLOW_USE_EXPERIMENTAL_CODEGEN"
+    gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 1800s  -v ./...
+done
+
 coverage run -m unittest discover -v python "db_test.py"
 coverage run -m unittest discover -v python "hive_test.py"

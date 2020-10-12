@@ -32,14 +32,18 @@ while true; do
 done
 
 export SQLFLOW_TEST_DB=mysql
-export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true
 
 python -c "import sqlflow_models"
 python -c "import runtime.db"
 
 go generate ./...
 go install ./...
-gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 1500s  -v ./...
+
+for USE_EXPERIMENTAL_CODEGEN in "true" ""; do
+    export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$USE_EXPERIMENTAL_CODEGEN
+    echo "Run go tests when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$SQLFLOW_USE_EXPERIMENTAL_CODEGEN"
+    gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 1500s  -v ./...
+done
 
 # When running the following command, the TensorFlow FLAGS module would pass
 # ["discover", "-v", "python", "*_test.py"] as the sys.argv to init the
