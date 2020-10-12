@@ -41,7 +41,7 @@ go install ./...
 
 for USE_EXPERIMENTAL_CODEGEN in "true" ""; do
     export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$USE_EXPERIMENTAL_CODEGEN
-    echo "Run go tests when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$SQLFLOW_USE_EXPERIMENTAL_CODEGEN"
+    echo "Run Go tests when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$SQLFLOW_USE_EXPERIMENTAL_CODEGEN"
     gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 1500s  -v ./...
 done
 

@@ -40,7 +40,6 @@ export SQLFLOW_HIVE_LOCATION_ROOT_PATH=/sqlflow
 export SQLFLOW_TEST_NAMENODE_ADDR="127.0.0.1:8020"
 
 export SQLFLOW_TEST_DB=hive
-export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=true
 
 # NOTE: we have already installed runtime under Python installation
 # path using latest develop branch, but when testing on CI, we need to use the
@@ -52,7 +51,7 @@ go install ./...
 
 for USE_EXPERIMENTAL_CODEGEN in "true" ""; do
     export SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$USE_EXPERIMENTAL_CODEGEN
-    echo "Run go tests when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$SQLFLOW_USE_EXPERIMENTAL_CODEGEN"
+    echo "Run Go tests when SQLFLOW_USE_EXPERIMENTAL_CODEGEN=$SQLFLOW_USE_EXPERIMENTAL_CODEGEN"
     gotest -p 1 -covermode=count -coverprofile=coverage.txt -timeout 1800s  -v ./...
 done
 
