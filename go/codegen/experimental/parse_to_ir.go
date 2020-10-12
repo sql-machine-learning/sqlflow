@@ -22,10 +22,36 @@ import (
 	pb "sqlflow.org/sqlflow/go/proto"
 )
 
+// GenerateIRStatement generates IR statement from parser.SQLFlowStmt
+func GenerateIRStatement(sql *parser.SQLFlowStmt, session *pb.Session) (ir.SQLFlowStmt, error) {
+	var r ir.SQLFlowStmt
+	var err error
+	if sql.IsExtendedSyntax() {
+		if sql.Train {
+			r, err = ir.GenerateTrainStmt(sql.SQLFlowSelectStmt)
+		} else if sql.ShowTrain {
+			r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
+		} else if sql.Explain {
+			r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
+		} else if sql.Predict {
+			r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
+		} else if sql.Evaluate {
+			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
+		} else if sql.Optimize {
+			r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
+		} else if sql.Run {
+			r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
+		}
+	} else {
+		standardSQL := ir.NormalStmt(sql.Original)
+		r = &standardSQL
+	}
+	return r, err
+}
+
 // parseToIR parse the sql program to generate a list of IR.
 func parseToIR(sqlProgram string, session *pb.Session) ([]ir.SQLFlowStmt, error) {
 	var dbDriver string
-	var r ir.SQLFlowStmt
 	var result []ir.SQLFlowStmt
 
 	sqlProgram, err := parser.RemoveCommentInSQLStatement(sqlProgram)
@@ -45,26 +71,7 @@ func parseToIR(sqlProgram string, session *pb.Session) ([]ir.SQLFlowStmt, error)
 	}
 	sqls := rewriteStatementsWithHints(stmts, dbDriver)
 	for _, sql := range sqls {
-		if sql.IsExtendedSyntax() {
-			if sql.Train {
-				r, err = ir.GenerateTrainStmt(sql.SQLFlowSelectStmt)
-			} else if sql.ShowTrain {
-				r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
-			} else if sql.Explain {
-				r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
-			} else if sql.Predict {
-				r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
-			} else if sql.Evaluate {
-				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
-			} else if sql.Optimize {
-				r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
-			} else if sql.Run {
-				r, err = ir.GenerateRunStmt(sql.SQLFlowSelectStmt)
-			}
-		} else {
-			standardSQL := ir.NormalStmt(sql.Original)
-			r = &standardSQL
-		}
+		r, err := GenerateIRStatement(sql, session)
 		if err != nil {
 			return nil, err
 		}

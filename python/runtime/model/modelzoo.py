@@ -12,25 +12,34 @@
 # limitations under the License.
 
 import json
+import sys
 
 import grpc
+import six
 from runtime.feature.column import JSONDecoderWithFeatureColumn
 from runtime.model.modelzooserver_pb2 import ReleaseModelRequest
 from runtime.model.modelzooserver_pb2_grpc import ModelZooServerStub
 
 
-def load_model_from_model_zoo(address, table, tag, tarball_path):
-    with grpc.insecure_channel(address) as channel:
+def load_model_from_model_zoo(address, model, tag):
+    stub = None
+    meta = None
+    channel = grpc.insecure_channel(address)
+    try:
         stub = ModelZooServerStub(channel)
-
-        meta_req = ReleaseModelRequest(name=table, tag=tag)
+        meta_req = ReleaseModelRequest(name=model, tag=tag)
         meta_resp = stub.GetModelMeta(meta_req)
         meta = json.loads(meta_resp.meta, cls=JSONDecoderWithFeatureColumn)
+    except:  # noqa: E722
+        # make sure that the channel is closed when exception raises
+        channel.close()
+        six.reraise(*sys.exc_info())
 
-        tar_req = ReleaseModelRequest(name=table, tag=tag)
-        tar_resp = stub.DownloadModel(tar_req)
-        with open(tarball_path, "wb") as f:
+    def reader():
+        with channel:
+            tar_req = ReleaseModelRequest(name=model, tag=tag)
+            tar_resp = stub.DownloadModel(tar_req)
             for each_resp in tar_resp:
-                f.write(bytes(each_resp.content_tar))
+                yield each_resp.content_tar
 
-    return meta
+    return reader, meta
