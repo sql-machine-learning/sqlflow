@@ -166,7 +166,7 @@ def submit_local_run(
     image_name,
     params,
     into):
-    print("Execute local run. datasource:{}, select: {}, image_name: {}, params: {}, into: {}".format(
+    print("Execute local run. datasource: {}, select: {}, image_name: {}, params: {}, into: {}.".format(
         datasource, select, image_name, params, into))
 
 
