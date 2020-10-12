@@ -255,7 +255,6 @@ func GeneratePyDbConnStr(session *pb.Session) (string, error) {
 	query.Set("hdfs_pass", session.HdfsPass)
 
 	u.RawQuery = query.Encode()
-
 	return u.String(), nil
 }
 
