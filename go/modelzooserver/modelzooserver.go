@@ -678,6 +678,5 @@ func (s *modelZooServer) GetModelMeta(ctx context.Context, req *pb.ReleaseModelR
 
 	return &pb.GetModelMetaResponse{
 		Meta: string(encoded),
-		Tag:  req.Tag,
 	}, nil
 }

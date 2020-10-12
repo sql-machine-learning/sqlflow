@@ -156,7 +156,7 @@ func getModelMetadata(session *pb.Session, table string) (*Metadata, error) {
 	if submitter == "local" {
 		modelZooAddr, table, tag := decomposeModelName(table)
 		if modelZooAddr != "" {
-			return getModelMetadataFromModelZoo(modelZooAddr, session.DbConnStr, table, tag)
+			return getModelMetadataFromModelZoo(modelZooAddr, table, tag)
 		}
 		return GetModelMetadataFromDB(session.DbConnStr, table)
 	}
@@ -180,7 +180,7 @@ func decomposeModelName(modelName string) (string, string, string) {
 	return address, modelName, tag
 }
 
-func getModelMetadataFromModelZoo(addr, dbConnStr, table string, tag string) (*Metadata, error) {
+func getModelMetadataFromModelZoo(addr, table, tag string) (*Metadata, error) {
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -189,9 +189,8 @@ func getModelMetadataFromModelZoo(addr, dbConnStr, table string, tag string) (*M
 
 	client := pb.NewModelZooServerClient(conn)
 	req := &pb.ReleaseModelRequest{
-		Name:      table,
-		Tag:       tag,
-		DbConnStr: dbConnStr,
+		Name: table,
+		Tag:  tag,
 	}
 	resp, err := client.GetModelMeta(context.Background(), req)
 	if err != nil {
