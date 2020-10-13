@@ -25,6 +25,7 @@ from runtime.optimize.model_generation import (
 # FIXME(sneaxiy): do not know why Pyomo requires that the data frame must be
 # a global variable
 DATA_FRAME = None
+
 DATA_FRAME_LOCK = threading.Lock()
 
 
