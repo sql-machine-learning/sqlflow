@@ -48,8 +48,6 @@ type Workflow interface {
 func New(backend string) (Codegen, Workflow, error) {
 	if backend == "couler" {
 		return &couler.Codegen{}, &argo.Workflow{}, nil
-	} else if backend == "experimental" {
-		return nil, &argo.Workflow{}, nil
 	}
 	return nil, nil, fmt.Errorf("the specified backend: %s has not support", backend)
 }
