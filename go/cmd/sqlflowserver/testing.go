@@ -138,32 +138,87 @@ func EqualAny(expected interface{}, actual *any.Any) bool {
 	return false
 }
 
+func anyValueToFloat64(value *any.Any) (float64, error) {
+	switch value.TypeUrl {
+	case "type.googleapis.com/google.protobuf.FloatValue":
+		f := wrappers.FloatValue{}
+		err := ptypes.UnmarshalAny(value, &f)
+		if err != nil {
+			return 0, err
+		}
+		return float64(f.Value), nil
+	case "type.googleapis.com/google.protobuf.DoubleValue":
+		f := wrappers.DoubleValue{}
+		err := ptypes.UnmarshalAny(value, &f)
+		if err != nil {
+			return 0, err
+		}
+		return f.Value, nil
+	default:
+		return 0, fmt.Errorf("unsupported type %v", value.TypeUrl)
+	}
+}
+
+func anyValueToInt64(value *any.Any) (int64, error) {
+	switch value.TypeUrl {
+	case "type.googleapis.com/google.protobuf.Int32Value":
+		f := wrappers.Int32Value{}
+		err := ptypes.UnmarshalAny(value, &f)
+		if err != nil {
+			return 0, err
+		}
+		return int64(f.Value), nil
+	case "type.googleapis.com/google.protobuf.Int64Value":
+		f := wrappers.Int64Value{}
+		err := ptypes.UnmarshalAny(value, &f)
+		if err != nil {
+			return 0, err
+		}
+		return f.Value, nil
+	default:
+		return 0, fmt.Errorf("unsupported type %v", value.TypeUrl)
+	}
+}
+
+func interfaceValueToFloat64(value interface{}) (float64, error) {
+	switch v := value.(type) {
+	case float32:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	default:
+		return 0, fmt.Errorf("unsupported type %T", v)
+	}
+}
+
+func interfaceValueToInt64(value interface{}) (int64, error) {
+	switch v := value.(type) {
+	case int32:
+		return int64(v), nil
+	case int64:
+		return v, nil
+	default:
+		return 0, fmt.Errorf("unsupported type %T", v)
+	}
+}
+
 // AssertGreaterEqualAny checks the protobuf value is greater than expected value.
 func AssertGreaterEqualAny(a *assert.Assertions, actual *any.Any, expected interface{}) {
-	switch actual.TypeUrl {
-	case "type.googleapis.com/google.protobuf.Int64Value":
-		b := wrappers.Int64Value{}
-		ptypes.UnmarshalAny(actual, &b)
-		a.GreaterOrEqual(b.Value, expected.(int64))
-	case "type.googleapis.com/google.protobuf.FloatValue":
-		b := wrappers.FloatValue{}
-		ptypes.UnmarshalAny(actual, &b)
-		if f64, ok := expected.(float64); ok {
-			a.GreaterOrEqual(b.Value, float32(f64))
-		} else {
-			a.GreaterOrEqual(b.Value, expected.(float32))
+	if actualF64, err := anyValueToFloat64(actual); err == nil {
+		if expectedF64, err := interfaceValueToFloat64(expected); err == nil {
+			a.GreaterOrEqual(actualF64, expectedF64)
+			return
 		}
-	case "type.googleapis.com/google.protobuf.DoubleValue":
-		b := wrappers.DoubleValue{}
-		ptypes.UnmarshalAny(actual, &b)
-		if f64, ok := expected.(float64); ok {
-			a.GreaterOrEqual(b.Value, float64(float32(f64)))
-		} else {
-			a.GreaterOrEqual(b.Value, float64(expected.(float32)))
-		}
-	default:
-		a.Fail(fmt.Sprintf("unsupported type comparison %v %T", actual.TypeUrl, expected))
 	}
+
+	if actualI64, err := anyValueToInt64(actual); err == nil {
+		if expectedI64, err := interfaceValueToInt64(expected); err == nil {
+			a.GreaterOrEqual(actualI64, expectedI64)
+			return
+		}
+	}
+
+	a.Fail(fmt.Sprintf("unsupported type comparison %v %T", actual.TypeUrl, expected))
 }
 
 // AssertContainsAny checks the protobuf value contains in all
