@@ -61,7 +61,7 @@ class DataType(object):
 
         if dtype == DataType.STRING:
             if driver == "mysql":
-                return "VARCHAR(255)"
+                return "TEXT"
             return "STRING"
 
         raise ValueError("unsupported data type {}".format(dtype))
