@@ -41,6 +41,7 @@ python -m pip install --quiet \
     PyUtilib==5.8.0 \
     pyomo==5.6.9 \
     mysqlclient==1.4.4 \
+    grpcio-tools==1.28.1 \
     pytest \
     pytest-cov
 
@@ -50,6 +51,10 @@ git checkout 90e3b8b0de91faef942315a7dca7f94d175cec97 && \
 python setup.py install)
 
 protoc --python_out=python/runtime/dbapi/table_writer/ -I go/proto sqlflow.proto
+python -m grpc_tools.protoc --python_out=python/runtime/model/ --grpc_python_out=python/runtime/model/ -I go/proto modelzooserver.proto
+
+# A workaround for the issue: https://github.com/protocolbuffers/protobuf/issues/1491
+sed -i 's/import modelzooserver_pb2/from . import modelzooserver_pb2/g' python/runtime/model/modelzooserver_pb2_grpc.py
 
 # 3. install java parser
 echo "Build parser gRPC servers in Java ..."

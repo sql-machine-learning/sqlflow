@@ -183,9 +183,14 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 	_, err = modelZooClient.ReleaseModel(context.Background(), req)
 	a.NoError(err)
 
+	// NOTE: drop the local model db to make sure that the following
+	// SQL statements run with the model in model zoo server.
+	_, err = db.Exec("DROP TABLE sqlflow_models.modelzoo_model_iris;")
+	a.NoError(err)
+
 	err = execStmt(sqlflowServerClient, `SELECT * FROM iris.train
 TO PREDICT iris.modelzoo_predict.class
-USING localhost:50056/sqlflow_models.modelzoo_model_iris;`)
+USING localhost:50056/sqlflow_models.modelzoo_model_iris:v0.1;`)
 	a.NoError(err)
 
 	_, err = modelZooClient.DropModel(context.Background(), &proto.ReleaseModelRequest{
