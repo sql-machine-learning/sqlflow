@@ -7,20 +7,22 @@ SQLFlow 的运行依赖大量的组件，我们已经将这些依赖打包到一
 1. 安装 [VirtualBox](https://www.virtualbox.org/wiki/Downloads) (推荐v6.1.6版本)
 1. 下载预制的 SQLFlow 镜像，这里你有两个选择：
     * 精简版（600M），在这个版本中，我们预置了 SQLFlow 的基础环境和启动脚本，但不包含运行
-    所需的 Docker 镜像，首次启动的时候需要拉取镜像。
-    ```bash
-    wget -c http://cdn.sqlflow.tech/latest/SQLFlowPlaygroundBare.ova
+    所需的 Docker 镜像，首次启动的时候需要拉取镜像。镜像下载地址为：
+
+    ```url
+    http://cdn.sqlflow.tech/latest/SQLFlowPlaygroundBare.ova
     ```
-    * 完整版（2G)，这个版本包含 SQLFlow 所需的所有依赖，只需下载一次即可运行
-    ```bash
-    wget -c http://cdn.sqlflow.tech/latest/SQLFlowPlaygroundFull.ova
+    * 完整版（2G)，这个版本包含 SQLFlow 所需的所有依赖，只需下载一次即可运行。镜像下载地址为：
+
+    ```url
+    http://cdn.sqlflow.tech/latest/SQLFlowPlaygroundFull.ova
     ```
-    若未安装 `wget`，也可直接复制上述链接到浏览器下载相应镜像。
 
 1. 启动 VirtualBox，点击”管理->导入虚拟机“菜单，选择下载的 `.ova` 文件，将下载好的镜像导入到
     VirtualBox 中，双击导入的镜像启动虚拟机。
-1. 通过以下命令登录虚拟机，登录后你将看到一个 start.bash 脚本，运行它即可启动 SQLFlow 系统。
-    你可以在 shell 中运行 ssh 来登录，也可以直接在 VirtualBox 的虚拟机窗口中输入账号密码来登录。
+1. 虚拟机启动后，在窗口中输入账号和密码，默认为(root/sqlflow)来登录。登录后你将看到一个
+    start.bash 脚本，运行它即可启动 SQLFlow 系统。如果你熟悉 shell 工具，也可以通过以下命令
+    来登录。
     ```
     ssh -p2222 root@127.0.0.1
     root@127.0.0.1's password: sqlflow
