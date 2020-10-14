@@ -157,115 +157,115 @@ SQLFlow supports specifying various feature columns in the column clause and lab
 
  feature column type | usage | field type | example
 ---|---|---|---
- X | field | int/float/double | 3.14
- DENSE | DENSE(field, n[,delimiter]) | string/varchar[n] | "0.2,1.7,0.6"
- SPARSE | SPARSE(field, n[,delimiter]) | string/varchar[n] | "3,5,7"
- CATEGORY_ID | CATEGORY_ID(field, n[,delimiter]) | string/varchar[n] | "66,67,42,68,48,69,70"
- SEQ_CATEGORY_ID | SEQ_CATEGORY_ID(field, n[, delimiter]) | string/varchar[n] | "20,48,80,81,82,0,0,0,0"
- EMBEDDING | EMBEDDING(category_column, dimension[, combiner]) | X | X
-
-```text
-DENSE(field, n[, delimiter=comma])
-/*
-DENSE converts a delimiter separated string to a n dimensional dense tensor.
-    field:
-        A string specifying the field name of the standard select result.
-        e.g. dense, column1.
-    n:
-        An integer specifying the tensor dimension.
-        e.g. 12, [3,4].
-    delimiter:
-        A string specifying the delimiter.
-        default: comma.
-
-Example:
-    DENSE(dense, 3). "0.2,1.7,0.6" => Tensor(0.2, 1.7, 0.6)
-
-Error:
-    Invalid field type. Field type has to be string/varchar[n].
-    Invalid dimension. E.g. convert "0.2,1.7,0.6" to dimension 2.
-*/
-
-SPARSE(field, n[, delimiter=comma])
-/*
-SPARSE converts a delimiter separated string to a n dimensional sparse tensor,
-whose values are 0 or 1. The numbers in the string are the indices where the 
-tensor values are 1.
-   field:
-       A string specifying the field name of the standard select result.
-       e.g. sparse_column, column1.
-   n:
-       An integer specifying the tensor dimension.
-       e.g. 12.
-   delimiter:
-       A string specifying the delimiter.
-       default: comma.
-
-Example:
-   SPARSE(sparse_column, 8). "3,5,7" => Tensor(0, 0, 0, 1, 0, 1, 0, 1)
-
-Error:
-   Invalid field type. Field type has to be string/varchar[n].
-*/
-
-CATEGORY_ID(field, n[, delimiter=comma])
-/*
-CATEGORY_ID splits the input field by delimiter and returns identity values.
-    field:
-        A string specifying the field name of the standard select result.
-        e.g. title, id, column1.
-    n:
-        An integer specifying the number of buckets
-        e.g. 12, 10000.
-    delimiter:
-        A string specifying the delimiter.
-        default: comma.
-
-Example:
-    CATEGORY_ID(title, 100). "1,2,3,4" => Tensor(1, 2, 3, 4)
-
-Error:
-    Invalid field type. Field type has to be string/varchar[n].
-*/
+ - | field | any | 3.14 or "3.14" or "1,2,4" etc.
+ DENSE | DENSE(field, shape[,delimiter, dtype]) | string/varchar[n] | "0.2,1.7,0.6"
+ SPARSE | SPARSE(field, shape[,delimiter, dtype, delimiter_kv, dtype_key]) | string/varchar[n] | "3,5,7"
+ CATEGORY_ID | CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "66,67,42,68,48,69,70"
+ SEQ_CATEGORY_ID | SEQ_CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "20,48,80,81,82,0,0,0,0"
+ CATEGORY_HASH | CATEGORY_HASH([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "FEMALE"
+ WEIGHTED_CATEGORY | WEIGHTED_CATEGORY([CATEGORY_ID(SPARSE(field,shape,delim,dtype_value,delim_kv,dtype_key))|CATEGORY_HASH(...)]) | string/varchar[n] | "0:0.2,1:0.3,4:0.8,73:0.6"
+ EMBEDDING | EMBEDDING([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|field], SIZE[, COMBINER, INITIALIZER]) | string/varchar[n] | -
+ INDICATOR | INDICATOR([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|field]) | string/varchar[n] | -
+ CROSS | CROSS([column_1, column_2], HASH_BUCKET_SIZE) | - | -
+ BUCKET | BUCKET([DENSE(...)|field], BOUNDARIES) | - | -
 
 
-SEQ_CATEGORY_ID(field, n[, delimiter=comma])
-/*
-SEQ_CATEGORY_ID splits the input field by delimiter and returns identity values.
-    field:
-        A string specifying the field name of the standard select result.
-        e.g. title, id, column1.
-    n:
-        An integer specifying the number of buckets
-        e.g. 12, 10000.
-    delimiter:
-        A string specifying the delimiter.
-        default: comma.
+#### COLUMN field
 
-Example:
-    SEQ_CATEGORY_ID(title, 100). "1,2,3,4" => Tensor(1, 2, 3, 4)
+Specifing the `COLUMN field1, field2, ...` ( `field` is a column name in the database) will let SQLFlow automatically infer the **BEST** feature column for the current field. For example, if the field type is "float", then the float number will be used as an "numeric" feature column, if the field is a CSV formatted integer array like `1,39,82,29`, it will be used as an embedding feature column where the integers will be used as the categorical indices.
 
-Error:
-    Invalid field type. Field type has to be string/varchar[n].
-*/
+You can ommit the clause `COLUMN field` if all your field used to train the model can be automatically inferred:
 
-
-EMBEDDING(category_column, n[, combiner])
-/*
-EMBEDDING converts a delimiter separated string to an n-dimensional tensor.
-    category_column:
-        A category column created by CATEGORY_ID*
-        e.g. CATEGORY_ID(title, 100).
-    n:
-        An integer specifying the dimension of the embedding, must be > 0.
-        e.g. 12, 100.
-    combiner:
-        A string specifying how to reduce if there are multiple entries in a single row.
-
-Example:
-    EMBEDDING(CATEGORY_ID(news_title,16000,COMMA), 3, mean). "1,2,3" => Tensor(0.2, 1.7, 0.6)
-*/
+```sql
+SELECT * FROM train_table
+TO TRAIN SomeModel
+WITH ...
+INTO some_saved_model;
 ```
+
+#### DENSE
+
+`DENSE` expression tells SQLFlow to parse the feature from a CSV string to a dense tensor. For example, the string `1,39,82,29` will be parsed to `Tensor([1,39,82,29])`, the string `0.1,0.3,0.4,0.9` will be parsed to `Tensor([0.1,0.3,0.4,0.9])`.
+
+In the expression `DENSE(field, shape[,delimiter, dtype])`:
+
+- `field` is the column name in the database.
+- `shape` is a digit or list expression specifing the dense tensor's shape, like `15` or `[3,5]`.
+- `delimiter` is optional, it's the delimiter used to split the elements in the CSV string, default is `,`.
+- `dtype` is optional, it's the data type of the output tensor, should be one of `int64`, `float32`.
+
+#### SPARSE
+
+`SPARSE` expression tells SQLFlow to parse the feature from a CSV string or a key-value list string to a sparse tensor, values of the CSV string can have different number of elements in the data table. For example, the string `1,39,82,29` will be parsed to `SparseTensor(indices=[1,39,82,29], values=[1,1,1,1])`, 
+
+If the content is a key-value pair list, the outputs are two tensors, for example, the string `0:0.2,1:0.3,4:0.8,73:0.6` will be parsed to two tensors: `SparseTensor(indices=[0,1,4,73], values=[1,1,1,1])` and `SparseTensor(indices=[0,1,4,73], values=[0.2,0.3,0.8,0.6])`. The second tensor will be named like `field_weight` and will be used for the `WEIGHTED_CATEGORY` column.
+
+In the expression `SPARSE(field, shape[,delimiter,dtype,delimiter_kv,dtype_key])`:
+
+- `field` is the column name in the database.
+- `shape` is a digit or list expression specifing the sparse tensor's dense shape, like `15` or `[3,5]`.
+- `delimiter` is optional, it's the delimiter used to split the elements in the CSV string, default is `,`.
+- `dtype` is optional, it's the data type of the output tensor, can be `int64`, `float32`.
+- `delimiter_kv` must be specified if the column data is a key-value pair list. Then, `delimiter` will be used to split the list and `delimiter_kv` will be used to split the key-value pair for each element in the list.
+- `dtype_key` is the data type of the key-value pair's key. Only `int64` is supported currently.
+
+#### CATEGORY_ID
+
+`CATEGORY_ID` COLUMN represents a feature of an array of categorical IDs. If you are using an `EMBEDDING` column expression, `CATEGORY_ID` can be ommited. 
+
+In the expression `CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE)`:
+
+- `[DENSE()|SPARSE()|field]`: you can specify the field data format using `DENSE`, `SPARSE` or just specify the column name and let SQLFlow to infer the actual format.
+- `BUCKET_SIZE`: the max ID of the input sparse tensor, your inputs are integers in the range [0, BUCKET_SIZE).
+
+#### SEQ_CATEGORY_ID
+
+`SEQ_CATEGORY_ID` COLUMN represents a represents a sequence of categorical IDs. In the expression `SEQ_CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE)`:
+
+- `[DENSE()|SPARSE()|field]`: you can specify the field data format using `DENSE`, `SPARSE` or just specify the column name and let SQLFlow to infer the actual format.
+- `BUCKET_SIZE`: the max id of the input sparse tensor, your inputs are integers in the range [0, num_buckets).
+
+#### CATEGORY_HASH
+
+`CATEGORY_HASH` represents sparse feature where IDs are set by hashing. In the expression `CATEGORY_HASH([DENSE()|SPARSE()|field], BUCKET_SIZE)`:
+
+- `[DENSE()|SPARSE()|field]` you can specify the field data format using `DENSE`, `SPARSE` or just specify the column name and let SQLFlow to infer the actual format.
+- `BUCKET_SIZE`: the number of bucket of the hashed value.
+
+#### WEIGHTED_CATEGORY
+
+`WEIGHTED_CATEGORY` is a categorical column feature that applies weight values to any categorical column like `CATEGORY_ID`.
+
+In the expression `WEIGHTED_CATEGORY([CATEGORY_ID(SPARSE(field,shape,delim,dtype_value,delim_kv,dtype_key))|CATEGORY_HASH(...)])`:
+
+- `WEIGHTED_CATEGORY` accepts only one argument, this argument must be an categorical column expression. The data format of the categorical column should be `SPARSE(field,shape,delim,dtype_value,delim_kv,dtype_key)`, so that SQLFlow can generate two sparse tensors represents IDs and weights.
+
+#### EMBEDDING
+
+`EMBEDDING` column represents an embedding layer. In the expression `EMBEDDING([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|col_name], SIZE[, COMBINER, INITIALIZER])`:
+
+- `[CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|col_name]`: the source of embedding feature, can be any categorical column.
+- `SIZE`: the width of the embedding.
+- `COMBINER`: optional, how to reduce if there are multiple entries in a single row, can be `mean`, `sqrtn`, `sum`. Default is `sum`.
+- `INITIALIZER`: weight initializer function, like `truncated_normal_initializer`.
+
+#### INDICATOR
+
+`INDICATOR` column represents multi-hot representation of given categorical column. In the expression `INDICATOR([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|col_name])`, The only input of the `INDICATOR` expression can be any categorical column described above.
+
+#### CROSS
+
+`CROSS` column represents a column for performing crosses of categorical features. In the expression `CROSS([column_1, column_2], HASH_BUCKET_SIZE)`:
+
+- `[column_1, column_2]` is a list of two elements respresenting two columns as the input. `column_1` and `column_2` can be any feature columns.
+- `HASH_BUCKET_SIZE` is the number of buckets that the crossed feature will be hashed to.
+
+#### BUCKET
+
+`BUCKET` column represents discretized dense input bucketed by `BOUNDARIES`. In the expression `BUCKET([DENSE(...)|col_name], BOUNDARIES)`:
+
+- `[DENSE(...)|col_name]` is the input column, can be a numeric column with any shape.
+- `BOUNDARIES` is a list represents the value boundaries, like `[0., 1., 2.]` generates buckets `(-inf, 0.)`, `[0., 1.)`, `[1., 2.)`, and `[2., +inf)`.
 
 ## Prediction Syntax
 
