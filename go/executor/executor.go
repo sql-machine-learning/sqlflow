@@ -69,6 +69,7 @@ type Executor interface {
 	ExecuteOptimize(*ir.OptimizeStmt) error
 	ExecuteRun(*ir.RunStmt) error
 	GetTrainStmtFromModel() bool
+	GetPythonExecutor() *pythonExecutor
 }
 
 // New returns a proper Submitter from configurations in environment variables.
@@ -105,23 +106,28 @@ type logChanWriter struct {
 // as the discussion of https://github.com/sql-machine-learning/sqlflow/issues/2494,
 // SQLFlow would generate target code instead of interpret an IR.
 func Run(it Executor, stmt ir.SQLFlowStmt) error {
+	pyExec := it.GetPythonExecutor()
+	if ok, err := pyExec.tryExperimentalExecute(stmt, false); ok {
+		return err
+	}
+
 	switch v := stmt.(type) {
 	case *ir.TrainStmt:
-		return it.ExecuteTrain(stmt.(*ir.TrainStmt))
+		return it.ExecuteTrain(v)
 	case *ir.PredictStmt:
-		return it.ExecutePredict(stmt.(*ir.PredictStmt))
+		return it.ExecutePredict(v)
 	case *ir.ExplainStmt:
-		return it.ExecuteExplain(stmt.(*ir.ExplainStmt))
+		return it.ExecuteExplain(v)
 	case *ir.EvaluateStmt:
-		return it.ExecuteEvaluate(stmt.(*ir.EvaluateStmt))
+		return it.ExecuteEvaluate(v)
 	case *ir.OptimizeStmt:
-		return it.ExecuteOptimize(stmt.(*ir.OptimizeStmt))
+		return it.ExecuteOptimize(v)
 	case *ir.RunStmt:
-		return it.ExecuteRun(stmt.(*ir.RunStmt))
+		return it.ExecuteRun(v)
 	case *ir.NormalStmt:
-		return it.ExecuteQuery(stmt.(*ir.NormalStmt))
+		return it.ExecuteQuery(v)
 	case *ir.ShowTrainStmt:
-		return it.ExecuteShowTrain(stmt.(*ir.ShowTrainStmt))
+		return it.ExecuteShowTrain(v)
 	default:
 		return fmt.Errorf("unregistered SQLFlow IR type: %s", v)
 	}
@@ -189,6 +195,11 @@ func UseExperimentalExecutor(exec Executor) (bool, error) {
 }
 
 func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
+	// TODO(sneaxiy): remove these lines when experimental codegen supports TO RUN statement
+	if _, ok := sqlStmt.(*ir.RunStmt); ok {
+		return false, nil
+	}
+
 	ok, err := UseExperimentalExecutor(s)
 	if err != nil {
 		return true, err
@@ -225,6 +236,10 @@ EOF
 func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
 	// cwd is used to store train scripts and save output models.
 	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
+}
+
+func (s *pythonExecutor) GetPythonExecutor() *pythonExecutor {
+	return s
 }
 
 func (s *pythonExecutor) SaveModel(cl *ir.TrainStmt) error {
@@ -281,16 +296,10 @@ func (s *pythonExecutor) runCommand(cmd *exec.Cmd, context map[string]string, lo
 }
 
 func (s *pythonExecutor) ExecuteQuery(stmt *ir.NormalStmt) error {
-	if ok, err := s.tryExperimentalExecute(stmt, false); ok {
-		return err
-	}
 	return runNormalStmt(s.Writer, string(*stmt), s.Db)
 }
 
 func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
-	if ok, err := s.tryExperimentalExecute(cl, false); ok {
-		return err
-	}
 	var code string
 	if cl.GetModelKind() == ir.XGBoost {
 		if code, e = xgboost.Train(cl, s.Session); e != nil {
@@ -308,9 +317,6 @@ func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 }
 
 func (s *pythonExecutor) ExecutePredict(cl *ir.PredictStmt) (e error) {
-	if ok, err := s.tryExperimentalExecute(cl, false); ok {
-		return err
-	}
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	if e = createPredictionResultTable(cl, s.Db, s.Session); e != nil {
 		return e
@@ -330,9 +336,6 @@ func (s *pythonExecutor) ExecutePredict(cl *ir.PredictStmt) (e error) {
 }
 
 func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
-	if ok, err := s.tryExperimentalExecute(cl, false); ok {
-		return err
-	}
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
@@ -379,9 +382,6 @@ func (s *pythonExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 }
 
 func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
-	if ok, err := s.tryExperimentalExecute(cl, false); ok {
-		return err
-	}
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
 	var code string
 	var err error
@@ -423,9 +423,6 @@ func (s *pythonExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {
 }
 
 func (s *pythonExecutor) ExecuteOptimize(stmt *ir.OptimizeStmt) error {
-	if ok, err := s.tryExperimentalExecute(stmt, false); ok {
-		return err
-	}
 	db, err := database.OpenAndConnectDB(s.Session.DbConnStr)
 	if err != nil {
 		return err
@@ -591,10 +588,6 @@ func readExplainResult(target string) (string, error) {
 func (s *pythonExecutor) GetTrainStmtFromModel() bool { return true }
 
 func (s *pythonExecutor) ExecuteShowTrain(showTrain *ir.ShowTrainStmt) error {
-	if ok, err := s.tryExperimentalExecute(showTrain, false); ok {
-		return err
-	}
-
 	model, err := model.Load(showTrain.ModelName, "", s.Db)
 	if err != nil {
 		s.Writer.Write("Load model meta " + showTrain.ModelName + " failed.")
