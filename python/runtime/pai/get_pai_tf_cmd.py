@@ -73,7 +73,12 @@ def get_pai_tf_cmd(cluster_config, tarball, params_file, entry_file,
         raise SQLFlowDiagnostic(
             "need to configure SQLFLOW_OSS_CHECKPOINT_CONFIG when "
             "submitting to PAI")
-    ckpt_conf = json.loads(oss_checkpoint_configs)
+
+    if isinstance(oss_checkpoint_configs, dict):
+        ckpt_conf = oss_checkpoint_configs
+    else:
+        ckpt_conf = json.loads(oss_checkpoint_configs)
+
     model_url = pai_model.get_oss_model_url(oss_model_path)
     role_name = _get_project_role_name(project)
     # format the oss checkpoint path with ARN authorization.

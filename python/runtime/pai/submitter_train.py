@@ -72,6 +72,7 @@ def submit_pai_train(datasource,
                      label_column,
                      model_params,
                      train_params,
+                     validation_params,
                      save,
                      load,
                      user=""):
@@ -101,6 +102,8 @@ def submit_pai_train(datasource,
             Params to construct the estimator/Keras Model.
         train_params: dict
             Params used to run the training.
+        validation_params: dict
+            Params used to evaluate the trained model.
         save: string
             Model name to save.
         load: string

@@ -32,6 +32,7 @@ type predStepFiller struct {
 	ModelParamJSON string
 	Load           string
 	Submitter      string
+	User           string
 }
 
 // GeneratePredict generates the prediction code.
@@ -56,6 +57,7 @@ func GeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Sessio
 		ModelParamJSON: string(modelParams),
 		Load:           predStmt.Using,
 		Submitter:      getSubmitter(session),
+		User:           session.UserId,
 	}
 
 	var program bytes.Buffer
@@ -81,5 +83,6 @@ def step_entry_{{.StepIndex}}():
              model_name='''{{.Load}}''',
              label_column='''{{.PredLabelName}}''',
              model_params=model_params,
-             result_table='''{{.ResultTable}}''')
+             result_table='''{{.ResultTable}}''',
+             user='''{{.User}}''')
 `

@@ -93,10 +93,6 @@ func (s *alisaExecutor) submitAlisaTask(taskType int, submitCode string, args st
 	return nil
 }
 
-func (s *alisaExecutor) GetPythonExecutor() *pythonExecutor {
-	return s.pythonExecutor
-}
-
 func (s *alisaExecutor) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	if e = preExecuteTrainOnPAI(ts, s.Session); e != nil {
 		return e

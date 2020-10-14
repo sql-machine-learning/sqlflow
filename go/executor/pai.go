@@ -195,10 +195,6 @@ func getPaiTrainCode(s *pythonExecutor, trainStmt *ir.TrainStmt) (string, string
 	return code, paiCmd, requirements, nil
 }
 
-func (s *paiExecutor) GetPythonExecutor() *pythonExecutor {
-	return s.pythonExecutor
-}
-
 // Possible situations:
 //
 // 1. argo mode server: generate a step running: bash -c "repl -e \"select * from xx to train\""

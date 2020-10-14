@@ -219,7 +219,7 @@ func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStder
 		return true, err
 	}
 
-	const bashCodeTmpl = `python <<EOF
+	const bashCodeTmpl = `python -u <<EOF
 %s
 EOF
 `
