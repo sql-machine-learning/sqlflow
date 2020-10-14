@@ -160,12 +160,7 @@ def submit_local_explain(datasource,
                  model=model)
 
 
-def submit_local_run(
-    datasource,
-    select,
-    image_name,
-    params,
-    into):
+def submit_local_run(datasource, select, image_name, params, into):
     print("""Execute local run.
     datasource: {},
     select: {},
