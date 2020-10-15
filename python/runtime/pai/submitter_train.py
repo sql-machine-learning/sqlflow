@@ -12,8 +12,8 @@
 # limitations under the License.
 
 import os
-import tempfile
 
+import runtime.temp_file as temp_file
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
@@ -25,7 +25,7 @@ from runtime.pai.submit_pai_task import submit_pai_task
 
 def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
                       val_table, model_params, train_params, path_to_save,
-                      job_file, params_file, cwd):
+                      job_file, params_file):
     """Get train model comman for PAI
 
     Args:
@@ -39,7 +39,6 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
         path_to_save: path to save the model
         job_file: tar file incldue code and libs to execute on PAI
         params_file: extra params file
-        cwd: current working dir
 
     Returns:
         The command to submit a PAI train task
@@ -121,32 +120,33 @@ def submit_pai_train(datasource,
     else:
         params["entry_type"] = "train_tf"
 
-    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
+    try:
+        train_table, val_table = table_ops.create_train_and_eval_tmp_table(
+            select, validation_select, datasource)
+        params["pai_table"], params["pai_val_table"] = train_table, val_table
 
-    train_table, val_table = table_ops.create_train_and_eval_tmp_table(
-        select, validation_select, datasource)
-    params["pai_table"], params["pai_val_table"] = train_table, val_table
+        # clean target dir
+        oss_path_to_save = pai_model.get_oss_model_save_path(datasource,
+                                                             save,
+                                                             user=user)
+        oss_path_to_load = pai_model.get_oss_model_save_path(datasource,
+                                                             load,
+                                                             user=user)
+        if oss_path_to_load == "" or oss_path_to_load != oss_path_to_save:
+            pai_model.clean_oss_model_path(oss_path_to_save + "/")
+        train_params["oss_path_to_load"] = oss_path_to_load
 
-    # clean target dir
-    oss_path_to_save = pai_model.get_oss_model_save_path(datasource,
-                                                         save,
-                                                         user=user)
-    oss_path_to_load = pai_model.get_oss_model_save_path(datasource,
-                                                         load,
-                                                         user=user)
-    if oss_path_to_load == "" or oss_path_to_load != oss_path_to_save:
-        pai_model.clean_oss_model_path(oss_path_to_save + "/")
-    train_params["oss_path_to_load"] = oss_path_to_load
+        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp") as cwd:
+            # zip all required resource to a tarball
+            prepare_archive(cwd, estimator_string, oss_path_to_save, params)
 
-    # zip all required resource to a tarball
-    prepare_archive(cwd, estimator_string, oss_path_to_save, params)
+            # submit pai task to execute the training
+            cmd = get_pai_train_cmd(
+                datasource, estimator_string, save, train_table, val_table,
+                model_params, train_params, oss_path_to_save,
+                "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                "file://" + os.path.join(cwd, PARAMS_FILE))
 
-    # submit pai task to execute the training
-    cmd = get_pai_train_cmd(datasource, estimator_string, save, train_table,
-                            val_table, model_params, train_params,
-                            oss_path_to_save,
-                            "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                            "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
-
-    submit_pai_task(cmd, datasource)
-    table_ops.drop_tables([train_table, val_table], datasource)
+            submit_pai_task(cmd, datasource)
+    finally:
+        table_ops.drop_tables([train_table, val_table], datasource)

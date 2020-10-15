@@ -209,7 +209,7 @@ def submit_alisa_train(datasource, estimator_string, select, validation_select,
     cmd = get_pai_train_cmd(datasource, estimator_string, model_name,
                             train_table, val_table, model_params, train_params,
                             path_to_save, "file://@@%s" % JOB_ARCHIVE_FILE,
-                            "file://@@%s" % PARAMS_FILE, cwd)
+                            "file://@@%s" % PARAMS_FILE)
     upload_resource_and_submit_alisa_task(
         datasource, "file://" + path.join(cwd, JOB_ARCHIVE_FILE),
         "file://" + path.join(cwd, PARAMS_FILE), cmd)
