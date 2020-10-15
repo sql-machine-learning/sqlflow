@@ -16,22 +16,22 @@ package executor
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
 
-func newZeroValue(t reflect.Type) interface{} {
-	return reflect.New(t).Interface()
-}
-
 func fieldValue(val interface{}) (interface{}, error) {
 	switch v := val.(type) {
 	case *sql.NullBool:
 		if (*v).Valid {
 			return (*v).Bool, nil
+		}
+		return nil, nil
+	case *sql.NullInt32:
+		if (*v).Valid {
+			return (*v).Int32, nil
 		}
 		return nil, nil
 	case *sql.NullInt64:
@@ -95,7 +95,7 @@ func fieldValue(val interface{}) (interface{}, error) {
 	case *float64:
 		return *v, nil
 	default:
-		return nil, fmt.Errorf("unrecognized type %v", v)
+		return nil, fmt.Errorf("unrecognized type %T", v)
 	}
 }
 
