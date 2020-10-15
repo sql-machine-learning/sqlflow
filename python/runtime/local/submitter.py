@@ -160,6 +160,15 @@ def submit_local_explain(datasource,
                  model=model)
 
 
+def submit_local_run(datasource, select, image_name, params, into):
+    print("""Execute local run.
+    datasource: {},
+    select: {},
+    image_name: {},
+    params: {},
+    into: {}.""".format(datasource, select, image_name, params, into))
+
+
 def submit_local_show_train(datasource, model_name):
     meta = read_metadata_from_db(datasource, model_name)
     original_sql = meta.get("original_sql")

@@ -50,6 +50,8 @@ func GenerateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 	case *ir.OptimizeStmt:
 		code, err := generateOptimizeCode(stmt, stepIndex, session)
 		return code, "", err
+	case *ir.RunStmt:
+		return generateRunCodeAndImage(stmt, stepIndex, session)
 	case *ir.NormalStmt:
 		code, err := generateNormalStmtStep(string(*stmt), stepIndex, session)
 		return code, "", err
@@ -124,6 +126,15 @@ func generateExplainCodeAndImage(explainStmt *ir.ExplainStmt, stepIndex int, ses
 		return "", "", err
 	}
 	return code, image, nil
+}
+
+func generateRunCodeAndImage(runStmt *ir.RunStmt, stepIndex int, session *pb.Session) (string, string, error) {
+	code, err := GenerateRun(runStmt, stepIndex, session)
+	if err != nil {
+		return "", "", err
+	}
+
+	return code, runStmt.ImageName, nil
 }
 
 // findModelGenerationTrainStmt finds the *ir.TrainStmt that generates the model named `modelName`.
