@@ -120,9 +120,10 @@ def submit_pai_train(datasource,
     else:
         params["entry_type"] = "train_tf"
 
+    train_table, val_table = table_ops.create_train_and_eval_tmp_table(
+        select, validation_select, datasource)
+
     try:
-        train_table, val_table = table_ops.create_train_and_eval_tmp_table(
-            select, validation_select, datasource)
         params["pai_table"], params["pai_val_table"] = train_table, val_table
 
         # clean target dir
