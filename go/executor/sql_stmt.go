@@ -16,6 +16,7 @@ package executor
 import (
 	"database/sql"
 	"fmt"
+	"sqlflow.org/sqlflow/go/ir"
 	"strings"
 
 	"sqlflow.org/sqlflow/go/database"
@@ -97,22 +98,12 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	// runtime. Some databases support dynamic types between rows,
 	// such as sqlite's affinity. So we move columnTypes inside
 	// the row.Next() loop.
-	count := len(columns)
-	values := make([]interface{}, count)
-	for i, ct := range columnTypes {
-		// NOTE(typhoonzero): Hive TIMESTAMP_TYPE column will return string value, but ct.ScanType() returns int64
-		// https://github.com/sql-machine-learning/sqlflow/issues/1256
-		if ct.DatabaseTypeName() == "TIMESTAMP_TYPE" {
-			values[i] = new(string)
-			continue
-		}
-		values[i] = newZeroValue(ct.ScanType())
-	}
-
+	values := ir.NewRowValuesToScan(columnTypes)
 	if err := rows.Scan(values...); err != nil {
 		return err
 	}
 
+	count := len(columns)
 	row := make([]interface{}, count)
 	for i, val := range values {
 		v, e := fieldValue(val)

@@ -16,6 +16,7 @@ package ir
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -93,8 +94,8 @@ func unifyDatabaseTypeName(typeName string) string {
 	return strings.ToUpper(typeName)
 }
 
-// scanRowValue returns the decoded row value from sql.Rows.
-func scanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface{}, error) {
+// NewRowValuesToScan prepares new row value list for data scanning
+func NewRowValuesToScan(columnTypeList []*sql.ColumnType) []interface{} {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
@@ -110,9 +111,23 @@ func scanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface
 		case "DOUBLE":
 			rowData[idx] = new(float64)
 		default:
-			return nil, fmt.Errorf("scanRowValue: unsupported database column type: %s", typeName)
+			// NOTE(typhoonzero): Hive TIMESTAMP_TYPE column will return string value, but ct.ScanType() returns int64
+			// https://github.com/sql-machine-learning/sqlflow/issues/1256
+			if ct.DatabaseTypeName() == "TIMESTAMP_TYPE" {
+				rowData[idx] = new(string)
+			} else {
+				// NOTE: To careful that when using gomaxcompute, ct.ScanType()
+				// would return string for BIGINT/DOUBLE/...
+				rowData[idx] = reflect.New(ct.ScanType()).Interface()
+			}
 		}
 	}
+	return rowData
+}
+
+// scanRowValue returns the decoded row value from sql.Rows.
+func scanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface{}, error) {
+	rowData := NewRowValuesToScan(columnTypeList)
 	if err := rows.Scan(rowData...); err != nil {
 		return nil, err
 	}

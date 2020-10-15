@@ -16,16 +16,11 @@ package executor
 import (
 	"database/sql"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
-
-func newZeroValue(t reflect.Type) interface{} {
-	return reflect.New(t).Interface()
-}
 
 func fieldValue(val interface{}) (interface{}, error) {
 	switch v := val.(type) {
