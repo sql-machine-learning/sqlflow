@@ -25,9 +25,10 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"strings"
 	"sync"
+
+	"sqlflow.org/sqlflow/go/codegen/experimental"
 
 	"sqlflow.org/sqlflow/go/verifier"
 
