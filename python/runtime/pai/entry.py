@@ -25,11 +25,14 @@ from runtime.step.tensorflow.train import train_step as train_tf
 try:
     from runtime.pai.xgboost_submitter.evaluate import \
         evaluate_step as evaluate_xgb
-    from runtime.pai.xgboost_submitter.explain import explain_step as explain_xgb
+    from runtime.pai.xgboost_submitter.explain import \
+        explain_step as explain_xgb
     # (TODO: lhw) split entry.py into multiple files,
     # so, we can only import needed packages
-    from runtime.pai.xgboost_submitter.predict import predict_step as predict_xgb
-    from runtime.pai.xgboost_submitter.train import train_step as train_xgb
+    from runtime.pai.xgboost_submitter.predict import \
+        predict_step as predict_xgb
+    from runtime.pai.xgboost_submitter.train import \
+        train_step as train_xgb
 except ImportError:
     pass
 
