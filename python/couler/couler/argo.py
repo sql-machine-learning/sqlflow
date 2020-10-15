@@ -651,7 +651,10 @@ def _convert_dict_to_env_list(d):
             for s in v:
                 env_list.append(s)
         else:
-            env_list.append({"name": str(k), "value": "'%s'" % str(v)})
+            if str(v).isdigit():
+                env_list.append({"name": str(k), "value": "'%s'" % str(v)})
+            else:
+                env_list.append({"name": str(k), "value": str(v)})
     return env_list
 
 
