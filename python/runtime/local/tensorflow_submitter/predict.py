@@ -46,8 +46,9 @@ def pred(datasource, select, result_table, pred_label_name, model):
 
     model_params = model.get_meta("attributes")
     train_fc_map = model.get_meta("features")
-    train_label_desc = model.get_meta("label").get_field_desc()[0]
-    train_label_name = train_label_desc.name
+    label_meta = model.get_meta("label")
+    train_label_desc = label_meta.get_field_desc()[0] if label_meta else None
+    train_label_name = train_label_desc.name if train_label_desc else None
     estimator_string = model.get_meta("class_name")
     save = "model_save"
 

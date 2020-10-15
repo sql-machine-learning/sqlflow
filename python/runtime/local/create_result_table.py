@@ -32,10 +32,11 @@ def create_predict_table(conn, select, result_table, train_label_desc,
     """
     name_and_types = db.selected_columns_and_types(conn, select)
     train_label_index = -1
-    for i, (name, _) in enumerate(name_and_types):
-        if name == train_label_desc.name:
-            train_label_index = i
-            break
+    if train_label_desc:
+        for i, (name, _) in enumerate(name_and_types):
+            if name == train_label_desc.name:
+                train_label_index = i
+                break
 
     if train_label_index >= 0:
         del name_and_types[train_label_index]
@@ -45,10 +46,12 @@ def create_predict_table(conn, select, result_table, train_label_desc,
         column_strs.append("%s %s" %
                            (name, db.to_db_field_type(conn.driver, typ)))
 
-    if train_label_desc.format == DataFormat.PLAIN:
+    if train_label_desc and train_label_desc.format == DataFormat.PLAIN:
         train_label_field_type = DataType.to_db_field_type(
             conn.driver, train_label_desc.dtype)
     else:
+        # if no train lable description is provided (clustering),
+        # we treat the column type as string
         train_label_field_type = DataType.to_db_field_type(
             conn.driver, DataType.STRING)
 
