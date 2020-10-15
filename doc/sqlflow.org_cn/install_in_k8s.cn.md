@@ -138,6 +138,7 @@ nohup kubectl port-forward pod/sqlflow-server 8888:8888 --address=0.0.0.0 &
 时服务多个用户，我们提供了账号校验等功能。我们可以按照如下步骤来进行安装：
 
 1. 下载部署配置
+
 ```
 wget http://cdn.sqlflow.tech/playground/install-sqlflow-multi-users.yaml
 ```
@@ -162,6 +163,7 @@ wget http://cdn.sqlflow.tech/playground/install-sqlflow-multi-users.yaml
 ```
 1. 开启用户认证，JupyterHub 支持[多种用户鉴权方式](https://jupyterhub.readthedocs.io/en/stable/reference/authenticators.html)，这里我们采用 [GitHub OAuth](https://oauthenticator.readthedocs.io/en/latest/getting-started.html#github-setup)。用户通过授权 SQLFlow 访问自己的 GitHub 账号来完成登录。如果你也希望采用这种登录方式，那么可以首先申请一个 [GitHub App](https://github.com/settings/applications/new)，你将获得一套用于三方登录的 `client_id` 和 `client_secret`，请
 妥善保管这些秘钥。这里我们将获取的秘钥存储在 Kubernetes 密码库中。
+
 ```
 kubectl create secret generic sqlflow \
     --from-literal=jupyter_oauth_client_id={client_id} \
@@ -192,6 +194,7 @@ kubectl get pods --watch
 恭喜，通过以上步骤，已经将 SQLFlow 多人模式安装成功。接下来，我们将在浏览器中访问 SQLFlow。
 
 1. 用以下命令将 JupyterHub 的端口暴露出来
+
 ```
 nohup kubectl port-forward deployment/sqlflow-jupyterhub 8000:8000 --address=0.0.0.0 &
 ```

@@ -14,7 +14,9 @@
 package experimental
 
 import (
+	"context"
 	"fmt"
+	"google.golang.org/grpc"
 	"net/url"
 	"os"
 	"strconv"
@@ -48,6 +50,8 @@ func GenerateStepCodeAndImage(sqlStmt ir.SQLFlowStmt, stepIndex int, session *pb
 	case *ir.OptimizeStmt:
 		code, err := generateOptimizeCode(stmt, stepIndex, session)
 		return code, "", err
+	case *ir.RunStmt:
+		return generateRunCodeAndImage(stmt, stepIndex, session)
 	case *ir.NormalStmt:
 		code, err := generateNormalStmtStep(string(*stmt), stepIndex, session)
 		return code, "", err
@@ -124,6 +128,15 @@ func generateExplainCodeAndImage(explainStmt *ir.ExplainStmt, stepIndex int, ses
 	return code, image, nil
 }
 
+func generateRunCodeAndImage(runStmt *ir.RunStmt, stepIndex int, session *pb.Session) (string, string, error) {
+	code, err := GenerateRun(runStmt, stepIndex, session)
+	if err != nil {
+		return "", "", err
+	}
+
+	return code, runStmt.ImageName, nil
+}
+
 // findModelGenerationTrainStmt finds the *ir.TrainStmt that generates the model named `modelName`.
 // TODO(sneaxiy): find a better way to do this when we have a well designed dependency analysis.
 func findModelGenerationTrainStmt(modelName string, idx int, sqlStmts []ir.SQLFlowStmt) *ir.TrainStmt {
@@ -142,21 +155,67 @@ func isXGBoostEstimator(estimator string) bool {
 	return strings.HasPrefix(strings.ToUpper(estimator), "XGBOOST.")
 }
 
-type metadata simplejson.Json
+// Metadata represents the metadata of a trained model
+type Metadata simplejson.Json
 
-func (m *metadata) imageName() string {
+func (m *Metadata) imageName() string {
 	return (*simplejson.Json)(m).Get("model_repo_image").MustString()
 }
 
-func getModelMetadata(session *pb.Session, table string) (*metadata, error) {
+func getModelMetadata(session *pb.Session, table string) (*Metadata, error) {
 	submitter := getSubmitter(session)
 	if submitter == "local" {
-		return getModelMetadataFromDB(session.DbConnStr, table)
+		modelZooAddr, table, tag := decomposeModelName(table)
+		if modelZooAddr != "" {
+			return getModelMetadataFromModelZoo(modelZooAddr, table, tag)
+		}
+		return GetModelMetadataFromDB(session.DbConnStr, table)
 	}
 	return nil, fmt.Errorf("not supported submitter %s", submitter)
 }
 
-func getModelMetadataFromDB(dbConnStr, table string) (*metadata, error) {
+func decomposeModelName(modelName string) (string, string, string) {
+	idx := strings.LastIndex(modelName, "/")
+	if idx < 0 {
+		return "", modelName, ""
+	}
+
+	address := modelName[0:idx]
+	modelName = modelName[idx+1:]
+	idx = strings.LastIndex(modelName, ":")
+	tag := ""
+	if idx >= 0 {
+		tag = modelName[idx+1:]
+		modelName = modelName[0:idx]
+	}
+	return address, modelName, tag
+}
+
+func getModelMetadataFromModelZoo(addr, table, tag string) (*Metadata, error) {
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	client := pb.NewModelZooServerClient(conn)
+	req := &pb.ReleaseModelRequest{
+		Name: table,
+		Tag:  tag,
+	}
+	resp, err := client.GetModelMeta(context.Background(), req)
+	if err != nil {
+		return nil, fmt.Errorf("error is from: %v %s", err, req.Name)
+	}
+	json, err := simplejson.NewJson([]byte(resp.Meta))
+	if err != nil {
+		return nil, err
+	}
+	return (*Metadata)(json), nil
+}
+
+// GetModelMetadataFromDB gets model Metadata from DBMS
+func GetModelMetadataFromDB(dbConnStr, table string) (*Metadata, error) {
 	db, err := database.OpenAndConnectDB(dbConnStr)
 	if err != nil {
 		return nil, err
@@ -191,7 +250,7 @@ func getModelMetadataFromDB(dbConnStr, table string) (*metadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	return (*metadata)(json), nil
+	return (*Metadata)(json), nil
 }
 
 func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {

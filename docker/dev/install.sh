@@ -60,6 +60,7 @@ python -m pip install --quiet --upgrade pip setuptools six
 echo "Install pip packages ..."
 PRE_COMMIT="pre-commit==1.18.3"
 PY_TEST="pytest==5.3.0 pytest-cov"
+GRPC_PACKAGES="grpcio==1.28.1 grpcio-tools==1.28.1"
 JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort<5,>=4.2.5 pylint>=2.5.3 flake8"
 WHEEL="wheel"
@@ -69,7 +70,8 @@ python -m pip install --quiet \
     $PRE_COMMIT \
     $PY_TEST \
     $JS_LINTER \
-    $PYTHON_LINTER
+    $PYTHON_LINTER \
+    $GRPC_PACKAGES
 rm -rf "$HOME"/.cache/pip/*
 
 
