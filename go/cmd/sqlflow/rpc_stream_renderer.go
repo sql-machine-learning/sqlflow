@@ -62,7 +62,11 @@ func render(ctx *renderContext, obj interface{}) error {
 			renderObj = r.Message.Message
 		}
 	default:
-		renderObj = fmt.Sprintf("get un-recognized message type: %v", r)
+		// TODO(sneaxiy): do not know why there would be r == nil when using
+		// PAI to train.
+		if r != nil {
+			renderObj = fmt.Sprintf("get un-recognized message type: %v", r)
+		}
 	}
 	return step.Render(renderObj, ctx.table, ctx.isTerminal, ctx.it2Check)
 }
