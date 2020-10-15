@@ -98,7 +98,7 @@ func parseRow(columns []string, columnTypes []*sql.ColumnType, rows *sql.Rows, w
 	// runtime. Some databases support dynamic types between rows,
 	// such as sqlite's affinity. So we move columnTypes inside
 	// the row.Next() loop.
-	values := ir.NewRowValuesToScan(columnTypes)
+	values := ir.NewRowValuesToScan(columnTypes, true)
 	if err := rows.Scan(values...); err != nil {
 		return err
 	}

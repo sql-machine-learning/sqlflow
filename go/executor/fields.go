@@ -29,6 +29,11 @@ func fieldValue(val interface{}) (interface{}, error) {
 			return (*v).Bool, nil
 		}
 		return nil, nil
+	case *sql.NullInt32:
+		if (*v).Valid {
+			return (*v).Int32, nil
+		}
+		return nil, nil
 	case *sql.NullInt64:
 		if (*v).Valid {
 			return (*v).Int64, nil
@@ -90,7 +95,7 @@ func fieldValue(val interface{}) (interface{}, error) {
 	case *float64:
 		return *v, nil
 	default:
-		return nil, fmt.Errorf("unrecognized type %v", v)
+		return nil, fmt.Errorf("unrecognized type %T", v)
 	}
 }
 
