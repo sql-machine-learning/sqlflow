@@ -214,17 +214,14 @@ func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStder
 		return true, err
 	}
 
-	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
-	if err != nil {
-		return true, err
-	}
-
 	const bashCodeTmpl = `python -u <<EOF
 %s
+
+step_entry_0()
 EOF
 `
 
-	cmd := exec.Command("bash", "-c", fmt.Sprintf(bashCodeTmpl, stepFuncCode))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(bashCodeTmpl, stepCode))
 	cmd.Dir = s.Cwd
 	errorLog, err := s.runCommand(cmd, nil, logStderr)
 	if err != nil {
