@@ -114,7 +114,8 @@ func GenerateTrainStmt(slct *parser.SQLFlowSelectStmt) (*TrainStmt, error) {
 	}
 	label := &NumericColumn{
 		FieldDesc: &FieldDesc{
-			Name: tc.Label,
+			Name:  tc.Label,
+			Shape: []int{1},
 		}}
 
 	vslct, _ := parseValidationSelect(attrList)
