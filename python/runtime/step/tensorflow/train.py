@@ -19,7 +19,7 @@ from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import (get_ordered_field_descs,
                                         infer_feature_columns)
-from runtime.model import EstimatorType, Model, collect_metadata, oss
+from runtime.model import EstimatorType, Model, collect_metadata
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.step.tensorflow.train_estimator import estimator_train_and_save
 from runtime.step.tensorflow.train_keras import keras_train_and_save
@@ -69,9 +69,15 @@ def train_step(original_sql,
     if validation_params is None:
         validation_params = {}
 
+    is_pai = True if pai_table else False
+    if is_pai:
+        actual_select = "SELECT * FROM %s" % pai_table
+    else:
+        actual_select = select
+
     conn = db.connect_with_data_source(datasource)
     fc_map_ir, fc_label_ir = infer_feature_columns(conn,
-                                                   select,
+                                                   actual_select,
                                                    feature_column_map,
                                                    label_column,
                                                    n=1000)
@@ -124,7 +130,6 @@ def train_step(original_sql,
     estimator = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator)
 
-    is_pai = True if pai_table else False
     # always use verbose == 1 when using PAI to get more logs
     if verbose < 1:
         verbose = 1
@@ -150,7 +155,7 @@ def train_step(original_sql,
                                       num_workers=num_workers,
                                       worker_id=worker_id)
     val_dataset_fn = None
-    if validation_select:
+    if validation_select or pai_val_table:
         val_dataset_fn = get_dataset_fn(validation_select, datasource,
                                         feature_column_names, feature_metas,
                                         label_meta, is_pai, pai_val_table,
@@ -185,19 +190,16 @@ def train_step(original_sql,
                                  save_checkpoints_steps, validation_metrics,
                                  load, model_meta)
 
-    # save model to DB
+    # save model to DB/OSS
+    model = Model(EstimatorType.TENSORFLOW, model_meta)
     if num_workers == 1 or worker_id == 0:
         if is_pai:
             oss_model_dir = FLAGS.sqlflow_oss_modeldir
-            oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
-                               feature_column_names, feature_column_names_map,
-                               feature_metas, label_meta, model_params,
-                               fc_map_ir, num_workers)
+            model.save_to_oss(oss_model_dir)
             print("Model saved to OSS: %s" % oss_model_dir)
         else:
-            model = Model(EstimatorType.TENSORFLOW, model_meta)
             model.save_to_db(datasource, save)
-            print("Model saved to db: %s" % save)
+            print("Model saved to DB: %s" % save)
 
     print("Done training")
     conn.close()

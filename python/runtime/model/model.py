@@ -99,7 +99,7 @@ class Model(object):
         typ = d.pop("model_type")
         return Model(typ, d)
 
-    def _zip(self, local_dir, tarball, save_to_db=False):
+    def _zip(self, local_dir, tarball):
         """
         Zip the model information and all files in local_dir into a tarball.
 
@@ -110,20 +110,23 @@ class Model(object):
         Returns:
             None.
         """
-        if not save_to_db:
-            model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
-            with open(model_obj_file, "w") as f:
-                d = self._to_dict()
-                f.write(json.dumps(d, cls=JSONEncoderWithFeatureColumn))
-        else:
-            model_obj_file = None
+        # NOTE: the unzip files of the job tarball should be skipped
+        from runtime.pai.prepare_archive import ALL_TAR_FILES
 
-        zip_dir(local_dir, tarball, arcname="./")
-        if model_obj_file:
-            os.remove(model_obj_file)
+        def filter(tarinfo):
+            name = tarinfo.name
+            if name.startswith("./"):
+                name = name[2:]
+
+            if name in ALL_TAR_FILES:
+                return None
+
+            return tarinfo
+
+        zip_dir(local_dir, tarball, arcname="./", filter=filter)
 
     @staticmethod
-    def _unzip(local_dir, tarball, load_from_db=False):
+    def _unzip(local_dir, tarball):
         """
         Unzip the tarball into local_dir and deserialize the model
         information.
@@ -137,13 +140,6 @@ class Model(object):
             information.
         """
         unzip_dir(tarball, local_dir)
-        if not load_from_db:
-            model_obj_file = os.path.join(local_dir, MODEL_OBJ_FILE_NAME)
-            with open(model_obj_file, "r") as f:
-                d = json.loads(f.read(), cls=JSONDecoderWithFeatureColumn)
-                model = Model._from_dict(d)
-            os.remove(model_obj_file)
-            return model
 
     def save_to_db(self, datasource, table, local_dir=None):
         """
@@ -164,7 +160,7 @@ class Model(object):
 
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
-            self._zip(local_dir, tarball, save_to_db=True)
+            self._zip(local_dir, tarball)
 
             def _bytes_reader(filename, buf_size=8 * 32):
                 def _gen():
@@ -212,7 +208,7 @@ class Model(object):
                 for data in gen():
                     f.write(bytes(data))
 
-            Model._unzip(local_dir, tarball, load_from_db=True)
+            Model._unzip(local_dir, tarball)
 
         return Model._from_dict(metadata)
 
@@ -237,6 +233,14 @@ class Model(object):
             self._zip(local_dir, tarball)
             oss.save_file(oss_model_dir, tarball, TARBALL_NAME)
 
+        with temp_file.TemporaryDirectory() as tmp_dir:
+            model_obj_file = os.path.join(tmp_dir, MODEL_OBJ_FILE_NAME)
+            with open(model_obj_file, "w") as f:
+                f.write(
+                    json.dumps(self._to_dict(),
+                               cls=JSONEncoderWithFeatureColumn))
+            oss.save_file(oss_model_dir, model_obj_file, MODEL_OBJ_FILE_NAME)
+
     @staticmethod
     def load_from_oss(oss_model_dir, local_dir=None):
         """
@@ -257,7 +261,14 @@ class Model(object):
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
             oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
-            return Model._unzip(local_dir, tarball)
+            Model._unzip(local_dir, tarball)
+
+            model_obj_file = os.path.join(tmp_dir, MODEL_OBJ_FILE_NAME)
+            oss.load_file(oss_model_dir, model_obj_file, MODEL_OBJ_FILE_NAME)
+            with open(model_obj_file, "r") as f:
+                d = json.loads(f.read(), cls=JSONDecoderWithFeatureColumn)
+                model = Model._from_dict(d)
+            return model
 
 
 def _decompose_model_name(name):

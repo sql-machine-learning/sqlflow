@@ -72,9 +72,7 @@ def call_fun(func, params):
     return func(**dict_args)
 
 
-def entrypoint():
-    with open("train_params.pkl", "rb") as file:
-        params = pickle.load(file)
+def entrypoint(params):
     if params["entry_type"] == "train_tf":
         call_fun(train_tf, params)
     elif params["entry_type"] == "train_xgb":
@@ -96,4 +94,6 @@ def entrypoint():
 if __name__ == "__main__":
     FLAGS = define_tf_flags()
     set_oss_environs(FLAGS)
-    entrypoint()
+    with open("train_params.pkl", "rb") as file:
+        params = pickle.load(file)
+    entrypoint(params)

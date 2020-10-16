@@ -21,6 +21,7 @@ from runtime.pai.pai_ml.kmeans import get_train_kmeans_pai_cmd
 from runtime.pai.pai_ml.random_forest import get_train_random_forest_pai_cmd
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
+from runtime.pai_local.try_run import try_pai_local_run
 
 
 def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
@@ -136,6 +137,9 @@ def submit_pai_train(datasource,
         if oss_path_to_load == "" or oss_path_to_load != oss_path_to_save:
             pai_model.clean_oss_model_path(oss_path_to_save + "/")
         train_params["oss_path_to_load"] = oss_path_to_load
+
+        if try_pai_local_run(params, oss_path_to_save):
+            return
 
         with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp") as cwd:
             # zip all required resource to a tarball
