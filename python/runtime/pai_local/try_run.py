@@ -14,7 +14,6 @@
 import os
 
 from runtime.pai import pai_model
-from runtime.pai.entry import entrypoint
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 
 
@@ -32,6 +31,7 @@ def init_pai_local_tf_flags_and_envs(oss_model_dir):
 
 def try_pai_local_run(params, oss_model_dir):
     if os.getenv("SQLFLOW_submitter") == "pai_local":
+        from runtime.pai.entry import entrypoint
         init_pai_local_tf_flags_and_envs(oss_model_dir)
         print('start to run using pai_local submitter ...')
         entrypoint(params)
