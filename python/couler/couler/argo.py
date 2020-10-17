@@ -636,6 +636,14 @@ def _convert_dict_to_list(d):
     return env_list
 
 
+def isfloat(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
 def _convert_dict_to_env_list(d):
     """This is to convert a Python dictionary to a list, where
     each list item is a dict with `name` and `value` keys.
@@ -651,7 +659,7 @@ def _convert_dict_to_env_list(d):
             for s in v:
                 env_list.append(s)
         else:
-            if str(v).isdigit():
+            if str(v).isdigit() or isfloat(str(v)):
                 env_list.append({"name": str(k), "value": "'%s'" % str(v)})
             else:
                 env_list.append({"name": str(k), "value": str(v)})
