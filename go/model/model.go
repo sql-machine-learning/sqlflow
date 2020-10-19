@@ -75,18 +75,10 @@ func (m *Model) GetMetaAsString(key string) string {
 func (m *Model) Save(modelURI string, session *pb.Session) error {
 	if strings.Contains(modelURI, "://") {
 		uriParts := strings.Split(modelURI, "://")
-		if len(uriParts) == 2 {
-			// oss:// or file://
-			if uriParts[0] == "file" {
-				dir, file := path.Split(uriParts[1])
-				_, err := m.saveTar(dir, file)
-				return err
-			} else if uriParts[0] == "oss" {
-				return fmt.Errorf("save model to oss is not supported now")
-			}
-		} else {
-			return fmt.Errorf("error modelURI format: %s", modelURI)
+		if len(uriParts) == 2 && uriParts[0] == "oss" {
+			return fmt.Errorf("save model to oss is not supported now")
 		}
+		return fmt.Errorf("error modelURI format: %s", modelURI)
 	}
 
 	return m.saveDB(session.DbConnStr, modelURI, session)

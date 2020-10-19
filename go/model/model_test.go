@@ -72,29 +72,6 @@ func mockModelDir(a *assert.Assertions) (string, string) {
 	return ws, dst
 }
 
-func TestModelFileStore(t *testing.T) {
-	a := assert.New(t)
-	ws, dst := mockModelDir(a)
-	defer os.RemoveAll(ws)
-	defer os.RemoveAll(dst)
-	model := &Model{workDir: ws}
-	session := database.GetSessionFromTestingDB()
-	modelURI := fmt.Sprintf("file://%s/model", dst)
-
-	err := model.Save(modelURI, session)
-	a.NoError(err)
-	a.True(file.Exists(path.Join(dst, "model.tar.gz")))
-
-	model, err = Load(modelURI, dst, nil)
-	a.NoError(err)
-	a.True(file.Exists(path.Join(dst, "model.txt")))
-	a.True(file.Exists(path.Join(dst, modelMetaFileName)))
-	meta, err := ioutil.ReadFile(path.Join(dst, modelMetaFileName))
-	a.NoError(err)
-	a.Equal(modelMeta, string(meta))
-	a.Equal("tf.estimator.BoostedTreesClassifier", model.GetMetaAsString("estimator"))
-}
-
 func TestModelDBStore(t *testing.T) {
 	a := assert.New(t)
 	ws, dst := mockModelDir(a)
