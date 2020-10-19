@@ -158,7 +158,7 @@ def submit_pai_explain(datasource,
                                                        user=user)
     params["oss_model_path"] = oss_model_path
     model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
-        oss_model_path, project)
+        oss_model_path)
     params["load"] = model_name
 
     label_column = model_params.get("label_col")

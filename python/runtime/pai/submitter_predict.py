@@ -130,15 +130,16 @@ def submit_pai_predict(datasource,
                                                            model_name,
                                                            user=user)
         params["oss_model_path"] = oss_model_path
-        model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
-            oss_model_path)
+        model_type, estimator = \
+            pai_model.get_oss_saved_model_type_and_estimator(oss_model_path)
 
         setup_predict_entry(params, model_type)
 
         if try_pai_local_run(params, oss_model_path):
             return
 
-        # TODO(sneaxiy): should create predict result table in pai/xxx/predict.py
+        # TODO(sneaxiy): should create predict result table in
+        # pai/xxx/predict.py
         create_predict_result_table(datasource, data_table, result_table,
                                     label_column, None, model_type)
 

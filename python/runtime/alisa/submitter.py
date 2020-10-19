@@ -248,7 +248,7 @@ def submit_alisa_predict(datasource, select, result_table, label_column,
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     params["oss_model_path"] = oss_model_path
     model_type, estimator = get_oss_saved_model_type_and_estimator(
-        oss_model_path, project)
+        oss_model_path)
     setup_predict_entry(params, model_type)
 
     # (TODO:lhw) get train label column from model meta
@@ -298,7 +298,7 @@ def submit_alisa_explain(datasource, select, result_table, model_name,
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     model_type, estimator = get_oss_saved_model_type_and_estimator(
-        oss_model_path, project)
+        oss_model_path)
     params["oss_model_path"] = oss_model_path
 
     label_column = model_params.get("label_col")
@@ -341,7 +341,7 @@ def submit_alisa_evaluate(datasource, model_name, select, result_table,
     params["oss_model_path"] = oss_model_path
 
     model_type, estimator = get_oss_saved_model_type_and_estimator(
-        oss_model_path, project)
+        oss_model_path)
     if model_type == EstimatorType.PAIML:
         raise SQLFlowDiagnostic("PAI model evaluation is not supported yet.")
 

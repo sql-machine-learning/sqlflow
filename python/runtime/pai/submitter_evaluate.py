@@ -95,7 +95,7 @@ def submit_pai_evaluate(datasource,
     params["oss_model_path"] = oss_model_path
 
     model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
-        oss_model_path, project)
+        oss_model_path)
     if model_type == EstimatorType.PAIML:
         raise SQLFlowDiagnostic("PAI model evaluation is not supported yet.")
 
