@@ -10,7 +10,7 @@
 
 ## 数据集简介
 
-iris数据集包含四个特征及一个标签。四个特征表示每株鸢尾花的植物学形状，每个特征是个浮点数。标签代表每株鸢尾花的亚种，是个整数，取值为0、1、2之一。
+iris数据集包含四个特征及一个标签。四个特征表示每株鸢尾花的植物学形状，每个特征是个浮点数。标签代表每株鸢尾花的亚种，是个整数，取值为0、1或2。
 
 在SQLFlow官方镜像里，iris数据集存储在`iris.train`和`iris.test`中，分别是训练数据和测试数据。
 
@@ -73,11 +73,11 @@ INTO sqlflow_models.my_dnn_model;
 ## 模型调优
 
 为了改进模型性能，我们可以手动调整模型的超参数([hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)))。
-> 在机器学习中，超参数是指学习过程开始前可以指定的参数。而其它参数则是在训练过程中学到的。
+> 在机器学习中，超参数是指学习过程开始前可以指定的参数，而其它参数则是在训练过程中学到的。
 
 根据万能近似理论([Universal approximation theorem](https://en.wikipedia.org/wiki/Universal_approximation_theorem))，一个像DNNClassifier这样的多层前馈网络([feed-forward network](https://en.wikipedia.org/wiki/Feedforward_neural_network))，设计强大的网络结构可使其有潜力模拟任何函数。
 
-我们的第一个效果优化的尝试就是调整网络结构：把每个隐藏层的节点数从10调整为100。这是因为在万能近似理论中，前馈网络的宽度对结果的准确程度有影响。
+我们的第一个效果优化的尝试就是调整网络结构：把每个隐藏层的节点数从10调整为100。这是因为在万能近似理论中，前馈网络的宽度对结果的准确程度有很大影响。
 
 ```sql
 %%sqlflow
@@ -98,9 +98,9 @@ INTO sqlflow_models.my_dnn_model;
 
 当然，DNN的表达能力极高，对iris这样的小数据集来说，我们还有不少空间可以改进。
 
-我们第二个效果优化尝试是增大`DNNClassifier`底层数值优化器的学习率([learning rate](https://en.wikipedia.org/wiki/Learning_rate))，以此来加速学习过程。对DNN来说，优化器及其学习率可能是最为关键的超参数。`DNNClassifier`默认的优化器是[AdaGrad](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#AdaGrad)，其默认学习率为0.001。
+我们的第二个效果优化尝试是增大`DNNClassifier`底层数值优化器的学习率([learning rate](https://en.wikipedia.org/wiki/Learning_rate))，以此来加速学习过程。对DNN来说，优化器及其学习率可能是最为关键的超参数。`DNNClassifier`默认的优化器是[AdaGrad](https://en.wikipedia.org/wiki/Stochastic_gradient_descent#AdaGrad)，其默认学习率为0.001。
 
-理论上说，在神经元不死([dying neuron problem](https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Potential_problems))的前提下，AdaGrad的学习率可以尽量调大。我们先将其调到原来的10倍：
+理论上说，在神经元不死(参见[dying neuron problem](https://en.wikipedia.org/wiki/Rectifier_(neural_networks)#Potential_problems))的前提下，AdaGrad的学习率可以尽量调大。我们先将其调到原来的10倍：
 
 ```sql
 %%sqlflow
@@ -120,19 +120,20 @@ INTO sqlflow_models.my_dnn_model;
 {'accuracy': 0.98, 'average_loss': 0.10286382, 'loss': 0.10286382, 'global_step': 1100}
 ```
 
+在实际工作中，略微调大AdaGrad的学习率往往能带来效果上的提升。
+
 关于手动调优，本文主要就介绍这些内容。实际上，调参在机器学习工作的重要性非常之高，一般会占据整条链路中最多的工时。
 
 ## 自动调优
 
-如果您觉得为机器学习模型调参实在是枯燥无味，也可以考虑借助[AutoML](https://en.wikipedia.org/wiki/Automated_machine_learning)技术来调优。
+如果您觉得为机器学习模型调参实在是枯燥无味，也可以考虑借助[AutoML](https://en.wikipedia.org/wiki/Automated_machine_learning)技术来自动进行调优。
 
 SQLFlow通过特定的estimator提供了基于NAS([neural architecture search](https://en.wikipedia.org/wiki/Neural_architecture_search))的自动调优能力。我们可以使用`sqlflow_models.AutoClassifier`代替`DNNClassifier`来实现自动调优。一旦使用`sqlflow_models.AutoClassifier`，就不需要再关注网络结构，因此不必在`WITH`子句中指定`hidden_unit`，而默认的学习率也能够应付大部分情况。
 
 ```sql
 %%sqlflow
 SELECT * FROM iris.train TO TRAIN sqlflow_models.AutoClassifier WITH
-  model.n_classes = 3,
-  train.epoch = 10
+  model.n_classes = 3, train.epoch = 10
 COLUMN sepal_length, sepal_width, petal_length, petal_width
 LABEL class
 INTO sqlflow_models.my_dnn_model;
@@ -145,7 +146,7 @@ INTO sqlflow_models.my_dnn_model;
 
 ```
 
-尽管这个结果看起来和手动调优的结果非常接近，但因为`DNNClassifier`和`AutoClassifier`都有一定随机性，您自己运行的结果可能会略有不同。
+尽管这个结果看起来和手动调优的结果非常接近，但因为`DNNClassifier`和`AutoClassifier`都有一定随机性，您自己运行得到的结果可能会略有不同。
 
 SQLFlow项目组计划在未来支持更多的NAS模型，同时也计划支持HPO([automatic hyperparameter tuning](https://en.wikipedia.org/wiki/Automated_machine_learning#Hyperparameter_optimization_and_model_selection))等其它AutoML技术。
 
