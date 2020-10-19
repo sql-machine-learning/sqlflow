@@ -1,8 +1,6 @@
 # 使用DNN对iris数据集进行分类
 
-<a href="https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/iris-dnn.ipynb&fileName=sqlflow_tutorial_iris_dnn.ipynb">
-  <img alt="Open In PAI-DSW" src="https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg">
-</a>
+[![Open In PAI-DSW](https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg)](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/iris-dnn.ipynb&fileName=sqlflow_tutorial_iris_dnn.ipynb)
 
 本文档介绍如何：
 - 基于[iris数据集](https://en.wikipedia.org/wiki/Iris_flower_data_set)训练DNNClassifier
@@ -26,7 +24,7 @@ describe iris.train;
 select * from iris.train limit 5;
 ```
 
-# 训练
+## 训练
 
 我们在本节中训练一个三分类的DNNClassifier，它包含两个隐藏层，每层10个节点。使用SQLFlow扩展语法提供的train子句，我们可以很容易地指定模型结构：
 
