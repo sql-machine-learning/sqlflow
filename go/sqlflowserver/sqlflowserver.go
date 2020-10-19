@@ -26,6 +26,7 @@ import (
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/log"
 	"sqlflow.org/sqlflow/go/workflow"
+	"sqlflow.org/sqlflow/go/workflow/argo"
 
 	"github.com/golang/protobuf/proto"
 	submitter "sqlflow.org/sqlflow/go/executor"
@@ -37,9 +38,6 @@ import (
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
-	// server-side configurations together with client side session in the run context.
-	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
 	run      func(sql string, modelDir string, session *pb.Session) *pipe.Reader
 	modelDir string
 }
@@ -54,16 +52,12 @@ func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
 	// with argo package by introducing s.fetch
-	_, wf, e := workflow.New(getWorkflowBackend())
-	if e != nil {
-		return nil, e
-	}
-	return wf.Fetch(job)
+	return argo.Fetch(job)
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	rd := s.run(req.Sql, s.modelDir, req.Session)
+	rd := s.run(req.Stmts, s.modelDir, req.Session)
 	defer rd.Close()
 
 	for r := range rd.ReadAll() {
@@ -92,7 +86,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			if err != nil {
 				return err
 			}
-			sqls, err := parser.Parse(dialect, req.Sql)
+			sqls, err := parser.Parse(dialect, req.Stmts)
 			if err != nil {
 				return err
 			}
@@ -134,14 +128,32 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 		"submitter": session.Submitter,
 		"event":     "submitWorkflow",
 	})
+	rd, wr := pipe.Pipe()
+
 	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
 		logger.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
 	}
-	rd, wr := pipe.Pipe()
+	useExperimentalCodegen := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+	var yaml string
+	var err error
+	if !useExperimentalCodegen {
+		yaml, err = workflow.CompileToYAML(getWorkflowBackend(), sqlProgram, session, logger)
+		if err != nil {
+			logger.Printf("compile error: %v", err)
+		}
+		wr.Write(err)
+	} else {
+		yaml, err = workflow.CompileToYAMLExperimental(sqlProgram, session)
+		if err != nil {
+			logger.Printf("compile error: %v", err)
+		}
+		wr.Write(err)
+	}
+
 	startTime := time.Now()
 	go func() {
 		defer wr.Close()
-		wfID, e := workflow.Run(getWorkflowBackend(), sqlProgram, session, logger)
+		wfID, e := argo.Submit(yaml)
 		defer logger.Infof("submitted, workflowID:%s, spent:%.f, SQL:%s, error:%v", wfID, time.Since(startTime).Seconds(), sqlProgram, e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {
