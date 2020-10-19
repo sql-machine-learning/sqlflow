@@ -25,6 +25,11 @@ wget -q -P /etc/apk/keys/ http://cdn.sqlflow.tech/alpine/sqlflow-5ef80180.rsa.pu
 apk add py3-pandas-1.0.3-r0.apk && rm py3-pandas-1.0.3-r0.apk
 # Dependencies for jupyterhub
 apk add py3-cryptography py3-ruamel.yaml.clib py3-requests
+# Install mysqlclient so that user can use Python to import data into MySQL.
+apk add --no-cache mariadb-connector-c-dev
+apk add --no-cache --virtual .build-deps build-base mariadb-dev
+pip install mysqlclient
+apk del .build-deps
 
 pip -q install \
     jupyterhub==1.1.0 \
