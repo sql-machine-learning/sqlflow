@@ -10,6 +10,14 @@ This tutorial demonstrates how to
 
 The Iris data set contains four features and one label. The four features identify the botanical characteristics of individual Iris flowers. Each feature is stored as a single float number. The label indicates the species of individual Iris flowers. The label is stored as a integer and has possible value of 0, 1, 2.
 
+|   Column     | Data Type |        Description              |
+|--------------|-----------|---------------------------------|
+| sepal_length |  float    | Sepal length (cm). Feature      |
+| sepal_width  |  float    | Sepal width (cm). Feature       |
+| petal_length |  float    | Petal length (cm). Feature      |
+| petal_width  |  float    | Petal width (cm). Feature       |
+| class        |  int      | Flower species (0, 1, 2). Label |
+
 We have prepared the Iris dataset in table `iris.train` and `iris.test`. We will use them as training data and test data respectively.
 
 We can have a quick peek of the data by running the following standard SQL statements.

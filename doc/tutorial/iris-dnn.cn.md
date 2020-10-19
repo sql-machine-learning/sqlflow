@@ -1,6 +1,6 @@
 # 使用DNN对iris数据集进行分类
 
-[![Open In PAI-DSW](https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg)](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/iris-dnn.ipynb&fileName=sqlflow_tutorial_iris_dnn.ipynb)
+[![Open In PAI-DSW](https://pai-public-data.oss-cn-beijing.aliyuncs.com/EN-pai-dsw.svg)](https://dsw-dev.data.aliyun.com/?fileUrl=http://cdn.sqlflow.tech/sqlflow/tutorials/latest/iris-dnn.cn.ipynb&fileName=sqlflow_tutorial_iris_dnn_cn.ipynb)
 
 本文档介绍如何：
 - 基于[iris数据集](https://en.wikipedia.org/wiki/Iris_flower_data_set)训练DNNClassifier
@@ -9,6 +9,14 @@
 ## 数据集简介
 
 iris数据集包含四个特征及一个标签。四个特征表示每株鸢尾花的植物学形状，每个特征是个浮点数。标签代表每株鸢尾花的亚种，是个整数，取值为0、1或2。
+
+|     列名     | 数据类型 |          描述           |
+|--------------|----------|-------------------------|
+| sepal_length |  float   | 花萼长度(cm)，特征之一  |
+| sepal_width  |  float   | 花萼宽度(cm)，特征之一  |
+| petal_length |  float   | 花瓣长度(cm)，特征之一  |
+| petal_width  |  float   | 花瓣宽度(cm)，特征之一  |
+| class        |  int     | 亚种类别(0, 1, 2)，标签 |
 
 在SQLFlow官方镜像里，iris数据集存储在`iris.train`和`iris.test`中，分别是训练数据和测试数据。
 
@@ -26,7 +34,7 @@ select * from iris.train limit 5;
 
 ## 训练
 
-我们在本节中训练一个三分类的DNNClassifier，它包含两个隐藏层，每层10个节点。使用SQLFlow扩展语法提供的train子句，我们可以很容易地指定模型结构：
+我们在本节中训练一个三分类的DNNClassifier，它包含两个隐藏层，每层10个节点。使用SQLFlow扩展语法提供的模型训练子句，我们可以很容易地指定模型结构：
 
 ```sql
 TO TRAIN DNNClassifier
@@ -66,14 +74,14 @@ INTO sqlflow_models.my_dnn_model;
 ```python
 {'accuracy': 0.4, 'average_loss': 1.0920922, 'loss': 1.0920922, 'global_step': 1100}
 ```
-如您所见，这条训练语句的平均loss并非十分理想，因为*iris数据集*上训练得到的理想结果一般小于0.4。接下来我们来学习如何改进模型效果。
+如您所见，这条训练语句的平均loss并非十分理想，因为*iris数据集*上训练得到的较理想的平均loss一般小于0.4。接下来我们来学习如何改进模型效果。
 
 ## 模型调优
 
 为了改进模型性能，我们可以手动调整模型的超参数([hyperparameters](https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)))。
 > 在机器学习中，超参数是指学习过程开始前可以指定的参数，而其它参数则是在训练过程中学到的。
 
-根据万能近似理论([Universal approximation theorem](https://en.wikipedia.org/wiki/Universal_approximation_theorem))，一个像DNNClassifier这样的多层前馈网络([feed-forward network](https://en.wikipedia.org/wiki/Feedforward_neural_network))，设计强大的网络结构可使其有潜力模拟任何函数。
+根据万能近似理论([Universal approximation theorem](https://en.wikipedia.org/wiki/Universal_approximation_theorem))，为DNNClassifier这样的多层前馈网络([feed-forward network](https://en.wikipedia.org/wiki/Feedforward_neural_network))设计强大的网络结构，可使其有潜力模拟任何函数。
 
 我们的第一个效果优化的尝试就是调整网络结构：把每个隐藏层的节点数从10调整为100。这是因为在万能近似理论中，前馈网络的宽度对结果的准确程度有很大影响。
 
