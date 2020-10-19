@@ -15,7 +15,6 @@ package sql
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -119,7 +118,6 @@ USING sqlflow_models.my_xgb_regression_model;
 
 func TestRunSQLProgram(t *testing.T) {
 	a := assert.New(t)
-	modelDir := ""
 	a.NotPanics(func() {
 		stream := RunSQLProgram(`
 SELECT sepal_length as sl, sepal_width as sw, class FROM iris.train
@@ -139,76 +137,68 @@ USING sqlflow_models.my_xgboost_model_by_program;
 SELECT sepal_length as sl, sepal_width as sw, class FROM iris.train
 TO EXPLAIN sqlflow_models.my_xgboost_model_by_program
 USING TreeExplainer;
-`, modelDir, database.GetSessionFromTestingDB())
+`, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
 func TestExecuteXGBoostClassifier(t *testing.T) {
 	a := assert.New(t)
-	modelDir := ""
 	a.NotPanics(func() {
-		stream := RunSQLProgram(testTrainSelectWithLimit, modelDir, database.GetSessionFromTestingDB())
+		stream := RunSQLProgram(testTrainSelectWithLimit, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testXGBoostPredictIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testXGBoostPredictIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
-		stream := RunSQLProgram(testXGBoostTrainSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream := RunSQLProgram(testXGBoostTrainSelectIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testExplainTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testExplainTreeModelSelectIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testXGBoostPredictIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testXGBoostPredictIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
 func TestExecuteXGBoostRegression(t *testing.T) {
 	a := assert.New(t)
-	modelDir := ""
 	a.NotPanics(func() {
-		stream := RunSQLProgram(testXGBoostTrainSelectHousing, modelDir, database.GetSessionFromTestingDB())
+		stream := RunSQLProgram(testXGBoostTrainSelectHousing, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testExplainTreeModelSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testExplainTreeModelSelectIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testXGBoostPredictHousing, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testXGBoostPredictHousing, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
 func TestExecutorTrainAndPredictDNN(t *testing.T) {
 	a := assert.New(t)
-	modelDir := ""
 	a.NotPanics(func() {
-		stream := RunSQLProgram(testTrainSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream := RunSQLProgram(testTrainSelectIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testPredictSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testPredictSelectIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
 func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	a := assert.New(t)
-	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
-	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := RunSQLProgram(testClusteringTrain, modelDir, database.GetSessionFromTestingDB())
+		stream := RunSQLProgram(testClusteringTrain, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testClusteringPredict, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testClusteringPredict, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
 
 func TestExecutorTrainAndPredictDNNLocalFS(t *testing.T) {
 	a := assert.New(t)
-	modelDir, e := ioutil.TempDir("/tmp", "sqlflow_models")
-	a.Nil(e)
-	defer os.RemoveAll(modelDir)
 	a.NotPanics(func() {
-		stream := RunSQLProgram(testTrainSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream := RunSQLProgram(testTrainSelectIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
-		stream = RunSQLProgram(testPredictSelectIris, modelDir, database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(testPredictSelectIris, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }

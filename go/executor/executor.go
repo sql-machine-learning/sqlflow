@@ -60,7 +60,7 @@ type Figures struct {
 
 // Executor call code geneartor to generate submitter program and execute it.
 type Executor interface {
-	Setup(*pipe.Writer, *database.DB, string, string, *pb.Session)
+	Setup(*pipe.Writer, *database.DB, string, *pb.Session)
 	ExecuteQuery(*ir.NormalStmt) error
 	ExecuteTrain(*ir.TrainStmt) error
 	ExecutePredict(*ir.PredictStmt) error
@@ -167,11 +167,10 @@ func (cw *logChanWriter) Close() {
 }
 
 type pythonExecutor struct {
-	Writer   *pipe.Writer
-	Db       *database.DB
-	ModelDir string
-	Cwd      string
-	Session  *pb.Session
+	Writer  *pipe.Writer
+	Db      *database.DB
+	Cwd     string
+	Session *pb.Session
 }
 
 // UseExperimentalExecutor returns whether to use the experimental codegen
@@ -228,9 +227,9 @@ EOF
 	return true, nil
 }
 
-func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, modelDir string, cwd string, session *pb.Session) {
+func (s *pythonExecutor) Setup(w *pipe.Writer, db *database.DB, cwd string, session *pb.Session) {
 	// cwd is used to store train scripts and save output models.
-	s.Writer, s.Db, s.ModelDir, s.Cwd, s.Session = w, db, modelDir, cwd, session
+	s.Writer, s.Db, s.Cwd, s.Session = w, db, cwd, session
 }
 
 func (s *pythonExecutor) GetPythonExecutor() *pythonExecutor {
@@ -240,9 +239,6 @@ func (s *pythonExecutor) GetPythonExecutor() *pythonExecutor {
 func (s *pythonExecutor) SaveModel(cl *ir.TrainStmt) error {
 	m := model.New(s.Cwd, cl.OriginalSQL)
 	modelURI := cl.Into
-	if s.ModelDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", s.ModelDir, cl.Into)
-	}
 	return m.Save(modelURI, s.Session)
 }
 

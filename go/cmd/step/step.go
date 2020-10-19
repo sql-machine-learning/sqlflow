@@ -39,7 +39,7 @@ func run(sqlStmt string, sess *pb.Session) error {
 		log.Fatalf("create tablewriter failed: %v", e)
 	}
 
-	return step.RunSQLProgramAndPrintResult(sqlStmt, "", sess, tw, false, false)
+	return step.RunSQLProgramAndPrintResult(sqlStmt, sess, tw, false, false)
 }
 
 func main() {
