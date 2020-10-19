@@ -36,7 +36,7 @@ import (
 
 func startSqlflowServer() error {
 	s := grpc.NewServer()
-	proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, ""))
+	proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram))
 	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
 		return err

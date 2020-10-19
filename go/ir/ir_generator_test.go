@@ -427,7 +427,7 @@ WITH model.n_classes=3, model.hidden_units=[10,20]
 LABEL class
 INTO sqlflow_models.mymodel;`, "sqlflow_models.mymodel"))
 
-	predStmt, err := GeneratePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), "", cwd, true)
+	predStmt, err := GeneratePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), cwd, true)
 	a.NoError(err)
 
 	a.Equal("iris.predict", predStmt.ResultTable)

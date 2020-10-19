@@ -184,7 +184,6 @@ func TestExecutorTrainAndPredictDNN(t *testing.T) {
 
 func TestExecutorTrainAndPredictClusteringLocalFS(t *testing.T) {
 	a := assert.New(t)
-	a.Nil(e)
 	a.NotPanics(func() {
 		stream := RunSQLProgram(testClusteringTrain, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
@@ -220,14 +219,14 @@ train.verbose = 1
 COLUMN DENSE(dense, 4, COMMA)
 LABEL class
 INTO sqlflow_models.my_dense_dnn_model;`
-		stream := RunSQLProgram(trainSQL, "", database.GetSessionFromTestingDB())
+		stream := RunSQLProgram(trainSQL, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 
 		predSQL := `SELECT * FROM iris.test_dense
 TO PREDICT iris.predict_dense.class
 USING sqlflow_models.my_dense_dnn_model
 ;`
-		stream = RunSQLProgram(predSQL, "", database.GetSessionFromTestingDB())
+		stream = RunSQLProgram(predSQL, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 }
@@ -269,7 +268,7 @@ func TestIsHints(t *testing.T) {
 
 func TestSQLLexerError(t *testing.T) {
 	a := assert.New(t)
-	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", "", database.GetSessionFromTestingDB())
+	stream := RunSQLProgram("SELECT * FROM ``?[] AS WHERE LIMIT;", database.GetSessionFromTestingDB())
 	a.False(test.GoodStream(stream.ReadAll()))
 }
 
