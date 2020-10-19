@@ -51,19 +51,18 @@ def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
     # not load the TrainStmt since the model saving is fully done by PAI.
     # We directly use the columns in SELECT statement for prediction, error
     # will be reported by PAI job if the columns not match.
-    conf = cluster_conf.get_cluster_config(model_params)
-    conn = db.connect_with_data_source(datasource)
     if model_type == EstimatorType.PAIML:
+        conn = db.connect_with_data_source(datasource)
         schema = db.get_table_schema(conn, predict_table)
         result_fields = [col[0] for col in schema]
+        conn.close()
         return ('''pai -name prediction -DmodelName="%s"  '''
                 '''-DinputTableName="%s"  -DoutputTableName="%s"  '''
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
     else:
-        schema = db.get_table_schema(conn, result_table)
-        result_fields = [col[0] for col in schema]
+        conf = cluster_conf.get_cluster_config(model_params)
         # For TensorFlow and XGBoost, we build a pai-tf cmd to submit the task
         return get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
                               model_name, oss_model_path, predict_table, "",
