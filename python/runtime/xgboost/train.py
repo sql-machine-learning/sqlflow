@@ -13,13 +13,13 @@
 
 import sys
 
-import runtime.pai.pai_distributed as pai_dist
 import six
 import xgboost as xgb
 from runtime.local.xgboost_submitter.save import save_model_to_local_file
 from runtime.model import collect_metadata
 from runtime.model import oss as pai_model_store
 from runtime.model import save_metadata
+from runtime.pai.pai_distributed import make_distributed_info_without_evaluator
 from runtime.xgboost.dataset import xgb_dataset
 from runtime.xgboost.pai_rabit import PaiXGBoostTracker, PaiXGBoostWorker
 
@@ -50,8 +50,7 @@ def dist_train(flags,
             "XGBoost distributed training is only supported on PAI")
 
     num_workers = len(flags.worker_hosts.split(","))
-    cluster, node, task_id = pai_dist.make_distributed_info_without_evaluator(
-        flags)
+    cluster, node, task_id = make_distributed_info_without_evaluator(flags)
     master_addr = cluster["ps"][0].split(":")
     master_host = master_addr[0]
     master_port = int(master_addr[1]) + 1
