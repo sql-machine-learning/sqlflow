@@ -12,9 +12,15 @@
 # limitations under the License
 
 
-class Alisa(object):
+class Client(object):
     def __init__(self, access_id):
         pass
+
+    def create_task(self, params):
+        pass
+        # params["CustomerId"] = ali.With["CustomerId"]
+        # params["UniqueKey"] = fmt.Sprintf("%d", time.Now().UnixNano())
+        # params["ExecTarget"] = ali.Env["ALISA_TASK_EXEC_TARGET"]
 
     def create_sql_task(self, code):
         pass
