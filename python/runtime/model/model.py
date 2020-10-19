@@ -243,6 +243,18 @@ class Model(object):
 
         return Model._from_dict(metadata)
 
+    @staticmethod
+    def load_metadata_from_db(datasource, table):
+        model_zoo_addr, table, tag = _decompose_model_name(table)
+        if model_zoo_addr:
+            gen, metadata = load_model_from_model_zoo(model_zoo_addr, table,
+                                                      tag)
+        else:
+            gen, metadata = read_with_generator_and_metadata(datasource, table)
+
+        gen.close()
+        return Model._from_dict(metadata)
+
     def save_to_oss(self, oss_model_dir, local_dir=None):
         """
         This save function would archive all the files on local_dir
@@ -294,15 +306,6 @@ class Model(object):
             oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
             Model._unzip(local_dir, tarball)
 
-        return Model.load_metadata_from_oss(oss_model_dir)
-
-    @staticmethod
-    def load_metadata_from_oss(oss_model_dir):
-        # NOTE: maybe PAI ML models
-        if not oss.has_file(oss_model_dir, MODEL_OBJ_FILE_NAME):
-            return None
-
-        with temp_file.TemporaryDirectory() as tmp_dir:
             model_obj_file = os.path.join(tmp_dir, MODEL_OBJ_FILE_NAME)
             oss.load_file(oss_model_dir, model_obj_file, MODEL_OBJ_FILE_NAME)
             with open(model_obj_file, "r") as f:

@@ -17,10 +17,8 @@ import (
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
-	"io/ioutil"
 	"net/url"
 	"os"
-	"sqlflow.org/sqlflow/go/model"
 	"strconv"
 	"strings"
 
@@ -161,27 +159,15 @@ func isXGBoostEstimator(estimator string) bool {
 type Metadata simplejson.Json
 
 func (m *Metadata) imageName() string {
-	if m == nil { // maybe PAI ML models
-		return ""
-	}
 	return (*simplejson.Json)(m).Get("model_repo_image").MustString()
 }
 
 func getModelMetadata(session *pb.Session, modelName string) (*Metadata, error) {
-	submitter := getSubmitter(session)
 	modelZooAddr, modelName, tag := decomposeModelName(modelName)
 	if modelZooAddr != "" {
 		return getModelMetadataFromModelZoo(modelZooAddr, modelName, tag)
 	}
-
-	switch submitter {
-	case "local":
-		return GetModelMetadataFromDB(session.DbConnStr, modelName)
-	case "pai", "pai_local", "alisa":
-		return getModelMetadataFromOSS(session, modelName)
-	default:
-		return nil, fmt.Errorf("not supported submitter %s", submitter)
-	}
+	return GetModelMetadataFromDB(session.DbConnStr, modelName)
 }
 
 func decomposeModelName(modelName string) (string, string, string) {
@@ -232,6 +218,14 @@ func GetModelMetadataFromDB(dbConnStr, table string) (*Metadata, error) {
 	}
 	defer db.Close()
 
+	if strings.Index(table, ".") < 0 {
+		dbName, err := database.GetDatabaseName(dbConnStr)
+		if err != nil {
+			return nil, err
+		}
+		table = dbName + "." + table
+	}
+
 	fs, err := sqlfs.Open(db.DB, table)
 	if err != nil {
 		return nil, err
@@ -256,44 +250,6 @@ func GetModelMetadataFromDB(dbConnStr, table string) (*Metadata, error) {
 		return nil, fmt.Errorf("read meta json from db error: invalid meta length read %d", l)
 	}
 
-	json, err := simplejson.NewJson(jsonBytes)
-	if err != nil {
-		return nil, err
-	}
-	return (*Metadata)(json), nil
-}
-
-func getModelMetadataFromOSS(session *pb.Session, modelName string) (*Metadata, error) {
-	bucket, err := model.GetOSSModelBucket()
-	if err != nil {
-		return nil, err
-	}
-
-	ossModelPath, err := model.GetOSSModelPath(modelName, session)
-	if err != nil {
-		return nil, err
-	}
-
-	metaFilePath := strings.TrimRight(ossModelPath, "/") + "/sqlflow_metadata.json"
-	exists, err := bucket.IsObjectExist(metaFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	if !exists { // maybe PAI ML models
-		return nil, nil
-	}
-
-	reader, err := bucket.GetObject(metaFilePath)
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-
-	jsonBytes, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
 	json, err := simplejson.NewJson(jsonBytes)
 	if err != nil {
 		return nil, err

@@ -36,10 +36,20 @@ def load_model_from_model_zoo(address, model, tag):
         six.reraise(*sys.exc_info())
 
     def reader():
-        with channel:
+        try:
             tar_req = ReleaseModelRequest(name=model, tag=tag)
             tar_resp = stub.DownloadModel(tar_req)
             for each_resp in tar_resp:
                 yield each_resp.content_tar
+        finally:
+            reader.close()
+
+    def close():
+        if not reader.is_closed:
+            channel.close()
+            reader.is_closed = True
+
+    reader.is_closed = False
+    reader.close = close
 
     return reader, meta

@@ -130,8 +130,8 @@ def submit_pai_predict(datasource,
                                                            user=user)
         params["oss_model_path"] = oss_model_path
         model_type, estimator = \
-            pai_model.get_oss_saved_model_type_and_estimator(oss_model_path)
-
+            pai_model.get_saved_model_type_and_estimator(
+                datasource, model_name)
         setup_predict_entry(params, model_type)
 
         if try_pai_local_run(params, oss_model_path):

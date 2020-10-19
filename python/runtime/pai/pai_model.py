@@ -14,7 +14,7 @@
 import subprocess
 
 from runtime.dbapi.maxcompute import MaxComputeConnection
-from runtime.model import EstimatorType, oss
+from runtime.model import oss
 from runtime.model.model import Model
 
 
@@ -61,15 +61,15 @@ def clean_oss_model_path(oss_path):
     oss.delete_oss_dir_recursive(bucket, oss_path)
 
 
-def get_oss_saved_model_type_and_estimator(model_name):
+def get_saved_model_type_and_estimator(datasource, model_name):
     """Get oss model type and estimator name, model can be:
     1. PAI ML models: model is saved by pai
     2. xgboost: on OSS with model file xgboost_model_desc
     3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
 
     Args:
+        datasource: the DBMS connection URI.
         model_name: the model to get info
-        project: current odps project
 
     Returns:
         If model is TensorFlow model, return type and estimator name
@@ -78,10 +78,5 @@ def get_oss_saved_model_type_and_estimator(model_name):
     # FIXME(typhoonzero): if the model not exist on OSS, assume it's a random
     # forest model should use a general method to fetch the model and see the
     # model type.
-    metadata = Model.load_metadata_from_oss(model_name)
-    if metadata is None:
-        return EstimatorType.PAIML, ""
-
-    estimator = metadata.get_meta("class_name")
-    estimator_type = Model.estimator_type(estimator)
-    return estimator_type, estimator
+    meta = Model.load_metadata_from_db(datasource, model_name)
+    return meta.get_type(), meta.get_meta("class_name")

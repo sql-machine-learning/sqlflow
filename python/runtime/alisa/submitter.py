@@ -29,12 +29,12 @@ from runtime.pai.submitter import (ENTRY_FILE, JOB_ARCHIVE_FILE, PARAMS_FILE,
                                    drop_tables, gen_rand_string,
                                    get_evaluate_metrics,
                                    get_oss_model_save_path,
-                                   get_oss_saved_model_type_and_estimator,
                                    get_pai_explain_cmd, get_pai_predict_cmd,
                                    get_pai_tf_cmd, get_pai_train_cmd,
-                                   get_project, prepare_archive,
-                                   save_model_to_sqlfs, setup_explain_entry,
-                                   setup_predict_entry)
+                                   get_project,
+                                   get_saved_model_type_and_estimator,
+                                   prepare_archive, save_model_to_sqlfs,
+                                   setup_explain_entry, setup_predict_entry)
 
 # yapf: enable
 
@@ -247,8 +247,8 @@ def submit_alisa_predict(datasource, select, result_table, label_column,
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     params["oss_model_path"] = oss_model_path
-    model_type, estimator = get_oss_saved_model_type_and_estimator(
-        oss_model_path)
+    model_type, estimator = get_saved_model_type_and_estimator(
+        datasource, model_name)
     setup_predict_entry(params, model_type)
 
     # (TODO:lhw) get train label column from model meta
@@ -297,8 +297,8 @@ def submit_alisa_explain(datasource, select, result_table, model_name,
         result_table = "%s.%s" % (project, result_table)
 
     oss_model_path = get_oss_model_save_path(datasource, model_name)
-    model_type, estimator = get_oss_saved_model_type_and_estimator(
-        oss_model_path)
+    model_type, estimator = get_saved_model_type_and_estimator(
+        datasource, model_name)
     params["oss_model_path"] = oss_model_path
 
     label_column = model_params.get("label_col")
@@ -340,8 +340,8 @@ def submit_alisa_evaluate(datasource, model_name, select, result_table,
     oss_model_path = get_oss_model_save_path(datasource, model_name)
     params["oss_model_path"] = oss_model_path
 
-    model_type, estimator = get_oss_saved_model_type_and_estimator(
-        oss_model_path)
+    model_type, estimator = get_saved_model_type_and_estimator(
+        datasource, model_name)
     if model_type == EstimatorType.PAIML:
         raise SQLFlowDiagnostic("PAI model evaluation is not supported yet.")
 
