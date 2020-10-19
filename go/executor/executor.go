@@ -25,9 +25,10 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"strings"
 	"sync"
+
+	"sqlflow.org/sqlflow/go/codegen/experimental"
 
 	"sqlflow.org/sqlflow/go/verifier"
 
@@ -174,24 +175,21 @@ type pythonExecutor struct {
 }
 
 // UseExperimentalExecutor returns whether to use the experimental codegen
-func UseExperimentalExecutor(exec Executor) (bool, error) {
+func UseExperimentalExecutor(dbConnStr string) (bool, error) {
 	if os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") != "true" {
 		return false, nil
 	}
 
-	if pyExec, ok := exec.(*pythonExecutor); ok {
-		dialect, _, err := database.ParseURL(pyExec.Session.DbConnStr)
-		if err != nil {
-			return false, err
-		}
-
-		// TODO(sneaxiy): remove this line when PyAlisa is ready.
-		if dialect == "alisa" {
-			return false, nil
-		}
-		return true, nil
+	dialect, _, err := database.ParseURL(dbConnStr)
+	if err != nil {
+		return false, err
 	}
-	return false, nil
+
+	// TODO(sneaxiy): remove this line when PyAlisa is ready.
+	if dialect == "alisa" {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
@@ -200,7 +198,7 @@ func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStder
 		return false, nil
 	}
 
-	ok, err := UseExperimentalExecutor(s)
+	ok, err := UseExperimentalExecutor(s.Session.DbConnStr)
 	if err != nil {
 		return true, err
 	}
@@ -214,17 +212,14 @@ func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStder
 		return true, err
 	}
 
-	stepFuncCode, err := experimental.GetPyFuncBody(stepCode, "step_entry_0")
-	if err != nil {
-		return true, err
-	}
-
 	const bashCodeTmpl = `python -u <<EOF
 %s
+
+step_entry_0()
 EOF
 `
 
-	cmd := exec.Command("bash", "-c", fmt.Sprintf(bashCodeTmpl, stepFuncCode))
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(bashCodeTmpl, stepCode))
 	cmd.Dir = s.Cwd
 	errorLog, err := s.runCommand(cmd, nil, logStderr)
 	if err != nil {

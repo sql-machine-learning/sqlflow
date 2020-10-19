@@ -186,7 +186,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	exec := executor.New(session.Submitter)
 	exec.Setup(wr, db, modelDir, cwd, session)
 
-	useExperimentalExecutor, err := executor.UseExperimentalExecutor(exec)
+	useExperimentalExecutor, err := executor.UseExperimentalExecutor(session.DbConnStr)
 	if err != nil {
 		return err
 	}
