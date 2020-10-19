@@ -205,13 +205,6 @@ def load_file(oss_model_dir, local_file_name, oss_file_name=None):
     bucket.get_object_to_file(oss_file_path, local_file_name)
 
 
-def has_file(oss_model_dir, file_name):
-    oss_file_path = "/".join([oss_model_dir.rstrip("/"), file_name])
-    oss_file_path = remove_bucket_prefix(oss_file_path)
-    bucket = get_models_bucket()
-    return bucket.object_exists(oss_file_path)
-
-
 def load_string(oss_file_path):
     data = load_bytes(oss_file_path)
     return data.decode("utf-8")

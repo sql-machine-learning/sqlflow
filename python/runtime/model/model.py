@@ -29,7 +29,7 @@ from runtime.model.tar import unzip_dir, zip_dir
 TARBALL_NAME = "model.tar.gz"
 
 # serialize the Model object into file
-MODEL_OBJ_FILE_NAME = "sqlflow_metadata.json"
+MODEL_OBJ_FILE_NAME = "metadata.json"
 
 
 class EstimatorType(object):
