@@ -34,7 +34,7 @@ apk del .build-deps
 pip -q install \
     jupyterhub==1.1.0 \
     notebook==6.0.3 \
-    sqlflow==0.14.0
+    sqlflow==0.15.0
 
 # Load SQLFlow's Jupyter magic command
 # automatically. c.f. https://stackoverflow.com/a/32683001.
