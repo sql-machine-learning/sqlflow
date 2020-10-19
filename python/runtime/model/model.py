@@ -28,7 +28,7 @@ from runtime.model.tar import unzip_dir, zip_dir
 TARBALL_NAME = "model.tar.gz"
 
 # serialize the Model object into file
-MODEL_OBJ_FILE_NAME = "metadata.json"
+MODEL_OBJ_FILE_NAME = "sqlflow_metadata.json"
 
 
 class EstimatorType(object):
@@ -98,6 +98,16 @@ class Model(object):
     def _from_dict(d):
         typ = d.pop("model_type")
         return Model(typ, d)
+
+    @staticmethod
+    def estimator_type(estimator):
+        estimator = estimator.lower()
+        if estimator in ["kmeans", "randomforests"]:
+            return EstimatorType.PAIML
+        elif estimator.startswith("xgboost"):
+            return EstimatorType.XGBOOST
+        else:
+            return EstimatorType.TENSORFLOW
 
     def _zip(self, local_dir, tarball):
         """
@@ -263,6 +273,15 @@ class Model(object):
             oss.load_file(oss_model_dir, tarball, TARBALL_NAME)
             Model._unzip(local_dir, tarball)
 
+        return Model.load_metadata_from_oss(oss_model_dir)
+
+    @staticmethod
+    def load_metadata_from_oss(oss_model_dir):
+        # NOTE: maybe PAI ML models
+        if not oss.has_file(oss_model_dir, MODEL_OBJ_FILE_NAME):
+            return None
+
+        with temp_file.TemporaryDirectory() as tmp_dir:
             model_obj_file = os.path.join(tmp_dir, MODEL_OBJ_FILE_NAME)
             oss.load_file(oss_model_dir, model_obj_file, MODEL_OBJ_FILE_NAME)
             with open(model_obj_file, "r") as f:

@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"io"
 	"io/ioutil"
 	"os"
@@ -422,4 +423,34 @@ func MockInDB(cwd, trainSelect, table string) error {
 		return e
 	}
 	return m.saveDB(database.GetTestingDBSingleton().URL(), table, database.GetSessionFromTestingDB())
+}
+
+// GetOSSModelBucket gets the OSS bucket of to save models.
+func GetOSSModelBucket() (*oss.Bucket, error) {
+	const bucketName = "sqlflow-models"
+	ak := os.Getenv("SQLFLOW_OSS_AK")
+	sk := os.Getenv("SQLFLOW_OSS_SK")
+	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+	if ak == "" || sk == "" || ep == "" {
+		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
+	}
+
+	cli, e := oss.New(ep, ak, sk)
+	if e != nil {
+		return nil, e
+	}
+	return cli.Bucket(bucketName)
+}
+
+// GetOSSModelPath gets the OSS path of the saved models.
+func GetOSSModelPath(modelName string, session *pb.Session) (string, error) {
+	userID := session.UserId
+	projectName, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	if userID == "" {
+		userID = "unknown"
+	}
+	return strings.Join([]string{projectName, userID, modelName}, "/"), nil
 }

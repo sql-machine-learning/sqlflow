@@ -12,8 +12,8 @@
 # limitations under the License.
 
 import os
-import tempfile
 
+import runtime.temp_file as temp_file
 from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
@@ -23,6 +23,7 @@ from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
+from runtime.pai_local.try_run import try_pai_local_run
 
 
 def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
@@ -114,36 +115,39 @@ def submit_pai_predict(datasource,
     """
     params = dict(locals())
 
-    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
     # is like: "SELECT fields,... FROM table"
-    data_table = table_ops.create_tmp_table_from_select(select, datasource)
-    params["data_table"] = data_table
+    with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
+        params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a
-    # submitting argument of format "odps://project/tables/table_name"
-    project = table_ops.get_project(datasource)
-    if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
+        # format resultTable name to "db.table" to let the codegen form a
+        # submitting argument of format "odps://project/tables/table_name"
+        project = table_ops.get_project(datasource)
+        if result_table.count(".") == 0:
+            result_table = "%s.%s" % (project, result_table)
 
-    oss_model_path = pai_model.get_oss_model_save_path(datasource,
-                                                       model_name,
-                                                       user=user)
-    params["oss_model_path"] = oss_model_path
-    model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
-        oss_model_path, project)
-    setup_predict_entry(params, model_type)
+        oss_model_path = pai_model.get_oss_model_save_path(datasource,
+                                                           model_name,
+                                                           user=user)
+        params["oss_model_path"] = oss_model_path
+        model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
+            oss_model_path)
 
-    # (TODO:lhw) get train label column from model meta
-    create_predict_result_table(datasource, data_table, result_table,
-                                label_column, None, model_type)
+        setup_predict_entry(params, model_type)
 
-    prepare_archive(cwd, estimator, oss_model_path, params)
+        if try_pai_local_run(params, oss_model_path):
+            return
 
-    cmd = get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
-                              data_table, result_table, model_type,
-                              model_params,
-                              "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                              "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
-    submit_pai_task(cmd, datasource)
-    table_ops.drop_tables([data_table], datasource)
+        # TODO(sneaxiy): should create predict result table in pai/xxx/predict.py
+        create_predict_result_table(datasource, data_table, result_table,
+                                    label_column, None, model_type)
+
+        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp") as cwd:
+            prepare_archive(cwd, estimator, oss_model_path, params)
+
+            cmd = get_pai_predict_cmd(
+                datasource, project, oss_model_path, model_name, data_table,
+                result_table, model_type, model_params,
+                "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
+            submit_pai_task(cmd, datasource)

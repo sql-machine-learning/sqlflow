@@ -156,27 +156,23 @@ func getPaiTrainCode(s *pythonExecutor, trainStmt *ir.TrainStmt) (string, string
 		return "", "", "", err
 	}
 
-	ossModelPathToSave, e := getModelPath(trainStmt.Into, s.Session)
+	ossModelPathToSave, e := model.GetOSSModelPath(trainStmt.Into, s.Session)
 	if e != nil {
 		return "", "", "", e
 	}
 
 	ossModelPathToLoad := ""
 	if trainStmt.PreTrainedModel != "" {
-		ossModelPathToLoad, e = getModelPath(trainStmt.PreTrainedModel, s.Session)
+		ossModelPathToLoad, e = model.GetOSSModelPath(trainStmt.PreTrainedModel, s.Session)
 		if e != nil {
 			return "", "", "", e
 		}
 	}
 
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
-	if e != nil {
-		return "", "", "", e
-	}
 	// NOTE(sneaxiy): should be careful whether there would be file conflict
 	// if we do not remove the original OSS files.
 	if ossModelPathToLoad == "" || ossModelPathToSave != ossModelPathToLoad {
-		e = cleanOSSModelPath(ossModelPathToSave+"/", currProject)
+		e = cleanOSSModelPath(ossModelPathToSave + "/")
 		if e != nil {
 			return "", "", "", e
 		}
@@ -211,26 +207,22 @@ func (s *paiExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 		return e
 	}
 
-	ossModelPathToSave, e := getModelPath(cl.Into, s.Session)
-	if e != nil {
-		return e
-	}
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	ossModelPathToSave, e := model.GetOSSModelPath(cl.Into, s.Session)
 	if e != nil {
 		return e
 	}
 	// download model from OSS to local cwd and save to sqlfs
 	// NOTE(typhoonzero): model in sqlfs will be used by sqlflow model zoo currently
 	// should use the model in sqlfs when predicting.
-	if e = downloadOSSModel(ossModelPathToSave+"/", currProject); e != nil {
+	if e = downloadOSSModel(ossModelPathToSave + "/"); e != nil {
 		return e
 	}
 	m := model.New(s.Cwd, cl.OriginalSQL)
 	return m.Save(cl.Into, s.Session)
 }
 
-func downloadOSSModel(ossModelPath, project string) error {
-	bucket, err := getOSSModelBucket(project)
+func downloadOSSModel(ossModelPath string) error {
+	bucket, err := model.GetOSSModelBucket()
 	if err != nil {
 		return err
 	}
@@ -284,8 +276,8 @@ func downloadDirRecursive(bucket *oss.Bucket, dir, localDir string) error {
 	return nil
 }
 
-func cleanOSSModelPath(ossModelPath, project string) error {
-	bucket, err := getOSSModelBucket(project)
+func cleanOSSModelPath(ossModelPath string) error {
+	bucket, err := model.GetOSSModelBucket()
 	if err != nil {
 		return err
 	}
@@ -339,11 +331,11 @@ func getPaiPredictCode(s *pythonExecutor, cl *ir.PredictStmt) (string, string, s
 		return "", "", "", "", e
 	}
 
-	ossModelPath, e := getModelPath(cl.Using, s.Session)
+	ossModelPath, e := model.GetOSSModelPath(cl.Using, s.Session)
 	if e != nil {
 		return "", "", "", "", e
 	}
-	modelType, estimator, err := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, err := getOSSSavedModelType(ossModelPath)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -377,7 +369,7 @@ func getPaiExplainCode(s *pythonExecutor, cl *ir.ExplainStmt) (*pai.ExplainRende
 	}
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
 
-	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
+	ossModelPath, e := model.GetOSSModelPath(cl.ModelName, s.Session)
 	if e != nil {
 		return nil, "", e
 	}
@@ -386,7 +378,7 @@ func getPaiExplainCode(s *pythonExecutor, cl *ir.ExplainStmt) (*pai.ExplainRende
 	if err != nil {
 		return nil, "", err
 	}
-	modelType, estimator, err := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, err := getOSSSavedModelType(ossModelPath)
 	if err != nil {
 		return nil, "", err
 	}
@@ -446,7 +438,7 @@ func getPaiEvaluateCode(s *pythonExecutor, cl *ir.EvaluateStmt) (string, string,
 	}
 	cl.TmpEvaluateTable = strings.Join([]string{dbName, tableName}, ".")
 
-	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
+	ossModelPath, e := model.GetOSSModelPath(cl.ModelName, s.Session)
 	if e != nil {
 		return "", "", "", "", e
 	}
@@ -455,7 +447,7 @@ func getPaiEvaluateCode(s *pythonExecutor, cl *ir.EvaluateStmt) (string, string,
 	if err != nil {
 		return "", "", "", "", err
 	}
-	modelType, estimator, err := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, err := getOSSSavedModelType(ossModelPath)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -582,32 +574,14 @@ func (s *paiExecutor) ExecuteRun(runStmt *ir.RunStmt) error {
 	return fmt.Errorf("ExecuteRun is not supported in PAI submitter")
 }
 
-// getOSSModelBucket construct a bucket object. Argument project is used to get OSS checkpoint dir
-// from environment variable for current MaxCompute project.
-// FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models
-func getOSSModelBucket(project string) (*oss.Bucket, error) {
-	endpoint := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
-	ak := os.Getenv("SQLFLOW_OSS_AK")
-	sk := os.Getenv("SQLFLOW_OSS_SK")
-	if endpoint == "" || ak == "" || sk == "" {
-		return nil, fmt.Errorf("must define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter maxcompute")
-	}
-
-	cli, err := oss.New(endpoint, ak, sk)
-	if err != nil {
-		return nil, err
-	}
-	return cli.Bucket(pai.BucketName)
-}
-
 // getOSSSavedModelType returns the saved model type when training, can be:
 // 1. randomforests: model is saved by pai
 // 2. xgboost: on OSS with model file xgboost_model_desc
 // 3. PAI tensorflow models: on OSS with meta file: tensorflow_model_desc
-func getOSSSavedModelType(modelName string, project string) (modelType int, estimator string, err error) {
+func getOSSSavedModelType(modelName string) (modelType int, estimator string, err error) {
 	// FIXME(typhoonzero): if the model not exist on OSS, assume it's a random forest model
 	// should use a general method to fetch the model and see the model type.
-	bucket, err := getOSSModelBucket(project)
+	bucket, err := model.GetOSSModelBucket()
 	if err != nil {
 		return
 	}

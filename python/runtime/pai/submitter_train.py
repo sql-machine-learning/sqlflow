@@ -121,10 +121,9 @@ def submit_pai_train(datasource,
     else:
         params["entry_type"] = "train_tf"
 
-    train_table, val_table = table_ops.create_train_and_eval_tmp_table(
-        select, validation_select, datasource)
-
-    try:
+    with table_ops.create_tmp_tables_guard([select, validation_select],
+                                           datasource) as (train_table,
+                                                           val_table):
         params["pai_table"], params["pai_val_table"] = train_table, val_table
 
         # clean target dir
@@ -153,5 +152,3 @@ def submit_pai_train(datasource,
                 "file://" + os.path.join(cwd, PARAMS_FILE))
 
             submit_pai_task(cmd, datasource)
-    finally:
-        table_ops.drop_tables([train_table, val_table], datasource)
