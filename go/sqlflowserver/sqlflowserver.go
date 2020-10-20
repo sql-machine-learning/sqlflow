@@ -134,35 +134,42 @@ func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pi
 		logger.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
 	}
 	useExperimentalCodegen := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
-	var yaml string
-	var err error
-	if !useExperimentalCodegen {
-		yaml, err = workflow.CompileToYAML(getWorkflowBackend(), sqlProgram, session, logger)
-		if err != nil {
-			logger.Printf("compile error: %v", err)
-		}
-		wr.Write(err)
-	} else {
-		yaml, err = workflow.CompileToYAMLExperimental(sqlProgram, session)
-		if err != nil {
-			logger.Printf("compile error: %v", err)
-		}
-		wr.Write(err)
-	}
 
 	startTime := time.Now()
 	go func() {
 		defer wr.Close()
+		var yaml string
+		var err error
+		if !useExperimentalCodegen {
+			yaml, err = workflow.CompileToYAML(getWorkflowBackend(), sqlProgram, session, logger)
+			if err != nil {
+				logger.Printf("compile error: %v", err)
+				if e := wr.Write(err); e != nil {
+					logger.Errorf("piping error: %v", e)
+				}
+				return
+			}
+		} else {
+			yaml, err = workflow.CompileToYAMLExperimental(sqlProgram, session)
+			if err != nil {
+				logger.Printf("compile error: %v", err)
+				if e := wr.Write(err); e != nil {
+					logger.Errorf("piping error: %v", e)
+				}
+				return
+			}
+		}
+
 		wfID, e := argo.Submit(yaml)
 		defer logger.Infof("submitted, workflowID:%s, spent:%.f, SQL:%s, error:%v", wfID, time.Since(startTime).Seconds(), sqlProgram, e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {
-				logger.Errorf("piping: %v", e)
+				logger.Errorf("piping error: %v", e)
 			}
 			return
 		}
 		if e := wr.Write(pb.Job{Id: wfID}); e != nil {
-			logger.Errorf("piping: %v", e)
+			logger.Errorf("piping error: %v", e)
 			return
 		}
 	}()
