@@ -18,7 +18,6 @@ from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
 from runtime.pai import cluster_conf, pai_model, table_ops
-from runtime.pai.create_result_table import create_predict_result_table
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
 from runtime.pai.prepare_archive import prepare_archive
@@ -84,8 +83,8 @@ def setup_predict_entry(params, model_type):
 def submit_pai_predict(datasource,
                        original_sql,
                        select,
-                       model_name,
-                       label_column,
+                       model,
+                       label_name,
                        model_params,
                        result_table,
                        user=""):
@@ -100,9 +99,9 @@ def submit_pai_predict(datasource,
             Original "TO PREDICT" statement.
         select: string
             SQL statement to get prediction data set.
-        model_name: string
+        model: string
             Model to load and do prediction.
-        label_column: string
+        label_name: string
             Name of the label column, if not exist in select.
         model_params: dict
             Params for training, crossponding to WITH clause.
@@ -126,27 +125,22 @@ def submit_pai_predict(datasource,
             result_table = "%s.%s" % (project, result_table)
 
         oss_model_path = pai_model.get_oss_model_save_path(datasource,
-                                                           model_name,
+                                                           model,
                                                            user=user)
         params["oss_model_path"] = oss_model_path
         model_type, estimator = \
             pai_model.get_saved_model_type_and_estimator(
-                datasource, model_name)
+                datasource, model)
         setup_predict_entry(params, model_type)
 
         if try_pai_local_run(params, oss_model_path):
             return
 
-        # TODO(sneaxiy): should create predict result table in
-        # pai/xxx/predict.py
-        create_predict_result_table(datasource, data_table, result_table,
-                                    label_column, None, model_type)
-
         with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp") as cwd:
             prepare_archive(cwd, estimator, oss_model_path, params)
 
             cmd = get_pai_predict_cmd(
-                datasource, project, oss_model_path, model_name, data_table,
+                datasource, project, oss_model_path, model, data_table,
                 result_table, model_type, model_params,
                 "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
                 "file://" + os.path.join(cwd, PARAMS_FILE), cwd)

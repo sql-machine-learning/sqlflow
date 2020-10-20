@@ -21,8 +21,8 @@ import xgboost as xgb
 from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.local.create_result_table import create_predict_table
 from runtime.model.model import Model
+from runtime.step.create_result_table import create_predict_table
 from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 
