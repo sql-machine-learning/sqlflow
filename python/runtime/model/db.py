@@ -45,26 +45,49 @@ def _drop_table_if_exists(conn, table):
 
 
 class SQLFSWriter(object):
-    def __init__(self, conn, table):
+    def __init__(self, conn, table, buf_size=4096):
         self.context_manager = buffered_db_writer(conn, table, ["id", "block"])
         self.writer = self.context_manager.__enter__()
         self.row_idx = 0
+        assert buf_size > 0, "buf_size must be larger than 0"
+        self.buf_size = buf_size
+        self.buffer = b''
 
     def write(self, content):
+        self.buffer += content
+        start = 0
+        end = self.buf_size
+        length = len(self.buffer)
+        while end <= length:
+            self._write_impl(self.buffer[start:end])
+            start = end
+            end += self.buf_size
+
+        if start > 0:
+            self.buffer = self.buffer[start:]
+
+    def _write_impl(self, content):
         block = base64.b64encode(content)
         if six.PY3 and isinstance(block, bytes):
             block = block.decode("utf-8")
         self.writer.write([self.row_idx, block])
         self.row_idx += 1
 
-    def close(self):
+    def close(self, *args, **kwargs):
+        self.flush()
         self.writer.close()
+        self.context_manager.__exit__(*args, **kwargs)
+
+    def flush(self):
+        if self.buffer:
+            self._write_impl(self.buffer)
+            self.buffer = b''
 
     def __enter__(self, *args, **kwargs):
         return self
 
     def __exit__(self, *args, **kwargs):
-        self.context_manager.__exit__(*args, **kwargs)
+        self.close(*args, **kwargs)
 
 
 def _build_ordered_reader(reader):
