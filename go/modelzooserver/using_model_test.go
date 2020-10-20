@@ -50,7 +50,7 @@ func startSqlflowServer() error {
 
 func execStmt(client proto.SQLFlowClient, sql string) error {
 	req := &proto.Request{
-		Sql: sql,
+		Stmts: sql,
 		Session: &proto.Session{
 			Token:     "user-unittest",
 			DbConnStr: database.GetTestingMySQLURL(),

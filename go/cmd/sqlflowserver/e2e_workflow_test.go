@@ -126,7 +126,7 @@ INTO %s;
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -176,7 +176,7 @@ FROM %s LIMIT 5;
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -212,7 +212,7 @@ INTO test_workflow_model;`, caseTrainTable, caseTrainTable, customImage, caseTes
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -290,7 +290,7 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -349,7 +349,7 @@ func CaseBackticksInSQL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -396,7 +396,7 @@ func runSQLProgramAndCheck(t *testing.T, sqlProgram string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
