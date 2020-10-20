@@ -41,9 +41,13 @@ CREATE TABLE creditcard.creditcard(
 #### 导入CSV
 
 建表完成后，将creditcard.csv的内容导入数据表。导入数据时，请指定`csv`文件的绝对路径，
-你可以通过 `mysql client` 来执行以下语句。
+你可以通过 `mysql client` 来执行以下语句。通常你需要先通过设置`local_infile`配置
+来允许 MySQL 加载本地文件。
 
 ```
+# 允许从本地记载数据
+set global local_infile = 1;
+
 LOAD DATA LOCAL INFILE '/path/to/creditcard.csv'
 INTO TABLE creditcard.creditcard CHARACTER SET 'utf8'
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"';
