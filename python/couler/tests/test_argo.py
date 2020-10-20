@@ -31,7 +31,7 @@ class TestArgo(unittest.TestCase):
             "value": "value"
         }, {
             "name": "boolean",
-            "value": "True"
+            "value": "'True'"
         }, {
             "name": "integer",
             "value": "'10'"
