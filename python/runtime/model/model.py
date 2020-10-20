@@ -16,6 +16,7 @@ import json
 import os
 
 import runtime.temp_file as temp_file
+from runtime.dbapi import connect as connect_with_datasource
 from runtime.feature.column import (JSONDecoderWithFeatureColumn,
                                     JSONEncoderWithFeatureColumn)
 from runtime.model import oss
@@ -99,6 +100,16 @@ class Model(object):
         typ = d.pop("model_type")
         return Model(typ, d)
 
+    @staticmethod
+    def estimator_type(estimator):
+        estimator = estimator.lower()
+        if estimator in ["kmeans", "randomforests"]:
+            return EstimatorType.PAIML
+        elif estimator.startswith("xgboost"):
+            return EstimatorType.XGBOOST
+        else:
+            return EstimatorType.TENSORFLOW
+
     def _zip(self, local_dir, tarball):
         """
         Zip the model information and all files in local_dir into a tarball.
@@ -141,7 +152,11 @@ class Model(object):
         """
         unzip_dir(tarball, local_dir)
 
-    def save_to_db(self, datasource, table, local_dir=None):
+    def save_to_db(self,
+                   datasource,
+                   table,
+                   local_dir=None,
+                   oss_model_dir=None):
         """
         This save function would archive all the files on local_dir
         into a tarball, and save it into DBMS with the specified table
@@ -157,6 +172,18 @@ class Model(object):
         """
         if local_dir is None:
             local_dir = os.getcwd()
+
+        conn = connect_with_datasource(datasource)
+
+        if oss_model_dir:
+            cur_dir = os.getcwd()
+            os.chdir(local_dir)
+            oss.load_dir(oss_model_dir)
+            os.chdir(cur_dir)
+
+        if "." not in table:
+            project_name = conn.param("database")
+            table = project_name + "." + table
 
         with temp_file.TemporaryDirectory() as tmp_dir:
             tarball = os.path.join(tmp_dir, TARBALL_NAME)
@@ -177,6 +204,10 @@ class Model(object):
             write_with_generator_and_metadata(datasource, table,
                                               _bytes_reader(tarball),
                                               self._to_dict())
+
+        conn.persist_table(table)
+        conn.close()
+        return table
 
     @staticmethod
     def load_from_db(datasource, table, local_dir=None):
@@ -210,6 +241,18 @@ class Model(object):
 
             Model._unzip(local_dir, tarball)
 
+        return Model._from_dict(metadata)
+
+    @staticmethod
+    def load_metadata_from_db(datasource, table):
+        model_zoo_addr, table, tag = _decompose_model_name(table)
+        if model_zoo_addr:
+            gen, metadata = load_model_from_model_zoo(model_zoo_addr, table,
+                                                      tag)
+        else:
+            gen, metadata = read_with_generator_and_metadata(datasource, table)
+
+        gen.close()
         return Model._from_dict(metadata)
 
     def save_to_oss(self, oss_model_dir, local_dir=None):

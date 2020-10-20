@@ -21,7 +21,7 @@ import runtime.feature.field_desc as fd
 import runtime.testing as testing
 import runtime.xgboost as xgboost_extended  # noqa: F401
 import tensorflow as tf  # noqa: E0401,F401
-from runtime.pai import (evaluate, explain, get_pai_tf_cmd, pai_model, predict,
+from runtime.pai import (evaluate, explain, get_pai_tf_cmd, pai_model, pred,
                          train)
 from runtime.pai.cluster_conf import get_cluster_config
 from runtime.pai.pai_distributed import define_tf_flags
@@ -89,6 +89,15 @@ feature_column_map = {
 label_column = fc.NumericColumn(fd.FieldDesc(name="class"))
 
 
+def test_submit_pai_predict_task():
+    original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
+TO PREDICT alifin_jtest_dev.pai_dnn_predict.class
+USING e2etest_pai_dnn;"""
+    pred(testing.get_datasource(), original_sql,
+         """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
+         "e2etest_pai_dnn", "class", {}, "alifin_jtest_dev.pai_dnn_predict")
+
+
 @unittest.skipUnless(testing.get_driver() == "maxcompute"
                      and testing.get_submitter() == "pai",
                      "skip non PAI tests")
@@ -114,10 +123,10 @@ INTO e2etest_pai_dnn;"""
         original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
 TO PREDICT alifin_jtest_dev.pai_dnn_predict.class
 USING e2etest_pai_dnn;"""
-        predict(testing.get_datasource(), original_sql,
-                """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
-                "e2etest_pai_dnn", "class", {},
-                "alifin_jtest_dev.pai_dnn_predict")
+        pred(testing.get_datasource(), original_sql,
+             """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test""",
+             "e2etest_pai_dnn", "class", {},
+             "alifin_jtest_dev.pai_dnn_predict")
 
     def test_submit_pai_explain_task(self):
         original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
@@ -162,10 +171,10 @@ INTO e2etest_xgb_classify_model;"""
         original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
 TO PREDICT alifin_jtest_dev.pai_xgb_predict.class
 USING e2etest_xgb_classify_model;"""
-        predict(testing.get_datasource(), original_sql,
-                "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
-                "e2etest_xgb_classify_model", "class", {},
-                "alifin_jtest_dev.pai_xgb_predict")
+        pred(testing.get_datasource(), original_sql,
+             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
+             "e2etest_xgb_classify_model", "class", {},
+             "alifin_jtest_dev.pai_xgb_predict")
 
     def test_submit_pai_xgb_explain_task(self):
         original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
@@ -224,10 +233,10 @@ INTO e2e_test_random_forest;"""
         original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_test
 TO PREDICT alifin_jtest_dev.pai_rf_predict.class
 USING e2e_test_random_forest_wuyi;"""
-        predict(testing.get_datasource(), original_sql,
-                "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
-                "e2e_test_random_forest_wuyi", "class", {},
-                "alifin_jtest_dev.pai_rf_predict")
+        pred(testing.get_datasource(), original_sql,
+             "SELECT * FROM alifin_jtest_dev.sqlflow_iris_test",
+             "e2e_test_random_forest_wuyi", "class", {},
+             "alifin_jtest_dev.pai_rf_predict")
 
     def test_submit_pai_random_forest_explain_task(self):
         original_sql = """SELECT * FROM alifin_jtest_dev.sqlflow_iris_train

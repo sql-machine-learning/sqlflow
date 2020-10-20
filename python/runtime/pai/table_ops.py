@@ -11,9 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import random
 import string
 
+import six
 from runtime import db
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic
@@ -82,3 +84,20 @@ def gen_rand_string(slen=16):
         A random string with slen length
     """
     return ''.join(random.sample(string.ascii_letters + string.digits, slen))
+
+
+@contextlib.contextmanager
+def create_tmp_tables_guard(selects, datasource):
+    if isinstance(selects, six.string_types):
+        tables = create_tmp_table_from_select(selects, datasource)
+        drop_table_list = [tables]
+    elif isinstance(selects, (list, tuple)):
+        tables = [create_tmp_table_from_select(s, datasource) for s in selects]
+        drop_table_list = tables
+    else:
+        raise ValueError("not supported types {}".format(type(selects)))
+
+    try:
+        yield tables
+    finally:
+        drop_tables(drop_table_list, datasource)

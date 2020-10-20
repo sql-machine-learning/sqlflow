@@ -12,8 +12,8 @@
 # limitations under the License.
 
 import os
-import tempfile
 
+import runtime.temp_file as temp_file
 from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
@@ -23,6 +23,7 @@ from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
+from runtime.pai_local.try_run import try_pai_local_run
 
 
 def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
@@ -50,19 +51,18 @@ def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
     # not load the TrainStmt since the model saving is fully done by PAI.
     # We directly use the columns in SELECT statement for prediction, error
     # will be reported by PAI job if the columns not match.
-    conf = cluster_conf.get_cluster_config(model_params)
-    conn = db.connect_with_data_source(datasource)
     if model_type == EstimatorType.PAIML:
+        conn = db.connect_with_data_source(datasource)
         schema = db.get_table_schema(conn, predict_table)
         result_fields = [col[0] for col in schema]
+        conn.close()
         return ('''pai -name prediction -DmodelName="%s"  '''
                 '''-DinputTableName="%s"  -DoutputTableName="%s"  '''
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
                     model_name, predict_table, result_table,
                     ",".join(result_fields), ",".join(result_fields))
     else:
-        schema = db.get_table_schema(conn, result_table)
-        result_fields = [col[0] for col in schema]
+        conf = cluster_conf.get_cluster_config(model_params)
         # For TensorFlow and XGBoost, we build a pai-tf cmd to submit the task
         return get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
                               model_name, oss_model_path, predict_table, "",
@@ -114,36 +114,40 @@ def submit_pai_predict(datasource,
     """
     params = dict(locals())
 
-    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
     # is like: "SELECT fields,... FROM table"
-    data_table = table_ops.create_tmp_table_from_select(select, datasource)
-    params["data_table"] = data_table
+    with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
+        params["data_table"] = data_table
 
-    # format resultTable name to "db.table" to let the codegen form a
-    # submitting argument of format "odps://project/tables/table_name"
-    project = table_ops.get_project(datasource)
-    if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
+        # format resultTable name to "db.table" to let the codegen form a
+        # submitting argument of format "odps://project/tables/table_name"
+        project = table_ops.get_project(datasource)
+        if result_table.count(".") == 0:
+            result_table = "%s.%s" % (project, result_table)
 
-    oss_model_path = pai_model.get_oss_model_save_path(datasource,
-                                                       model_name,
-                                                       user=user)
-    params["oss_model_path"] = oss_model_path
-    model_type, estimator = pai_model.get_oss_saved_model_type_and_estimator(
-        oss_model_path, project)
-    setup_predict_entry(params, model_type)
+        oss_model_path = pai_model.get_oss_model_save_path(datasource,
+                                                           model_name,
+                                                           user=user)
+        params["oss_model_path"] = oss_model_path
+        model_type, estimator = \
+            pai_model.get_saved_model_type_and_estimator(
+                datasource, model_name)
+        setup_predict_entry(params, model_type)
 
-    # (TODO:lhw) get train label column from model meta
-    create_predict_result_table(datasource, data_table, result_table,
-                                label_column, None, model_type)
+        if try_pai_local_run(params, oss_model_path):
+            return
 
-    prepare_archive(cwd, estimator, oss_model_path, params)
+        # TODO(sneaxiy): should create predict result table in
+        # pai/xxx/predict.py
+        create_predict_result_table(datasource, data_table, result_table,
+                                    label_column, None, model_type)
 
-    cmd = get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
-                              data_table, result_table, model_type,
-                              model_params,
-                              "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                              "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
-    submit_pai_task(cmd, datasource)
-    table_ops.drop_tables([data_table], datasource)
+        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp") as cwd:
+            prepare_archive(cwd, estimator, oss_model_path, params)
+
+            cmd = get_pai_predict_cmd(
+                datasource, project, oss_model_path, model_name, data_table,
+                result_table, model_type, model_params,
+                "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
+            submit_pai_task(cmd, datasource)

@@ -216,5 +216,8 @@ class Connection(object):
     def commit(self):
         pass
 
+    def persist_table(self, table):
+        pass
+
     def __del__(self):
         self.close()

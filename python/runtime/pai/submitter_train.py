@@ -14,6 +14,7 @@
 import os
 
 import runtime.temp_file as temp_file
+from runtime.model.model import EstimatorType, Model
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
@@ -121,10 +122,9 @@ def submit_pai_train(datasource,
     else:
         params["entry_type"] = "train_tf"
 
-    train_table, val_table = table_ops.create_train_and_eval_tmp_table(
-        select, validation_select, datasource)
-
-    try:
+    with table_ops.create_tmp_tables_guard([select, validation_select],
+                                           datasource) as (train_table,
+                                                           val_table):
         params["pai_table"], params["pai_val_table"] = train_table, val_table
 
         # clean target dir
@@ -153,5 +153,14 @@ def submit_pai_train(datasource,
                 "file://" + os.path.join(cwd, PARAMS_FILE))
 
             submit_pai_task(cmd, datasource)
-    finally:
-        table_ops.drop_tables([train_table, val_table], datasource)
+
+        # Save PAI ML metadata into DBMS too. So that we can know the
+        # estimator name of PAI ML models.
+        if Model.estimator_type(estimator_string) == EstimatorType.PAIML:
+            meta = {
+                "model_repo_image": "",
+                "class_name": estimator_string,
+            }
+            model = Model(EstimatorType.PAIML, meta)
+            with temp_file.TemporaryDirectory(as_cwd=True) as cwd:
+                model.save_to_db(datasource, save)

@@ -211,14 +211,23 @@ def read_with_generator_and_metadata(datasource, table, buff_size=256):
     metadata = _read_metadata(r)
 
     def reader():
-        while True:
-            buffer = r.read(buff_size)
-            if not buffer:
-                break
+        try:
+            while True:
+                buffer = r.read(buff_size)
+                if not buffer:
+                    break
 
-            yield buffer
+                yield buffer
+        finally:
+            reader.close()
 
-        r.close()
-        conn.close()
+    def close():
+        if not reader.is_closed:
+            r.close()
+            conn.close()
+            reader.is_closed = True
+
+    reader.is_closed = False
+    reader.close = close
 
     return reader, metadata
