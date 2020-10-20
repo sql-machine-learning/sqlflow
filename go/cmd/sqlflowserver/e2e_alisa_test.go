@@ -56,7 +56,7 @@ func TestEnd2EndAlisa(t *testing.T) {
 	// write model to current MaxCompute project
 	caseInto = "sqlflow_test_kmeans_model"
 
-	go start("", caCrt, caKey, unitTestPort, false)
+	go start(caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	// TODO(Yancey1989): reuse CaseTrainXGBoostOnPAI if support explain XGBoost model
 	t.Run("CaseTrainXGBoostOnAlisa", CaseTrainXGBoostOnAlisa)

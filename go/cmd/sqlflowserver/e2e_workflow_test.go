@@ -43,14 +43,13 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
 		t.Skip("Skipping workflow test.")
 	}
-	modelDir := ""
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	go start(caCrt, caKey, unitTestPort, true)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	if driverName == "maxcompute" {
@@ -367,7 +366,6 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
 		t.Skip("Skipping workflow test.")
 	}
-	modelDir := ""
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -376,7 +374,7 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 
 	//TODO(yancey1989): using the same end-to-end workflow test with the Couler backend
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "fluid")
-	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	go start(caCrt, caKey, unitTestPort, true)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)

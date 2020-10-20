@@ -12,6 +12,8 @@ SQLFlow is a compiler that compiles a SQL program to a workflow that runs on Kub
 
 SQLFlow supports various database systems like MySQL, MariaDB, [TiDB](https://pingcap.com/en/), Hive, [MaxCompute](https://www.aliyun.com/product/odps) and many  machine learning toolkits like [TensorFlow](https://github.com/tensorflow/tensorflow), [Keras](https://keras.io/), [XGBoost](https://github.com/dmlc/xgboost).
 
+Try SQLFlow **NOW** in our playground https://playground.sqlflow.tech/ and check out the handy tutorials in it.
+
 ![](https://github.com/sql-machine-learning/sql-machine-learning.github.io/raw/master/assets/instruction.gif)
 
 ## Motivation
