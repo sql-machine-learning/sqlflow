@@ -146,7 +146,7 @@ func (r *LocalJobRunner) run(sql *req.SQL, pr *PipeReader, pw *PipeWriter) (stri
       pw.Write(`RUNNING`)
       sqlStatements, _ := sf.SplitMultipleSQL(sql)
       for _, singleSQL := range sqlStatements {
-         for e := range s.run(singleSQL, db, s.modelDir, req.Session).ReadAll() {
+         for e := range s.run(singleSQL, db, req.Session).ReadAll() {
             pw.Write(e)
          }
       }

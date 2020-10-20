@@ -40,14 +40,12 @@ type Server struct {
 	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
 	// server-side configurations together with client side session in the run context.
 	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
-	run      func(sql string, modelDir string, session *pb.Session) *pipe.Reader
-	modelDir string
+	run func(sql string, session *pb.Session) *pipe.Reader
 }
 
 // NewServer returns a server instance
-func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
-	modelDir string) *Server {
-	return &Server{run: run, modelDir: modelDir}
+func NewServer(run func(string, *pb.Session) *pipe.Reader) *Server {
+	return &Server{run: run}
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
@@ -63,7 +61,7 @@ func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResp
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	rd := s.run(req.Sql, s.modelDir, req.Session)
+	rd := s.run(req.Sql, req.Session)
 	defer rd.Close()
 
 	for r := range rd.ReadAll() {
@@ -127,7 +125,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 //
 // TODO(wangkuiyi): Make SubmitWorkflow return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
-func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"user":      session.UserId,

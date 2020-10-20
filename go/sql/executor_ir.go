@@ -17,9 +17,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"strings"
 	"time"
+
+	"sqlflow.org/sqlflow/go/codegen/experimental"
 
 	"sqlflow.org/sqlflow/go/codegen/optimize"
 	"sqlflow.org/sqlflow/go/codegen/pai"
@@ -45,7 +46,7 @@ type EndOfExecution struct {
 //
 // TODO(wangkuiyi): Make RunSQLProgram return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
-func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+func RunSQLProgram(sqlProgram string, session *pb.Session) *pipe.Reader {
 	rd, wr := pipe.Pipe()
 	go func() {
 		var db *database.DB
@@ -56,7 +57,7 @@ func RunSQLProgram(sqlProgram string, modelDir string, session *pb.Session) *pip
 			return
 		}
 		defer db.Close()
-		err = runSQLProgram(wr, sqlProgram, db, modelDir, session)
+		err = runSQLProgram(wr, sqlProgram, db, session)
 		if err != nil {
 			if e := wr.Write(fmt.Errorf("runSQLProgram error: %v", err)); e != nil {
 				log.GetDefaultLogger().Errorf("runSQLProgram error(piping): %v", e)
@@ -97,13 +98,13 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 			} else if sql.Explain {
 				logger.Info("resolveSQL:explain")
 				// since getTrainStmtFromModel is false, use empty cwd is fine.
-				r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+				r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, "", "", false)
 			} else if sql.Predict {
 				logger.Info("resolveSQL:predict")
-				r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+				r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, "", "", false)
 			} else if sql.Evaluate {
 				logger.Info("resolveSQL:evaluate")
-				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", "", false)
+				r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, "", "", false)
 			} else if sql.Optimize {
 				logger.Info("resolveSQL:optimize")
 				r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
@@ -132,7 +133,7 @@ func ResolveSQLProgram(sqlStmts []*parser.SQLFlowStmt, logger *log.Logger) ([]ir
 	return spIRs, nil
 }
 
-func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir string, session *pb.Session) error {
+func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, session *pb.Session) error {
 	sqlProgram, err := parser.RemoveCommentInSQLStatement(sqlProgram)
 	if err != nil {
 		return err
@@ -152,14 +153,14 @@ func runSQLProgram(wr *pipe.Writer, sqlProgram string, db *database.DB, modelDir
 	// which depends on the execution of create table some_table as (select ...);.
 	sqls := RewriteStatementsWithHints(stmts, db.DriverName)
 	for _, sql := range sqls {
-		if err := runSingleSQLFlowStatement(wr, sql, db, modelDir, session); err != nil {
+		if err := runSingleSQLFlowStatement(wr, sql, db, session); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *database.DB, modelDir string, session *pb.Session) (e error) {
+func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *database.DB, session *pb.Session) (e error) {
 	defer func(startTime int64) {
 		// NOTE(tony): EndOfExecution indicates a successful run,
 		// so we only writes it when e != nil
@@ -184,7 +185,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	}(cwd)
 
 	exec := executor.New(session.Submitter)
-	exec.Setup(wr, db, modelDir, cwd, session)
+	exec.Setup(wr, db, cwd, session)
 
 	useExperimentalExecutor, err := executor.UseExperimentalExecutor(session.DbConnStr)
 	if err != nil {
@@ -195,7 +196,7 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	if useExperimentalExecutor {
 		r, err = experimental.GenerateIRStatement(sql, session)
 	} else {
-		r, err = legacyGenerateIRStatement(sql, session, modelDir, cwd)
+		r, err = legacyGenerateIRStatement(sql, session, cwd)
 	}
 	if err != nil {
 		return err
@@ -209,22 +210,22 @@ func runSingleSQLFlowStatement(wr *pipe.Writer, sql *parser.SQLFlowStmt, db *dat
 	return executor.Run(exec, r)
 }
 
-func legacyGenerateIRStatement(sql *parser.SQLFlowStmt, session *pb.Session, modelDir, cwd string) (ir.SQLFlowStmt, error) {
+func legacyGenerateIRStatement(sql *parser.SQLFlowStmt, session *pb.Session, cwd string) (ir.SQLFlowStmt, error) {
 	var r ir.SQLFlowStmt
 	var err error
 	if sql.IsExtendedSyntax() {
 		generateTrainStmtFromModel := executor.New(session.Submitter).GetTrainStmtFromModel()
 		if sql.Train {
 			// generateTrainStmtFromModel refers to if a pre-trained model
-			r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel, true)
+			r, err = ir.GenerateTrainStmtWithInferredColumns(sql.SQLFlowSelectStmt, session.DbConnStr, cwd, generateTrainStmtFromModel, true)
 		} else if sql.ShowTrain {
 			r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
-			r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+			r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, cwd, generateTrainStmtFromModel)
 		} else if sql.Predict {
-			r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+			r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, cwd, generateTrainStmtFromModel)
 		} else if sql.Evaluate {
-			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, modelDir, cwd, generateTrainStmtFromModel)
+			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, cwd, generateTrainStmtFromModel)
 		} else if sql.Optimize {
 			r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Run {

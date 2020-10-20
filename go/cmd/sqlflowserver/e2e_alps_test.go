@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -25,8 +24,6 @@ import (
 
 func TestEnd2EndMaxComputeALPS(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
-	modelDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
-	defer os.RemoveAll(modelDir)
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -50,7 +47,7 @@ func TestEnd2EndMaxComputeALPS(t *testing.T) {
 		t.Fatalf("Must set env SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT when testing ALPS cases (SQLFLOW_submitter=alps)!!")
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("CaseTrainALPS", CaseTrainALPS)

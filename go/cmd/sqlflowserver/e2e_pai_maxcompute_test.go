@@ -507,7 +507,6 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
 	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
@@ -529,7 +528,7 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		t.FailNow()
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	t.Run("group", func(t *testing.T) {

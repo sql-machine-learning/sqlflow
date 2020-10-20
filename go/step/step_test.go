@@ -49,7 +49,7 @@ func TestStepTrainSQL(t *testing.T) {
 	INTO sqlflow_models.mytest_model;`
 	table, e := tablewriter.Create("ascii", 100, os.Stdout)
 	a.NoError(e)
-	out, e := GetStdout(func() error { return RunSQLProgramAndPrintResult(sql, "", session, table, false, false) })
+	out, e := GetStdout(func() error { return RunSQLProgramAndPrintResult(sql, session, table, false, false) })
 	a.NoError(e)
 	a.Contains(out, "Done training")
 }

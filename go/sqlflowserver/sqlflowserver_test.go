@@ -47,7 +47,7 @@ const (
 var testServerAddress string
 var mockDBConnStr = database.GetTestingMySQLURL()
 
-func mockRun(sql string, modelDir string, session *pb.Session) *pipe.Reader {
+func mockRun(sql string, session *pb.Session) *pipe.Reader {
 	rd, wr := pipe.Pipe()
 	singleSQL := sql
 	go func() {
