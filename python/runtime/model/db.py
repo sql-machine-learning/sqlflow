@@ -73,10 +73,10 @@ class SQLFSWriter(object):
         self.writer.write([self.row_idx, block])
         self.row_idx += 1
 
-    def close(self, *args, **kwargs):
+    def close(self):
         self.flush()
         self.writer.close()
-        self.context_manager.__exit__(*args, **kwargs)
+        self.context_manager.__exit__(None, None, None)
 
     def flush(self):
         if self.buffer:
@@ -87,7 +87,7 @@ class SQLFSWriter(object):
         return self
 
     def __exit__(self, *args, **kwargs):
-        self.close(*args, **kwargs)
+        self.close()
 
 
 def _build_ordered_reader(reader):
