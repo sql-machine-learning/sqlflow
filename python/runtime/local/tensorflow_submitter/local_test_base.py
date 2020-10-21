@@ -19,10 +19,10 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.tensorflow_submitter.evaluate import evaluate
 from runtime.local.tensorflow_submitter.explain import explain
 from runtime.local.tensorflow_submitter.predict import pred
 from runtime.local.tensorflow_submitter.train import train
+from runtime.step.tensorflow.evaluate import evaluate_step as evaluate
 
 
 class TestTensorFlowLocalSubmitter(unittest.TestCase):

@@ -90,8 +90,8 @@ def step_entry_{{.StepIndex}}():
         evaluate(datasource='''{{.DataSource}}''', 
                  original_sql='''{{.OriginalSQL}}''',
                  select='''{{.Select}}''',
-                 pred_label_name='''{{.PredLabelName}}''',
-                 model_name='''{{.Load}}''',
+                 label_name='''{{.PredLabelName}}''',
+                 model='''{{.Load}}''',
                  model_params=model_params,
                  result_table='''{{.ResultTable}}''',
                  user='''{{.User}}''')
