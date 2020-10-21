@@ -26,7 +26,7 @@ from runtime.step.create_result_table import create_predict_table
 from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 
 
-def pred(datasource, select, result_table, pred_label_name, model):
+def pred(datasource, select, result_table, label_name, model):
     """
     Do prediction using a trained model.
 
@@ -34,7 +34,7 @@ def pred(datasource, select, result_table, pred_label_name, model):
         datasource (str): the database connection string.
         select (str): the input data to predict.
         result_table (str): the output data table.
-        pred_label_name (str): the output label name to predict.
+        label_name (str): the output label name to predict.
         model (Model|str): the model object or where to load the model.
 
     Returns:
@@ -67,7 +67,7 @@ def pred(datasource, select, result_table, pred_label_name, model):
 
     conn = db.connect_with_data_source(datasource)
     result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, pred_label_name)
+        conn, select, result_table, train_label_desc, label_name)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
