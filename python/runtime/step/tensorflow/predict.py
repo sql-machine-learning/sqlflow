@@ -14,30 +14,23 @@
 import six
 import tensorflow as tf
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.local.create_result_table import create_predict_table
 from runtime.model.model import Model
+from runtime.step.create_result_table import create_predict_table
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.load_model import pop_optimizer_and_loss
 from runtime.tensorflow.predict import estimator_predict, keras_predict
 
 
-def pred(datasource, select, result_table, pred_label_name, model):
-    """
-    Do prediction using a trained model.
-
-    Args:
-        datasource (str): the database connection string.
-        select (str): the input data to predict.
-        result_table (str): the output data table.
-        pred_label_name (str): the output label name to predict.
-        model (Model|str): the model object or where to load the model.
-
-    Returns:
-        None.
-    """
+def predict_step(datasource,
+                 select,
+                 result_table,
+                 label_name,
+                 model,
+                 pai_table=None):
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
     else:
@@ -59,9 +52,18 @@ def pred(datasource, select, result_table, pred_label_name, model):
     feature_columns = compile_ir_feature_columns(train_fc_map,
                                                  model.get_type())
 
+    is_pai = True if pai_table else False
+    if is_pai:
+        select = "SELECT * FROM %s" % pai_table
+
     conn = db.connect_with_data_source(datasource)
     result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, pred_label_name)
+        conn, select, result_table, train_label_desc, label_name)
+
+    if is_pai:
+        conn.close()
+        conn = PaiIOConnection.from_table(pai_table)
+        select = None
 
     selected_cols = result_column_names[0:-1]
     if train_label_idx >= 0:
@@ -82,11 +84,12 @@ def pred(datasource, select, result_table, pred_label_name, model):
         print("Start predicting using keras model...")
         keras_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, train_label_name,
-                      pred_label_name, conn, predict_generator, selected_cols)
+                      label_name, conn, predict_generator, selected_cols)
     else:
+        model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(result_table, feature_column_names, feature_metas,
-                          train_label_name, pred_label_name, conn,
+                          train_label_name, label_name, conn,
                           predict_generator, selected_cols)
 
     print("Done predicting. Predict table : %s" % result_table)

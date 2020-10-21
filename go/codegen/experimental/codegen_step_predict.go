@@ -80,8 +80,8 @@ def step_entry_{{.StepIndex}}():
         pred(datasource='''{{.DataSource}}''', 
              original_sql='''{{.OriginalSQL}}''',
              select='''{{.Select}}''', 
-             model_name='''{{.Load}}''',
-             label_column='''{{.PredLabelName}}''',
+             model='''{{.Load}}''',
+             label_name='''{{.PredLabelName}}''',
              model_params=model_params,
              result_table='''{{.ResultTable}}''',
              user='''{{.User}}''')

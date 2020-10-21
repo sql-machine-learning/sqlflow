@@ -51,8 +51,8 @@ def get_train_kmeans_pai_cmd(datasource, model_name, data_table, model_attrs,
         fc for fc in feature_column_names if fc not in exclude_columns
     ]
 
-    conn = db.connect_with_data_source(datasource)
-    conn.execute("DROP TABLE IF EXISTS %s" % idx_table_name)
+    with db.connect_with_data_source(datasource) as conn:
+        conn.execute("DROP TABLE IF EXISTS %s" % idx_table_name)
 
     return (
         """pai -name kmeans -project algo_public """

@@ -29,14 +29,9 @@ import (
 	"sqlflow.org/sqlflow/go/verifier"
 )
 
-const entryFile = "entry.py"
-
-// BucketName is the OSS bucket to save trained models
-const BucketName = "sqlflow-models"
-
 // OSSModelURL returns model path on OSS like: oss://bucket/project/userid/modelname/
 func OSSModelURL(modelFullPath string) string {
-	ossBucketURI := fmt.Sprintf("oss://%s/", BucketName)
+	ossBucketURI := fmt.Sprintf("oss://%s/", model.BucketName)
 	ossDir := strings.Join([]string{strings.TrimRight(ossBucketURI, "/"), modelFullPath}, "/")
 	return ossDir
 }

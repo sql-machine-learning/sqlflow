@@ -11,11 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import six
 from runtime import db
 
 
 def get_train_random_forest_pai_cmd(model_name, data_table, model_attrs,
-                                    feature_column_names, label_column):
+                                    feature_column_names, label_name):
     """Get a command to submit a KMeans training task to PAI
 
     Args:
@@ -23,21 +24,20 @@ def get_train_random_forest_pai_cmd(model_name, data_table, model_attrs,
         data_table: input data table name
         model_attrs: model attributes for KMeans
         feature_column_names: names of feature columns
-        label_column: name of the label column
+        label_name: name of the label column
 
     Returns:
         A string which is a PAI cmd
     """
     # default use numTrees = 1
-    tree_num = 1
-    tree_num_attr = model_attrs["tree_num"]
-    if isinstance(tree_num_attr, int):
-        tree_num = tree_num_attr
+    tree_num = model_attrs.get("tree_num", 1)
+    assert isinstance(tree_num, six.integer_types), \
+        "tree_num must be an integer"
     feature_cols = ",".join(feature_column_names)
 
     return '''pai -name randomforests -DinputTableName="%s" -DmodelName="%s"
     -DlabelColName="%s" -DfeatureColNames="%s" -DtreeNum="%d"''' % (
-        data_table, model_name, label_column, feature_cols, tree_num)
+        data_table, model_name, label_name, feature_cols, tree_num)
 
 
 def get_explain_random_forest_pai_cmd(datasource, model_name, data_table,

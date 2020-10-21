@@ -16,6 +16,7 @@ package pai
 import (
 	"fmt"
 	"os"
+	"sqlflow.org/sqlflow/go/model"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +30,7 @@ func TestGetCheckpointDir(t *testing.T) {
 
 	ckpoint, err := getCheckpointDir(ossModelPath, project)
 	a.NoError(err)
-	expectedCkp := fmt.Sprintf("oss://%s/p/t/m/?role_arn=acs:ram::9527:role/pai2osspr0j&host=h.com", BucketName)
+	expectedCkp := fmt.Sprintf("oss://%s/p/t/m/?role_arn=acs:ram::9527:role/pai2osspr0j&host=h.com", model.BucketName)
 	a.Equal(expectedCkp, ckpoint)
 }
 

@@ -31,7 +31,7 @@ import (
 )
 
 // CompileToYAML compiles the sqlProgram to a YAML workflow
-func CompileToYAML(backend, sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
+func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
 	var yaml string
 
 	driverName, _, e := database.ParseURL(session.DbConnStr)

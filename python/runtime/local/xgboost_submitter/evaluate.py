@@ -23,9 +23,9 @@ from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
-from runtime.local.create_result_table import create_evaluate_table
 from runtime.local.xgboost_submitter.predict import _calc_predict_result
 from runtime.model.model import Model
+from runtime.step.create_result_table import create_evaluate_table
 from runtime.xgboost.dataset import xgb_dataset
 
 SKLEARN_METRICS = [

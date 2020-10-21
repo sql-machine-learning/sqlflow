@@ -69,6 +69,12 @@ def train_step(original_sql,
     if validation_params is None:
         validation_params = {}
 
+    if load:
+        Model.load_from_db(datasource, load)
+        load = "model_save"
+    else:
+        load = None
+
     is_pai = True if pai_table else False
     if is_pai:
         actual_select = "SELECT * FROM %s" % pai_table
