@@ -27,7 +27,7 @@ from runtime.pai_local.try_run import try_pai_local_run
 
 def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
                         predict_table, result_table, model_type, model_params,
-                        job_file, params_file, cwd):
+                        job_file, params_file):
     """Get predict command for PAI task
 
     Args:
@@ -41,7 +41,6 @@ def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
         model_params: parameters specified by WITH clause
         job_file: tar file incldue code and libs to execute on PAI
         params_file: extra params file
-        cwd: current working dir
 
     Returns:
         The command to submit PAI prediction task
@@ -51,10 +50,9 @@ def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
     # We directly use the columns in SELECT statement for prediction, error
     # will be reported by PAI job if the columns not match.
     if model_type == EstimatorType.PAIML:
-        conn = db.connect_with_data_source(datasource)
-        schema = db.get_table_schema(conn, predict_table)
-        result_fields = [col[0] for col in schema]
-        conn.close()
+        with db.connect_with_data_source(datasource) as conn:
+            schema = db.get_table_schema(conn, predict_table)
+            result_fields = [col[0] for col in schema]
         return ('''pai -name prediction -DmodelName="%s"  '''
                 '''-DinputTableName="%s"  -DoutputTableName="%s"  '''
                 '''-DfeatureColNames="%s"  -DappendColNames="%s"''') % (
@@ -113,25 +111,25 @@ def submit_pai_predict(datasource,
     """
     params = dict(locals())
 
+    # format resultTable name to "db.table" to let the codegen form a
+    # submitting argument of format "odps://project/tables/table_name"
+    project = table_ops.get_project(datasource)
+    if result_table.count(".") == 0:
+        result_table = "%s.%s" % (project, result_table)
+
+    model_type, estimator = \
+        pai_model.get_saved_model_type_and_estimator(
+            datasource, model)
+    setup_predict_entry(params, model_type)
+
+    oss_model_path = pai_model.get_oss_model_save_path(datasource,
+                                                       model,
+                                                       user=user)
+
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
-        params["data_table"] = data_table
-
-        # format resultTable name to "db.table" to let the codegen form a
-        # submitting argument of format "odps://project/tables/table_name"
-        project = table_ops.get_project(datasource)
-        if result_table.count(".") == 0:
-            result_table = "%s.%s" % (project, result_table)
-
-        oss_model_path = pai_model.get_oss_model_save_path(datasource,
-                                                           model,
-                                                           user=user)
-        params["oss_model_path"] = oss_model_path
-        model_type, estimator = \
-            pai_model.get_saved_model_type_and_estimator(
-                datasource, model)
-        setup_predict_entry(params, model_type)
+        params["pai_table"] = data_table
 
         if try_pai_local_run(params, oss_model_path):
             return
@@ -143,5 +141,5 @@ def submit_pai_predict(datasource,
                 datasource, project, oss_model_path, model, data_table,
                 result_table, model_type, model_params,
                 "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                "file://" + os.path.join(cwd, PARAMS_FILE), cwd)
+                "file://" + os.path.join(cwd, PARAMS_FILE))
             submit_pai_task(cmd, datasource)
