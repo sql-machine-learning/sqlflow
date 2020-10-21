@@ -21,9 +21,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Workflow operates Argo workflow
-type Workflow struct{}
-
 func parseWorkflowResource(b []byte) (*wfv1.Workflow, error) {
 	wf := wfv1.Workflow{}
 	return &wf, json.Unmarshal(b, &wf)

@@ -90,8 +90,7 @@ func TestCoulerCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
 	os.Setenv(envResource, `{"memory": "32Mi", "cpu": "100m"}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
-	cg := &Codegen{}
-	code, err := cg.GenCode(sqlIR, &pb.Session{})
+	code, err := GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
 	r, e := regexp.Compile(`steps.sqlflow\(sql=r'''(.*);''', `)
@@ -103,8 +102,8 @@ func TestCoulerCodegen(t *testing.T) {
 	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 	a.True(strings.Contains(code, `resources=json.loads('''{"memory": "32Mi", "cpu": "100m"}''')`))
 
-	_, e = cg.GenYAML(code)
-	yaml, e := cg.GenYAML(code)
+	_, e = GenYAML(code)
+	yaml, e := GenYAML(code)
 	a.NoError(e)
 	r, e = regexp.Compile(`step -e "(.*);"`)
 	a.NoError(e)
@@ -113,13 +112,13 @@ func TestCoulerCodegen(t *testing.T) {
 
 	os.Setenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE", "/home/admin/logs/step.log")
 	defer os.Unsetenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE")
-	code, err = cg.GenCode(sqlIR, &pb.Session{})
+	code, err = GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 	r, e = regexp.Compile(`step_log_file = "(.*)"`)
 	a.True(strings.Contains(code, `step_log_file = "/home/admin/logs/step.log"`))
 	a.True(strings.Contains(code, "log_file=step_log_file"))
 
-	yaml, e = cg.GenYAML(code)
+	yaml, e = GenYAML(code)
 	a.NoError(e)
 	r, e = regexp.Compile(`mkdir -p (.*) && \(step -e "([^|]|\n)*[|] tee (.*)\)`)
 	a.NoError(e)
@@ -136,10 +135,9 @@ func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a := assert.New(t)
 	specialCharsStmt := ir.NormalStmt("`$\"\\;")
 	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
-	cg := &Codegen{}
-	code, err := cg.GenCode(sqlIR, &pb.Session{})
+	code, err := GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
-	yaml, e := cg.GenYAML(code)
+	yaml, e := GenYAML(code)
 	a.NoError(e)
 	r, _ := regexp.Compile(`step -e "(.*);"`)
 	a.Equal("\\`\\$\\\"\\\\", r.FindStringSubmatch(yaml)[1])
@@ -156,10 +154,9 @@ func TestStringInStringSQL(t *testing.T) {
 		INTO my_iris_model`,
 	}
 	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
-	cg := &Codegen{}
-	code, err := cg.GenCode(sqlIR, &pb.Session{})
+	code, err := GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
-	yaml, e := cg.GenYAML(code)
+	yaml, e := GenYAML(code)
 	a.NoError(e)
 	expect := `validation.select=\\\"select * from iris.train where\
             \ name like \\\\\\\"Versicolor\\\\\\\";\\\"`
@@ -182,8 +179,7 @@ func TestCompileCoulerProgram(t *testing.T) {
 
 	os.Setenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG", cfFileName)
 	defer os.Unsetenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG")
-	cg := &Codegen{}
-	out, e := cg.GenYAML(testCoulerProgram)
+	out, e := GenYAML(testCoulerProgram)
 	a.NoError(e)
 
 	a.Equal(expectedArgoYAML, out)
@@ -198,8 +194,7 @@ func TestKatibCodegen(t *testing.T) {
 
 	program := []ir.SQLFlowStmt{&standardSQL, &sqlIR}
 
-	cg := &Codegen{}
-	_, err := cg.GenCode(program, &pb.Session{})
+	_, err := GenCode(program, &pb.Session{})
 
 	a.NoError(err)
 }

@@ -13,17 +13,34 @@
 
 ## Kubernetes 集群搭建
 
+无论选择哪种模式，都需要先搭建一个 Kubernetes 集群，这里我们选择 MiniKube 来快速搭建这个集群。下文
+中以 Linux 环境为例来说明如何进行集群搭建。
+
+### 安装 Docker
+
+[Docker](https://www.docker.com/get-started) 是一个轻量级的容器系统，它可以帮助开发者更方便地
+进行软件打包，分发。SQLFlow 的各个功能模块是以 Docker 镜像方式发布的，我们需要安装 Docker 来下载和
+管理这些模块。可以采用以下命令来安装 Docker：
+
+```bash
+curl -sSL get.docker.com |  DOWNLOAD_URL="https://mirrors.aliyun.com/docker-ce" bash -
+```
+
 ### 安装 MiniKube
 
-无论选择哪种模式，都需要先搭建一个 Kubernetes 集群，这里我们选择 MiniKube 来快速搭建
-这个集群。你可以参考 [MiniKube 官方文档](https://minikube.sigs.k8s.io/docs/start/)来进行安装，下文以 Linux 环境为例进行介绍。
+MiniKube 可用于在个人电脑上快速搭建一个 Kubernetes 集群，你可以参考 [MiniKube 官方文档](https://minikube.sigs.k8s.io/docs/start/)来进行安装。 我们提供了部分所需二进制包的 CDN 加速，可以使用以下命令安装。
 
 ```
-wget https://storage.googleapis.com/kubernetes-release/release/v1.18.2/bin/linux/amd64/kubectl
-sudo mv kubectl /usr/local/bin/kubectl
+wget http://cdn.sqlflow.tech/kubernetes/kubectl_v1.18.2
+sudo mv kubectl_v1.18.2 /usr/local/bin/kubectl
+sudo chmod +x /usr/local/bin/kubectl
 
-wget https://storage.googleapis.com/minikube/releases/v1.10.1/minikube-linux-amd64
-sudo mv minikube-linux-amd64 /usr/local/bin/minikube
+wget http://cdn.sqlflow.tech/minikube/minikube-linux-1.11.0
+sudo mv minikube-linux-1.11.0 /usr/local/bin/minikube
+sudo chmod +x /usr/local/bin/minikube
+
+# Kubernetes 1.18.2 依赖 conntrack
+apt-get install conntrack
 ```
 
 ### 启动 MiniKube 集群
@@ -53,8 +70,11 @@ kubeconfig: Configured
 ```
 > kubectl get ns
 
-NAME                   STATUS   AGE
-default                Active   0d
+NAME              STATUS   AGE
+default           Active   27s
+kube-node-lease   Active   29s
+kube-public       Active   29s
+kube-system       Active   29sd
 ```
 
 ### 安装 Argo
@@ -87,7 +107,7 @@ nohup kubectl -n argo port-forward deployment/argo-server 9001:2746 --address=0.
 
 ## 单人模式的安装
 
-我们采用安装 Argo 类似的方式安装 SQLFlow，即运行 `kubectl` 命令向集群提交配置文件，等待集群拉取镜像，然后启动服务。
+我们采用安装 Argo 类似的方式安装 SQLFlow，即运行 `kubectl` 命令向集群提交配置文件，等待集群拉取镜像，然后启动服务。为避免下载 Docker 中央仓库镜像速度过慢，我们可以参考[常见问题](#常见问题)中的描述提前将各种镜像下载到本地。
 
 1. 提交部署配置
 ```bash
@@ -118,6 +138,7 @@ nohup kubectl port-forward pod/sqlflow-server 8888:8888 --address=0.0.0.0 &
 时服务多个用户，我们提供了账号校验等功能。我们可以按照如下步骤来进行安装：
 
 1. 下载部署配置
+
 ```
 wget http://cdn.sqlflow.tech/playground/install-sqlflow-multi-users.yaml
 ```
@@ -142,6 +163,7 @@ wget http://cdn.sqlflow.tech/playground/install-sqlflow-multi-users.yaml
 ```
 1. 开启用户认证，JupyterHub 支持[多种用户鉴权方式](https://jupyterhub.readthedocs.io/en/stable/reference/authenticators.html)，这里我们采用 [GitHub OAuth](https://oauthenticator.readthedocs.io/en/latest/getting-started.html#github-setup)。用户通过授权 SQLFlow 访问自己的 GitHub 账号来完成登录。如果你也希望采用这种登录方式，那么可以首先申请一个 [GitHub App](https://github.com/settings/applications/new)，你将获得一套用于三方登录的 `client_id` 和 `client_secret`，请
 妥善保管这些秘钥。这里我们将获取的秘钥存储在 Kubernetes 密码库中。
+
 ```
 kubectl create secret generic sqlflow \
     --from-literal=jupyter_oauth_client_id={client_id} \
@@ -172,6 +194,7 @@ kubectl get pods --watch
 恭喜，通过以上步骤，已经将 SQLFlow 多人模式安装成功。接下来，我们将在浏览器中访问 SQLFlow。
 
 1. 用以下命令将 JupyterHub 的端口暴露出来
+
 ```
 nohup kubectl port-forward deployment/sqlflow-jupyterhub 8000:8000 --address=0.0.0.0 &
 ```
@@ -190,7 +213,13 @@ nohup kubectl port-forward deployment/sqlflow-jupyterhub 8000:8000 --address=0.0
 
 1. 部署过程拉取镜像速度慢
 
-    尝试切换 Docker 镜像库，或者事先用 `docker pull` 命令将镜像拉到本地
+    尝试切换 Docker 镜像库，或者事先用 `docker pull` 命令将镜像拉到本地。例如可以使用阿里云镜像：
+    ```bash
+    for image in {server,mysql,jupyter,jupyterhub,step}; do
+        docker pull "registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:${image}"
+        docker tag "registry.cn-hangzhou.aliyuncs.com/sql-machine-learning/sqlflow:${image}" "sqlflow/sqlflow:${image}"
+    done
+    ```
 
 1. 单人模式如何使用自己的数据
 
