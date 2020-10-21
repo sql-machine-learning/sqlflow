@@ -179,7 +179,7 @@ WITH
   train.batch_size=10,
   train.verbose=1,
   train.epoch=60,
-  validation.metrics= "MeanAbsoluteError,MeanSquaredError"
+  validation.metrics= "MeanAbsoluteError,MeanAbsolutePercentageError"
 ```
 
 Then, We explicitly specify which column is used for the label  by writing in the `LABEL clause`and the name  of the saved trained model in the `INTO clause`.
