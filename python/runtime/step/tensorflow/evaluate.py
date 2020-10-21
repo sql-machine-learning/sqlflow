@@ -20,7 +20,7 @@ from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model.model import Model
-from runtime.pai.pai_distributed import define_tf_flags
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.step.create_result_table import create_evaluate_table
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.evaluate import (estimator_evaluate, keras_evaluate,
@@ -37,8 +37,6 @@ try:
 except Exception as e:
     sys.stderr.write("warning: failed to enable_eager_execution: %s" % e)
     pass
-
-FLAGS = define_tf_flags()
 
 
 def evaluate_step(datasource,
@@ -114,6 +112,9 @@ def _evaluate(datasource,
               validation_steps=None,
               verbose=0,
               pai_table=""):
+    FLAGS = define_tf_flags()
+    set_oss_environs(FLAGS)
+
     estimator_cls = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator_cls)
     set_log_level(verbose, is_estimator)
