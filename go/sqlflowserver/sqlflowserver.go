@@ -139,7 +139,7 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 		var yaml string
 		var err error
 		if !useExperimentalCodegen {
-			yaml, err = workflow.CompileToYAML(getWorkflowBackend(), sqlProgram, session, logger)
+			yaml, err = workflow.CompileToYAML(sqlProgram, session, logger)
 			if err != nil {
 				logger.Printf("compile error: %v", err)
 				if e := wr.Write(err); e != nil {
@@ -172,12 +172,4 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 		}
 	}()
 	return rd
-}
-
-func getWorkflowBackend() string {
-	wfBackend := os.Getenv("SQLFLOW_WORKFLOW_BACKEND")
-	if wfBackend == "" {
-		wfBackend = "couler"
-	}
-	return wfBackend
 }
