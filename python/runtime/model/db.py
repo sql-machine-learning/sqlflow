@@ -44,24 +44,27 @@ def _drop_table_if_exists(conn, table):
     conn.execute(sql)
 
 
+# NOTE: MySQL TEXT type can contain 65536 characters at most.
+# We need to limit the max string length of each row.
+MAX_LENGTH_TO_WRITE_PER_ROW = 4096
+
+
 class SQLFSWriter(object):
-    def __init__(self, conn, table, buf_size=4096):
+    def __init__(self, conn, table):
         self.context_manager = buffered_db_writer(conn, table, ["id", "block"])
         self.writer = self.context_manager.__enter__()
         self.row_idx = 0
-        assert buf_size > 0, "buf_size must be larger than 0"
-        self.buf_size = buf_size
         self.buffer = b''
 
     def write(self, content):
         self.buffer += content
         start = 0
-        end = self.buf_size
+        end = MAX_LENGTH_TO_WRITE_PER_ROW
         length = len(self.buffer)
         while end <= length:
             self._write_impl(self.buffer[start:end])
             start = end
-            end += self.buf_size
+            end += MAX_LENGTH_TO_WRITE_PER_ROW
 
         if start > 0:
             self.buffer = self.buffer[start:]
