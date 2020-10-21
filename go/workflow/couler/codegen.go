@@ -31,9 +31,6 @@ var defaultDockerImage = "sqlflow/sqlflow"
 var workflowTTL = 24 * 3600
 var envResource = "SQLFLOW_WORKFLOW_RESOURCES"
 
-// Codegen generates Couler program
-type Codegen struct{}
-
 func fillMapIfValueNotEmpty(m map[string]string, key, value string) {
 	if value != "" {
 		m[key] = value
@@ -188,7 +185,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 }
 
 // GenCode generates a Couler program
-func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
+func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 	r, e := GenFiller(programIR, session)
 	if e != nil {
 		return "", e
@@ -201,7 +198,7 @@ func (cg *Codegen) GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (str
 }
 
 // GenYAML translate the Couler program into Argo YAML
-func (cg *Codegen) GenYAML(coulerProgram string) (string, error) {
+func GenYAML(coulerProgram string) (string, error) {
 	cmdline := bytes.Buffer{}
 	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
 	if c := os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"); len(c) > 0 {
