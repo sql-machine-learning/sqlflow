@@ -105,6 +105,12 @@ class Connection(object):
             if len(l) == 1:
                 self.params[k] = l[0]
 
+    def __enter__(self, *args, **kwargs):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.close()
+
     def param(self, param_name, default_value=""):
         if not self.params:
             return default_value
