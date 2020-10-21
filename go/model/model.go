@@ -36,8 +36,8 @@ import (
 )
 
 const (
-	modelZooDB        = "sqlflow"
-	modelZooTable     = "sqlflow.trained_models"
+	// BucketName is the OSS bucket to save trained models
+	BucketName        = "sqlflow-models"
 	modelMetaFileName = "model_meta.json"
 )
 
@@ -419,7 +419,6 @@ func MockInDB(cwd, trainSelect, table string) error {
 
 // GetOSSModelBucket gets the OSS bucket of to save models.
 func GetOSSModelBucket() (*oss.Bucket, error) {
-	const bucketName = "sqlflow-models"
 	ak := os.Getenv("SQLFLOW_OSS_AK")
 	sk := os.Getenv("SQLFLOW_OSS_SK")
 	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
@@ -431,7 +430,7 @@ func GetOSSModelBucket() (*oss.Bucket, error) {
 	if e != nil {
 		return nil, e
 	}
-	return cli.Bucket(bucketName)
+	return cli.Bucket(BucketName)
 }
 
 // GetOSSModelPath gets the OSS path of the saved models.
