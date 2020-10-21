@@ -75,7 +75,7 @@ class SQLFSWriter(object):
 
     def close(self):
         self.flush()
-        self.writer.close()
+        # NOTE: __exit__ would close the self.writer
         self.context_manager.__exit__(None, None, None)
 
     def flush(self):
