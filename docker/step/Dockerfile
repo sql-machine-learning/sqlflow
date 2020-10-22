@@ -42,9 +42,9 @@ RUN wget -q https://sqlflow-models.oss-cn-zhangjiakou.aliyuncs.com/baron-lin64.z
     rm -rf /install/baron-lin64 && \
     rm -rf baron-lin64.zip
 
-ADD build/sqlflow_models-0.0.1-py3-none-any.whl /
+ADD build/sqlflow_models-0.1.0-py3-none-any.whl /
 RUN bash -c 'pip install --no-cache-dir --prefix=/install \
-    /sqlflow_models-0.0.1-py3-none-any.whl \
+    /sqlflow_models-0.1.0-py3-none-any.whl \
     six==1.15.0 \
     mysqlclient==1.4.4 \
     impyla==0.16.0 \
