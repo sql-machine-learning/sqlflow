@@ -11,14 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 
 def _gen_pai_local_method(name):
     def impl(*args, **kwargs):
         import runtime.pai as pai
         method = getattr(pai, name)
-        os.environ["SQLFLOW_submitter"] = "pai_local"
         return method(*args, **kwargs)
 
     return impl

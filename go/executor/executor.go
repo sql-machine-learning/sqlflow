@@ -25,6 +25,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/go/workflow/couler"
 	"strings"
 	"sync"
 
@@ -220,6 +221,15 @@ EOF
 
 	cmd := exec.Command("bash", "-c", fmt.Sprintf(bashCodeTmpl, stepCode))
 	cmd.Dir = s.Cwd
+	envMap, err := couler.GetStepEnvs(s.Session)
+	if err != nil {
+		return true, nil
+	}
+	cmd.Env = []string{}
+	for k, v := range envMap {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	errorLog, err := s.runCommand(cmd, nil, logStderr)
 	if err != nil {
 		return true, fmt.Errorf("%v\n%s", err, errorLog)
