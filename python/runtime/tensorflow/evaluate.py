@@ -13,7 +13,9 @@
 
 import sys
 
-from runtime.db import buffered_db_writer, connect_with_data_source
+from runtime import db
+from runtime.db import buffered_db_writer
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
@@ -38,10 +40,16 @@ def evaluate(datasource,
              save="",
              batch_size=1,
              validation_steps=None,
-             verbose=0):
+             verbose=0,
+             pai_table=""):
+    FLAGS = define_tf_flags()
+    set_oss_environs(FLAGS)
+
     estimator_cls = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator_cls)
     set_log_level(verbose, is_estimator)
+
+    is_pai = True if pai_table else False
     eval_dataset = get_dataset_fn(select,
                                   datasource,
                                   feature_column_names,
@@ -54,7 +62,10 @@ def evaluate(datasource,
     model_params.update(feature_columns)
     pop_optimizer_and_loss(model_params)
     if is_estimator:
-        model_params["model_dir"] = save
+        with open("exported_path", "r") as fid:
+            exported_path = str(fid.read())
+
+        model_params["warm_start_from"] = exported_path
         estimator = estimator_cls(**model_params)
         result_metrics = estimator_evaluate(estimator, eval_dataset,
                                             validation_metrics)
@@ -65,13 +76,15 @@ def evaluate(datasource,
         result_metrics = keras_evaluate(keras_model, eval_dataset, save,
                                         keras_model_pkg, validation_metrics)
 
-    # write result metrics to a table
-    conn = connect_with_data_source(datasource)
     if result_table:
         metric_name_list = ["loss"] + validation_metrics
+        if is_pai:
+            conn = PaiIOConnection.from_table(result_table)
+        else:
+            conn = db.connect_with_data_source(datasource)
         write_result_metrics(result_metrics, metric_name_list, result_table,
                              conn)
-    conn.close()
+        conn.close()
 
 
 def estimator_evaluate(estimator, eval_dataset, validation_metrics):

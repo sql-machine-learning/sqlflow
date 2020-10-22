@@ -14,18 +14,30 @@
 import tensorflow as tf
 from runtime.diagnostics import init_model, load_pretrained_model_estimator
 from runtime.model import save_metadata
+from runtime.pai.pai_distributed import make_estimator_distributed_runconfig
 from runtime.seeding import get_tf_random_seed
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.metrics import get_tf_metrics
 
 
-def estimator_train_and_save(estimator, model_params, save, train_dataset_fn,
-                             val_dataset_fn, train_max_steps,
-                             eval_start_delay_secs, eval_throttle_secs,
-                             save_checkpoints_steps, metric_names,
-                             load_pretrained_model, model_meta):
+def estimator_train_and_save_legacy(estimator, model_params, save, FLAGS,
+                                    train_dataset_fn, val_dataset_fn,
+                                    train_max_steps, eval_start_delay_secs,
+                                    eval_throttle_secs, save_checkpoints_steps,
+                                    metric_names, load_pretrained_model,
+                                    model_meta):
     print("Start training using estimator model...")
-    model_params["model_dir"] = save
+    is_distributed = False
+    if len(FLAGS.worker_hosts.split(",")) > 1:
+        is_distributed = True
+    model_params["config"] = make_estimator_distributed_runconfig(
+        FLAGS,
+        estimator,
+        is_distributed,
+        save_checkpoints_steps=save_checkpoints_steps)
+    ckpt_dir = FLAGS.checkpointDir if FLAGS.checkpointDir else save
+    print("Using checkpoint path: %s" % ckpt_dir)
+    model_params["model_dir"] = ckpt_dir
     model_params["config"] = tf.estimator.RunConfig(
         tf_random_seed=get_tf_random_seed(),
         save_checkpoints_steps=save_checkpoints_steps)
@@ -46,6 +58,9 @@ def estimator_train_and_save(estimator, model_params, save, train_dataset_fn,
     estimator_train_compiled(classifier, train_dataset_fn, val_dataset_fn,
                              train_max_steps, eval_start_delay_secs,
                              eval_throttle_secs)
+    if FLAGS.task_index != 0:
+        print("skip exporting model on worker != 0")
+        return
     estimator_save(classifier, save, model_params, model_meta)
 
 
