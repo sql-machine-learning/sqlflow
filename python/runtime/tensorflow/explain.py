@@ -27,7 +27,8 @@ from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from runtime.tensorflow.load_model import pop_optimizer_and_loss
+from runtime.tensorflow.load_model import (load_keras_model_weights,
+                                           pop_optimizer_and_loss)
 
 sns_colors = sns.color_palette('colorblind')
 # Disable TensorFlow INFO and WARNING logs
@@ -72,6 +73,9 @@ def explain(datasource,
         return dataset.batch(1).cache()
 
     estimator = init_model_with_feature_column(estimator_cls, model_params)
+    if not is_tf_estimator(estimator_cls):
+        load_keras_model_weights(estimator, save)
+
     conn = connect_with_data_source(datasource)
 
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
@@ -101,7 +105,7 @@ def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
     gain = estimator.experimental_feature_importances(normalize=True)
-    if result_table != "":
+    if result_table:
         write_dfc_result(dfc_mean, gain, result_table, conn,
                          feature_column_names)
     explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), oss_dest, oss_ak,
@@ -145,7 +149,7 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
         shap_dataset_summary = shap_dataset
     shap_values = shap.KernelExplainer(
         predict, shap_dataset_summary).shap_values(shap_dataset, l1_reg="aic")
-    if result_table != "":
+    if result_table:
         write_shap_values(shap_values, conn, result_table,
                           feature_column_names)
     explainer.plot_and_save(

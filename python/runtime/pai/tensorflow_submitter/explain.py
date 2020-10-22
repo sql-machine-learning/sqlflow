@@ -14,7 +14,6 @@
 import os
 import sys
 
-import matplotlib
 import pandas as pd
 import tensorflow as tf
 from runtime.dbapi.paiio import PaiIOConnection
@@ -28,10 +27,6 @@ from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
 from runtime.tensorflow.load_model import pop_optimizer_and_loss
-
-if os.environ.get('DISPLAY', '') == '':
-    print('no display found. Using non-interactive Agg backend')
-    matplotlib.use('Agg')
 
 
 def explain_step(datasource, select, data_table, result_table, label_column,
