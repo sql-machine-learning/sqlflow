@@ -11,11 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import pickle
 from inspect import getargspec
 
-import matplotlib
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.step.tensorflow.evaluate import evaluate_step as evaluate_tf
