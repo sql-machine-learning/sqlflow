@@ -119,7 +119,6 @@ jobs:
         export TRAVIS_BUILD_DIR=${{ github.workspace }}
         export FIND_FASTED_MIRROR=false
         export TRAVIS_BUILD_STAGE_NAME=Deploy
-        # always clean root permission dirs
         bash scripts/travis/deploy_docker.sh || \
         docker run --rm  -v "$TRAVIS_BUILD_DIR":/work sqlflow:ci rm -rf /work/build /work/java /work/python
   linux-client:
