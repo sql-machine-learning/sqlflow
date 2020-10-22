@@ -52,7 +52,7 @@ for _ in {1..30}; do
     if [[ "$STATUS" == "Succeeded" ]]; then
         echo "Argo workflow succeeded."
         kubectl delete wf "${WORKFLOW_NAME}"
-        rm -rf /tmp/sqlflow*
+        rm -rf /tmp/sqlflow* || true
         TIMEOUT="false"
         break
     else
