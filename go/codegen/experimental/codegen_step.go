@@ -162,16 +162,12 @@ func (m *Metadata) imageName() string {
 	return (*simplejson.Json)(m).Get("model_repo_image").MustString()
 }
 
-func getModelMetadata(session *pb.Session, table string) (*Metadata, error) {
-	submitter := getSubmitter(session)
-	if submitter == "local" {
-		modelZooAddr, table, tag := decomposeModelName(table)
-		if modelZooAddr != "" {
-			return getModelMetadataFromModelZoo(modelZooAddr, table, tag)
-		}
-		return GetModelMetadataFromDB(session.DbConnStr, table)
+func getModelMetadata(session *pb.Session, modelName string) (*Metadata, error) {
+	modelZooAddr, modelName, tag := decomposeModelName(modelName)
+	if modelZooAddr != "" {
+		return getModelMetadataFromModelZoo(modelZooAddr, modelName, tag)
 	}
-	return nil, fmt.Errorf("not supported submitter %s", submitter)
+	return GetModelMetadataFromDB(session.DbConnStr, modelName)
 }
 
 func decomposeModelName(modelName string) (string, string, string) {
@@ -221,6 +217,14 @@ func GetModelMetadataFromDB(dbConnStr, table string) (*Metadata, error) {
 		return nil, err
 	}
 	defer db.Close()
+
+	if strings.Index(table, ".") < 0 {
+		dbName, err := database.GetDatabaseName(dbConnStr)
+		if err != nil {
+			return nil, err
+		}
+		table = dbName + "." + table
+	}
 
 	fs, err := sqlfs.Open(db.DB, table)
 	if err != nil {

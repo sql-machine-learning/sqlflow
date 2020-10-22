@@ -23,9 +23,9 @@ from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
-from runtime.local.create_result_table import create_evaluate_table
 from runtime.local.xgboost_submitter.predict import _calc_predict_result
 from runtime.model.model import Model
+from runtime.step.create_result_table import create_evaluate_table
 from runtime.xgboost.dataset import xgb_dataset
 
 SKLEARN_METRICS = [
@@ -56,7 +56,7 @@ def evaluate(datasource,
              select,
              result_table,
              model,
-             pred_label_name=None,
+             label_name=None,
              model_params=None):
     """
     Do evaluation to a trained XGBoost model.
@@ -66,7 +66,7 @@ def evaluate(datasource,
         select (str): the input data to predict.
         result_table (str): the output data table.
         model (Model|str): the model object or where to load the model.
-        pred_label_name (str): the label column name.
+        label_name (str): the label column name.
         model_params (dict): the parameters for evaluation.
 
     Returns:
@@ -81,14 +81,15 @@ def evaluate(datasource,
     if model_params is None:
         model_params = {}
 
-    validation_metrics = model_params.get("validation.metrics", "Accuracy")
+    validation_metrics = model_params.get("validation.metrics",
+                                          "accuracy_score")
     validation_metrics = [m.strip() for m in validation_metrics.split(",")]
 
     model_params = model.get_meta("attributes")
     train_fc_map = model.get_meta("features")
     train_label_desc = model.get_meta("label").get_field_desc()[0]
-    if pred_label_name:
-        train_label_desc.name = pred_label_name
+    if label_name:
+        train_label_desc.name = label_name
 
     field_descs = get_ordered_field_descs(train_fc_map)
     feature_column_names = [fd.name for fd in field_descs]

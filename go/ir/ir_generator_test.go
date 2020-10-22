@@ -427,7 +427,7 @@ WITH model.n_classes=3, model.hidden_units=[10,20]
 LABEL class
 INTO sqlflow_models.mymodel;`, "sqlflow_models.mymodel"))
 
-	predStmt, err := GeneratePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), "", cwd, true)
+	predStmt, err := GeneratePredictStmt(r.SQLFlowSelectStmt, database.GetTestingDBSingleton().URL(), cwd, true)
 	a.NoError(err)
 
 	a.Equal("iris.predict", predStmt.ResultTable)
@@ -450,7 +450,6 @@ func TestGenerateExplainStmt(t *testing.T) {
 	cwd, e := ioutil.TempDir("/tmp", "sqlflow_models")
 	a.Nil(e)
 	defer os.RemoveAll(cwd)
-	modelDir := ""
 	a.NoError(model.MockInDB(cwd, `SELECT * FROM iris.train
 TO TRAIN xgboost.gbtree
 WITH
@@ -473,7 +472,7 @@ INTO sqlflow_models.my_xgboost_model;`, "sqlflow_models.my_xgboost_model"))
 	`)
 	a.NoError(e)
 
-	ExplainStmt, e := GenerateExplainStmt(pr.SQLFlowSelectStmt, connStr, modelDir, cwd, true)
+	ExplainStmt, e := GenerateExplainStmt(pr.SQLFlowSelectStmt, connStr, cwd, true)
 	a.NoError(e)
 	a.Equal(ExplainStmt.Explainer, "TreeExplainer")
 	a.Equal(len(ExplainStmt.Attributes), 3)
@@ -498,7 +497,7 @@ INTO sqlflow_models.my_xgboost_model;`, "sqlflow_models.my_xgboost_model"))
 	`)
 	a.NoError(e)
 
-	ExplainIntoStmt, e := GenerateExplainStmt(pr.SQLFlowSelectStmt, connStr, modelDir, cwd, true)
+	ExplainIntoStmt, e := GenerateExplainStmt(pr.SQLFlowSelectStmt, connStr, cwd, true)
 	a.NoError(e)
 	a.Equal(ExplainIntoStmt.Explainer, "TreeExplainer")
 	a.Equal(len(ExplainIntoStmt.Attributes), 3)
@@ -506,7 +505,7 @@ INTO sqlflow_models.my_xgboost_model;`, "sqlflow_models.my_xgboost_model"))
 
 	pr, e = parser.ParseStatement("mysql", `SELECT * FROM iris.train TO EXPLAIN sqlflow_models.my_xgboost_model;`)
 	a.NoError(e)
-	shortExplainStmt, e := GenerateExplainStmt(pr.SQLFlowSelectStmt, connStr, modelDir, cwd, true)
+	shortExplainStmt, e := GenerateExplainStmt(pr.SQLFlowSelectStmt, connStr, cwd, true)
 	a.NoError(e)
 	a.Equal(shortExplainStmt.Explainer, "")
 	a.Equal(len(shortExplainStmt.Attributes), 0)

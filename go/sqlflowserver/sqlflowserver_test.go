@@ -47,7 +47,7 @@ const (
 var testServerAddress string
 var mockDBConnStr = database.GetTestingMySQLURL()
 
-func mockRun(sql string, modelDir string, session *pb.Session) *pipe.Reader {
+func mockRun(sql string, session *pb.Session) *pipe.Reader {
 	rd, wr := pipe.Pipe()
 	singleSQL := sql
 	go func() {
@@ -100,7 +100,7 @@ func createRudeClient() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := c.Run(ctx, &pb.Request{Sql: testQuerySQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+	_, err := c.Run(ctx, &pb.Request{Stmts: testQuerySQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 
 	if err != nil {
 		log.Fatalf("Run encounters err:%v", err)
@@ -121,13 +121,13 @@ func TestSQL(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	stream, err := c.Run(ctx, &pb.Request{Sql: testErrorSQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+	stream, err := c.Run(ctx, &pb.Request{Stmts: testErrorSQL, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 	a.NoError(err)
 	_, err = stream.Recv()
 	a.Equal(status.Error(codes.Unknown, "run error: ERROR ..."), err)
 
 	for _, s := range []string{testQuerySQL, testExecuteSQL, testExtendedSQL, testExtendedSQLWithSpace, testExtendedSQLNoSemicolon} {
-		stream, err := c.Run(ctx, &pb.Request{Sql: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
+		stream, err := c.Run(ctx, &pb.Request{Stmts: s, Session: &pb.Session{DbConnStr: mockDBConnStr}})
 		a.NoError(err)
 		for {
 			_, err := stream.Recv()

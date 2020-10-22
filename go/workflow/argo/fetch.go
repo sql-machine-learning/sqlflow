@@ -71,7 +71,7 @@ func logViewURL(ns, wfID, podID string) (string, error) {
 // Step [2/3] Execute Code: echo hello2
 // Step [2/3] Log: http://localhost:8001/workflows/default/steps-bdpff?nodeId=steps-bdpff-xx2
 // ...
-func (w *Workflow) Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
+func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"jobID":     req.Job.Id,

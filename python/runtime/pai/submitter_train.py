@@ -13,7 +13,9 @@
 
 import os
 
+import runtime.db as db
 import runtime.temp_file as temp_file
+from runtime.model.model import EstimatorType, Model
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
@@ -24,15 +26,16 @@ from runtime.pai.submit_pai_task import submit_pai_task
 from runtime.pai_local.try_run import try_pai_local_run
 
 
-def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
-                      val_table, model_params, train_params, path_to_save,
-                      job_file, params_file):
+def get_pai_train_cmd(datasource, estimator_string, model_name, label_column,
+                      train_table, val_table, model_params, train_params,
+                      path_to_save, job_file, params_file):
     """Get train model comman for PAI
 
     Args:
         datasource: current datasource
         estimator_string: estimator name, Keras class name, or XGBoost
         model_name: the model name to train
+        label_column: the label feature column to train
         train_table: data table from which to load train data
         val_table: data table from which to load evaluate data
         model_params: params for training, crossponding to WITH clause
@@ -44,18 +47,25 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, train_table,
     Returns:
         The command to submit a PAI train task
     """
+    if label_column is not None:
+        label_name = label_column.get_field_desc()[0].name
+    else:
+        label_name = None
+
+    with db.connect_with_datasource(datasource) as conn:
+        schema = db.get_table_schema(conn, train_table)
+        feature_column_names = [s[0] for s in schema if s[0] != label_name]
+
     project = table_ops.get_project(datasource)
-    conf = cluster_conf.get_cluster_config(model_params)
     if estimator_string.lower() == "randomforests":
-        cmd = get_train_random_forest_pai_cmd(
-            model_name, train_table, model_params,
-            train_params["feature_column_names"],
-            train_params["label_meta"]["feature_name"])
+        cmd = get_train_random_forest_pai_cmd(model_name, train_table,
+                                              model_params,
+                                              feature_column_names, label_name)
     elif estimator_string.lower() == "kmeans":
         cmd = get_train_kmeans_pai_cmd(datasource, model_name, train_table,
-                                       model_params,
-                                       train_params["feature_column_names"])
+                                       model_params, feature_column_names)
     else:
+        conf = cluster_conf.get_cluster_config(train_params)
         cmd = get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
                              model_name, path_to_save, train_table, val_table,
                              "", project)
@@ -121,23 +131,16 @@ def submit_pai_train(datasource,
     else:
         params["entry_type"] = "train_tf"
 
-    train_table, val_table = table_ops.create_train_and_eval_tmp_table(
-        select, validation_select, datasource)
-
-    try:
+    with table_ops.create_tmp_tables_guard([select, validation_select],
+                                           datasource) as (train_table,
+                                                           val_table):
         params["pai_table"], params["pai_val_table"] = train_table, val_table
 
         # clean target dir
         oss_path_to_save = pai_model.get_oss_model_save_path(datasource,
                                                              save,
                                                              user=user)
-        oss_path_to_load = pai_model.get_oss_model_save_path(datasource,
-                                                             load,
-                                                             user=user)
-        if oss_path_to_load == "" or oss_path_to_load != oss_path_to_save:
-            pai_model.clean_oss_model_path(oss_path_to_save + "/")
-        train_params["oss_path_to_load"] = oss_path_to_load
-
+        pai_model.clean_oss_model_path(oss_path_to_save + "/")
         if try_pai_local_run(params, oss_path_to_save):
             return
 
@@ -147,11 +150,20 @@ def submit_pai_train(datasource,
 
             # submit pai task to execute the training
             cmd = get_pai_train_cmd(
-                datasource, estimator_string, save, train_table, val_table,
-                model_params, train_params, oss_path_to_save,
+                datasource, estimator_string, save, label_column, train_table,
+                val_table, model_params, train_params, oss_path_to_save,
                 "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
                 "file://" + os.path.join(cwd, PARAMS_FILE))
 
             submit_pai_task(cmd, datasource)
-    finally:
-        table_ops.drop_tables([train_table, val_table], datasource)
+
+        # Save PAI ML metadata into DBMS too. So that we can know the
+        # estimator name of PAI ML models.
+        if Model.estimator_type(estimator_string) == EstimatorType.PAIML:
+            meta = {
+                "model_repo_image": "",
+                "class_name": estimator_string,
+            }
+            model = Model(EstimatorType.PAIML, meta)
+            with temp_file.TemporaryDirectory(as_cwd=True) as cwd:
+                model.save_to_db(datasource, save)

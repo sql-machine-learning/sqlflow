@@ -57,7 +57,7 @@ func startServer() func() {
 	var s *grpc.Server
 	go func() {
 		s = grpc.NewServer()
-		proto.RegisterSQLFlowServer(s, srv.NewServer(sql.RunSQLProgram, ""))
+		proto.RegisterSQLFlowServer(s, srv.NewServer(sql.RunSQLProgram))
 
 		listenString := fmt.Sprintf(":%d", 50051)
 		lis, err := net.Listen("tcp", listenString)

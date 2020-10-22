@@ -25,6 +25,6 @@ def _gen_pai_local_method(name):
 
 
 train = _gen_pai_local_method('train')
-predict = _gen_pai_local_method('predict')
+pred = _gen_pai_local_method('pred')
 evaluate = _gen_pai_local_method('evaluate')
 explain = _gen_pai_local_method('explain')

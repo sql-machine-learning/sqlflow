@@ -43,14 +43,13 @@ func TestEnd2EndWorkflow(t *testing.T) {
 	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
 		t.Skip("Skipping workflow test.")
 	}
-	modelDir := ""
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
 
-	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	go start(caCrt, caKey, unitTestPort, true)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	if driverName == "maxcompute" {
@@ -126,7 +125,7 @@ INTO %s;
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -176,7 +175,7 @@ FROM %s LIMIT 5;
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -212,7 +211,7 @@ INTO test_workflow_model;`, caseTrainTable, caseTrainTable, customImage, caseTes
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -290,7 +289,7 @@ func CaseTrainDistributedPAIArgo(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -349,7 +348,7 @@ func CaseBackticksInSQL(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: trainSQL, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}
@@ -367,7 +366,6 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 	if driverName != "mysql" && driverName != "maxcompute" && driverName != "alisa" {
 		t.Skip("Skipping workflow test.")
 	}
-	modelDir := ""
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -376,7 +374,7 @@ func TestEnd2EndFluidWorkflow(t *testing.T) {
 
 	//TODO(yancey1989): using the same end-to-end workflow test with the Couler backend
 	os.Setenv("SQLFLOW_WORKFLOW_BACKEND", "fluid")
-	go start(modelDir, caCrt, caKey, unitTestPort, true)
+	go start(caCrt, caKey, unitTestPort, true)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	if err != nil {
 		t.Fatalf("prepare test dataset failed: %v", err)
@@ -396,7 +394,7 @@ func runSQLProgramAndCheck(t *testing.T, sqlProgram string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3600*time.Second)
 	defer cancel()
 
-	stream, err := cli.Run(ctx, &pb.Request{Sql: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
+	stream, err := cli.Run(ctx, &pb.Request{Stmts: sqlProgram, Session: &pb.Session{DbConnStr: testDatasource}})
 	if err != nil {
 		a.Fail("Create gRPC client error: %v", err)
 	}

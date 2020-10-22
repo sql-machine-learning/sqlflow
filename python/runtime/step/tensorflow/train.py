@@ -69,6 +69,12 @@ def train_step(original_sql,
     if validation_params is None:
         validation_params = {}
 
+    if load:
+        Model.load_from_db(datasource, load)
+        load = "model_save"
+    else:
+        load = None
+
     is_pai = True if pai_table else False
     if is_pai:
         actual_select = "SELECT * FROM %s" % pai_table
@@ -193,13 +199,10 @@ def train_step(original_sql,
     # save model to DB/OSS
     model = Model(EstimatorType.TENSORFLOW, model_meta)
     if num_workers == 1 or worker_id == 0:
-        if is_pai:
-            oss_model_dir = FLAGS.sqlflow_oss_modeldir
-            model.save_to_oss(oss_model_dir)
-            print("Model saved to OSS: %s" % oss_model_dir)
-        else:
-            model.save_to_db(datasource, save)
-            print("Model saved to DB: %s" % save)
+        saved = model.save_to_db(datasource,
+                                 save,
+                                 oss_model_dir=FLAGS.sqlflow_oss_modeldir)
+        print("Model saved to DB: %s" % saved)
 
     print("Done training")
     conn.close()

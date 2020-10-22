@@ -17,7 +17,6 @@ import (
 	"fmt"
 
 	"sqlflow.org/sqlflow/go/codegen/pai"
-	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/ir"
 	"sqlflow.org/sqlflow/go/model"
 )
@@ -40,11 +39,7 @@ func (s *paiLocalExecutor) ExecuteTrain(trainStmt *ir.TrainStmt) error {
 	if err != nil {
 		return err
 	}
-	ossModelPathToSave, e := getModelPath(trainStmt.Into, s.Session)
-	if e != nil {
-		return e
-	}
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	ossModelPathToSave, e := model.GetOSSModelPath(trainStmt.Into, s.Session)
 	if e != nil {
 		return e
 	}
@@ -56,7 +51,7 @@ func (s *paiLocalExecutor) ExecuteTrain(trainStmt *ir.TrainStmt) error {
 	// download model from OSS to local cwd and save to sqlfs
 	// NOTE(typhoonzero): model in sqlfs will be used by sqlflow model zoo currently
 	// should use the model in sqlfs when predicting.
-	if e = downloadOSSModel(ossModelPathToSave+"/", currProject); e != nil {
+	if e = downloadOSSModel(ossModelPathToSave + "/"); e != nil {
 		return e
 	}
 	m := model.New(s.Cwd, trainStmt.OriginalSQL)
@@ -70,7 +65,7 @@ func (s *paiLocalExecutor) ExecutePredict(predStmt *ir.PredictStmt) error {
 	if err != nil {
 		return err
 	}
-	ossModelPathToSave, e := getModelPath(predStmt.Using, s.Session)
+	ossModelPathToSave, e := model.GetOSSModelPath(predStmt.Using, s.Session)
 	if e != nil {
 		return e
 	}
@@ -84,7 +79,7 @@ func (s *paiLocalExecutor) ExecuteExplain(explainStmt *ir.ExplainStmt) error {
 	if err != nil {
 		return err
 	}
-	ossModelPathToSave, e := getModelPath(explainStmt.ModelName, s.Session)
+	ossModelPathToSave, e := model.GetOSSModelPath(explainStmt.ModelName, s.Session)
 	if e != nil {
 		return e
 	}
@@ -98,7 +93,7 @@ func (s *paiLocalExecutor) ExecuteEvaluate(evalStmt *ir.EvaluateStmt) error {
 	if err != nil {
 		return err
 	}
-	ossModelPathToSave, e := getModelPath(evalStmt.ModelName, s.Session)
+	ossModelPathToSave, e := model.GetOSSModelPath(evalStmt.ModelName, s.Session)
 	if e != nil {
 		return e
 	}

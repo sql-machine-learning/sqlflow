@@ -15,7 +15,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -24,8 +23,6 @@ import (
 
 func TestEnd2EndMaxCompute(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
-	modelDir, _ := ioutil.TempDir("/tmp", "sqlflow_ssl_")
-	defer os.RemoveAll(modelDir)
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -43,7 +40,7 @@ func TestEnd2EndMaxCompute(t *testing.T) {
 	SK := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_SK")
 	endpoint := os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_ENDPOINT")
 	dbConnStr = fmt.Sprintf("maxcompute://%s:%s@%s", AK, SK, endpoint)
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 
 	caseDB = os.Getenv("SQLFLOW_TEST_DB_MAXCOMPUTE_PROJECT")

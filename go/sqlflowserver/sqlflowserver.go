@@ -26,6 +26,7 @@ import (
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/log"
 	"sqlflow.org/sqlflow/go/workflow"
+	"sqlflow.org/sqlflow/go/workflow/argo"
 
 	"github.com/golang/protobuf/proto"
 	submitter "sqlflow.org/sqlflow/go/executor"
@@ -37,33 +38,24 @@ import (
 
 // Server is the instance will be used to connect to DB and execute training
 type Server struct {
-	// TODO(typhoonzero): should pass `Server` struct to run function, so that we can get
-	// server-side configurations together with client side session in the run context.
-	// To do this we need to refactor current pkg structure, so that we will not have circular dependency.
-	run      func(sql string, modelDir string, session *pb.Session) *pipe.Reader
-	modelDir string
+	run func(sql string, session *pb.Session) *pipe.Reader
 }
 
 // NewServer returns a server instance
-func NewServer(run func(string, string, *pb.Session) *pipe.Reader,
-	modelDir string) *Server {
-	return &Server{run: run, modelDir: modelDir}
+func NewServer(run func(string, *pb.Session) *pipe.Reader) *Server {
+	return &Server{run: run}
 }
 
 // Fetch implements `rpc Fetch (Job) returns(JobStatus)`
 func (s *Server) Fetch(ctx context.Context, job *pb.FetchRequest) (*pb.FetchResponse, error) {
 	// FIXME(tony): to make function fetch easily to mock, we should decouple server package
 	// with argo package by introducing s.fetch
-	_, wf, e := workflow.New(getWorkflowBackend())
-	if e != nil {
-		return nil, e
-	}
-	return wf.Fetch(job)
+	return argo.Fetch(job)
 }
 
 // Run implements `rpc Run (Request) returns (stream Response)`
 func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
-	rd := s.run(req.Sql, s.modelDir, req.Session)
+	rd := s.run(req.Stmts, req.Session)
 	defer rd.Close()
 
 	for r := range rd.ReadAll() {
@@ -92,7 +84,7 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 			if err != nil {
 				return err
 			}
-			sqls, err := parser.Parse(dialect, req.Sql)
+			sqls, err := parser.Parse(dialect, req.Stmts)
 			if err != nil {
 				return err
 			}
@@ -127,40 +119,57 @@ func (s *Server) Run(req *pb.Request, stream pb.SQLFlow_RunServer) error {
 //
 // TODO(wangkuiyi): Make SubmitWorkflow return an error in addition to
 // *pipe.Reader, and remove the calls to log.Printf.
-func SubmitWorkflow(sqlProgram string, modelDir string, session *pb.Session) *pipe.Reader {
+func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"user":      session.UserId,
 		"submitter": session.Submitter,
 		"event":     "submitWorkflow",
 	})
+	rd, wr := pipe.Pipe()
+
 	if os.Getenv("SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT") == "" {
 		logger.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
 	}
-	rd, wr := pipe.Pipe()
+	useExperimentalCodegen := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+
 	startTime := time.Now()
 	go func() {
 		defer wr.Close()
-		wfID, e := workflow.Run(getWorkflowBackend(), sqlProgram, session, logger)
+		var yaml string
+		var err error
+		if !useExperimentalCodegen {
+			yaml, err = workflow.CompileToYAML(sqlProgram, session, logger)
+			if err != nil {
+				logger.Printf("compile error: %v", err)
+				if e := wr.Write(err); e != nil {
+					logger.Errorf("piping error: %v", e)
+				}
+				return
+			}
+		} else {
+			yaml, err = workflow.CompileToYAMLExperimental(sqlProgram, session)
+			if err != nil {
+				logger.Printf("compile error: %v", err)
+				if e := wr.Write(err); e != nil {
+					logger.Errorf("piping error: %v", e)
+				}
+				return
+			}
+		}
+
+		wfID, e := argo.Submit(yaml)
 		defer logger.Infof("submitted, workflowID:%s, spent:%.f, SQL:%s, error:%v", wfID, time.Since(startTime).Seconds(), sqlProgram, e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {
-				logger.Errorf("piping: %v", e)
+				logger.Errorf("piping error: %v", e)
 			}
 			return
 		}
 		if e := wr.Write(pb.Job{Id: wfID}); e != nil {
-			logger.Errorf("piping: %v", e)
+			logger.Errorf("piping error: %v", e)
 			return
 		}
 	}()
 	return rd
-}
-
-func getWorkflowBackend() string {
-	wfBackend := os.Getenv("SQLFLOW_WORKFLOW_BACKEND")
-	if wfBackend == "" {
-		wfBackend = "couler"
-	}
-	return wfBackend
 }

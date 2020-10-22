@@ -32,11 +32,11 @@ func GenerateIRStatement(sql *parser.SQLFlowStmt, session *pb.Session) (ir.SQLFl
 		} else if sql.ShowTrain {
 			r, err = ir.GenerateShowTrainStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Explain {
-			r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
+			r, err = ir.GenerateExplainStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", false)
 		} else if sql.Predict {
-			r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
+			r, err = ir.GeneratePredictStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", false)
 		} else if sql.Evaluate {
-			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", "", false)
+			r, err = ir.GenerateEvaluateStmt(sql.SQLFlowSelectStmt, session.DbConnStr, "", false)
 		} else if sql.Optimize {
 			r, err = ir.GenerateOptimizeStmt(sql.SQLFlowSelectStmt)
 		} else if sql.Run {
