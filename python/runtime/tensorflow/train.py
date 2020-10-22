@@ -15,7 +15,7 @@ import glob
 import os
 import types
 
-from runtime.model import collect_metadata
+from runtime.model import collect_metadata, oss
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
@@ -113,13 +113,22 @@ def train(datasource,
                                     train_dataset_fn, val_dataset_fn,
                                     label_meta, epoch, verbose,
                                     validation_metrics, validation_steps,
-                                    load_pretrained_model, model_meta)
+                                    load_pretrained_model, model_meta, is_pai)
     else:
         estimator_train_and_save_legacy(
             estimator, model_params, save, FLAGS, train_dataset_fn,
             val_dataset_fn, max_steps, validation_start_delay_secs,
             validation_throttle_secs, save_checkpoints_steps,
             validation_metrics, load_pretrained_model, model_meta)
+
+    # save model to OSS
+    if num_workers == 1 or worker_id == 0:
+        oss_model_dir = FLAGS.sqlflow_oss_modeldir
+        oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
+                           feature_column_names, feature_column_names_map,
+                           feature_metas, label_meta, model_params_code_map,
+                           feature_columns_code, num_workers)
+        print("Model saved to oss: %s" % oss_model_dir)
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))

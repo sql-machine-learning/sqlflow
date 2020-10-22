@@ -16,6 +16,7 @@ import sys
 from runtime import db
 from runtime.db import buffered_db_writer
 from runtime.dbapi.paiio import PaiIOConnection
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.tensorflow import metrics
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
