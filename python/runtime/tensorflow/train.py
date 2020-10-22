@@ -122,7 +122,7 @@ def train(datasource,
             validation_metrics, load_pretrained_model, model_meta)
 
     # save model to OSS
-    if num_workers == 1 or worker_id == 0:
+    if is_pai and (num_workers == 1 or worker_id == 0):
         oss_model_dir = FLAGS.sqlflow_oss_modeldir
         oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
                            feature_column_names, feature_column_names_map,
