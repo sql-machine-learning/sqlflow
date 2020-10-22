@@ -46,7 +46,7 @@ def _drop_table_if_exists(conn, table):
 
 # NOTE: MySQL TEXT type can contain 65536 characters at most.
 # We need to limit the max string length of each row.
-MAX_LENGTH_TO_WRITE_PER_ROW = 4096
+MAX_LENGTH_TO_WRITE_PER_ROW = 32768
 
 
 class SQLFSWriter(object):
