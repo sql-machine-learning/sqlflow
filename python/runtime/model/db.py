@@ -53,6 +53,7 @@ class SQLFSWriter(object):
     def __init__(self, conn, table):
         _drop_table_if_exists(conn, table)
         _create_table(conn, table)
+
         self.context_manager = buffered_db_writer(conn, table, ["id", "block"])
         self.writer = self.context_manager.__enter__()
         self.row_idx = 0
