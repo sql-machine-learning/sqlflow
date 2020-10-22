@@ -12,7 +12,9 @@
 # limitations under the License.
 
 import base64
+import os
 
+import matplotlib
 import numpy as np
 import pandas as pd
 import six
@@ -145,7 +147,13 @@ def explain_step(datasource,
                                     estimator_string, label_name, field_descs)
 
     if pai_table:
-        assert oss_dest, "oss_explain_key must be given when submit to PAI"
+        assert oss_dest, "oss_dest must be given when submit to PAI"
+    else:
+        assert oss_dest is None
+
+    if os.environ.get('DISPLAY', '') == '':
+        print('no display found. Using non-interactive Agg backend')
+        matplotlib.use('Agg')
 
     _explain(datasource=datasource,
              estimator_string=estimator_string,

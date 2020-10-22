@@ -74,10 +74,6 @@ def call_fun(func, params):
 
 
 def entrypoint(params):
-    if os.environ.get('DISPLAY', '') == '':
-        print('no display found. Using non-interactive Agg backend')
-    matplotlib.use('Agg')
-
     if params["entry_type"] == "train_tf":
         call_fun(train_tf, params)
     elif params["entry_type"] == "train_xgb":
