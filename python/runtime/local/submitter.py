@@ -12,7 +12,6 @@
 # limitations under the License.
 
 from runtime.dbapi import table_writer
-from runtime.local.tensorflow_submitter.evaluate import evaluate as tf_evaluate
 from runtime.local.tensorflow_submitter.explain import explain as tf_explain
 from runtime.local.xgboost_submitter.evaluate import \
     evaluate as xgboost_evaluate
@@ -21,6 +20,7 @@ from runtime.local.xgboost_submitter.predict import pred as xgboost_pred
 from runtime.local.xgboost_submitter.train import train as xgboost_train
 from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
+from runtime.step.tensorflow.evaluate import evaluate_step as tf_evaluate
 from runtime.step.tensorflow.predict import predict_step as tf_pred
 from runtime.step.tensorflow.train import train_step as tf_train
 
@@ -119,12 +119,12 @@ def submit_local_pred(datasource,
 def submit_local_evaluate(datasource,
                           original_sql,
                           select,
-                          pred_label_name,
-                          model_name,
+                          label_name,
+                          model,
                           model_params,
                           result_table,
                           user=""):
-    model = Model.load_from_db(datasource, model_name)
+    model = Model.load_from_db(datasource, model)
     if model.get_type() == EstimatorType.XGBOOST:
         evaluate_func = xgboost_evaluate
     else:
@@ -134,7 +134,7 @@ def submit_local_evaluate(datasource,
                   select=select,
                   result_table=result_table,
                   model=model,
-                  pred_label_name=pred_label_name,
+                  label_name=label_name,
                   model_params=model_params)
 
 

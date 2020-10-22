@@ -19,8 +19,8 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.tensorflow_submitter.evaluate import evaluate
 from runtime.local.tensorflow_submitter.explain import explain
+from runtime.step.tensorflow.evaluate import evaluate_step as evaluate
 from runtime.step.tensorflow.predict import predict_step as pred
 from runtime.step.tensorflow.train import train_step as train
 
