@@ -20,33 +20,33 @@ set -e
 
 # For github actions build, TRAVIS_PULL_REQUEST is "" when it is not a
 # pull request build, so set it to false when it's empty.
-if [[ "$TRAVIS_PULL_REQUEST" == "" ]]; then
-    TRAVIS_PULL_REQUEST="false"
-fi
-
-echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
-echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
-
-if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-    echo "Skip deployment on pull request"
-    exit 0
-fi
-
-
-# Figure out the tag to push sqlflow:ci.
-if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
-    if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
-        RELEASE_TAG="nightly"
-    else
-        RELEASE_TAG="latest"
-    fi
-elif [[ "$TRAVIS_TAG" != "" ]]; then
-    RELEASE_TAG="$TRAVIS_TAG"
-else
-    echo "Cannot figure out Docker image tag."
-    exit 1
-fi
-
+#if [[ "$TRAVIS_PULL_REQUEST" == "" ]]; then
+#    TRAVIS_PULL_REQUEST="false"
+#fi
+#
+#echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
+#echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
+#
+#if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+#    echo "Skip deployment on pull request"
+#    exit 0
+#fi
+#
+#
+## Figure out the tag to push sqlflow:ci.
+#if [[ "$TRAVIS_BRANCH" == "develop" ]]; then
+#    if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
+#        RELEASE_TAG="nightly"
+#    else
+#        RELEASE_TAG="latest"
+#    fi
+#elif [[ "$TRAVIS_TAG" != "" ]]; then
+#    RELEASE_TAG="$TRAVIS_TAG"
+#else
+#    echo "Cannot figure out Docker image tag."
+#    exit 1
+#fi
+RELEASE_TAG=latest
 
 echo "Install download tools ..."
 case "$TRAVIS_OS_NAME" in
@@ -111,7 +111,7 @@ export PATH=$PWD:$PATH
 
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
-$F account "$QINIU_AK" "$QINIU_SK" "wu"
+$F account -w "$QINIU_AK" "$QINIU_SK" "wu"
 
 retry=0
 while [[ $retry -lt 5 ]]; do

@@ -23,22 +23,22 @@ set -e
 
 # For github actions build, TRAVIS_PULL_REQUEST is "" when it is not a
 # pull request build, so set it to false when it's empty.
-if [[ "$TRAVIS_PULL_REQUEST" == "" ]]; then
-    TRAVIS_PULL_REQUEST="false"
-fi
-
-echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
-echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
-
-if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-    echo "Skip deployment on pull request"
-    exit 0
-fi
-
-if [[ "$TRAVIS_BRANCH" != "develop" &&  "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
-    echo "Skip tutorial deployment on non-nightly build"
-    exit 0
-fi
+#if [[ "$TRAVIS_PULL_REQUEST" == "" ]]; then
+#    TRAVIS_PULL_REQUEST="false"
+#fi
+#
+#echo "TRAVIS_PULL_REQUEST $TRAVIS_PULL_REQUEST"
+#echo "TRAVIS_BRANCH $TRAVIS_BRANCH"
+#
+#if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+#    echo "Skip deployment on pull request"
+#    exit 0
+#fi
+#
+#if [[ "$TRAVIS_BRANCH" != "develop" &&  "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
+#    echo "Skip tutorial deployment on non-nightly build"
+#    exit 0
+#fi
 
 echo "Install markdown-to-ipynb tool ..."
 if [ "$GOPATH" == "" ]; then
@@ -64,7 +64,7 @@ if [[ ! -f "$F" ]]; then
     unzip $F.zip
 fi
 export PATH=$PWD:$PATH
-$F account "$QINIU_AK" "$QINIU_SK" "wu"
+$F account -w "$QINIU_AK" "$QINIU_SK" "wu"
 
 for path in build/tutorial/*.ipynb; do
     retry=0
