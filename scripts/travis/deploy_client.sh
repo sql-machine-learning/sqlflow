@@ -47,6 +47,7 @@ else
     exit 1
 fi
 
+
 echo "Install download tools ..."
 case "$TRAVIS_OS_NAME" in
     linux)
