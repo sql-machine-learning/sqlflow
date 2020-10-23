@@ -15,13 +15,14 @@ import glob
 import os
 import types
 
-from runtime.model import collect_metadata
+from runtime.model import collect_metadata, oss
+from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import get_dataset_fn
 from runtime.tensorflow.set_log_level import set_log_level
-from runtime.tensorflow.train_estimator import estimator_train_and_save
-from runtime.tensorflow.train_keras import keras_train_and_save
+from runtime.tensorflow.train_estimator import estimator_train_and_save_legacy
+from runtime.tensorflow.train_keras import keras_train_and_save_legacy
 
 # Disable TensorFlow INFO and WARNING logs
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -70,8 +71,20 @@ def train(datasource,
                                   label=None)
     estimator = import_model(estimator_string)
     is_estimator = is_tf_estimator(estimator)
+    # always use verbose == 2 when using PAI to get INFO logs
+    if is_pai and verbose < 1:
+        verbose = 2
     set_log_level(verbose, is_estimator)
     model_params.update(feature_columns)
+
+    FLAGS = define_tf_flags()
+    if is_pai:
+        set_oss_environs(FLAGS)
+        num_workers = len(FLAGS.worker_hosts.split(","))
+        worker_id = FLAGS.task_index
+    else:
+        num_workers = 1
+        worker_id = 0
 
     train_dataset_fn = get_dataset_fn(select,
                                       datasource,
@@ -82,7 +95,9 @@ def train(datasource,
                                       pai_table,
                                       batch_size,
                                       epochs=epoch,
-                                      shuffle_size=1000)
+                                      shuffle_size=1000,
+                                      num_workers=num_workers,
+                                      worker_id=worker_id)
     val_dataset_fn = None
     if validation_select:
         val_dataset_fn = get_dataset_fn(validation_select, datasource,
@@ -94,18 +109,26 @@ def train(datasource,
         if isinstance(estimator, types.FunctionType):
             # functional model need field_metas parameter
             model_params["field_metas"] = feature_metas
-        keras_train_and_save(estimator, model_params, save, is_pai,
-                             train_dataset_fn, val_dataset_fn, label_meta,
-                             epoch, verbose, validation_metrics,
-                             validation_steps, load_pretrained_model,
-                             model_meta)
+        keras_train_and_save_legacy(estimator, model_params, save, FLAGS,
+                                    train_dataset_fn, val_dataset_fn,
+                                    label_meta, epoch, verbose,
+                                    validation_metrics, validation_steps,
+                                    load_pretrained_model, model_meta, is_pai)
     else:
-        estimator_train_and_save(estimator, model_params, save,
-                                 train_dataset_fn, val_dataset_fn, max_steps,
-                                 validation_start_delay_secs,
-                                 validation_throttle_secs,
-                                 save_checkpoints_steps, validation_metrics,
-                                 load_pretrained_model, model_meta)
+        estimator_train_and_save_legacy(
+            estimator, model_params, save, FLAGS, train_dataset_fn,
+            val_dataset_fn, max_steps, validation_start_delay_secs,
+            validation_throttle_secs, save_checkpoints_steps,
+            validation_metrics, load_pretrained_model, model_meta)
+
+    # save model to OSS
+    if is_pai and (num_workers == 1 or worker_id == 0):
+        oss_model_dir = FLAGS.sqlflow_oss_modeldir
+        oss.save_oss_model(oss_model_dir, estimator_string, is_estimator,
+                           feature_column_names, feature_column_names_map,
+                           feature_metas, label_meta, model_params_code_map,
+                           feature_columns_code, num_workers)
+        print("Model saved to oss: %s" % oss_model_dir)
 
     # remove cache files
     any(map(os.remove, glob.glob('cache_train.*')))
