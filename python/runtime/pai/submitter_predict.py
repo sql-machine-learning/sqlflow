@@ -130,6 +130,8 @@ def submit_pai_predict(datasource,
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         params["pai_table"] = data_table
+        params["oss_model_path"] = oss_model_path
+        params["model"] = ""
 
         if try_pai_local_run(params, oss_model_path):
             return
