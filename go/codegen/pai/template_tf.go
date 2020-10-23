@@ -111,7 +111,7 @@ const tfPredictTmplText = tfImportsText + `
 import os
 import types
 import traceback
-from runtime.pai.tensorflow_submitter import predict
+from runtime.tensorflow import predict
 
 try:
     import sqlflow_models
@@ -148,7 +148,7 @@ if is_estimator:
 # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
 oss.load_dir("{{.OSSModelDir}}/model_save")
 
-predict._predict(datasource="{{.DataSource}}",
+predict.pred(datasource="{{.DataSource}}",
              estimator_string=estimator,
              select="""{{.Select}}""",
              result_table="{{.ResultTable}}",
@@ -174,7 +174,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.pai.tensorflow_submitter import explain
+from runtime.tensorflow import explain
 
 try:
     tf.enable_eager_execution()
@@ -207,7 +207,7 @@ if is_estimator:
 oss.load_dir("{{.OSSModelDir}}/model_save")
 
 
-explain._explain(datasource="{{.DataSource}}",
+explain.explain(datasource="{{.DataSource}}",
                 estimator_string=estimator,
                 select="""{{.Select}}""",
                 feature_columns=feature_columns,
@@ -235,7 +235,7 @@ if os.environ.get('DISPLAY', '') == '':
 import json
 import types
 import sys
-from runtime.pai.tensorflow_submitter import evaluate
+from runtime.tensorflow import evaluate
 
 try:
     tf.enable_eager_execution()
@@ -267,7 +267,7 @@ if is_estimator:
 # NOTE(typhoonzero): directory "model_save" is hardcoded in codegen/tensorflow/codegen.go
 oss.load_dir("{{.OSSModelDir}}/model_save")
 
-evaluate._evaluate(datasource="{{.DataSource}}",
+evaluate.evaluate(datasource="{{.DataSource}}",
                   estimator_string=estimator,
                   select="""{{.Select}}""",
                   result_table="{{.ResultTable}}",
