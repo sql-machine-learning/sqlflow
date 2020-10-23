@@ -25,6 +25,7 @@ pip install --quiet \
     numpy==1.16.2 \
     tensorflow-metadata==0.22.2 \
     tensorflow==2.0.1 \
+    sklearn-pandas==1.8.0 \
     impyla==0.16.0 \
     pyodps==0.8.3 \
     dill==0.3.0 \

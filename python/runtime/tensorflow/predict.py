@@ -17,6 +17,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.field_desc import DataType
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
@@ -250,14 +251,22 @@ def pred(datasource,
          feature_metas={},
          model_params={},
          save="",
-         batch_size=1):
+         batch_size=1,
+         pai_table=""):
     estimator = import_model(estimator_string)
     model_params.update(feature_columns)
     is_estimator = is_tf_estimator(estimator)
 
-    conn = db.connect_with_data_source(datasource)
-    predict_generator = db.db_generator(conn, select)
-    selected_cols = db.selected_cols(conn, select)
+    if pai_table != "":
+        conn = PaiIOConnection.from_table(pai_table)
+        selected_cols = db.selected_cols(conn, None)
+        predict_generator = db.db_generator(conn, None)
+    else:
+        conn = db.connect_with_data_source(datasource)
+        selected_cols = db.selected_cols(conn, select)
+        predict_generator = db.db_generator(conn, select)
+
+    pop_optimizer_and_loss(model_params)
 
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):
