@@ -113,12 +113,13 @@ jobs:
         ALIYUN_DOCKER_USERNAME: "sqlflow@prod.trusteeship.aliyunid.com"
         ALIYUN_DOCKER_PASSWORD: ${{ secrets.ALIYUN_DOCKER_PASSWORD }}
       run: |
+        set -e
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         export TRAVIS_BUILD_DIR=${{ github.workspace }}
         export FIND_FASTED_MIRROR=false
         export TRAVIS_BUILD_STAGE_NAME=Deploy
-        bash scripts/travis/deploy_docker.sh
+        bash scripts/travis/deploy_docker.sh || docker run --rm  -v "$TRAVIS_BUILD_DIR":/work sqlflow:ci rm -rf /work/build /work/java /work/python
   linux-client:
     runs-on: ubuntu-latest
     needs: [test-mysql, test-hive-java, test-workflow]
