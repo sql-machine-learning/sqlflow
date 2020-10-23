@@ -62,9 +62,9 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
     estimator_cls = import_model(estimator_string)
-    FLAGS = tf.app.flags.FLAGS
     is_pai = True if pai_table != "" else False
     if is_pai:
+        FLAGS = tf.app.flags.FLAGS
         model_params["model_dir"] = FLAGS.checkpointDir
         select = ""
     else:
