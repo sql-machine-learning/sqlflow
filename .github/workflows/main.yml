@@ -113,7 +113,7 @@ jobs:
         ALIYUN_DOCKER_USERNAME: "sqlflow@prod.trusteeship.aliyunid.com"
         ALIYUN_DOCKER_PASSWORD: ${{ secrets.ALIYUN_DOCKER_PASSWORD }}
       run: |
-      set -e
+        set -e
         export TRAVIS_TAG=${{ steps.tagName.outputs.tag }}
         export TRAVIS_PULL_REQUEST=${{ github.event.number }}
         export TRAVIS_BUILD_DIR=${{ github.workspace }}
