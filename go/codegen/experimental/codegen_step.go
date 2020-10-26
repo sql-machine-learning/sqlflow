@@ -212,6 +212,22 @@ func getModelMetadataFromModelZoo(addr, table, tag string) (*Metadata, error) {
 
 // GetModelMetadataFromDB gets model Metadata from DBMS
 func GetModelMetadataFromDB(dbConnStr, table string) (*Metadata, error) {
+	const suffix = "_sqlflow_pai_model"
+
+	meta, err1 := getModelMetadataFromDBImpl(dbConnStr, table)
+	if err1 == nil {
+		return meta, nil
+	}
+
+	meta, err2 := getModelMetadataFromDBImpl(dbConnStr, table+suffix)
+	if err2 == nil {
+		return meta, nil
+	}
+	return nil, fmt.Errorf("cannot find model metadata from %[1]s or %[1]s%[2]s: %[3]v; %[4]s",
+		table, suffix, err1, err2)
+}
+
+func getModelMetadataFromDBImpl(dbConnStr, table string) (*Metadata, error) {
 	db, err := database.OpenAndConnectDB(dbConnStr)
 	if err != nil {
 		return nil, err
