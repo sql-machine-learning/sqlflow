@@ -56,9 +56,9 @@ def _create_result_table(datasource, select, variables, result_value_name,
 def run_optimize(datasource, select, variables, result_value_name,
                  variable_type, objective, direction, constraints, solver,
                  result_table, submitter, user_id):
-    _create_result_table(datasource, select, variables, result_value_name,
-                         variable_type, result_table)
     if submitter == "local":
+        _create_result_table(datasource, select, variables, result_value_name,
+                             variable_type, result_table)
         return run_optimize_locally(datasource=datasource,
                                     select=select,
                                     variables=variables,
@@ -74,6 +74,7 @@ def run_optimize(datasource, select, variables, result_value_name,
             with db.connect_with_data_source(datasource) as conn:
                 schema = conn.get_table_schema(train_table)
                 columns = [s[0] for s in schema]
+                conn.execute("DROP TABLE IF EXISTS %s;" % result_table)
 
             return run_optimize_on_optflow(train_table=train_table,
                                            columns=columns,
