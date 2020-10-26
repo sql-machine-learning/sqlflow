@@ -196,7 +196,6 @@ def _explain(datasource,
     estimator_cls = import_model(estimator_string)
     if is_tf_estimator(estimator_cls):
         model_params['model_dir'] = save
-
     model_params.update(feature_columns)
     pop_optimizer_and_loss(model_params)
 
