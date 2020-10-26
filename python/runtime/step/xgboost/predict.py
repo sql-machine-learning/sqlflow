@@ -30,15 +30,13 @@ from runtime.xgboost.feature_column import ComposedColumnTransformer
 FLAGS = define_tf_flags()
 
 
-def predict(
-    datasource,
-    select,
-    result_table,
-    label_column,
-    model,
-    pai_table="",
-    oss_model_path="",
-):
+def predict(datasource,
+            select,
+            result_table,
+            label_column,
+            model,
+            pai_table="",
+            oss_model_path=""):
     """PAI XGBoost prediction wrapper
     This function do some preparation for the local prediction, say,
     download the model from OSS, extract metadata and so on.

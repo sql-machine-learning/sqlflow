@@ -13,16 +13,15 @@
 
 from runtime.dbapi import table_writer
 from runtime.local.tensorflow_submitter.explain import explain as tf_explain
-from runtime.local.xgboost_submitter.evaluate import \
-    evaluate as xgboost_evaluate
-from runtime.local.xgboost_submitter.explain import explain as xgboost_explain
-from runtime.local.xgboost_submitter.predict import pred as xgboost_pred
-from runtime.local.xgboost_submitter.train import train as xgboost_train
 from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
 from runtime.step.tensorflow.evaluate import evaluate_step as tf_evaluate
 from runtime.step.tensorflow.predict import predict_step as tf_pred
 from runtime.step.tensorflow.train import train_step as tf_train
+from runtime.step.xgboost.evaluate import evaluate as xgboost_evaluate
+from runtime.step.xgboost.explain import explain as xgboost_explain
+from runtime.step.xgboost.predict import pred as xgboost_pred
+from runtime.step.xgboost.train import train as xgboost_train
 
 
 def submit_local_train(datasource,

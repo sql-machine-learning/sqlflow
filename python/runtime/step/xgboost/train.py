@@ -69,8 +69,9 @@ def train(original_sql,
                                                  EstimatorType.XGBOOST)
     field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
-    label_meta = label_column.get_field_desc()[0].to_dict()
+    feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
+                          for fd in field_descs])
+    label_meta = label_column.get_field_desc()[0].to_dict(dtype_to_string=True)
 
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
@@ -81,6 +82,7 @@ def train(original_sql,
     disk_cache = train_params.pop("disk_cache", False)
 
     if is_dist_train:
+        # NOTE(typhoonzero): dist_train returns None
         dist_train(flags=FLAGS,
                    datasource=datasource,
                    select=select,
@@ -103,28 +105,24 @@ def train(original_sql,
                    model_repo_image=model_image,
                    original_sql=original_sql)
     else:
-        local_train(datasource=datasource,
-                    select=select,
-                    model_params=model_params,
-                    train_params=train_params,
-                    feature_metas=feature_metas,
-                    feature_column_names=feature_column_names,
-                    label_meta=label_meta,
-                    validation_select=validation_select,
-                    disk_cache=disk_cache,
-                    batch_size=batch_size,
-                    epoch=epoch,
-                    load_pretrained_model=load_pretrained_model,
-                    is_pai=True,
-                    pai_train_table=pai_table,
-                    pai_validate_table=pai_val_table,
-                    rank=0,
-                    nworkers=1,
-                    oss_model_dir=oss_model_dir,
-                    transform_fn=transform_fn,
-                    feature_column_code=fc_map_ir,
-                    model_repo_image=model_image,
-                    original_sql=original_sql)
+        return local_train(original_sql,
+                           model_image,
+                           estimator_string,
+                           datasource,
+                           select,
+                           validation_select,
+                           model_params,
+                           train_params,
+                           feature_metas,
+                           feature_column_names,
+                           label_meta,
+                           fc_map_ir,
+                           fc_label_ir,
+                           transform_fn,
+                           save,
+                           load=load,
+                           is_pai=is_pai,
+                           oss_model_dir=oss_model_dir)
 
 
 def local_train(original_sql,
@@ -142,7 +140,9 @@ def local_train(original_sql,
                 fc_label_ir,
                 transform_fn,
                 save,
-                load=""):
+                load="",
+                is_pai=False,
+                oss_model_dir=""):
     disk_cache = train_params.pop("disk_cache", False)
     batch_size = train_params.pop("batch_size", None)
     epoch = train_params.pop("epoch", 1)
@@ -211,5 +211,27 @@ def local_train(original_sql,
     save_model_to_local_file(bst, model_params, file_name)
     model = Model(EstimatorType.XGBOOST, meta)
     model.save_to_db(datasource, save)
+    if is_pai and len(oss_model_dir) > 0:
+        save_model(oss_model_dir, "my_model", model_params, train_params,
+                   feature_metas, feature_column_names, label_meta, fc_map_ir)
+
+
+def save_model(model_dir, filename, model_params, train_params, feature_metas,
+               feature_column_names, label_meta, fc_map_ir):
+    pai_model_store.save_file(model_dir, filename)
+    pai_model_store.save_file(model_dir, "{}.pmml".format(filename))
+    pai_model_store.save_file(model_dir, "model_meta.json")
+    # (TODO:lhw) remove this function call, use the new metadata in load_metas
+    pai_model_store.save_metas(
+        model_dir,
+        1,
+        "xgboost_model_desc",
+        "",  # estimator = ""
+        model_params,
+        train_params,
+        feature_metas,
+        feature_column_names,
+        label_meta,
+        fc_map_ir)
 
     return eval_result
