@@ -53,7 +53,6 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, label_column,
     else:
         label_name = None
 
-    #connect_with_data_source
     with connect_with_data_source(datasource) as conn:
         schema = get_table_schema(conn, train_table)
         feature_column_names = [s[0] for s in schema if s[0] != label_name]
@@ -138,7 +137,7 @@ def submit_pai_train(datasource,
                                                            val_table):
         params["pai_table"], params["pai_val_table"] = train_table, val_table
 
-        with db.connect_with_data_source(datasource) as conn:
+        with connect_with_data_source(datasource) as conn:
             actual_select = "SELECT * FROM %s;" % train_table
             feature_column_map, label_column = infer_feature_columns(
                 conn, actual_select, feature_column_map, label_column, n=1000)

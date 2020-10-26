@@ -109,8 +109,8 @@ def train(original_sql,
                            train_params,
                            feature_metas,
                            feature_column_names,
-                           label_meta,
                            feature_column_map,
+                           label_column,
                            transform_fn,
                            save,
                            load=load,
@@ -142,7 +142,8 @@ def local_train(original_sql,
 
     epoch = train_params.pop("epoch", 1)
     num_workers = train_params.pop("num_workers", 1)
-    label_meta_dict = label_column.to_dict(dtype_to_string=True)
+    label_meta_dict = label_column.get_field_desc()[0].to_dict(
+        dtype_to_string=True)
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,
