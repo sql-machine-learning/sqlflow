@@ -85,7 +85,7 @@ if [[ ! -d models ]]; then
 fi
 cd models
 git fetch origin # The residual local repo might not be on a branch.
-git checkout 36a2f217f3311d861cf736894ecb5147b6e44c74
+git checkout f742231d0a7ef23f334ea3fd50637132333899fb
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."

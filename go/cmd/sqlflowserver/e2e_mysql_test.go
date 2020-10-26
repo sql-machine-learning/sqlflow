@@ -181,6 +181,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", caseTrainRegression)
 	t.Run("CaseScoreCard", caseScoreCard)
+	t.Run("CaseOneClassSVMModel", caseOneClassSVMModel)
 
 	// Cases using feature derivation
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)
