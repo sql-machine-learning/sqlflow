@@ -84,7 +84,7 @@ def step_entry_{{.StepIndex}}():
         explain(datasource='''{{.DataSource}}''', 
                 original_sql='''{{.OriginalSQL}}''',
                 select='''{{.Select}}''',
-                model_name='''{{.Load}}''',
+                model='''{{.Load}}''',
                 model_params=model_params,
                 explainer='''{{.Explainer}}''',
                 result_table='''{{.ResultTable}}''',
