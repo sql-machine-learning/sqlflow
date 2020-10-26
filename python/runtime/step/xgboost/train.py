@@ -23,8 +23,8 @@ import xgboost as xgb
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import (get_ordered_field_descs,
                                         infer_feature_columns)
-from runtime.local.xgboost_submitter.save import save_model_to_local_file
 from runtime.model import EstimatorType, Model, collect_metadata
+from runtime.step.xgboost.save import save_model_to_local_file
 from runtime.xgboost.dataset import xgb_dataset
 
 

@@ -18,10 +18,10 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.xgboost_submitter.evaluate import evaluate
-from runtime.local.xgboost_submitter.explain import explain
-from runtime.local.xgboost_submitter.predict import pred
-from runtime.local.xgboost_submitter.train import train
+from runtime.step.xgboost.evaluate import evaluate
+from runtime.step.xgboost.explain import explain
+from runtime.step.xgboost.predict import pred
+from runtime.step.xgboost.train import train
 
 
 class TestXGBoostTrain(unittest.TestCase):
