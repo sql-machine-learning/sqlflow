@@ -18,8 +18,7 @@ import runtime.temp_file as temp_file
 import xgboost as xgb
 from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
-from runtime.feature.derivation import (get_ordered_field_descs,
-                                        infer_feature_columns)
+from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, Model, collect_metadata, oss
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.step.xgboost.save import save_model_to_local_file
@@ -60,16 +59,9 @@ def train(original_sql,
         except:
             pass
 
-    conn = db.connect_with_data_source(datasource)
-    fc_map_ir, fc_label_ir = infer_feature_columns(conn,
-                                                   select,
-                                                   feature_column_map,
-                                                   label_column,
-                                                   n=1000)
-    conn.close()
-    feature_columns = compile_ir_feature_columns(fc_map_ir,
+    feature_columns = compile_ir_feature_columns(feature_column_map,
                                                  EstimatorType.XGBOOST)
-    field_descs = get_ordered_field_descs(fc_map_ir)
+    field_descs = get_ordered_field_descs(feature_column_map)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
                           for fd in field_descs])
@@ -103,7 +95,7 @@ def train(original_sql,
                    pai_validate_table=pai_val_table,
                    oss_model_dir=oss_model_dir,
                    transform_fn=transform_fn,
-                   feature_column_code=fc_map_ir,
+                   feature_column_code=feature_column_map,
                    model_repo_image=model_image,
                    original_sql=original_sql)
     else:
@@ -118,8 +110,7 @@ def train(original_sql,
                            feature_metas,
                            feature_column_names,
                            label_meta,
-                           fc_map_ir,
-                           fc_label_ir,
+                           feature_column_map,
                            transform_fn,
                            save,
                            load=load,
@@ -137,9 +128,8 @@ def local_train(original_sql,
                 train_params,
                 feature_metas,
                 feature_column_names,
-                label_meta,
-                fc_map_ir,
-                fc_label_ir,
+                feature_column_map,
+                label_column,
                 transform_fn,
                 save,
                 load="",
@@ -147,8 +137,12 @@ def local_train(original_sql,
                 oss_model_dir=""):
     disk_cache = train_params.pop("disk_cache", False)
     batch_size = train_params.pop("batch_size", None)
+    if batch_size is not None and batch_size < 0:
+        batch_size = None
+
     epoch = train_params.pop("epoch", 1)
     num_workers = train_params.pop("num_workers", 1)
+    label_meta_dict = label_column.to_dict(dtype_to_string=True)
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,
@@ -156,7 +150,7 @@ def local_train(original_sql,
                            slct,
                            feature_metas,
                            feature_column_names,
-                           label_meta,
+                           label_meta_dict,
                            cache=disk_cache,
                            batch_size=batch_size,
                            epoch=epoch,
@@ -205,8 +199,8 @@ def local_train(original_sql,
                             model_repo_image=model_image,
                             class_name=estimator_string,
                             attributes=model_params,
-                            features=fc_map_ir,
-                            label=fc_label_ir,
+                            features=feature_column_map,
+                            label=label_column,
                             evaluation=eval_result,
                             num_workers=num_workers)
 
@@ -216,7 +210,8 @@ def local_train(original_sql,
     if is_pai and len(oss_model_dir) > 0:
         # TODO(typhoonzero): remove this since we are saving metas into db now.
         save_model(oss_model_dir, "my_model", model_params, train_params,
-                   feature_metas, feature_column_names, label_meta, fc_map_ir)
+                   feature_metas, feature_column_names, label_meta_dict,
+                   feature_column_map)
 
     return eval_result
 

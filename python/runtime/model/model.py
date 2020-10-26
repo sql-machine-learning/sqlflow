@@ -245,6 +245,14 @@ class Model(object):
 
     @staticmethod
     def load_metadata_from_db(datasource, table):
+        try:
+            return Model._load_metadata_from_db_impl(datasource, table)
+        except:  # noqa: E722
+            return Model._load_metadata_from_db_impl(
+                datasource, table + "_sqlflow_pai_model")
+
+    @staticmethod
+    def _load_metadata_from_db_impl(datasource, table):
         model_zoo_addr, table, tag = _decompose_model_name(table)
         if model_zoo_addr:
             gen, metadata = load_model_from_model_zoo(model_zoo_addr, table,
