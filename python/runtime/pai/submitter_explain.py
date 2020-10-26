@@ -11,18 +11,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import os
-import tempfile
 
+import oss2
+import runtime.temp_file as temp_file
 from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
+from runtime.model.model import Model
 from runtime.pai import cluster_conf, pai_model, table_ops
-from runtime.pai.create_result_table import create_explain_result_table
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
+from runtime.pai_local.try_run import try_pai_local_run
+from runtime.step.tensorflow.explain import print_image_as_base64_html
 
 
 def get_explain_random_forests_cmd(datasource, model_name, data_table,
@@ -74,7 +78,7 @@ def setup_explain_entry(params, model_type):
 
 def get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
                         data_table, result_table, model_type, model_params,
-                        job_file, params_file, label_column, cwd):
+                        job_file, params_file, label_name):
     """Get command to submit explain task to PAI
 
     Args:
@@ -97,21 +101,35 @@ def get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
     if model_type == EstimatorType.PAIML:
         cmd = get_explain_random_forests_cmd(datasource, model_name,
                                              data_table, result_table,
-                                             label_column)
+                                             label_name)
     else:
         conf = cluster_conf.get_cluster_config(model_params)
-        cmd = get_pai_tf_cmd(conf,
-                             "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                             "file://" + os.path.join(cwd, PARAMS_FILE),
-                             ENTRY_FILE, model_name, oss_model_path,
-                             data_table, "", result_table, project)
+        cmd = get_pai_tf_cmd(conf, job_file, params_file, ENTRY_FILE,
+                             model_name, oss_model_path, data_table, "",
+                             result_table, project)
     return cmd
+
+
+def add_env_to_params(params, env_name, param_name):
+    env = os.getenv(env_name)
+    assert env, "%s cannot be empty" % env
+    params[param_name] = env
+
+
+def print_oss_image(oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name):
+    auth = oss2.Auth(oss_ak, oss_sk)
+    bucket = oss2.Bucket(auth, oss_endpoint, oss_bucket_name)
+
+    with temp_file.TemporaryDirectory(as_cwd=True):
+        local_file_name = "summary.png"
+        bucket.get_object_to_file(oss_dest, local_file_name)
+        print_image_as_base64_html(local_file_name)
 
 
 def submit_pai_explain(datasource,
                        original_sql,
                        select,
-                       model_name,
+                       model,
                        model_params,
                        result_table,
                        explainer="TreeExplainer",
@@ -127,7 +145,7 @@ def submit_pai_explain(datasource,
             Original "TO PREDICT" statement.
         select: string
             SQL statement to get prediction data set.
-        model_name: string
+        model: string
             Model to load and do prediction.
         model_params: dict
             Params for training, crossponding to WITH clause.
@@ -139,42 +157,54 @@ def submit_pai_explain(datasource,
     """
     params = dict(locals())
 
-    cwd = tempfile.mkdtemp(prefix="sqlflow", dir="/tmp")
-    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
-    # is like: "SELECT fields,... FROM table"
-    data_table = table_ops.create_tmp_table_from_select(select, datasource)
-    params["data_table"] = data_table
-    params["explainer"] = explainer
-
     # format resultTable name to "db.table" to let the codegen form a
     # submitting argument of format "odps://project/tables/table_name"
-    project = table_ops.get_project(datasource)
-    if result_table.count(".") == 0:
-        result_table = "%s.%s" % (project, result_table)
-    params["result_table"] = result_table
+    if result_table:
+        project = table_ops.get_project(datasource)
+        if result_table.count(".") == 0:
+            result_table = "%s.%s" % (project, result_table)
+        params["result_table"] = result_table
 
-    oss_model_path = pai_model.get_oss_model_save_path(datasource,
-                                                       model_name,
-                                                       user=user)
-    params["oss_model_path"] = oss_model_path
-    model_type, estimator = pai_model.get_saved_model_type_and_estimator(
-        datasource, model_name)
-    params["load"] = model_name
+    # used to save the explain image
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    params["oss_dest"] = "explain_images/%s/%s" % (user, timestamp)
+    add_env_to_params(params, "SQLFLOW_OSS_AK", "oss_ak")
+    add_env_to_params(params, "SQLFLOW_OSS_SK", "oss_sk")
+    add_env_to_params(params, "SQLFLOW_OSS_ALISA_ENDPOINT", "oss_endpoint")
+    add_env_to_params(params, "SQLFLOW_OSS_ALISA_BUCKET", "oss_bucket_name")
 
-    label_column = model_params.get("label_col")
-    params["label_column"] = label_column
-    create_explain_result_table(datasource, data_table, result_table,
-                                model_type, estimator, label_column)
+    meta = Model.load_metadata_from_db(datasource, model)
+    model_type = meta.get_type()
+    estimator = meta.get_meta("class_name")
+    label_name = model_params.get("label_col")
+    if label_name is None:
+        label_column = meta.get_meta("label")
+        if label_column is not None:
+            label_name = label_column.get_field_desc()[0].name
 
     setup_explain_entry(params, model_type)
-    prepare_archive(cwd, estimator, oss_model_path, params)
 
-    cmd = get_pai_explain_cmd(datasource, project, oss_model_path, model_name,
-                              data_table, result_table, model_type,
-                              model_params,
-                              "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
-                              "file://" + os.path.join(cwd, PARAMS_FILE),
-                              label_column, cwd)
+    oss_model_path = pai_model.get_oss_model_save_path(datasource,
+                                                       model,
+                                                       user=user)
 
-    submit_pai_task(cmd, datasource)
-    table_ops.drop_tables([data_table], datasource)
+    # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
+    # is like: "SELECT fields,... FROM table"
+    with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
+        params["pai_table"] = data_table
+
+        if not try_pai_local_run(params, oss_model_path):
+            with temp_file.TemporaryDirectory(prefix="sqlflow",
+                                              dir="/tmp") as cwd:
+                prepare_archive(cwd, estimator, oss_model_path, params)
+
+                cmd = get_pai_explain_cmd(
+                    datasource, project, oss_model_path, model, data_table,
+                    result_table, model_type, model_params,
+                    "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
+                    "file://" + os.path.join(cwd, PARAMS_FILE), label_name)
+
+            submit_pai_task(cmd, datasource)
+
+    print_oss_image(params["oss_dest"], params["oss_ak"], params["oss_sk"],
+                    params["oss_endpoint"], params["oss_bucket_name"])
