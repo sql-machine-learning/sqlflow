@@ -174,4 +174,4 @@ def submit_pai_train(datasource,
             }
             model = Model(EstimatorType.PAIML, meta)
             with temp_file.TemporaryDirectory(as_cwd=True) as cwd:
-                model.save_to_db(datasource, save)
+                model.save_to_db(datasource, save + "_sqlflow_pai_model")
