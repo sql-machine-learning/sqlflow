@@ -13,13 +13,13 @@
 
 import unittest
 
-from runtime.local.tensorflow_submitter.local_test_base import \
+from runtime.step.tensorflow.local_test_base import \
     TestTensorFlowLocalSubmitter
 
 
-class TestKeras(TestTensorFlowLocalSubmitter):
+class TestEstimator(TestTensorFlowLocalSubmitter):
     def test_main(self):
-        self.check_main('sqlflow_models.DNNClassifier')
+        self.check_main('DNNClassifier')
 
 
 if __name__ == '__main__':

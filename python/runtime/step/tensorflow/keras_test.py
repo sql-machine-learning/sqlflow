@@ -10,3 +10,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import unittest
+
+from runtime.step.tensorflow.local_test_base import \
+    TestTensorFlowLocalSubmitter
+
+
+class TestKeras(TestTensorFlowLocalSubmitter):
+    def test_main(self):
+        self.check_main('sqlflow_models.DNNClassifier')
+
+
+if __name__ == '__main__':
+    unittest.main()
