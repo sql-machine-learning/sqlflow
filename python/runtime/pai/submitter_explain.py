@@ -159,8 +159,8 @@ def submit_pai_explain(datasource,
 
     # format resultTable name to "db.table" to let the codegen form a
     # submitting argument of format "odps://project/tables/table_name"
+    project = table_ops.get_project(datasource)
     if result_table:
-        project = table_ops.get_project(datasource)
         if result_table.count(".") == 0:
             result_table = "%s.%s" % (project, result_table)
         params["result_table"] = result_table
