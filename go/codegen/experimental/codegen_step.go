@@ -19,6 +19,8 @@ import (
 	"google.golang.org/grpc"
 	"net/url"
 	"os"
+	"sqlflow.org/sqlflow/go/codegen/optimize"
+	"sqlflow.org/sqlflow/go/codegen/pai"
 	"strconv"
 	"strings"
 
@@ -278,14 +280,12 @@ func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
 	case *ir.TrainStmt:
 		if s.GetModelKind() == ir.XGBoost {
 			return InitializeAttributes(s)
+		} else if s.GetModelKind() == ir.KMeans {
+			return pai.InitializeKMeansAttributes(s)
 		}
-		// TODO(typhoonzero): add below lines
-		// 	else if s.GetModelKind() == ir.KMeans {
-		// 		return pai.InitializeKMeansAttributes(s)
-		// 	}
 		return tensorflow.InitializeAttributes(s)
-		// case *ir.OptimizeStmt:
-		// 	return optimize.InitializeAttributes(s)
+	case *ir.OptimizeStmt:
+		return optimize.InitializeAttributes(s)
 	}
 	return nil
 }
