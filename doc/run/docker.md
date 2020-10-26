@@ -23,7 +23,7 @@ You can use these Docker images for either local trying out or production deploy
 
    ```
    docker run --name=sqlflow-mysql -d -p 8888:8888 sqlflow/sqlflow:mysql
-   docker run --net=container:sqlflow-mysql -d sqlflow/sqlflow:lateset sqlflowserver
+   docker run --net=container:sqlflow-mysql -d sqlflow/sqlflow:latest sqlflowserver
    docker run --net=container:sqlflow-mysql -d sqlflow/sqlflow:jupyter
    ```
 1. You can also use a specified version (e.g. `v0.4.0`) of the SQLFlow server by changing the second line above to `docker run --net=container:sqlflow-mysql -d sqlflow/sqlflow:v0.4.0 sqlflowserver`.
