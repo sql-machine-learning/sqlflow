@@ -20,7 +20,7 @@ from runtime.step.tensorflow.predict import predict_step as tf_pred
 from runtime.step.tensorflow.train import train_step as tf_train
 from runtime.step.xgboost.evaluate import evaluate as xgboost_evaluate
 from runtime.step.xgboost.explain import explain as xgboost_explain
-from runtime.step.xgboost.predict import pred as xgboost_pred
+from runtime.step.xgboost.predict import predict as xgboost_pred
 from runtime.step.xgboost.train import train as xgboost_train
 
 

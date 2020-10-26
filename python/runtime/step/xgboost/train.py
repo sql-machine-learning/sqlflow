@@ -53,10 +53,12 @@ def train(original_sql,
         num_workers = len(FLAGS.worker_hosts.split(","))
         is_dist_train = num_workers > 1
         oss_model_dir = FLAGS.sqlflow_oss_modeldir
-
-        oss_path_to_load = train_params.pop("oss_path_to_load")
-        if load:
-            oss.load_file(oss_path_to_load, "my_model")
+        try:
+            oss_path_to_load = train_params.pop("oss_path_to_load")
+            if load:
+                oss.load_file(oss_path_to_load, "my_model")
+        except:
+            pass
 
     conn = db.connect_with_data_source(datasource)
     fc_map_ir, fc_label_ir = infer_feature_columns(conn,
@@ -212,6 +214,7 @@ def local_train(original_sql,
     model = Model(EstimatorType.XGBOOST, meta)
     model.save_to_db(datasource, save)
     if is_pai and len(oss_model_dir) > 0:
+        # TODO(typhoonzero): remove this since we are saving metas into db now.
         save_model(oss_model_dir, "my_model", model_params, train_params,
                    feature_metas, feature_column_names, label_meta, fc_map_ir)
 
@@ -222,8 +225,6 @@ def save_model(model_dir, filename, model_params, train_params, feature_metas,
                feature_column_names, label_meta, fc_map_ir):
     oss.save_file(model_dir, filename)
     oss.save_file(model_dir, "{}.pmml".format(filename))
-    oss.save_file(model_dir, "model_meta.json")
-    # (TODO:lhw) remove this function call, use the new metadata in load_metas
     oss.save_metas(
         model_dir,
         1,

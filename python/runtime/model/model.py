@@ -16,7 +16,7 @@ import json
 import os
 
 import runtime.temp_file as temp_file
-from runtime.dbapi import connect as connect_with_datasource
+from runtime.dbapi import connect as connect_with_data_source
 from runtime.feature.column import (JSONDecoderWithFeatureColumn,
                                     JSONEncoderWithFeatureColumn)
 from runtime.model import oss
@@ -173,7 +173,7 @@ class Model(object):
         if local_dir is None:
             local_dir = os.getcwd()
 
-        conn = connect_with_datasource(datasource)
+        conn = connect_with_data_source(datasource)
 
         if oss_model_dir:
             cur_dir = os.getcwd()

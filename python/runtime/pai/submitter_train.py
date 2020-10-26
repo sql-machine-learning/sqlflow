@@ -13,8 +13,8 @@
 
 import os
 
-import runtime.db as db
 import runtime.temp_file as temp_file
+from runtime.db import connect_with_data_source, get_table_schema
 from runtime.model.model import EstimatorType, Model
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
@@ -52,8 +52,9 @@ def get_pai_train_cmd(datasource, estimator_string, model_name, label_column,
     else:
         label_name = None
 
-    with db.connect_with_datasource(datasource) as conn:
-        schema = db.get_table_schema(conn, train_table)
+    #connect_with_data_source
+    with connect_with_data_source(datasource) as conn:
+        schema = get_table_schema(conn, train_table)
         feature_column_names = [s[0] for s in schema if s[0] != label_name]
 
     project = table_ops.get_project(datasource)
