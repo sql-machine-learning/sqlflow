@@ -225,7 +225,7 @@ func GetModelMetadataFromDB(dbConnStr, table string) (*Metadata, error) {
 	if err2 == nil {
 		return meta, nil
 	}
-	return nil, fmt.Errorf("cannot find model metadata from %[1]s or %[1]s%[2]s: %[3]v; %[4]s",
+	return nil, fmt.Errorf("cannot find model metadata from %[1]s or %[1]s%[2]s: %[3]s; %[4]s",
 		table, suffix, err1, err2)
 }
 
