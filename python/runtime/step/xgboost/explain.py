@@ -67,8 +67,9 @@ def explain(datasource,
         oss.load_file(oss_model_path, "my_model")
 
         (estimator, model_params, train_params, feature_field_meta,
-         feature_column_names, label_meta,
+         feature_column_names, label_desc,
          fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
+        label_meta = label_desc.to_dict(dtype_to_string=True)
     else:
         if isinstance(model, six.string_types):
             model = Model.load_from_db(datasource, model)

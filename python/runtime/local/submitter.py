@@ -12,7 +12,6 @@
 # limitations under the License.
 
 from runtime.dbapi import table_writer
-from runtime.local.tensorflow_submitter.explain import explain as tf_explain
 from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
 from runtime.step.tensorflow.evaluate import evaluate_step as tf_evaluate
