@@ -195,7 +195,11 @@ def _explain(datasource,
              oss_bucket_name=None):
     estimator_cls = import_model(estimator_string)
     if is_tf_estimator(estimator_cls):
-        model_params['model_dir'] = save
+        with open("exported_path", "r") as fid:
+            exported_path = str(fid.read())
+
+        model_params["warm_start_from"] = exported_path
+
     model_params.update(feature_columns)
     pop_optimizer_and_loss(model_params)
 
