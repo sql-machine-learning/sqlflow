@@ -13,9 +13,13 @@
 
 import runtime.db as db
 from runtime.feature.field_desc import DataType
-from runtime.optimize.local import run_optimize_locally
 from runtime.optimize.optflow import run_optimize_on_optflow
 from runtime.pai.table_ops import create_tmp_tables_guard
+
+try:
+    from runtime.optimize.local import run_optimize_locally
+except ImportError:  # PAI submitter may not require Pyomo
+    pass
 
 
 def _create_result_table(datasource, select, variables, result_value_name,
