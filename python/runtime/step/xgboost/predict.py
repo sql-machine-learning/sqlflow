@@ -9,7 +9,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License
+# limitations under the License.
 
 import copy
 import os
@@ -55,7 +55,7 @@ def predict(datasource,
         # in xgboost/train.py
         oss.load_file(oss_model_path, "my_model")
         (estimator, model_params, train_params, feature_metas,
-         feature_column_names, train_label_meta,
+         feature_column_names, train_label_desc,
          fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
     else:
         if isinstance(model, six.string_types):
@@ -66,10 +66,7 @@ def predict(datasource,
 
         model_params = model.get_meta("attributes")
         fc_map_ir = model.get_meta("features")
-        train_label_meta = model.get_meta("label").get_field_desc()[0]
-
-    pred_label_meta = copy.copy(train_label_meta)
-    pred_label_meta["feature_name"] = label_column
+        train_label_desc = model.get_meta("label").get_field_desc()[0]
 
     feature_columns = compile_ir_feature_columns(fc_map_ir,
                                                  EstimatorType.XGBOOST)
@@ -85,9 +82,8 @@ def predict(datasource,
 
     conn = db.connect_with_data_source(datasource)
     result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_meta, label_column)
+        conn, select, result_table, train_label_desc, label_column)
 
-    # TODO(typhoonzero): support dist predict here, move things under
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
         raw_data_dir = os.path.join(tmp_dir_name, "predict_raw_dir")

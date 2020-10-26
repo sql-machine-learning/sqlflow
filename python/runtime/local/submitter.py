@@ -16,6 +16,7 @@ from runtime.local.tensorflow_submitter.explain import explain as tf_explain
 from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
 from runtime.step.tensorflow.evaluate import evaluate_step as tf_evaluate
+from runtime.step.tensorflow.explain import explain_step as tf_explain
 from runtime.step.tensorflow.predict import predict_step as tf_pred
 from runtime.step.tensorflow.train import train_step as tf_train
 from runtime.step.xgboost.evaluate import evaluate as xgboost_evaluate
@@ -140,12 +141,12 @@ def submit_local_evaluate(datasource,
 def submit_local_explain(datasource,
                          original_sql,
                          select,
-                         model_name,
+                         model,
                          model_params,
                          result_table,
                          explainer="TreeExplainer",
                          user=""):
-    model = Model.load_from_db(datasource, model_name)
+    model = Model.load_from_db(datasource, model)
     if model.get_type() == EstimatorType.XGBOOST:
         explain_func = xgboost_explain
     else:

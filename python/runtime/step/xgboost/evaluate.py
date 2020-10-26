@@ -61,8 +61,8 @@ def evaluate(datasource,
              select,
              result_table,
              model,
-             model_params,
              label_name=None,
+             model_params=None,
              pai_table="",
              oss_model_path=""):
     """TBD

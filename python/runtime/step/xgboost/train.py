@@ -215,14 +215,16 @@ def local_train(original_sql,
         save_model(oss_model_dir, "my_model", model_params, train_params,
                    feature_metas, feature_column_names, label_meta, fc_map_ir)
 
+    return eval_result
+
 
 def save_model(model_dir, filename, model_params, train_params, feature_metas,
                feature_column_names, label_meta, fc_map_ir):
-    pai_model_store.save_file(model_dir, filename)
-    pai_model_store.save_file(model_dir, "{}.pmml".format(filename))
-    pai_model_store.save_file(model_dir, "model_meta.json")
+    oss.save_file(model_dir, filename)
+    oss.save_file(model_dir, "{}.pmml".format(filename))
+    oss.save_file(model_dir, "model_meta.json")
     # (TODO:lhw) remove this function call, use the new metadata in load_metas
-    pai_model_store.save_metas(
+    oss.save_metas(
         model_dir,
         1,
         "xgboost_model_desc",
@@ -233,5 +235,3 @@ def save_model(model_dir, filename, model_params, train_params, feature_metas,
         feature_column_names,
         label_meta,
         fc_map_ir)
-
-    return eval_result
