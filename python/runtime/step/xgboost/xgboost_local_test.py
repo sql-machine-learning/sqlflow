@@ -18,10 +18,10 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
+from runtime.local.submitter import submit_local_train as train
 from runtime.step.xgboost.evaluate import evaluate
 from runtime.step.xgboost.explain import explain
 from runtime.step.xgboost.predict import pred
-from runtime.step.xgboost.train import train
 
 
 class TestXGBoostTrain(unittest.TestCase):
@@ -73,7 +73,8 @@ class TestXGBoostTrain(unittest.TestCase):
                                 feature_column_map=None,
                                 label_column=NumericColumn(
                                     FieldDesc(name=class_name)),
-                                save=save_name)
+                                save=save_name,
+                                load=None)
 
         self.assertLess(eval_result['train']['merror'][-1], 0.01)
         self.assertLess(eval_result['validate']['merror'][-1], 0.01)

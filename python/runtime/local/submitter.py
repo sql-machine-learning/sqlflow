@@ -11,7 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from runtime import db
 from runtime.dbapi import table_writer
+from runtime.feature.derivation import infer_feature_columns
 from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
 from runtime.step.tensorflow.evaluate import evaluate_step as tf_evaluate
@@ -78,6 +80,10 @@ def submit_local_train(datasource,
         train_func = xgboost_train
     else:
         train_func = tf_train
+
+    with db.connect_with_data_source(datasource) as conn:
+        feature_column_map, label_column = infer_feature_columns(
+            conn, select, feature_column_map, label_column, n=1000)
 
     return train_func(original_sql=original_sql,
                       model_image=model_image,

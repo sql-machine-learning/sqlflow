@@ -15,10 +15,8 @@ import copy
 import types
 
 import tensorflow.keras.losses as tf_loss  # noqa: F401
-from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
-from runtime.feature.derivation import (get_ordered_field_descs,
-                                        infer_feature_columns)
+from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, Model, collect_metadata
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
 from runtime.step.tensorflow.train_estimator import estimator_train_and_save
@@ -76,32 +74,23 @@ def train_step(original_sql,
         load = None
 
     is_pai = True if pai_table else False
-    if is_pai:
-        actual_select = "SELECT * FROM %s" % pai_table
-    else:
-        actual_select = select
 
-    conn = db.connect_with_data_source(datasource)
-    fc_map_ir, fc_label_ir = infer_feature_columns(conn,
-                                                   actual_select,
-                                                   feature_column_map,
-                                                   label_column,
-                                                   n=1000)
-    fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.TENSORFLOW)
-    field_descs = get_ordered_field_descs(fc_map_ir)
+    fc_map = compile_ir_feature_columns(feature_column_map,
+                                        EstimatorType.TENSORFLOW)
+    field_descs = get_ordered_field_descs(feature_column_map)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
                           for fd in field_descs])
 
     # no label for clustering model
     label_meta = None
-    if fc_label_ir:
-        label_meta = fc_label_ir.get_field_desc()[0].to_dict(
+    if label_column:
+        label_meta = label_column.get_field_desc()[0].to_dict(
             dtype_to_string=True)
 
     feature_column_names_map = dict()
-    for target in fc_map_ir:
-        fclist = fc_map_ir[target]
+    for target in feature_column_map:
+        fclist = feature_column_map[target]
         feature_column_names_map[target] = [
             fc.get_field_desc()[0].name for fc in fclist
         ]
@@ -173,8 +162,8 @@ def train_step(original_sql,
                                   model_repo_image=model_image,
                                   class_name=estimator_string,
                                   attributes=model_params,
-                                  features=fc_map_ir,
-                                  label=fc_label_ir)
+                                  features=feature_column_map,
+                                  label=label_column)
 
     # FIXME(typhoonzero): avoid save model_meta twice, keras_train_and_save,
     # estimator_train_and_save also dumps model_meta to a file under cwd.
@@ -205,4 +194,3 @@ def train_step(original_sql,
         print("Model saved to DB: %s" % saved)
 
     print("Done training")
-    conn.close()
