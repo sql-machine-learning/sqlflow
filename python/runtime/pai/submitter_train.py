@@ -15,6 +15,7 @@ import os
 
 import runtime.db as db
 import runtime.temp_file as temp_file
+from runtime.feature.derivation import infer_feature_columns
 from runtime.model.model import EstimatorType, Model
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
@@ -135,6 +136,13 @@ def submit_pai_train(datasource,
                                            datasource) as (train_table,
                                                            val_table):
         params["pai_table"], params["pai_val_table"] = train_table, val_table
+
+        with db.connect_with_data_source(datasource) as conn:
+            actual_select = "SELECT * FROM %s;" % train_table
+            feature_column_map, label_column = infer_feature_columns(
+                conn, actual_select, feature_column_map, label_column, n=1000)
+            params["feature_column_map"] = feature_column_map
+            params["label_column"] = label_column
 
         # clean target dir
         oss_path_to_save = pai_model.get_oss_model_save_path(datasource,

@@ -16,13 +16,11 @@ This module launches a XGBoost training task on host.
 import os
 import types
 
-import runtime.db as db
 import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
 import xgboost as xgb
 from runtime.feature.compile import compile_ir_feature_columns
-from runtime.feature.derivation import (get_ordered_field_descs,
-                                        infer_feature_columns)
+from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, Model, collect_metadata
 from runtime.step.xgboost.save import save_model_to_local_file
 from runtime.xgboost.dataset import xgb_dataset
@@ -65,20 +63,15 @@ def train(original_sql,
     Returns:
         A dict which indicates the evaluation result.
     """
-    conn = db.connect_with_data_source(datasource)
-    fc_map_ir, fc_label_ir = infer_feature_columns(conn,
-                                                   select,
-                                                   feature_column_map,
-                                                   label_column,
-                                                   n=1000)
-    fc_map = compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
+    fc_map = compile_ir_feature_columns(feature_column_map,
+                                        EstimatorType.XGBOOST)
 
     feature_column_list = fc_map["feature_columns"]
-    field_descs = get_ordered_field_descs(fc_map_ir)
+    field_descs = get_ordered_field_descs(feature_column_map)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
                           for fd in field_descs])
-    label_meta = fc_label_ir.get_field_desc()[0].to_dict(dtype_to_string=True)
+    label_meta = label_column.get_field_desc()[0].to_dict(dtype_to_string=True)
 
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
@@ -88,6 +81,9 @@ def train(original_sql,
 
     disk_cache = train_params.pop("disk_cache", False)
     batch_size = train_params.pop("batch_size", None)
+    if batch_size is not None and batch_size < 0:
+        batch_size = None
+
     epoch = train_params.pop("epoch", 1)
     num_workers = train_params.pop("num_workers", 1)
 
@@ -146,13 +142,12 @@ def train(original_sql,
                             model_repo_image=model_image,
                             class_name=estimator_string,
                             attributes=model_params,
-                            features=fc_map_ir,
-                            label=fc_label_ir,
+                            features=feature_column_map,
+                            label=label_column,
                             evaluation=eval_result,
                             num_workers=num_workers)
 
     save_model_to_local_file(bst, model_params, file_name)
     model = Model(EstimatorType.XGBOOST, meta)
     model.save_to_db(datasource, save)
-    conn.close()
     return eval_result
