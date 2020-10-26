@@ -64,7 +64,8 @@ if [[ ! -f "$F" ]]; then
     unzip $F.zip
 fi
 export PATH=$PWD:$PATH
-$F account "$QINIU_AK" "$QINIU_SK" "wu"
+# Add -w to overwrite the account if exists
+$F account -w "$QINIU_AK" "$QINIU_SK" "wu"
 
 for path in build/tutorial/*.ipynb; do
     retry=0
