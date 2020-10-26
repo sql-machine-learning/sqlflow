@@ -35,14 +35,14 @@ OPTFLOW_HTTP_HEADERS = {
 }
 
 
-def query_optflow_job_status(url, record_id, user_number, token):
+def query_optflow_job_status(url, record_id, user_id, token):
     """
     Query OptFlow job status.
 
     Args:
         url: the URL to query job status.
         record_id: the job id.
-        user_number: the user id.
+        user_id: the user id.
         token: the OptFlow API token.
 
     Returns:
@@ -50,7 +50,7 @@ def query_optflow_job_status(url, record_id, user_number, token):
         "success", "fail", "running", etc.
     """
     url = "{}?userNumber={}&recordId={}&token={}".format(
-        url, user_number, record_id, token)
+        url, user_id, record_id, token)
     response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS)
     response.raise_for_status()
     response_json = response.json()
@@ -60,14 +60,14 @@ def query_optflow_job_status(url, record_id, user_number, token):
     return response_json['data']['status'].lower()
 
 
-def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
+def query_optflow_job_log(url, record_id, user_id, token, start_line_num):
     """
     Query OptFlow job log.
 
     Args:
         url: the URL to query job log.
         record_id: the job id.
-        user_number: the user id.
+        user_id: the user id.
         token: the OptFlow API token.
         start_line_num: the start line number of the logs.
 
@@ -76,7 +76,7 @@ def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
         and end_line_num is the line number of the last queried logs.
     """
     url = "{}?userNumber={}&recordId={}&token={}".format(
-        url, user_number, record_id, token)
+        url, user_id, record_id, token)
     response = requests.get(url, headers=OPTFLOW_HTTP_HEADERS, stream=True)
     response.raise_for_status()
     response_json = response.json()
@@ -95,8 +95,7 @@ def query_optflow_job_log(url, record_id, user_number, token, start_line_num):
     return logs, end_line_num
 
 
-def print_job_log_till_finish(status_url, log_url, record_id, user_number,
-                              token):
+def print_job_log_till_finish(status_url, log_url, record_id, user_id, token):
     """
     Print the OptFlow job log till the job finishes.
 
@@ -104,7 +103,7 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
         status_url: the URL to query job status.
         log_url: the URL to query job log.
         record_id: the job id.
-        user_number: the user id.
+        user_id: the user id.
         token: the OptFlow API token.
 
     Returns:
@@ -124,12 +123,12 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
     while True:
 
         def query_status():
-            return query_optflow_job_status(status_url, record_id, user_number,
+            return query_optflow_job_status(status_url, record_id, user_id,
                                             token)
 
         def query_log():
-            return query_optflow_job_log(log_url, record_id, user_number,
-                                         token, line_num)
+            return query_optflow_job_log(log_url, record_id, user_id, token,
+                                         line_num)
 
         status = call_func_with_retry(query_status, 3)
         logs, line_num = call_func_with_retry(query_log, 3)
@@ -147,7 +146,7 @@ def print_job_log_till_finish(status_url, log_url, record_id, user_number,
 
 
 def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
-                       user_number):
+                       user_id):
     """
     Submit the OptFlow job.
 
@@ -156,7 +155,7 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
         result_table (str): the table name to save the solved results.
         fsl_file_content (str): the FSL file content to submit.
         solver (str): the solver used to solve the model.
-        user_number (str): the user id.
+        user_id (str): the user id.
 
     Returns:
         None
@@ -209,7 +208,7 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
         }
 
         json_data = {
-            "userNumber": user_number,
+            "userNumber": user_id,
             "projectName": project_name,
             "snapshotId": snapshot_id,
             "token": token,
@@ -229,7 +228,7 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
         try:
             success = print_job_log_till_finish(query_job_status_url,
                                                 query_job_log_url, record_id,
-                                                user_number, token)
+                                                user_id, token)
             if success:
                 print("Job succeeds. Save solved result in {}.".format(
                     result_table))
@@ -401,7 +400,7 @@ def generate_optflow_fsl_expr_when_two_vars(columns,
 
 def run_optimize_on_optflow(train_table, columns, variables, variable_type,
                             result_value_name, objective, direction,
-                            constraints, solver, result_table, user_number):
+                            constraints, solver, result_table, user_id):
     """
     Run the optimize case in the local mode.
 
@@ -417,7 +416,7 @@ def run_optimize_on_optflow(train_table, columns, variables, variable_type,
             and GROUP BY column name.
         solver (str): the solver used to solve the model.
         result_table (str): the table name to save the solved results.
-        user_number (str): the user id.
+        user_id (str): the user id.
 
     Returns:
         None
@@ -484,4 +483,4 @@ constraints:
                        result_table=result_table,
                        fsl_file_content=fsl_file_content,
                        solver=solver,
-                       user_number=user_number)
+                       user_id=user_id)

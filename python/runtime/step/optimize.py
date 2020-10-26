@@ -14,6 +14,8 @@
 import runtime.db as db
 from runtime.feature.field_desc import DataType
 from runtime.optimize.local import run_optimize_locally
+from runtime.optimize.optflow import run_optimize_on_optflow
+from runtime.pai.table_ops import create_tmp_tables_guard
 
 
 def _create_result_table(datasource, select, variables, result_value_name,
@@ -49,16 +51,34 @@ def _create_result_table(datasource, select, variables, result_value_name,
 
 def run_optimize(datasource, select, variables, result_value_name,
                  variable_type, objective, direction, constraints, solver,
-                 result_table, user_id):
+                 result_table, submitter, user_id):
     _create_result_table(datasource, select, variables, result_value_name,
                          variable_type, result_table)
-    return run_optimize_locally(datasource=datasource,
-                                select=select,
-                                variables=variables,
-                                variable_type=variable_type,
-                                result_value_name=result_value_name,
-                                objective=objective,
-                                direction=direction,
-                                constraints=constraints,
-                                solver=solver,
-                                result_table=result_table)
+    if submitter == "local":
+        return run_optimize_locally(datasource=datasource,
+                                    select=select,
+                                    variables=variables,
+                                    variable_type=variable_type,
+                                    result_value_name=result_value_name,
+                                    objective=objective,
+                                    direction=direction,
+                                    constraints=constraints,
+                                    solver=solver,
+                                    result_table=result_table)
+    else:
+        with create_tmp_tables_guard(select, datasource) as train_table:
+            with db.connect_with_data_source(datasource) as conn:
+                schema = conn.get_table_schema(train_table)
+                columns = [s[0] for s in schema]
+
+            return run_optimize_on_optflow(train_table=train_table,
+                                           columns=columns,
+                                           variables=variables,
+                                           variable_type=variable_type,
+                                           result_value_name=result_value_name,
+                                           objective=objective,
+                                           direction=direction,
+                                           constraints=constraints,
+                                           solver=solver,
+                                           result_table=result_table,
+                                           user_id=user_id)
