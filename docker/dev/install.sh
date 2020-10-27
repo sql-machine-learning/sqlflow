@@ -33,6 +33,9 @@ JAVA_DEV="openjdk-8-jdk maven"
 SHELL_LINTER="shellcheck"
 YAML_LINTER="yamllint"
 OPTIMIZE_SOLVER="glpk-utils" # required solver packages of Pyomo
+# TODO(weiguoz) let's remove ${SASL_LIB} and ${DEVELOPER_KITS} when the debug is completed.
+SASL_LIB="libsasl2-dev"
+DEVELOPER_KITS="tmux vim protobuf-compiler libsasl2-dev"
 # shellcheck disable=SC2086
 apt-get -qq update && apt-get -qq install -y --no-install-recommends \
         $DOWNLOAD_TOOLS \
@@ -42,6 +45,8 @@ apt-get -qq update && apt-get -qq install -y --no-install-recommends \
         $SHELL_LINTER \
         $YAML_LINTER \
         $OPTIMIZE_SOLVER \
+        $SASL_LIB \
+        $DEVELOPER_KITS \
         > /dev/null
 rm -rf /var/lib/apt/lists/*
 apt-get -qq clean -y
@@ -64,6 +69,7 @@ GRPC_PACKAGES="grpcio==1.28.1 grpcio-tools==1.28.1"
 JS_LINTER=jsbeautifier
 PYTHON_LINTER="yapf isort<5,>=4.2.5 pylint>=2.5.3 flake8"
 WHEEL="wheel"
+THRIFT_SASL="thrift_sasl==0.4.2"
 # shellcheck disable=SC2086
 python -m pip install --quiet \
     $WHEEL \
@@ -71,7 +77,8 @@ python -m pip install --quiet \
     $PY_TEST \
     $JS_LINTER \
     $PYTHON_LINTER \
-    $GRPC_PACKAGES
+    $GRPC_PACKAGES \
+    $THRIFT_SASL
 rm -rf "$HOME"/.cache/pip/*
 
 
