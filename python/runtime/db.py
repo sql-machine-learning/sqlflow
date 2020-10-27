@@ -13,6 +13,7 @@
 
 import contextlib
 import re
+import sys
 
 import numpy as np
 import runtime.db_writer as db_writer
@@ -59,6 +60,7 @@ def read_feature(raw_val, feature_spec, feature_name, is_xgboost):
                     # tf need sparse indices to be a column vector.
                     indices = indices.reshape(indices.size, 1)
                 dtype_weight = feature_spec.get("dtype_weight", "float32")
+                sys.stderr.write("dtype_weight: %s\n" % dtype_weight)
                 values = np.array([
                     float(item[1]) if len(item) == 2 else 1.0 for item in items
                 ],

@@ -71,7 +71,8 @@ def predict(datasource,
                                                  EstimatorType.XGBOOST)
     field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
-    feature_metas = dict([(fd.name, fd.to_dict()) for fd in field_descs])
+    feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
+                          for fd in field_descs])
 
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
