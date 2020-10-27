@@ -9,21 +9,22 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License
-""" XGBoost Local Training.
-This module launches a XGBoost training task on host.
-"""
+# limitations under the License.
+
 import os
 import types
 
 import runtime.temp_file as temp_file
-import runtime.xgboost as xgboost_extended
 import xgboost as xgb
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.model import EstimatorType, Model, collect_metadata
+from runtime.model import EstimatorType, Model, collect_metadata, oss
+from runtime.pai.pai_distributed import define_tf_flags
 from runtime.step.xgboost.save import save_model_to_local_file
 from runtime.xgboost.dataset import xgb_dataset
+from runtime.xgboost.feature_column import ComposedColumnTransformer
+# TODO(typhoonzero): mv dist_train here when refactor finishes
+from runtime.xgboost.train import dist_train
 
 
 def train(original_sql,
@@ -38,47 +39,102 @@ def train(original_sql,
           feature_column_map,
           label_column,
           save,
-          load=None):
-    """
-    Train, evaluate and save the XGBoost model locally.
+          load=None,
+          pai_table="",
+          pai_val_table=""):
+    is_pai = True if pai_table != "" else False
+    is_dist_train = False
+    FLAGS = None
+    oss_model_dir = ""
 
-    Args:
-        original_sql (str): the original SQL statement.
-        model_image (str): the model repo docker image.
-        estimator (str): the XGBoost booster type like xgboost.gbtree.
-        datasource (str): the database connection URI.
-        select (str): the SQL statement for training.
-        validation_select (str): the SQL statement for evaluation.
-        model_params (dict): the XGBoost model parameters.
-        train_params (dict): the training parameters, can have
-                             disk_cache(bool), batch_size(int), epoch(int)
-                             settings in the dict.
-        validation_params (dict): the validation parameters. Not used
-                                  currently.
-        feature_column_map (dict): the feature column map to do derivation.
-        label_column (FeatureColumn): the label column.
-        save (str): the table name to save the trained model and meta.
-        load (str): the table name to load the pretrained model.
+    if is_pai:
+        FLAGS = define_tf_flags()
+        num_workers = len(FLAGS.worker_hosts.split(","))
+        is_dist_train = num_workers > 1
+        oss_model_dir = FLAGS.sqlflow_oss_modeldir
+        try:
+            oss_path_to_load = train_params.pop("oss_path_to_load")
+            if load:
+                oss.load_file(oss_path_to_load, "my_model")
+        except:  # noqa: E722
+            pass
 
-    Returns:
-        A dict which indicates the evaluation result.
-    """
-    fc_map = compile_ir_feature_columns(feature_column_map,
-                                        EstimatorType.XGBOOST)
-
-    feature_column_list = fc_map["feature_columns"]
+    feature_columns = compile_ir_feature_columns(feature_column_map,
+                                                 EstimatorType.XGBOOST)
     field_descs = get_ordered_field_descs(feature_column_map)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
                           for fd in field_descs])
     label_meta = label_column.get_field_desc()[0].to_dict(dtype_to_string=True)
 
-    # NOTE: in the current implementation, we are generating a transform_fn
-    # from the COLUMN clause. The transform_fn is executed during the process
-    # of dumping the original data into DMatrix SVM file.
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
-        feature_column_names, *feature_column_list)
+    transform_fn = ComposedColumnTransformer(
+        feature_column_names, *feature_columns["feature_columns"])
 
+    batch_size = train_params.pop("batch_size", None)
+    epoch = train_params.pop("epoch", 1)
+    load_pretrained_model = True if load else False
+    disk_cache = train_params.pop("disk_cache", False)
+
+    if is_dist_train:
+        # NOTE(typhoonzero): dist_train returns None
+        dist_train(flags=FLAGS,
+                   datasource=datasource,
+                   select=select,
+                   model_params=model_params,
+                   train_params=train_params,
+                   feature_metas=feature_metas,
+                   feature_column_names=feature_column_names,
+                   label_meta=label_meta,
+                   validation_select=validation_select,
+                   disk_cache=disk_cache,
+                   batch_size=batch_size,
+                   epoch=epoch,
+                   load_pretrained_model=load_pretrained_model,
+                   is_pai=True,
+                   pai_train_table=pai_table,
+                   pai_validate_table=pai_val_table,
+                   oss_model_dir=oss_model_dir,
+                   transform_fn=transform_fn,
+                   feature_column_code=feature_column_map,
+                   model_repo_image=model_image,
+                   original_sql=original_sql)
+    else:
+        return local_train(original_sql,
+                           model_image,
+                           estimator_string,
+                           datasource,
+                           select,
+                           validation_select,
+                           model_params,
+                           train_params,
+                           feature_metas,
+                           feature_column_names,
+                           feature_column_map,
+                           label_column,
+                           transform_fn,
+                           save,
+                           load=load,
+                           is_pai=is_pai,
+                           oss_model_dir=oss_model_dir)
+
+
+def local_train(original_sql,
+                model_image,
+                estimator_string,
+                datasource,
+                select,
+                validation_select,
+                model_params,
+                train_params,
+                feature_metas,
+                feature_column_names,
+                feature_column_map,
+                label_column,
+                transform_fn,
+                save,
+                load="",
+                is_pai=False,
+                oss_model_dir=""):
     disk_cache = train_params.pop("disk_cache", False)
     batch_size = train_params.pop("batch_size", None)
     if batch_size is not None and batch_size < 0:
@@ -86,6 +142,8 @@ def train(original_sql,
 
     epoch = train_params.pop("epoch", 1)
     num_workers = train_params.pop("num_workers", 1)
+    label_meta_dict = label_column.get_field_desc()[0].to_dict(
+        dtype_to_string=True)
 
     def build_dataset(fn, slct):
         return xgb_dataset(datasource,
@@ -93,7 +151,7 @@ def train(original_sql,
                            slct,
                            feature_metas,
                            feature_column_names,
-                           label_meta,
+                           label_meta_dict,
                            cache=disk_cache,
                            batch_size=batch_size,
                            epoch=epoch,
@@ -150,4 +208,27 @@ def train(original_sql,
     save_model_to_local_file(bst, model_params, file_name)
     model = Model(EstimatorType.XGBOOST, meta)
     model.save_to_db(datasource, save)
+    if is_pai and len(oss_model_dir) > 0:
+        # TODO(typhoonzero): remove this since we are saving metas into db now.
+        save_model(oss_model_dir, "my_model", model_params, train_params,
+                   feature_metas, feature_column_names, label_meta_dict,
+                   feature_column_map)
+
     return eval_result
+
+
+def save_model(model_dir, filename, model_params, train_params, feature_metas,
+               feature_column_names, label_meta, fc_map_ir):
+    oss.save_file(model_dir, filename)
+    oss.save_file(model_dir, "{}.pmml".format(filename))
+    oss.save_metas(
+        model_dir,
+        1,
+        "xgboost_model_desc",
+        "",  # estimator = ""
+        model_params,
+        train_params,
+        feature_metas,
+        feature_column_names,
+        label_meta,
+        fc_map_ir)
