@@ -32,7 +32,7 @@ FLAGS = define_tf_flags()
 def predict(datasource,
             select,
             result_table,
-            label_column,
+            label_name,
             model,
             pai_table="",
             oss_model_path=""):
@@ -45,7 +45,7 @@ def predict(datasource,
         select: data selection SQL statement
         data_table: tmp table which holds the data from select
         result_table: table to save prediction result
-        label_column: prediction label column
+        label_name: prediction label column
         oss_model_path: the model path on OSS
     """
     is_pai = True if pai_table != "" else False
@@ -81,7 +81,7 @@ def predict(datasource,
 
     conn = db.connect_with_data_source(datasource)
     result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, label_column)
+        conn, select, result_table, train_label_desc, label_name)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
