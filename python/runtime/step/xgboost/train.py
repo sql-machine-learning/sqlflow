@@ -16,7 +16,6 @@ import types
 
 import runtime.temp_file as temp_file
 import xgboost as xgb
-from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, Model, collect_metadata, oss
@@ -56,7 +55,7 @@ def train(original_sql,
             oss_path_to_load = train_params.pop("oss_path_to_load")
             if load:
                 oss.load_file(oss_path_to_load, "my_model")
-        except:
+        except:  # noqa: E722
             pass
 
     feature_columns = compile_ir_feature_columns(feature_column_map,
