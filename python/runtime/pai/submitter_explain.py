@@ -197,14 +197,12 @@ def submit_pai_explain(datasource,
             with temp_file.TemporaryDirectory(prefix="sqlflow",
                                               dir="/tmp") as cwd:
                 prepare_archive(cwd, estimator, oss_model_path, params)
-
                 cmd = get_pai_explain_cmd(
                     datasource, project, oss_model_path, model, data_table,
                     result_table, model_type, model_params,
                     "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
                     "file://" + os.path.join(cwd, PARAMS_FILE), label_name)
-
-            submit_pai_task(cmd, datasource)
+                submit_pai_task(cmd, datasource)
 
     print_oss_image(params["oss_dest"], params["oss_ak"], params["oss_sk"],
                     params["oss_endpoint"], params["oss_bucket_name"])

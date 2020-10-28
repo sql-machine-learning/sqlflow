@@ -93,6 +93,7 @@ oss.load_dir("{{.OSSModelDir}}/model_save")
 // install sklearn-pandas==1.8.0 to fix deps for sklearn2pmml with Python2 on PAI.
 const paiRequirementsTmplText = `
 adanet==0.8.0
+dill
 numpy==1.16.2
 pandas==0.24.2
 plotille==3.7

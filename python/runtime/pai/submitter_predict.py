@@ -16,13 +16,14 @@ import os
 import runtime.temp_file as temp_file
 from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
-from runtime.model import EstimatorType
+from runtime.model import EstimatorType, oss
 from runtime.pai import cluster_conf, pai_model, table_ops
 from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
                                         PARAMS_FILE, get_pai_tf_cmd)
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
 from runtime.pai_local.try_run import try_pai_local_run
+from runtime.step.create_result_table import create_predict_table
 
 
 def get_pai_predict_cmd(datasource, project, oss_model_path, model_name,
@@ -122,16 +123,26 @@ def submit_pai_predict(datasource,
             datasource, model)
     setup_predict_entry(params, model_type)
 
+    # TODO(typhoonzero): load model meta from database.
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
                                                        model,
                                                        user=user)
+    model_metas = oss.load_metas(oss_model_path, "xgboost_model_desc")
+    train_label_desc = model_metas[5].get_field_desc()[0]
+    conn = db.connect_with_data_source(datasource)
+    result_column_names, train_label_idx = create_predict_table(
+        conn, select, result_table, train_label_desc, label_name)
+    conn.close()
 
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
+        del params["label_name"]
         params["pai_table"] = data_table
         params["oss_model_path"] = oss_model_path
         params["model"] = ""
+        params["result_column_names"] = result_column_names
+        params["train_label_idx"] = train_label_idx
 
         if try_pai_local_run(params, oss_model_path):
             return

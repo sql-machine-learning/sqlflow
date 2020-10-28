@@ -22,7 +22,6 @@ from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, Model, oss
 from runtime.pai.pai_distributed import define_tf_flags
-from runtime.step.create_result_table import create_predict_table
 from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 from runtime.xgboost.feature_column import ComposedColumnTransformer
 
@@ -32,7 +31,8 @@ FLAGS = define_tf_flags()
 def predict(datasource,
             select,
             result_table,
-            label_name,
+            result_column_names,
+            train_label_idx,
             model,
             pai_table="",
             oss_model_path=""):
@@ -79,10 +79,7 @@ def predict(datasource,
 
     bst = xgb.Booster()
     bst.load_model("my_model")
-
     conn = db.connect_with_data_source(datasource)
-    result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, label_name)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")

@@ -211,7 +211,7 @@ def local_train(original_sql,
     if is_pai and len(oss_model_dir) > 0:
         # TODO(typhoonzero): remove this since we are saving metas into db now.
         save_model(oss_model_dir, "my_model", model_params, train_params,
-                   feature_metas, feature_column_names, label_meta_dict,
+                   feature_metas, feature_column_names, label_column,
                    feature_column_map)
 
     return eval_result
