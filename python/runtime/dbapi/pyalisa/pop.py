@@ -14,34 +14,68 @@
 import base64
 import hashlib
 import hmac
-import urllib
+from encodings import utf_8
 
 import requests
+from six.moves import urllib
 
 
 class Pop(object):
+    """Pop is a client for http request alisa gateway.
+    """
     @staticmethod
     def request(url, params, secret, timeout=(30, 120)):
+        """Send a request to alisa and return the status
+        code and response body
+
+        Args:
+            url(string): the url to request
+            params(dict[string]string): the params for the request
+            secret(string): the secret to use for encrypting
+            timeout((int, int)): connect timeout and read timeout
+        
+        Returns:
+            (int, string) a tuple of status code and response body
+        """
         params['Signature'] = Pop.signature(params, 'POST', secret)
         rsp = requests.post(url, params, timeout)
         return rsp.status_code, rsp.text
 
     @staticmethod
     def signature(params, http_method, secret):
-        ''' Follow https://help.aliyun.com/document_detail/25492.html
+        ''' Calulate signature for params and http_method
+        according to https://help.aliyun.com/document_detail/25492.html
+
+        Args:
+            params(dict[string]string): the params to signature
+            http_method(string): HTTP or HTTPS
+            secret(string): the signature secret
+
+        Returns:
+            (string) the signature for the given input
         '''
         qry = ""
         for k, v in sorted(params.items()):
             ek = Pop.percent_encode(k)
             ev = Pop.percent_encode(v)
             qry += '&{}={}'.format(ek, ev)
-        str = '{}&%2F&{}'.format(http_method, Pop.percent_encode(qry[1:]))
-        dig = hmac.new(secret + '&', str, hashlib.sha1).digest()
-        return base64.standard_b64encode(dig)
+        to_sign = '{}&%2F&{}'.format(http_method, Pop.percent_encode(qry[1:]))
+        bf = bytearray(utf_8.encode(to_sign)[0])
+        dig = hmac.digest(utf_8.encode(secret + "&")[0], bf, hashlib.sha1)
+        return utf_8.decode(base64.standard_b64encode(dig))[0]
 
     @staticmethod
     def percent_encode(str):
-        es = urllib.quote_plus(str)
+        """Url param encode, preparing for a pop request.
+        c.f. https://help.aliyun.com/document_detail/25492.html
+
+        Args:
+            str(string): the param to encode
+        
+        Returns:
+            (string) the encoded param
+        """
+        es = urllib.parse.quote_plus(str)
         es = es.replace('+', '%20')
         es = es.replace('*', '%2A')
         return es.replace('%7E', '~')

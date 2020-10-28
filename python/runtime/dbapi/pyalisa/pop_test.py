@@ -29,6 +29,20 @@ class TestPop(unittest.TestCase):
         sign = Pop.signature(params, "POST", "test_secret_key")
         self.assertEqual("6kvgvUDEHtFdZKj8+HhtAS1ovHY=", sign)
 
+    def test_percent_encode(self):
+        # "~-_." should not be encoded
+        param = "~-_."
+        encoded = Pop.percent_encode(param)
+        self.assertEqual("~-_.", encoded)
+
+        param = "a b*c"
+        encoded = Pop.percent_encode(param)
+        self.assertEqual("a%20b%2Ac", encoded)
+
+        param = "p1=a&p2=b"
+        encoded = Pop.percent_encode(param)
+        self.assertEqual("p1%3Da%26p2%3Db", encoded)
+
 
 if __name__ == "__main__":
     unittest.main()
