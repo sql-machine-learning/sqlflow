@@ -147,8 +147,7 @@ class ReadOneByOneBlockReader(object):
         elif len(ret) == 1:
             return ret[1]
         else:
-            raise ValueError("invalid invalid sqlfs db: duplicate id %d" %
-                             self.cur_id)
+            raise ValueError("invalid sqlfs db: duplicate id %d" % self.cur_id)
 
 
 class SQLFSReader(object):
