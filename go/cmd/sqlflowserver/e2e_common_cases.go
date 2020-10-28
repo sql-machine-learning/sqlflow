@@ -1060,3 +1060,49 @@ USING %[2]s;`, caseDB, caseInto)
 	_, _, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
 }
+
+func caseOneClassSVMModel(t *testing.T) {
+	a := assert.New(t)
+
+	trainSQL := fmt.Sprintf(`SELECT 
+sepal_length, sepal_width, petal_length, petal_width 
+FROM %s
+TO TRAIN sqlflow_models.OneClassSVM
+WITH model.kernel = "rbf"
+INTO %s;`, caseTrainTable, caseInto)
+
+	_, _, _, err := connectAndRunSQL(trainSQL)
+	a.NoError(err)
+
+	predictTableName := caseDB + ".one_class_svm_predict_table"
+	predSQL := fmt.Sprintf(`SELECT 
+sepal_length, sepal_width, petal_length, petal_width
+FROM %s
+TO PREDICT %s.label USING %s;`, caseTrainTable, predictTableName, caseInto)
+	_, _, _, err = connectAndRunSQL(predSQL)
+	a.NoError(err)
+
+	selectPredSQL := fmt.Sprintf(`SELECT * FROM %s;`, predictTableName)
+	headers, rows, _, err := connectAndRunSQL(selectPredSQL)
+	a.NoError(err)
+	const headerNum = 5
+	a.Equal(headerNum, len(headers))
+	a.True(reflect.DeepEqual(headers, []string{"sepal_length",
+		"sepal_width", "petal_length", "petal_width", "label"}))
+
+	rowData, err := decodeAnyTypedRowData(rows)
+	a.NoError(err)
+	for _, row := range rowData {
+		a.Equal(headerNum, len(row))
+		switch v := row[headerNum-1].(type) {
+		case int32:
+			a.True(v == 1 || v == -1)
+		case int64:
+			a.True(v == 1 || v == -1)
+		case string:
+			a.True(v == "1" || v == "-1")
+		default:
+			a.True(false)
+		}
+	}
+}

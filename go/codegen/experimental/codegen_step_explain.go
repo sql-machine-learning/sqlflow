@@ -32,6 +32,7 @@ type explainStepFiller struct {
 	ResultTable    string
 	Load           string
 	Submitter      string
+	User           string
 }
 
 // GenerateExplain generates the explain code
@@ -56,6 +57,7 @@ func GenerateExplain(explainStmt *ir.ExplainStmt, stepIndex int, session *pb.Ses
 		ResultTable:    explainStmt.Into,
 		Load:           explainStmt.ModelName,
 		Submitter:      getSubmitter(session),
+		User:           session.UserId,
 	}
 
 	tpl := template.Must(template.New("Explain").Parse(explainStepTemplate))
@@ -82,8 +84,9 @@ def step_entry_{{.StepIndex}}():
         explain(datasource='''{{.DataSource}}''', 
                 original_sql='''{{.OriginalSQL}}''',
                 select='''{{.Select}}''',
-                model_name='''{{.Load}}''',
+                model='''{{.Load}}''',
                 model_params=model_params,
                 explainer='''{{.Explainer}}''',
-                result_table='''{{.ResultTable}}''')
+                result_table='''{{.ResultTable}}''',
+                user='''{{.User}}''')
 `

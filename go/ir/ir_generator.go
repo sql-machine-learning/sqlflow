@@ -42,7 +42,7 @@ const (
 )
 
 // GenerateTrainStmtWithInferredColumns generates a `TrainStmt` with inferred feature columns
-func GenerateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, cwd string, loadPreTrainedModel bool, verifyLabel bool) (*TrainStmt, error) {
+func GenerateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connStr string, cwd string, loadPreTrainedModel bool, verifyLabel bool) (*TrainStmt, error) {
 	trainStmt, err := GenerateTrainStmt(slct)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func GenerateTrainStmtWithInferredColumns(slct *parser.SQLFlowSelectStmt, connSt
 	}
 
 	if loadPreTrainedModel && slct.TrainUsing != "" {
-		_, _, err = loadModelMeta(slct, db, cwd, modelDir, slct.TrainUsing)
+		_, _, err = loadModelMeta(slct, db, cwd, slct.TrainUsing)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +114,8 @@ func GenerateTrainStmt(slct *parser.SQLFlowSelectStmt) (*TrainStmt, error) {
 	}
 	label := &NumericColumn{
 		FieldDesc: &FieldDesc{
-			Name: tc.Label,
+			Name:  tc.Label,
+			Shape: []int{1},
 		}}
 
 	vslct, _ := parseValidationSelect(attrList)
@@ -134,13 +135,8 @@ func GenerateTrainStmt(slct *parser.SQLFlowSelectStmt) (*TrainStmt, error) {
 	return trainStmt, nil
 }
 
-func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir, modelName string) (*parser.SQLFlowSelectStmt, *parser.SQLFlowSelectStmt, error) {
-	modelURI := modelName
-	if modelDir != "" {
-		modelURI = fmt.Sprintf("file://%s/%s", modelDir, modelName)
-	}
-
-	m, e := model.Load(modelURI, cwd, db)
+func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelName string) (*parser.SQLFlowSelectStmt, *parser.SQLFlowSelectStmt, error) {
+	m, e := model.Load(modelName, cwd, db)
 	if e != nil {
 		return nil, nil, fmt.Errorf("load %v", e)
 	}
@@ -159,20 +155,20 @@ func loadModelMeta(pr *parser.SQLFlowSelectStmt, db *database.DB, cwd, modelDir,
 }
 
 // GenerateTrainStmtByModel generates a `TrainStmt` from a trained model
-func GenerateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, modelDir, model string) (*TrainStmt, error) {
+func GenerateTrainStmtByModel(slct *parser.SQLFlowSelectStmt, connStr, cwd, model string) (*TrainStmt, error) {
 	db, err := database.OpenDB(connStr)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	_, trainSlct, err := loadModelMeta(slct, db, cwd, modelDir, model)
+	_, trainSlct, err := loadModelMeta(slct, db, cwd, model)
 	if err != nil {
 		return nil, err
 	}
 
 	slct.TrainClause = trainSlct.TrainClause
-	return GenerateTrainStmtWithInferredColumns(trainSlct, connStr, "", "", false, false)
+	return GenerateTrainStmtWithInferredColumns(trainSlct, connStr, "", false, false)
 }
 
 func verifyTrainStmt(trainStmt *TrainStmt, db *database.DB, verifyLabel bool) error {
@@ -256,7 +252,7 @@ func verifyIRWithTrainStmt(sqlir SQLFlowStmt, db *database.DB) error {
 }
 
 // GeneratePredictStmt generates a `PredictStmt` from the parsed result `slct`
-func GeneratePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, cwd string, getTrainStmtFromModel bool) (*PredictStmt, error) {
+func GeneratePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, cwd string, getTrainStmtFromModel bool) (*PredictStmt, error) {
 	attrMap, err := generateAttributeIR(&slct.PredAttrs)
 	if err != nil {
 		return nil, err
@@ -264,7 +260,7 @@ func GeneratePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 
 	var trainStmt *TrainStmt
 	if getTrainStmtFromModel {
-		trainStmt, err = GenerateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.Model)
+		trainStmt, err = GenerateTrainStmtByModel(slct, connStr, cwd, slct.Model)
 		if err != nil {
 			return nil, err
 		}
@@ -300,7 +296,7 @@ func GeneratePredictStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDi
 }
 
 // GenerateExplainStmt generates a `ExplainStmt` from the parsed result `slct`
-func GenerateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir string, cwd string, getTrainStmtFromModel bool) (*ExplainStmt, error) {
+func GenerateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, cwd string, getTrainStmtFromModel bool) (*ExplainStmt, error) {
 	attrs, err := generateAttributeIR(&slct.ExplainAttrs)
 	if err != nil {
 		return nil, err
@@ -308,7 +304,7 @@ func GenerateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 
 	var trainStmt *TrainStmt
 	if getTrainStmtFromModel {
-		trainStmt, err = GenerateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.TrainedModel)
+		trainStmt, err = GenerateTrainStmtByModel(slct, connStr, cwd, slct.TrainedModel)
 		if err != nil {
 			return nil, err
 		}
@@ -339,7 +335,7 @@ func GenerateExplainStmt(slct *parser.SQLFlowSelectStmt, connStr, modelDir strin
 }
 
 // GenerateEvaluateStmt generates a `EvaluateStmt` from the parsed result `slct`
-func GenerateEvaluateStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelDir string, cwd string, getTrainStmtFromModel bool) (*EvaluateStmt, error) {
+func GenerateEvaluateStmt(slct *parser.SQLFlowSelectStmt, connStr string, cwd string, getTrainStmtFromModel bool) (*EvaluateStmt, error) {
 	attrMap, err := generateAttributeIR(&slct.EvaluateAttrs)
 	if err != nil {
 		return nil, err
@@ -347,7 +343,7 @@ func GenerateEvaluateStmt(slct *parser.SQLFlowSelectStmt, connStr string, modelD
 
 	var trainStmt *TrainStmt
 	if getTrainStmtFromModel {
-		trainStmt, err = GenerateTrainStmtByModel(slct, connStr, cwd, modelDir, slct.ModelToEvaluate)
+		trainStmt, err = GenerateTrainStmtByModel(slct, connStr, cwd, slct.ModelToEvaluate)
 		if err != nil {
 			return nil, err
 		}

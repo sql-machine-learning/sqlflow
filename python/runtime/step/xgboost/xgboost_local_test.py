@@ -18,10 +18,10 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.xgboost_submitter.evaluate import evaluate
-from runtime.local.xgboost_submitter.explain import explain
-from runtime.local.xgboost_submitter.predict import pred
-from runtime.local.xgboost_submitter.train import train
+from runtime.local.submitter import submit_local_train as train
+from runtime.step.xgboost.evaluate import evaluate
+from runtime.step.xgboost.explain import explain
+from runtime.step.xgboost.predict import predict
 
 
 class TestXGBoostTrain(unittest.TestCase):
@@ -61,19 +61,20 @@ class TestXGBoostTrain(unittest.TestCase):
         class_name = "class"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            eval_result = train(original_sql=original_sql,
-                                model_image="sqlflow:step",
-                                estimator_string="xgboost.gbtree",
-                                datasource=ds,
+            eval_result = train(datasource=ds,
+                                original_sql=original_sql,
                                 select=select,
                                 validation_select=val_select,
-                                model_params=model_params,
-                                train_params=train_params,
-                                validation_params=None,
+                                estimator_string="xgboost.gbtree",
+                                model_image="sqlflow:step",
                                 feature_column_map=None,
                                 label_column=NumericColumn(
                                     FieldDesc(name=class_name)),
-                                save=save_name)
+                                model_params=model_params,
+                                train_params=train_params,
+                                validation_params=None,
+                                save=save_name,
+                                load=None)
 
         self.assertLess(eval_result['train']['merror'][-1], 0.01)
         self.assertLess(eval_result['validate']['merror'][-1], 0.01)
@@ -82,8 +83,8 @@ class TestXGBoostTrain(unittest.TestCase):
         pred_select = "SELECT * FROM iris.test"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            pred(ds, pred_select, "iris.predict_result_table", class_name,
-                 save_name)
+            predict(ds, pred_select, "iris.predict_result_table", class_name,
+                    save_name)
 
         self.assertEqual(
             self.get_table_row_count(conn, "iris.test"),

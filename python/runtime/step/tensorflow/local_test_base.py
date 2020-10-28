@@ -19,10 +19,10 @@ import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
-from runtime.local.tensorflow_submitter.evaluate import evaluate
-from runtime.local.tensorflow_submitter.explain import explain
-from runtime.local.tensorflow_submitter.predict import pred
-from runtime.local.tensorflow_submitter.train import train
+from runtime.local.submitter import submit_local_train as train
+from runtime.step.tensorflow.evaluate import evaluate_step as evaluate
+from runtime.step.tensorflow.explain import explain_step as explain
+from runtime.step.tensorflow.predict import predict_step as pred
 
 
 class TestTensorFlowLocalSubmitter(unittest.TestCase):
@@ -85,7 +85,8 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
                   feature_column_map=None,
                   label_column=NumericColumn(
                       FieldDesc(name=class_name, shape=[])),
-                  save=save_name)
+                  save=save_name,
+                  load=None)
 
         conn = db.connect_with_data_source(ds)
 

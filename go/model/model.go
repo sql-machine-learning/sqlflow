@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"io"
 	"io/ioutil"
 	"os"
@@ -35,8 +36,8 @@ import (
 )
 
 const (
-	modelZooDB        = "sqlflow"
-	modelZooTable     = "sqlflow.trained_models"
+	// BucketName is the OSS bucket to save trained models
+	BucketName        = "sqlflow-models"
 	modelMetaFileName = "model_meta.json"
 )
 
@@ -75,18 +76,10 @@ func (m *Model) GetMetaAsString(key string) string {
 func (m *Model) Save(modelURI string, session *pb.Session) error {
 	if strings.Contains(modelURI, "://") {
 		uriParts := strings.Split(modelURI, "://")
-		if len(uriParts) == 2 {
-			// oss:// or file://
-			if uriParts[0] == "file" {
-				dir, file := path.Split(uriParts[1])
-				_, err := m.saveTar(dir, file)
-				return err
-			} else if uriParts[0] == "oss" {
-				return fmt.Errorf("save model to oss is not supported now")
-			}
-		} else {
-			return fmt.Errorf("error modelURI format: %s", modelURI)
+		if len(uriParts) == 2 && uriParts[0] == "oss" {
+			return fmt.Errorf("save model to oss is not supported now")
 		}
+		return fmt.Errorf("error modelURI format: %s", modelURI)
 	}
 
 	return m.saveDB(session.DbConnStr, modelURI, session)
@@ -422,4 +415,33 @@ func MockInDB(cwd, trainSelect, table string) error {
 		return e
 	}
 	return m.saveDB(database.GetTestingDBSingleton().URL(), table, database.GetSessionFromTestingDB())
+}
+
+// GetOSSModelBucket gets the OSS bucket of to save models.
+func GetOSSModelBucket() (*oss.Bucket, error) {
+	ak := os.Getenv("SQLFLOW_OSS_AK")
+	sk := os.Getenv("SQLFLOW_OSS_SK")
+	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
+	if ak == "" || sk == "" || ep == "" {
+		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
+	}
+
+	cli, e := oss.New(ep, ak, sk)
+	if e != nil {
+		return nil, e
+	}
+	return cli.Bucket(BucketName)
+}
+
+// GetOSSModelPath gets the OSS path of the saved models.
+func GetOSSModelPath(modelName string, session *pb.Session) (string, error) {
+	userID := session.UserId
+	projectName, err := database.GetDatabaseName(session.DbConnStr)
+	if err != nil {
+		return "", err
+	}
+	if userID == "" {
+		userID = "unknown"
+	}
+	return strings.Join([]string{projectName, userID, modelName}, "/"), nil
 }

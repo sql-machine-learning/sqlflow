@@ -21,13 +21,15 @@ import shap
 import tensorflow as tf
 from runtime import explainer
 from runtime.db import buffered_db_writer, connect_with_data_source
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.get_tf_version import tf_is_version2
 from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.input_fn import input_fn
 from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
-from runtime.tensorflow.load_model import pop_optimizer_and_loss
+from runtime.tensorflow.load_model import (load_keras_model_weights,
+                                           pop_optimizer_and_loss)
 
 sns_colors = sns.color_palette('colorblind')
 # Disable TensorFlow INFO and WARNING logs
@@ -61,18 +63,36 @@ def explain(datasource,
             oss_endpoint=None,
             oss_bucket_name=None):
     estimator_cls = import_model(estimator_string)
-    if is_tf_estimator(estimator_cls):
-        model_params['model_dir'] = save
+    is_pai = True if pai_table else False
+    if is_pai:
+        FLAGS = tf.app.flags.FLAGS
+        model_params["model_dir"] = FLAGS.checkpointDir
+        select = ""
+    else:
+        if is_tf_estimator(estimator_cls):
+            model_params['model_dir'] = save
     model_params.update(feature_columns)
     pop_optimizer_and_loss(model_params)
 
     def _input_fn():
-        dataset = input_fn(select, datasource, feature_column_names,
-                           feature_metas, label_meta)
+        dataset = input_fn(select,
+                           datasource,
+                           feature_column_names,
+                           feature_metas,
+                           label_meta,
+                           is_pai=is_pai,
+                           pai_table=pai_table)
         return dataset.batch(1).cache()
 
     estimator = init_model_with_feature_column(estimator_cls, model_params)
-    conn = connect_with_data_source(datasource)
+    if not is_tf_estimator(estimator_cls):
+        load_keras_model_weights(estimator, save)
+
+    if is_pai:
+        conn = PaiIOConnection.from_table(
+            result_table) if result_table else None
+    else:
+        conn = connect_with_data_source(datasource)
 
     if estimator_cls in (tf.estimator.BoostedTreesClassifier,
                          tf.estimator.BoostedTreesRegressor):
@@ -90,7 +110,8 @@ def explain(datasource,
                      result_table, feature_column_names, conn, oss_dest,
                      oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
-    conn.close()
+    if conn is not None:
+        conn.close()
 
 
 def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
@@ -101,7 +122,7 @@ def explain_boosted_trees(datasource, estimator, input_fn, plot_type,
     df_dfc = pd.DataFrame([pred['dfc'] for pred in pred_dicts])
     dfc_mean = df_dfc.abs().mean()
     gain = estimator.experimental_feature_importances(normalize=True)
-    if result_table != "":
+    if result_table:
         write_dfc_result(dfc_mean, gain, result_table, conn,
                          feature_column_names)
     explainer.plot_and_save(lambda: eval(plot_type)(df_dfc), oss_dest, oss_ak,
@@ -145,7 +166,7 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
         shap_dataset_summary = shap_dataset
     shap_values = shap.KernelExplainer(
         predict, shap_dataset_summary).shap_values(shap_dataset, l1_reg="aic")
-    if result_table != "":
+    if result_table:
         write_shap_values(shap_values, conn, result_table,
                           feature_column_names)
     explainer.plot_and_save(

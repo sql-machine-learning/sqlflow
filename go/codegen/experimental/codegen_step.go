@@ -19,6 +19,8 @@ import (
 	"google.golang.org/grpc"
 	"net/url"
 	"os"
+	"sqlflow.org/sqlflow/go/codegen/optimize"
+	"sqlflow.org/sqlflow/go/codegen/pai"
 	"strconv"
 	"strings"
 
@@ -162,16 +164,12 @@ func (m *Metadata) imageName() string {
 	return (*simplejson.Json)(m).Get("model_repo_image").MustString()
 }
 
-func getModelMetadata(session *pb.Session, table string) (*Metadata, error) {
-	submitter := getSubmitter(session)
-	if submitter == "local" {
-		modelZooAddr, table, tag := decomposeModelName(table)
-		if modelZooAddr != "" {
-			return getModelMetadataFromModelZoo(modelZooAddr, table, tag)
-		}
-		return GetModelMetadataFromDB(session.DbConnStr, table)
+func getModelMetadata(session *pb.Session, modelName string) (*Metadata, error) {
+	modelZooAddr, modelName, tag := decomposeModelName(modelName)
+	if modelZooAddr != "" {
+		return getModelMetadataFromModelZoo(modelZooAddr, modelName, tag)
 	}
-	return nil, fmt.Errorf("not supported submitter %s", submitter)
+	return GetModelMetadataFromDB(session.DbConnStr, modelName)
 }
 
 func decomposeModelName(modelName string) (string, string, string) {
@@ -216,11 +214,35 @@ func getModelMetadataFromModelZoo(addr, table, tag string) (*Metadata, error) {
 
 // GetModelMetadataFromDB gets model Metadata from DBMS
 func GetModelMetadataFromDB(dbConnStr, table string) (*Metadata, error) {
+	const suffix = "_sqlflow_pai_model"
+
+	meta, err1 := getModelMetadataFromDBImpl(dbConnStr, table)
+	if err1 == nil {
+		return meta, nil
+	}
+
+	meta, err2 := getModelMetadataFromDBImpl(dbConnStr, table+suffix)
+	if err2 == nil {
+		return meta, nil
+	}
+	return nil, fmt.Errorf("cannot find model metadata from %[1]s or %[1]s%[2]s: %[3]s; %[4]s",
+		table, suffix, err1, err2)
+}
+
+func getModelMetadataFromDBImpl(dbConnStr, table string) (*Metadata, error) {
 	db, err := database.OpenAndConnectDB(dbConnStr)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
+
+	if strings.Index(table, ".") < 0 {
+		dbName, err := database.GetDatabaseName(dbConnStr)
+		if err != nil {
+			return nil, err
+		}
+		table = dbName + "." + table
+	}
 
 	fs, err := sqlfs.Open(db.DB, table)
 	if err != nil {
@@ -258,14 +280,12 @@ func initializeAndCheckAttributes(stmt ir.SQLFlowStmt) error {
 	case *ir.TrainStmt:
 		if s.GetModelKind() == ir.XGBoost {
 			return InitializeAttributes(s)
+		} else if s.GetModelKind() == ir.KMeans {
+			return pai.InitializeKMeansAttributes(s)
 		}
-		// TODO(typhoonzero): add below lines
-		// 	else if s.GetModelKind() == ir.KMeans {
-		// 		return pai.InitializeKMeansAttributes(s)
-		// 	}
 		return tensorflow.InitializeAttributes(s)
-		// case *ir.OptimizeStmt:
-		// 	return optimize.InitializeAttributes(s)
+	case *ir.OptimizeStmt:
+		return optimize.InitializeAttributes(s)
 	}
 	return nil
 }

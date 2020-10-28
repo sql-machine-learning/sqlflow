@@ -40,6 +40,7 @@ type trainStepFiller struct {
 	Save                 string
 	Load                 string
 	Submitter            string
+	User                 string
 }
 
 func escapeSpecialRunesAndTrimSpace(s string) string {
@@ -100,6 +101,7 @@ func GenerateTrain(trainStmt *ir.TrainStmt, stepIndex int, session *pb.Session) 
 		Save:                 trainStmt.Into,
 		Load:                 trainStmt.PreTrainedModel,
 		Submitter:            getSubmitter(session),
+		User:                 session.UserId,
 	}
 	var program bytes.Buffer
 	var trainTemplate = template.Must(template.New("Train").Parse(trainStepTemplate))
@@ -138,5 +140,6 @@ def step_entry_{{.StepIndex}}():
               train_params=train_params,
               validation_params=validation_params,
               save='''{{.Save}}''',
-              load='''{{.Load}}''')
+              load='''{{.Load}}''',
+              user='''{{.User}}''')
 `

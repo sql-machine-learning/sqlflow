@@ -34,7 +34,7 @@ import (
 
 // RunSQLProgramAndPrintResult execute SQL statement and print the logs and select result
 // TODO(yancey1989): more meanful argument isTerminal and it2Check
-func RunSQLProgramAndPrintResult(sqlStmt string, modelDir string, session *pb.Session, table tablewriter.TableWriter, isTerminal, it2Check bool) error {
+func RunSQLProgramAndPrintResult(sqlStmt string, session *pb.Session, table tablewriter.TableWriter, isTerminal, it2Check bool) error {
 	startTime := time.Now().UnixNano()
 	defer log.Printf("(%.2f sec)\n", float64(time.Now().UnixNano()-startTime)/1e9)
 	// note(yancey1989): if the input sql program contain `\n`, bufio.Text() would deal with
@@ -45,7 +45,7 @@ func RunSQLProgramAndPrintResult(sqlStmt string, modelDir string, session *pb.Se
 	sqlStmt = replacer.Replace(sqlStmt)
 
 	log.SetFlags(0)
-	stream := sql.RunSQLProgram(sqlStmt, modelDir, session)
+	stream := sql.RunSQLProgram(sqlStmt, session)
 	for res := range stream.ReadAll() {
 		if e := Render(res, table, isTerminal, it2Check); e != nil {
 			return e

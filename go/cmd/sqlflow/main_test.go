@@ -57,7 +57,7 @@ func startServer() func() {
 	var s *grpc.Server
 	go func() {
 		s = grpc.NewServer()
-		proto.RegisterSQLFlowServer(s, srv.NewServer(sql.RunSQLProgram, ""))
+		proto.RegisterSQLFlowServer(s, srv.NewServer(sql.RunSQLProgram))
 
 		listenString := fmt.Sprintf(":%d", 50051)
 		lis, err := net.Listen("tcp", listenString)
@@ -637,7 +637,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(23, len(c))
+	a.Equal(24, len(c))
 	a.Equal("BoostedTreesClassifier", c[0].Text)
 
 	p.InsertText(`DNN`, false, true)

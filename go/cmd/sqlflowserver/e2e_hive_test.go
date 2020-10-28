@@ -24,7 +24,6 @@ import (
 
 func TestEnd2EndHive(t *testing.T) {
 	testDBDriver := os.Getenv("SQLFLOW_TEST_DB")
-	modelDir := ""
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
@@ -35,7 +34,7 @@ func TestEnd2EndHive(t *testing.T) {
 		t.Skip("Skipping hive tests")
 	}
 	dbConnStr = database.GetTestingHiveURL()
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {

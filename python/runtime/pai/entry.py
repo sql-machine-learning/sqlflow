@@ -16,18 +16,18 @@ from inspect import getargspec
 
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
-from runtime.pai.tensorflow_submitter.evaluate import \
-    evaluate_step as evaluate_tf
-from runtime.pai.tensorflow_submitter.explain import explain_step as explain_tf
-from runtime.pai.tensorflow_submitter.predict import predict_step as predict_tf
-from runtime.pai.xgboost_submitter.evaluate import \
-    evaluate_step as evaluate_xgb
-from runtime.pai.xgboost_submitter.explain import explain_step as explain_xgb
-# (TODO: lhw) split entry.py into multiple files,
-# so, we can only import needed packages
-from runtime.pai.xgboost_submitter.predict import predict_step as predict_xgb
-from runtime.pai.xgboost_submitter.train import train_step as train_xgb
+from runtime.step.tensorflow.evaluate import evaluate_step as evaluate_tf
+from runtime.step.tensorflow.explain import explain_step as explain_tf
+from runtime.step.tensorflow.predict import predict_step as predict_tf
 from runtime.step.tensorflow.train import train_step as train_tf
+
+try:
+    from runtime.step.xgboost.evaluate import evaluate as evaluate_xgb
+    from runtime.step.xgboost.explain import explain as explain_xgb
+    from runtime.step.xgboost.predict import predict as predict_xgb
+    from runtime.step.xgboost.train import train as train_xgb
+except ImportError:
+    pass
 
 
 def call_fun(func, params):
@@ -65,9 +65,7 @@ def call_fun(func, params):
     return func(**dict_args)
 
 
-def entrypoint():
-    with open("train_params.pkl", "rb") as file:
-        params = pickle.load(file)
+def entrypoint(params):
     if params["entry_type"] == "train_tf":
         call_fun(train_tf, params)
     elif params["entry_type"] == "train_xgb":
@@ -89,4 +87,6 @@ def entrypoint():
 if __name__ == "__main__":
     FLAGS = define_tf_flags()
     set_oss_environs(FLAGS)
-    entrypoint()
+    with open("train_params.pkl", "rb") as file:
+        params = pickle.load(file)
+    entrypoint(params)

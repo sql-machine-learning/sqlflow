@@ -90,7 +90,7 @@ message Session {
 //      2. `USE ...`, `DELETE ...`
 //      3. `SELECT ... TO TRAIN/PREDICT ...`
 message Request {
-    string sql = 1;      // The SQL statement to be executed.
+    string stmts = 1;      // The SQL statements to be executed.
     Session session = 2;
 }
 

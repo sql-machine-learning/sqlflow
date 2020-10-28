@@ -13,6 +13,7 @@
 
 import atexit
 import copy
+import re
 import types
 import uuid
 from collections import OrderedDict
@@ -636,6 +637,20 @@ def _convert_dict_to_list(d):
     return env_list
 
 
+def isfloat(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_yaml_bool(value):
+    return re.match(
+        "y|Y|yes|Yes|YES|n|N|no|No|NO|true|True|TRUE|false|False|FALSE|on|On|ON|off|Off|OFF",  # noqa: E501
+        value) is not None
+
+
 def _convert_dict_to_env_list(d):
     """This is to convert a Python dictionary to a list, where
     each list item is a dict with `name` and `value` keys.
@@ -651,7 +666,10 @@ def _convert_dict_to_env_list(d):
             for s in v:
                 env_list.append(s)
         else:
-            env_list.append({"name": str(k), "value": "'%s'" % str(v)})
+            if str(v).isdigit() or isfloat(str(v)) or is_yaml_bool(str(v)):
+                env_list.append({"name": str(k), "value": "'%s'" % str(v)})
+            else:
+                env_list.append({"name": str(k), "value": str(v)})
     return env_list
 
 

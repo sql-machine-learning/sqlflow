@@ -154,14 +154,13 @@ func TestEnd2EndMySQL(t *testing.T) {
 		t.Skip("Skipping mysql tests")
 	}
 	dbConnStr = database.GetTestingMySQLURL()
-	modelDir := ""
 
 	tmpDir, caCrt, caKey, err := generateTempCA()
 	defer os.RemoveAll(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to generate CA pair %v", err)
 	}
-	go start(modelDir, caCrt, caKey, unitTestPort, false)
+	go start(caCrt, caKey, unitTestPort, false)
 	server.WaitPortReady(fmt.Sprintf("localhost:%d", unitTestPort), 0)
 	err = prepareTestData(dbConnStr)
 	if err != nil {
@@ -182,6 +181,7 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseSQLByPassLeftJoin", CaseSQLByPassLeftJoin)
 	t.Run("CaseTrainRegression", caseTrainRegression)
 	t.Run("CaseScoreCard", caseScoreCard)
+	t.Run("CaseOneClassSVMModel", caseOneClassSVMModel)
 
 	// Cases using feature derivation
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)

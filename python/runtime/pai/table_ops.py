@@ -11,9 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import random
 import string
 
+import six
 from runtime import db
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic
@@ -46,30 +48,30 @@ def create_tmp_table_from_select(select, datasource):
     """
     if not select:
         return None
-    conn = db.connect_with_data_source(datasource)
     project = get_project(datasource)
     tmp_tb_name = gen_rand_string()
     create_sql = "CREATE TABLE %s LIFECYCLE %s AS %s" % (
         tmp_tb_name, LIFECYCLE_ON_TMP_TABLE, select)
     # (NOTE: lhw) maxcompute conn doesn't support close
     # we should unify db interface
-    if not conn.execute(create_sql):
-        raise SQLFlowDiagnostic("Can't create tmp table for %s" % select)
-    return "%s.%s" % (project, tmp_tb_name)
+    with db.connect_with_data_source(datasource) as conn:
+        if not conn.execute(create_sql):
+            raise SQLFlowDiagnostic("Can't create tmp table for %s" % select)
+        return "%s.%s" % (project, tmp_tb_name)
 
 
 def drop_tables(tables, datasource):
     """Drop given tables in datasource"""
-    conn = db.connect_with_data_source(datasource)
-    try:
-        for table in tables:
-            if table != "":
-                drop_sql = "DROP TABLE IF EXISTS %s" % table
-                conn.execute(drop_sql)
-    except:  # noqa: E722
-        # odps will clear table itself, so even fail here, we do
-        # not need to raise error
-        print("Encounter error on drop tmp table")
+    with db.connect_with_data_source(datasource) as conn:
+        try:
+            for table in tables:
+                if table != "":
+                    drop_sql = "DROP TABLE IF EXISTS %s" % table
+                    conn.execute(drop_sql)
+        except:  # noqa: E722
+            # odps will clear table itself, so even fail here, we do
+            # not need to raise error
+            print("Encounter error on drop tmp table")
 
 
 def gen_rand_string(slen=16):
@@ -81,4 +83,23 @@ def gen_rand_string(slen=16):
     Returns:
         A random string with slen length
     """
-    return ''.join(random.sample(string.ascii_letters + string.digits, slen))
+    first_char = random.sample(string.ascii_letters, 1)
+    rest_char = random.sample(string.ascii_letters + string.digits, slen - 1)
+    return ''.join(first_char + rest_char)
+
+
+@contextlib.contextmanager
+def create_tmp_tables_guard(selects, datasource):
+    if isinstance(selects, six.string_types):
+        tables = create_tmp_table_from_select(selects, datasource)
+        drop_table_list = [tables]
+    elif isinstance(selects, (list, tuple)):
+        tables = [create_tmp_table_from_select(s, datasource) for s in selects]
+        drop_table_list = tables
+    else:
+        raise ValueError("not supported types {}".format(type(selects)))
+
+    try:
+        yield tables
+    finally:
+        drop_tables(drop_table_list, datasource)

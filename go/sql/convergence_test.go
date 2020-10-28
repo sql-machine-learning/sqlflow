@@ -38,7 +38,6 @@ func TestConvergenceAndAccuracy(t *testing.T) {
 	os.Setenv(seedEnvKey, "1")
 	defer os.Unsetenv(seedEnvKey)
 
-	modelDir := ""
 	a.NotPanics(func() {
 		stream := RunSQLProgram(`
 SELECT * FROM sanity_check.train
@@ -51,7 +50,7 @@ WITH
 	validation.select="SELECT * FROM sanity_check.train"
 LABEL class
 INTO sqlflow_models.my_dnn_model;
-`, modelDir, database.GetSessionFromTestingDB())
+`, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {
@@ -59,7 +58,7 @@ INTO sqlflow_models.my_dnn_model;
 SELECT * FROM sanity_check.train
 TO PREDICT sanity_check.predict.class
 USING sqlflow_models.my_dnn_model;
-`, modelDir, database.GetSessionFromTestingDB())
+`, database.GetSessionFromTestingDB())
 		a.True(test.GoodStream(stream.ReadAll()))
 	})
 	a.NotPanics(func() {

@@ -235,7 +235,7 @@ func createRPCConn(opts *options) (*grpc.ClientConn, error) {
 func sqlRequest(program string, ds string) *pb.Request {
 	se := sql.MakeSessionFromEnv()
 	se.DbConnStr = getDataSource(ds, currentDB)
-	return &pb.Request{Sql: program, Session: se}
+	return &pb.Request{Stmts: program, Session: se}
 }
 
 func isExitStmt(stmt string) bool {

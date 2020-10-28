@@ -15,7 +15,6 @@ import os
 
 import numpy as np
 import runtime.temp_file as temp_file
-import runtime.xgboost as xgboost_extended
 import six
 import sklearn.metrics
 import xgboost as xgb
@@ -23,10 +22,16 @@ from runtime import db
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
-from runtime.local.create_result_table import create_evaluate_table
-from runtime.local.xgboost_submitter.predict import _calc_predict_result
+from runtime.model import EstimatorType, oss
 from runtime.model.model import Model
+from runtime.pai.pai_distributed import define_tf_flags
+from runtime.step.create_result_table import create_evaluate_table
+from runtime.step.xgboost.predict import _calc_predict_result
 from runtime.xgboost.dataset import xgb_dataset
+# TODO(typhoonzero): remove runtime.xgboost
+from runtime.xgboost.feature_column import ComposedColumnTransformer
+
+FLAGS = define_tf_flags()
 
 SKLEARN_METRICS = [
     'accuracy_score',
@@ -56,51 +61,49 @@ def evaluate(datasource,
              select,
              result_table,
              model,
-             pred_label_name=None,
-             model_params=None):
+             label_name=None,
+             model_params=None,
+             pai_table="",
+             oss_model_path=""):
+    """TBD
     """
-    Do evaluation to a trained XGBoost model.
-
-    Args:
-        datasource (str): the database connection string.
-        select (str): the input data to predict.
-        result_table (str): the output data table.
-        model (Model|str): the model object or where to load the model.
-        pred_label_name (str): the label column name.
-        model_params (dict): the parameters for evaluation.
-
-    Returns:
-        None.
-    """
-    if isinstance(model, six.string_types):
-        model = Model.load_from_db(datasource, model)
-    else:
-        assert isinstance(model,
-                          Model), "not supported model type %s" % type(model)
-
     if model_params is None:
         model_params = {}
-
-    validation_metrics = model_params.get("validation.metrics", "Accuracy")
+    validation_metrics = model_params.get("validation.metrics",
+                                          "accuracy_score")
     validation_metrics = [m.strip() for m in validation_metrics.split(",")]
 
-    model_params = model.get_meta("attributes")
-    train_fc_map = model.get_meta("features")
-    train_label_desc = model.get_meta("label").get_field_desc()[0]
-    if pred_label_name:
-        train_label_desc.name = pred_label_name
+    is_pai = True if pai_table != "" else False
+    if is_pai:
+        assert (oss_model_path != "")
+        # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
+        # in xgboost/train.py
+        oss.load_file(oss_model_path, "my_model")
+        (estimator, model_params, train_params, feature_metas,
+         feature_column_names, train_label_desc,
+         fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
+    else:
+        if isinstance(model, six.string_types):
+            model = Model.load_from_db(datasource, model)
+        else:
+            assert isinstance(
+                model, Model), "not supported model type %s" % type(model)
 
-    field_descs = get_ordered_field_descs(train_fc_map)
+        model_params = model.get_meta("attributes")
+        fc_map_ir = model.get_meta("features")
+        train_label_desc = model.get_meta("label").get_field_desc()[0]
+
+    if label_name:
+        train_label_desc.name = label_name
+
+    feature_columns = compile_ir_feature_columns(fc_map_ir,
+                                                 EstimatorType.XGBOOST)
+    field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
                           for fd in field_descs])
-
-    # NOTE: in the current implementation, we are generating a transform_fn
-    # from the COLUMN clause. The transform_fn is executed during the process
-    # of dumping the original data into DMatrix SVM file.
-    compiled_fc = compile_ir_feature_columns(train_fc_map, model.get_type())
-    transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
-        feature_column_names, *compiled_fc["feature_columns"])
+    transform_fn = ComposedColumnTransformer(
+        feature_column_names, *feature_columns["feature_columns"])
 
     bst = xgb.Booster()
     bst.load_model("my_model")

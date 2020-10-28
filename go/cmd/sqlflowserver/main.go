@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"net"
-	"os"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -48,22 +47,17 @@ func newServer(caCrt, caKey string, logger *log.Logger) (*grpc.Server, error) {
 	return s, nil
 }
 
-func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
+func start(caCrt, caKey string, port int, isArgoMode bool) {
 	logger := log.GetDefaultLogger()
 	s, err := newServer(caCrt, caKey, logger)
 	if err != nil {
 		logger.Fatalf("failed to create new gRPC Server: %v", err)
 	}
 
-	if modelDir != "" {
-		if _, derr := os.Stat(modelDir); derr != nil {
-			os.Mkdir(modelDir, os.ModePerm)
-		}
-	}
 	if isArgoMode {
-		proto.RegisterSQLFlowServer(s, server.NewServer(server.SubmitWorkflow, modelDir))
+		proto.RegisterSQLFlowServer(s, server.NewServer(server.SubmitWorkflow))
 	} else {
-		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram, modelDir))
+		proto.RegisterSQLFlowServer(s, server.NewServer(sf.RunSQLProgram))
 	}
 
 	listenString := fmt.Sprintf(":%d", port)
@@ -81,7 +75,6 @@ func start(modelDir, caCrt, caKey string, port int, isArgoMode bool) {
 }
 
 func main() {
-	modelDir := flag.String("model_dir", "", "model would be saved on the local dir, otherwise upload to the table.")
 	logPath := flag.String("log", "", "path/to/log, e.g.: /var/log/sqlflow.log")
 	caCrt := flag.String("ca-crt", "", "CA certificate file.")
 	caKey := flag.String("ca-key", "", "CA private key file.")
@@ -89,5 +82,5 @@ func main() {
 	isArgoMode := flag.Bool("argo-mode", false, "Enable Argo workflow model.")
 	flag.Parse()
 	log.InitLogger(*logPath, log.OrderedTextFormatter)
-	start(*modelDir, *caCrt, *caKey, *port, *isArgoMode)
+	start(*caCrt, *caKey, *port, *isArgoMode)
 }

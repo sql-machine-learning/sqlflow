@@ -44,13 +44,35 @@ def _drop_table_if_exists(conn, table):
     conn.execute(sql)
 
 
+# NOTE: MySQL TEXT type can contain 65536 characters at most.
+# We need to limit the max string length of each row.
+MAX_LENGTH_TO_WRITE_PER_ROW = 32768
+
+
 class SQLFSWriter(object):
     def __init__(self, conn, table):
+        _drop_table_if_exists(conn, table)
+        _create_table(conn, table)
+
         self.context_manager = buffered_db_writer(conn, table, ["id", "block"])
         self.writer = self.context_manager.__enter__()
         self.row_idx = 0
+        self.buffer = b''
 
     def write(self, content):
+        self.buffer += content
+        start = 0
+        end = MAX_LENGTH_TO_WRITE_PER_ROW
+        length = len(self.buffer)
+        while end <= length:
+            self._write_impl(self.buffer[start:end])
+            start = end
+            end += MAX_LENGTH_TO_WRITE_PER_ROW
+
+        if start > 0:
+            self.buffer = self.buffer[start:]
+
+    def _write_impl(self, content):
         block = base64.b64encode(content)
         if six.PY3 and isinstance(block, bytes):
             block = block.decode("utf-8")
@@ -58,13 +80,20 @@ class SQLFSWriter(object):
         self.row_idx += 1
 
     def close(self):
-        self.writer.close()
+        self.flush()
+        # NOTE: __exit__ would close the self.writer
+        self.context_manager.__exit__(None, None, None)
+
+    def flush(self):
+        if self.buffer:
+            self._write_impl(self.buffer)
+            self.buffer = b''
 
     def __enter__(self, *args, **kwargs):
         return self
 
     def __exit__(self, *args, **kwargs):
-        self.context_manager.__exit__(*args, **kwargs)
+        self.close()
 
 
 def _build_ordered_reader(reader):
@@ -158,16 +187,11 @@ def write_with_generator_and_metadata(datasource, table, gen, metadata):
             The metadata to be saved into the table. It would
             save in the row 0.
     """
-    conn = connect_with_data_source(datasource)
-    _drop_table_if_exists(conn, table)
-    _create_table(conn, table)
-
-    with SQLFSWriter(conn, table) as w:
-        w.write(_encode_metadata(metadata))
-        for d in gen():
-            w.write(d)
-
-    conn.close()
+    with connect_with_data_source(datasource) as conn:
+        with SQLFSWriter(conn, table) as w:
+            w.write(_encode_metadata(metadata))
+            for d in gen():
+                w.write(d)
 
 
 def read_metadata_from_db(datasource, table):
@@ -183,11 +207,10 @@ def read_metadata_from_db(datasource, table):
     Returns: dict
         The metadata dict.
     """
-    conn = connect_with_data_source(datasource)
-    with SQLFSReader(conn, table) as r:
-        metadata = _read_metadata(r)
-    conn.close()
-    return metadata
+    with connect_with_data_source(datasource) as conn:
+        with SQLFSReader(conn, table) as r:
+            metadata = _read_metadata(r)
+            return metadata
 
 
 def read_with_generator_and_metadata(datasource, table, buff_size=256):
@@ -211,14 +234,23 @@ def read_with_generator_and_metadata(datasource, table, buff_size=256):
     metadata = _read_metadata(r)
 
     def reader():
-        while True:
-            buffer = r.read(buff_size)
-            if not buffer:
-                break
+        try:
+            while True:
+                buffer = r.read(buff_size)
+                if not buffer:
+                    break
 
-            yield buffer
+                yield buffer
+        finally:
+            reader.close()
 
-        r.close()
-        conn.close()
+    def close():
+        if not reader.is_closed:
+            r.close()
+            conn.close()
+            reader.is_closed = True
+
+    reader.is_closed = False
+    reader.close = close
 
     return reader, metadata

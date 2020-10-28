@@ -41,6 +41,15 @@ sklearn2pmml==0.56.0
 sklearn_pandas==1.6.0
 """
 
+ALL_TAR_FILES = [
+    JOB_ARCHIVE_FILE,
+    ENTRY_FILE,
+    "runtime",
+    "sqlflow_models",
+    "requirements.txt",
+    TRAIN_PARAMS_FILE,
+]
+
 
 def prepare_archive(cwd, estimator, model_save_path, train_params):
     """package needed resource into a tarball"""
@@ -60,10 +69,7 @@ def prepare_archive(cwd, estimator, model_save_path, train_params):
     _copy_python_package("sqlflow_models", cwd)
     _copy_custom_package(estimator, cwd)
 
-    args = [
-        "tar", "czf", JOB_ARCHIVE_FILE, ENTRY_FILE, "runtime",
-        "sqlflow_models", "requirements.txt", TRAIN_PARAMS_FILE
-    ]
+    args = ["tar", "czf"] + ALL_TAR_FILES
     if subprocess.call(args, cwd=cwd) != 0:
         raise SQLFlowDiagnostic("Can't zip resource")
 

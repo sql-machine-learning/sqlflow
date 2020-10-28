@@ -16,6 +16,7 @@ package ir
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -93,26 +94,67 @@ func unifyDatabaseTypeName(typeName string) string {
 	return strings.ToUpper(typeName)
 }
 
-// scanRowValue returns the decoded row value from sql.Rows.
-func scanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface{}, error) {
+// NewRowValuesToScan prepares new row value list for data scanning
+func NewRowValuesToScan(columnTypeList []*sql.ColumnType, isNullable bool) []interface{} {
 	rowData := make([]interface{}, len(columnTypeList))
 	for idx, ct := range columnTypeList {
 		typeName := ct.DatabaseTypeName()
+		var value interface{}
 		switch unifyDatabaseTypeName(typeName) {
 		case "CHAR", "VARCHAR", "TEXT", "STRING":
-			rowData[idx] = new(string)
+			if isNullable {
+				value = new(sql.NullString)
+			} else {
+				value = new(string)
+			}
 		case "INT", "TINYINT":
-			rowData[idx] = new(int32)
+			if isNullable {
+				value = new(sql.NullInt32)
+			} else {
+				value = new(int32)
+			}
 		case "BIGINT", "DECIMAL":
-			rowData[idx] = new(int64)
+			if isNullable {
+				value = new(sql.NullInt64)
+			} else {
+				value = new(int64)
+			}
 		case "FLOAT":
-			rowData[idx] = new(float32)
+			if isNullable {
+				// NOTE: there is no sql.NullFloat32
+				value = new(sql.NullFloat64)
+			} else {
+				value = new(float32)
+			}
 		case "DOUBLE":
-			rowData[idx] = new(float64)
+			if isNullable {
+				value = new(sql.NullFloat64)
+			} else {
+				value = new(float64)
+			}
 		default:
-			return nil, fmt.Errorf("scanRowValue: unsupported database column type: %s", typeName)
+			// NOTE(typhoonzero): Hive TIMESTAMP_TYPE column will return string value, but ct.ScanType() returns int64
+			// https://github.com/sql-machine-learning/sqlflow/issues/1256
+			if ct.DatabaseTypeName() == "TIMESTAMP_TYPE" {
+				if isNullable {
+					value = new(sql.NullString)
+				} else {
+					value = new(string)
+				}
+			} else {
+				// NOTE: To careful that when using gomaxcompute, ct.ScanType()
+				// would return string for BIGINT/DOUBLE/...
+				value = reflect.New(ct.ScanType()).Interface()
+			}
 		}
+		rowData[idx] = value
 	}
+	return rowData
+}
+
+// scanRowValue returns the decoded row value from sql.Rows.
+func scanRowValue(rows *sql.Rows, columnTypeList []*sql.ColumnType) ([]interface{}, error) {
+	rowData := NewRowValuesToScan(columnTypeList, false)
 	if err := rows.Scan(rowData...); err != nil {
 		return nil, err
 	}

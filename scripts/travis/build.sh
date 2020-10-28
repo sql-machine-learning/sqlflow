@@ -70,6 +70,3 @@ build_sqlflow_image mysql
 build_sqlflow_image jupyter
 build_sqlflow_image step
 build_sqlflow_image modelzooserver
-
-echo "Clean up root permission $TRAVIS_BUILD_DIR/build ..."
-docker run --rm  -v "$TRAVIS_BUILD_DIR":/work sqlflow:ci rm -rf /work/build /work/java /work/python

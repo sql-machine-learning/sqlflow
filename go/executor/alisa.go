@@ -24,6 +24,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sqlflow.org/sqlflow/go/model"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -31,7 +32,6 @@ import (
 	"sqlflow.org/sqlflow/go/codegen/pai"
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/ir"
-	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/randstring"
 )
 
@@ -99,16 +99,12 @@ func (s *alisaExecutor) ExecuteTrain(ts *ir.TrainStmt) (e error) {
 	}
 	defer dropTmpTables([]string{ts.TmpTrainTable, ts.TmpValidateTable}, s.Session.DbConnStr)
 
-	ossModelPathToSave, e := getModelPath(ts.Into, s.Session)
-	if e != nil {
-		return e
-	}
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
+	ossModelPathToSave, e := model.GetOSSModelPath(ts.Into, s.Session)
 	if e != nil {
 		return e
 	}
 	// cleanup saved model on OSS before training
-	modelBucket, e := getModelBucket(currProject)
+	modelBucket, e := model.GetOSSModelBucket()
 	if e != nil {
 		return e
 	}
@@ -146,16 +142,11 @@ func (s *alisaExecutor) ExecutePredict(ps *ir.PredictStmt) error {
 		return e
 	}
 
-	ossModelPath, e := getModelPath(ps.Using, s.Session)
+	ossModelPath, e := model.GetOSSModelPath(ps.Using, s.Session)
 	if e != nil {
 		return e
 	}
-	// NOTE(typhoonzero): current project may differ from the project from SELECT statement.
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
-	if e != nil {
-		return e
-	}
-	modelType, estimator, e := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath)
 	if e != nil {
 		return e
 	}
@@ -207,15 +198,11 @@ func (s *alisaExecutor) ExecuteExplain(cl *ir.ExplainStmt) error {
 	cl.TmpExplainTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{cl.TmpExplainTable}, s.Session.DbConnStr)
 
-	currProject, err := database.GetDatabaseName(s.Session.DbConnStr)
-	if err != nil {
-		return err
-	}
-	ossModelPath, e := getModelPath(cl.ModelName, s.Session)
+	ossModelPath, e := model.GetOSSModelPath(cl.ModelName, s.Session)
 	if e != nil {
 		return e
 	}
-	modelType, estimator, e := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath)
 	if e != nil {
 		return e
 	}
@@ -262,16 +249,11 @@ func (s *alisaExecutor) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 		return e
 	}
 
-	ossModelPath, e := getModelPath(es.ModelName, s.Session)
+	ossModelPath, e := model.GetOSSModelPath(es.ModelName, s.Session)
 	if e != nil {
 		return e
 	}
-	// NOTE(typhoonzero): current project may differ from the project from SELECT statement.
-	currProject, e := database.GetDatabaseName(s.Session.DbConnStr)
-	if e != nil {
-		return e
-	}
-	modelType, estimator, e := getOSSSavedModelType(ossModelPath, currProject)
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath)
 	if e != nil {
 		return e
 	}
@@ -347,22 +329,6 @@ func findPyModulePath(pyModuleName string) (string, error) {
 	return strings.TrimSpace(b.String()), nil
 }
 
-// FIXME(typhoonzero): use the same model bucket name e.g. sqlflow-models
-func getModelBucket(project string) (*oss.Bucket, error) {
-	ak := os.Getenv("SQLFLOW_OSS_AK")
-	sk := os.Getenv("SQLFLOW_OSS_SK")
-	ep := os.Getenv("SQLFLOW_OSS_MODEL_ENDPOINT")
-	if ak == "" || sk == "" || ep == "" {
-		return nil, fmt.Errorf("should define SQLFLOW_OSS_MODEL_ENDPOINT, SQLFLOW_OSS_AK, SQLFLOW_OSS_SK when using submitter alisa")
-	}
-
-	cli, e := oss.New(ep, ak, sk)
-	if e != nil {
-		return nil, e
-	}
-	return cli.Bucket(pai.BucketName)
-}
-
 func getAlisaBucket() (*oss.Bucket, error) {
 	ep := os.Getenv("SQLFLOW_OSS_ALISA_ENDPOINT")
 	ak := os.Getenv("SQLFLOW_OSS_AK")
@@ -388,18 +354,6 @@ func writeFile(filePath, program string) error {
 	defer f.Close()
 	f.WriteString(program)
 	return nil
-}
-
-func getModelPath(modelName string, session *pb.Session) (string, error) {
-	userID := session.UserId
-	projectName, err := database.GetDatabaseName(session.DbConnStr)
-	if err != nil {
-		return "", err
-	}
-	if userID == "" {
-		userID = "unknown"
-	}
-	return strings.Join([]string{projectName, userID, modelName}, "/"), nil
 }
 
 func tarAndUploadResource(cwd, entryCode, requirements, ossObjectName, estimator string, bucket *oss.Bucket) (string, error) {

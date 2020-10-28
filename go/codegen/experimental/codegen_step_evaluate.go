@@ -32,6 +32,7 @@ type evaluateStepFiller struct {
 	Load           string
 	AttributesJSON string
 	Submitter      string
+	User           string
 }
 
 // GenerateEvaluation generates the evaluation code
@@ -63,6 +64,7 @@ func GenerateEvaluation(evalStmt *ir.EvaluateStmt, stepIndex int, session *pb.Se
 		Load:           evalStmt.ModelName,
 		AttributesJSON: attrPyStr,
 		Submitter:      getSubmitter(session),
+		User:           session.UserId,
 	}
 
 	var program bytes.Buffer
@@ -88,8 +90,9 @@ def step_entry_{{.StepIndex}}():
         evaluate(datasource='''{{.DataSource}}''', 
                  original_sql='''{{.OriginalSQL}}''',
                  select='''{{.Select}}''',
-                 pred_label_name='''{{.PredLabelName}}''',
-                 model_name='''{{.Load}}''',
+                 label_name='''{{.PredLabelName}}''',
+                 model='''{{.Load}}''',
                  model_params=model_params,
-                 result_table='''{{.ResultTable}}''')
+                 result_table='''{{.ResultTable}}''',
+                 user='''{{.User}}''')
 `

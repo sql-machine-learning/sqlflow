@@ -111,7 +111,8 @@ export PATH=$PWD:$PATH
 
 
 echo "Publish /tmp/sqlflow to Qiniu Object Storage ..."
-$F account "$QINIU_AK" "$QINIU_SK" "wu"
+# Add -w to overwrite the account if exists
+$F account -w "$QINIU_AK" "$QINIU_SK" "wu"
 
 retry=0
 while [[ $retry -lt 5 ]]; do

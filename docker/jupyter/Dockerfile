@@ -10,7 +10,7 @@ RUN /bin/sh -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_fastest
     choose_fastest_alpine_source && \
     choose_fastest_pip_source; fi'
 
-RUN apk add --no-cache python3 py3-pip py3-pyzmq py3-grpcio
+RUN apk add --no-cache python3 python3-dev py3-pip py3-pyzmq py3-grpcio
 
 # Install IPythono Notebook tutorials
 COPY /docker/jupyter/js /jupyter/js/
@@ -23,7 +23,7 @@ COPY docker/jupyter/install-jupyter.sh /jupyter/install-jupyter.sh
 RUN /bin/sh /jupyter/install-jupyter.sh
 
 # Cleanup
-RUN apk del --purge py3-pip
+RUN apk del --purge python3-dev
 
 # The following SQLFlow gRPC server endpoint implies the server runs in a container,
 # and if container has the option --net=container:sqlflow_server_container, SQLFlow magic

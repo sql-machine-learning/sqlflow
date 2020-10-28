@@ -99,7 +99,7 @@ func sqlRequest(sql string) *pb.Request {
 		Token:     "user-unittest",
 		DbConnStr: dbConnStr,
 	}
-	return &pb.Request{Sql: sql, Session: se}
+	return &pb.Request{Stmts: sql, Session: se}
 }
 
 // EqualAny checks any type of returned protobuf message to an interface
