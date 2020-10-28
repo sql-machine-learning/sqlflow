@@ -100,6 +100,14 @@ func GetSecret() (string, string, error) {
 	return name, string(value), nil
 }
 
+func escapeStepSQL(sql string) string {
+	sql = strings.Replace(sql, `\`, `\\\`, -1)
+	sql = strings.Replace(sql, `"`, `\\\"`, -1)
+	sql = strings.Replace(sql, "`", "\\`", -1)
+	sql = strings.Replace(sql, "$", "\\$", -1)
+	return sql
+}
+
 // GenFiller generates Filler to fill the template
 func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error) {
 	stepEnvs, err := GetStepEnvs(session)
@@ -138,11 +146,12 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	}
 
 	for _, sqlIR := range programIR {
+		escapedSQL := escapeStepSQL(sqlIR.GetOriginalSQL())
 		switch i := sqlIR.(type) {
 		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt, *ir.EvaluateStmt:
 			// TODO(typhoonzero): get model image used when training.
 			sqlStmt := &sqlStatement{
-				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+				OriginalSQL: escapedSQL, IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
 		case *ir.TrainStmt:
@@ -158,20 +167,20 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			} else {
 				sqlStmt := &sqlStatement{
-					OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+					OriginalSQL: escapedSQL, IsExtendedSQL: sqlIR.IsExtended(),
 					DockerImage: stepImage}
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		case *ir.ShowTrainStmt, *ir.OptimizeStmt:
 			sqlStmt := &sqlStatement{
-				OriginalSQL:   sqlIR.GetOriginalSQL(),
+				OriginalSQL:   escapedSQL,
 				IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage:   defaultDockerImage,
 			}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
 		case *ir.RunStmt:
 			sqlStmt := &sqlStatement{
-				OriginalSQL:   sqlIR.GetOriginalSQL(),
+				OriginalSQL:   escapedSQL,
 				IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage:   i.ImageName,
 				Select:        i.Select,
@@ -199,16 +208,7 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 
 // GenYAML translate the Couler program into Argo YAML
 func GenYAML(coulerProgram string) (string, error) {
-	cmdline := bytes.Buffer{}
-	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
-	if c := os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"); len(c) > 0 {
-		fmt.Fprintf(&cmdline, "--cluster_config %s ", c)
-	}
-	fmt.Fprintf(&cmdline, "--file -")
-
-	coulerExec := strings.Split(cmdline.String(), " ")
-	// execute command: `cat sqlflow.couler | couler run --mode argo --workflow_name sqlflow --file -`
-	cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
+	cmd := exec.Command("python", "-u")
 	cmd.Env = append(os.Environ())
 	cmd.Stdin = strings.NewReader(coulerProgram)
 	out, err := cmd.CombinedOutput()

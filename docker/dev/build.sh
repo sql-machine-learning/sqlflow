@@ -29,9 +29,9 @@ echo "Build sqlflowserver, sqlflow, and step into $SQLFLOW_BIN ..."
 go generate ./...
 GOBIN=$SQLFLOW_BIN go install ./...
 
-echo "Build $SQLFLOWPATH/python/couler into $SQLFLOW_BIN ..."
-cd $SQLFLOWPATH/python/couler
-python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
+#echo "Build $SQLFLOWPATH/python/couler into $SQLFLOW_BIN ..."
+#cd $SQLFLOWPATH/python/couler
+#python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Build Fluid ..."
 cd $SQLFLOW_BIN
@@ -86,6 +86,15 @@ fi
 cd models
 git fetch origin # The residual local repo might not be on a branch.
 git checkout 36a2f217f3311d861cf736894ecb5147b6e44c74
+python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
+
+echo "Build couler-proj/couler ..."
+cd $SQLFLOW_BIN
+if [[ ! -d couler ]]; then
+    git clone https://github.com/couler-proj/couler.git
+fi
+git fetch origin
+git checkout 374716477964ef68284addabe9dcd322f3a18c3b
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."

@@ -93,19 +93,16 @@ func TestCoulerCodegen(t *testing.T) {
 	code, err := GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
 
-	r, e := regexp.Compile(`steps.sqlflow\(sql=r'''(.*);''', `)
-	a.NoError(e)
-	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
+	a.True(strings.Contains(code, `SELECT * FROM iris.train limit 10`))
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
 	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))
-	a.True(strings.Contains(code, `couler.clean_workflow_after_seconds_finished(86400)`))
-	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
+	a.True(strings.Contains(code, `couler.create_secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 	a.True(strings.Contains(code, `resources=json.loads('''{"memory": "32Mi", "cpu": "100m"}''')`))
 
-	_, e = GenYAML(code)
+	_, e := GenYAML(code)
 	yaml, e := GenYAML(code)
 	a.NoError(e)
-	r, e = regexp.Compile(`step -e "(.*);"`)
+	r, e := regexp.Compile(`step -e "(.*);"`)
 	a.NoError(e)
 	a.Equal("SELECT * FROM iris.train limit 10", r.FindStringSubmatch(yaml)[1])
 	a.NoError(e)
@@ -116,7 +113,6 @@ func TestCoulerCodegen(t *testing.T) {
 	a.NoError(err)
 	r, e = regexp.Compile(`step_log_file = "(.*)"`)
 	a.True(strings.Contains(code, `step_log_file = "/home/admin/logs/step.log"`))
-	a.True(strings.Contains(code, "log_file=step_log_file"))
 
 	yaml, e = GenYAML(code)
 	a.NoError(e)
@@ -158,8 +154,9 @@ func TestStringInStringSQL(t *testing.T) {
 	a.NoError(err)
 	yaml, e := GenYAML(code)
 	a.NoError(e)
-	expect := `validation.select=\\\"select * from iris.train where\
-            \ name like \\\\\\\"Versicolor\\\\\\\";\\\"`
+	expect := `validation.select=\\\"select * from iris.train where\`
+	a.True(strings.Contains(yaml, expect))
+	expect = `\ name like \\\\\\\"Versicolor\\\\\\\";\\\"`
 	a.True(strings.Contains(yaml, expect))
 }
 

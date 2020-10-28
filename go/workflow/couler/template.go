@@ -45,36 +45,58 @@ type Filler struct {
 }
 
 const coulerTemplateText = `
-import couler.argo as couler
-import couler.steps as steps
 import json
 import re
+import os
+import couler.argo as couler
 datasource = "{{ .DataSource }}"
 step_log_file = "{{ .StepLogFile }}"
+cluster_config = os.getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG")
+workflow_ttl = {{.WorkflowTTL}}
 
 step_envs = dict()
 {{range $k, $v := .StepEnvs}}
 step_envs["{{$k}}"] = '''{{$v}}'''
 {{end}}
 
+def step_command(sql, step_log_file):
+	if step_log_file:
+		# wait for some seconds to exit in case the
+		# step pod is recycled too fast
+		exit_time_wait = os.getenv("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT", "0")
+
+		log_dir = os.path.dirname(step_log_file)
+		return "".join([
+			"if [[ -f /opt/sqlflow/init_step_container.sh ]]; "
+			"then bash /opt/sqlflow/init_step_container.sh; fi",
+			" && set -o pipefail",  # fail when any sub-command fail
+			" && mkdir -p %s" % log_dir,
+			""" && (step -e "%s" 2>&1 | tee %s)""" %
+			(sql, step_log_file),
+			" && sleep %s" % exit_time_wait
+		])
+	else:
+		return '''step -e "%s"''' % sql
+
 sqlflow_secret = None
 if "{{.SecretName}}" != "":
 	# note(yancey1989): set dry_run to true, just reference the secret meta to generate workflow YAML,
 	# we should create the secret before launching sqlflowserver
 	secret_data=json.loads('''{{.SecretData}}''')
-	sqlflow_secret = couler.secret(secret_data, name="{{ .SecretName }}", dry_run=True)
+	sqlflow_secret = couler.create_secret(secret_data, name="{{ .SecretName }}", dry_run=True)
 
 resources = None
 if '''{{.Resources}}''' != "":
   resources=json.loads('''{{.Resources}}''')
 
-couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
-
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
-
-steps.sqlflow(sql=r'''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, secret=sqlflow_secret, resources=resources, log_file=step_log_file)
-	{{else if $ss.IsKatibTrain}}
+couler.run_container(command=step_command('''{{ $ss.OriginalSQL}}''', step_log_file),
+  image="{{ $ss.DockerImage}}",
+  env=step_envs,
+  secret=sqlflow_secret,
+  resources=resources)
+  {{else if $ss.IsKatibTrain}}
 import couler.sqlflow.katib as auto
 
 model = "{{ $ss.Model }}"
@@ -82,12 +104,15 @@ params = json.loads('''{{ $ss.Parameters }}''')
 train_sql = '''{{ $ss.OriginalSQL }}'''
 auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=datasource)
 	{{else}}
-# TODO(yancey1989): 
-#	using "repl -parse" to output IR and
-#	feed to "runtime.{submitter}.train" to submit the job
-steps.sqlflow(sql=r'''{{ $ss.OriginalSQL }}''', image="{{ $ss.DockerImage }}", env=step_envs, resources=resources, log_file=step_log_file)
+couler.run_container(command=step_command('''{{ $ss.OriginalSQL}}''', step_log_file),
+	image="{{ $ss.DockerImage}}",
+	env=step_envs,
+	secret=sqlflow_secret,
+	resources=resources)
 	{{end}}
 {{end}}
+
+couler.config_workflow(name="sqlflow", cluster_config_file=cluster_config, time_to_clean=workflow_ttl)
 `
 
 var coulerTemplate = template.Must(template.New("Couler").Parse(coulerTemplateText))
