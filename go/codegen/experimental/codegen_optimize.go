@@ -75,7 +75,7 @@ type optimizeFiller struct {
 const optimizeTemplate = `
 def step_entry_{{.StepIndex}}():
     import json
-    from runtime.{{.Submitter}}.optimize import run_optimize
+    from runtime.step.optimize import run_optimize
 
     run_optimize(datasource='''{{.DataSource}}''',
                  select='''{{.Select}}''',
@@ -87,5 +87,6 @@ def step_entry_{{.StepIndex}}():
                  constraints=json.loads('''{{.ConstraintJSON}}'''),
                  solver='''{{.Solver}}''',
                  result_table='''{{.ResultTable}}''',
+                 submitter='''{{.Submitter}}''',
                  user_id='''{{.UserID}}''')
 `

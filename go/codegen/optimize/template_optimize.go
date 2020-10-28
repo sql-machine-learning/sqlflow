@@ -87,5 +87,5 @@ run_optimize_on_optflow(train_table='''{{.TrainTable}}''',
                         constraints=constraints,
                         solver='''{{.Solver}}''',
                         result_table='''{{.ResultTable}}''',
-                        user_number='''{{.UserID}}''')
+                        user_id='''{{.UserID}}''')
 `
