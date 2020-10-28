@@ -31,14 +31,14 @@ type blockReader interface {
 }
 
 type readAllOnceBlockReader struct {
-	frames []*fragment
-	cur    int
+	fragments []*fragment
+	cur       int
 }
 
 func newReadAllOnceBlockReader(db *sql.DB, table string) (blockReader, error) {
 	r := &readAllOnceBlockReader{
-		frames: nil,
-		cur:    0,
+		fragments: nil,
+		cur:       0,
 	}
 
 	stmt := fmt.Sprintf("SELECT id,block FROM %s;", table)
@@ -59,17 +59,17 @@ func newReadAllOnceBlockReader(db *sql.DB, table string) (blockReader, error) {
 		if e = rows.Scan(&f.id, &f.block); e != nil {
 			return nil, e
 		}
-		r.frames = append(r.frames, f)
+		r.fragments = append(r.fragments, f)
 	}
-	sort.Slice(r.frames, func(i, j int) bool {
-		return r.frames[i].id < r.frames[j].id
+	sort.Slice(r.fragments, func(i, j int) bool {
+		return r.fragments[i].id < r.fragments[j].id
 	})
 	return r, nil
 }
 
 func (r *readAllOnceBlockReader) nextBlock() (string, error) {
-	if r.cur < len(r.frames) {
-		f := r.frames[r.cur]
+	if r.cur < len(r.fragments) {
+		f := r.fragments[r.cur]
 		r.cur++
 		return f.block, nil
 	}
