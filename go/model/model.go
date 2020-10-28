@@ -306,7 +306,7 @@ func loadModelFromDB(db *database.DB, table, cwd string) (*Model, error) {
 // DumpDBModel dumps a model tarball from database to local
 // file system and return the file name
 func DumpDBModel(db *database.DB, table, cwd string) (string, error) {
-	sqlf, err := sqlfs.Open(db.DB, table)
+	sqlf, err := sqlfs.Open(db.DB, table, true)
 	if err != nil {
 		return "", fmt.Errorf("Can't open sqlfs %s, %v", table, err)
 	}
@@ -341,7 +341,7 @@ func ExtractMetaFromTarball(tarballName, cwd string) (*Model, error) {
 
 // DumpDBModelExperimental returns the dumped model tar file name and model meta (JSON serialized).
 func DumpDBModelExperimental(db *database.DB, table, cwd string) (string, *Model, error) {
-	sqlf, err := sqlfs.Open(db.DB, table)
+	sqlf, err := sqlfs.Open(db.DB, table, true)
 	if err != nil {
 		return "", nil, fmt.Errorf("Can't open sqlfs %s, %v", table, err)
 	}

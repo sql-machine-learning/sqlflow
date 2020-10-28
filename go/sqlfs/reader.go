@@ -26,18 +26,95 @@ type fragment struct {
 	block string
 }
 
-// Reader implements io.ReadCloser
-type Reader struct {
+type blockReader interface {
+	nextBlock() (string, error)
+}
+
+type readAllOnceBlockReader struct {
+	frames []*fragment
+	cur    int
+}
+
+func newReadAllOnceBlockReader(db *sql.DB, table string) (blockReader, error) {
+	r := &readAllOnceBlockReader{
+		frames: nil,
+		cur:    0,
+	}
+
+	stmt := fmt.Sprintf("SELECT id,block FROM %s;", table)
+	rows, e := db.Query(stmt)
+	if e != nil {
+		return nil, fmt.Errorf("open: db query [%s] failed: %v", stmt, e)
+	}
+	defer rows.Close()
+
+	// Since statement like `SELECT id,block FROM tbl ORDER BY id` causes an
+	// error in hive randomly. We decide to sort results here instead of
+	// by SQL engine.
+	// Probably you would worry about the dataset is too huge to be held in
+	// memory. It's fine due to we are going to save models to file system
+	// for a long term plan.
+	for rows.Next() {
+		f := &fragment{}
+		if e = rows.Scan(&f.id, &f.block); e != nil {
+			return nil, e
+		}
+		r.frames = append(r.frames, f)
+	}
+	sort.Slice(r.frames, func(i, j int) bool {
+		return r.frames[i].id < r.frames[j].id
+	})
+	return r, nil
+}
+
+func (r *readAllOnceBlockReader) nextBlock() (string, error) {
+	if r.cur < len(r.frames) {
+		f := r.frames[r.cur]
+		r.cur++
+		return f.block, nil
+	}
+	return "", io.EOF
+}
+
+type readOneByOneBlockReader struct {
 	db    *sql.DB
 	table string
-	buf   []byte
-	rows  *sql.Rows
-	frams []fragment
 	cur   int
 }
 
+func (r *readOneByOneBlockReader) nextBlock() (string, error) {
+	stmt := fmt.Sprintf("SELECT id,block FROM %s WHERE id=%d;", r.table, r.cur)
+	rows, e := r.db.Query(stmt)
+	if e != nil {
+		return "", e
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return "", io.EOF
+	}
+
+	f := &fragment{}
+	if e = rows.Scan(&f.id, &f.block); e != nil {
+		return "", e
+	}
+
+	if rows.Next() {
+		return "", fmt.Errorf("invalid sqlfs db: duplicate id %d", r.cur)
+	}
+
+	r.cur++
+	return f.block, nil
+}
+
+// Reader implements io.ReadCloser
+type Reader struct {
+	buf []byte
+	br  blockReader
+}
+
 // Open returns a reader to read from the given table in db.
-func Open(db *sql.DB, table string) (*Reader, error) {
+func Open(db *sql.DB, table string, readAllOnce bool) (*Reader, error) {
 	has, e := hasTable(db, table)
 	if !has {
 		return nil, fmt.Errorf("open: table %s doesn't exist", table)
@@ -46,50 +123,41 @@ func Open(db *sql.DB, table string) (*Reader, error) {
 		return nil, fmt.Errorf("open: hasTable failed with %v", e)
 	}
 
-	r := &Reader{db, table, nil, nil, nil, 0}
-	stmt := fmt.Sprintf("SELECT id,block FROM %s;", table)
-	r.rows, e = r.db.Query(stmt)
-	if e != nil {
-		return nil, fmt.Errorf("open: db query [%s] failed: %v", stmt, e)
-	}
-	// Since statement like `SELECT id,block FROM tbl ORDER BY id` causes an
-	// error in hive randomly. We decide to sort results here instead of
-	// by SQL engine.
-	// Probably you would worry about the dataset is too huge to be held in
-	// memory. It's fine due to we are going to save models to file system
-	// for a long term plan.
-	for r.rows.Next() {
-		var f fragment
-		if e = r.rows.Scan(&f.id, &f.block); e != nil {
-			r.Close()
+	var br blockReader
+	if readAllOnce {
+		br, e = newReadAllOnceBlockReader(db, table)
+		if e != nil {
 			return nil, e
 		}
-		r.frams = append(r.frams, f)
+	} else {
+		br = &readOneByOneBlockReader{
+			db:    db,
+			table: table,
+			cur:   0,
+		}
 	}
-	sort.Slice(r.frams, func(i, j int) bool {
-		return r.frams[i].id < r.frams[j].id
-	})
-	return r, nil
+
+	return &Reader{buf: nil, br: br}, nil
 }
 
 func (r *Reader) Read(p []byte) (n int, e error) {
-	if r.db == nil {
+	if r.br == nil {
 		return 0, fmt.Errorf("read from a closed reader")
 	}
+
 	n = 0
 	for n < len(p) {
 		m := copy(p[n:], r.buf)
 		n += m
 		r.buf = r.buf[m:]
 		if len(r.buf) <= 0 {
-			if r.cur < len(r.frams) {
-				blk := r.frams[r.cur].block
-				r.cur++
-				if r.buf, e = base64.StdEncoding.DecodeString(blk); e != nil {
-					break
-				}
-			} else {
-				e = io.EOF
+			var blk string
+			blk, e = r.br.nextBlock()
+			if e != nil {
+				break
+			}
+
+			if r.buf, e = base64.StdEncoding.DecodeString(blk); e != nil {
 				break
 			}
 		}
@@ -99,12 +167,6 @@ func (r *Reader) Read(p []byte) (n int, e error) {
 
 // Close the reader connection to sqlfs
 func (r *Reader) Close() error {
-	if r.rows != nil {
-		if e := r.rows.Close(); e != nil {
-			return e
-		}
-		r.rows = nil
-	}
-	r.db = nil // Mark closed.
+	r.br = nil // Mark closed.
 	return nil
 }

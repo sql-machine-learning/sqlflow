@@ -112,12 +112,52 @@ def _build_ordered_reader(reader):
     assert not block_dict, "invalid model db format"
 
 
-class SQLFSReader(object):
+class ReadAllOnceBlockReader(object):
     def __init__(self, conn, table):
         sql = "SELECT id, block FROM {};".format(table)
         self.raw_rs = conn.query(sql)
         self.rs = _build_ordered_reader(self.raw_rs)
         self.reader = iter(self.rs)
+
+    def next_block(self):
+        fragment = next(self.reader, None)
+        if fragment is None:
+            return None
+        else:
+            return fragment[1]
+
+    def close(self):
+        self.raw_rs.close()
+
+
+class ReadOneByOneBlockReader(object):
+    def __init__(self, conn, table):
+        self.conn = conn
+        self.table = table
+        self.cur_id = 0
+
+    def next_block(self):
+        sql = "SELECT id, block FROM {} WHERE id = {};".format(
+            self.table, self.cur_id)
+        rs = self.conn.query(sql)
+        ret = list(rs)
+        rs.close()
+        if len(ret) == 0:
+            return None
+        elif len(ret) == 1:
+            return ret[1]
+        else:
+            raise ValueError("invalid invalid sqlfs db: duplicate id %d" %
+                             self.cur_id)
+
+
+class SQLFSReader(object):
+    def __init__(self, conn, table, read_all_once=True):
+        if read_all_once:
+            self.reader = ReadAllOnceBlockReader(conn, table)
+        else:
+            self.reader = ReadOneByOneBlockReader(conn, table)
+
         self.buffer = b''
 
     def read(self, n):
@@ -128,11 +168,11 @@ class SQLFSReader(object):
             raise ValueError("invalid number {}".format(n))
 
         while len(self.buffer) < n:
-            new_buffer = next(self.reader, None)
+            new_buffer = self.reader.next_block()
             if new_buffer is None:
                 break
 
-            new_buffer = base64.b64decode(new_buffer[1])
+            new_buffer = base64.b64decode(new_buffer)
             self.buffer += new_buffer
 
         read_length = min(n, len(self.buffer))
@@ -141,7 +181,7 @@ class SQLFSReader(object):
         return result
 
     def close(self):
-        self.raw_rs.close()
+        self.reader.close()
 
     def __enter__(self, *args, **kwargs):
         return self
@@ -213,7 +253,10 @@ def read_metadata_from_db(datasource, table):
             return metadata
 
 
-def read_with_generator_and_metadata(datasource, table, buff_size=256):
+def read_with_generator_and_metadata(datasource,
+                                     table,
+                                     buff_size=256,
+                                     meta_only=False):
     """Read data from a table, this function returns
     a generator to yield the data, and the metadata dict.
 
@@ -224,14 +267,20 @@ def read_with_generator_and_metadata(datasource, table, buff_size=256):
             The table name read.
         buff_size: int
             The buffer size to read data.
+        meta_only: bool
+            Only read the metadata.
 
     Returns: tuple(Generator, dict)
         the generator yield row data of the table,
         and the model metadata dict.
     """
     conn = connect_with_data_source(datasource)
-    r = SQLFSReader(conn, table)
+    r = SQLFSReader(conn, table, not meta_only)
     metadata = _read_metadata(r)
+
+    if meta_only:
+        r.close()
+        return None, metadata
 
     def reader():
         try:
