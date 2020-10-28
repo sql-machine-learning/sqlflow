@@ -21,7 +21,7 @@ from six.moves import urllib
 
 
 class Pop(object):
-    """Pop is a client for http request alisa gateway.
+    """Pop is a client for sending http requests to alisa gateway.
     """
     @staticmethod
     def request(url, params, secret, timeout=(30, 120)):
@@ -33,7 +33,7 @@ class Pop(object):
             params(dict[string]string): the params for the request
             secret(string): the secret to use for encrypting
             timeout((int, int)): connect timeout and read timeout
-        
+
         Returns:
             (int, string) a tuple of status code and response body
         """
@@ -71,7 +71,7 @@ class Pop(object):
 
         Args:
             str(string): the param to encode
-        
+
         Returns:
             (string) the encoded param
         """
