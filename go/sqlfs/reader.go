@@ -107,14 +107,14 @@ func (r *readOneByOneBlockReader) nextBlock() (string, error) {
 	return f.block, nil
 }
 
-// Reader implements io.ReadCloser
-type Reader struct {
+// reader implements io.ReadCloser
+type reader struct {
 	buf []byte
 	br  blockReader
 }
 
 // Open returns a reader to read from the given table in db.
-func Open(db *sql.DB, table string, readAllOnce bool) (*Reader, error) {
+func Open(db *sql.DB, table string, readAllOnce bool) (io.ReadCloser, error) {
 	has, e := hasTable(db, table)
 	if !has {
 		return nil, fmt.Errorf("open: table %s doesn't exist", table)
@@ -137,10 +137,10 @@ func Open(db *sql.DB, table string, readAllOnce bool) (*Reader, error) {
 		}
 	}
 
-	return &Reader{buf: nil, br: br}, nil
+	return &reader{buf: nil, br: br}, nil
 }
 
-func (r *Reader) Read(p []byte) (n int, e error) {
+func (r *reader) Read(p []byte) (n int, e error) {
 	if r.br == nil {
 		return 0, fmt.Errorf("read from a closed reader")
 	}
@@ -166,7 +166,7 @@ func (r *Reader) Read(p []byte) (n int, e error) {
 }
 
 // Close the reader connection to sqlfs
-func (r *Reader) Close() error {
+func (r *reader) Close() error {
 	r.br = nil // Mark closed.
 	return nil
 }
