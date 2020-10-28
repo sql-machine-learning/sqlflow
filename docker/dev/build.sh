@@ -29,10 +29,6 @@ echo "Build sqlflowserver, sqlflow, and step into $SQLFLOW_BIN ..."
 go generate ./...
 GOBIN=$SQLFLOW_BIN go install ./...
 
-#echo "Build $SQLFLOWPATH/python/couler into $SQLFLOW_BIN ..."
-#cd $SQLFLOWPATH/python/couler
-#python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
-
 echo "Build Fluid ..."
 cd $SQLFLOW_BIN
 if [[ ! -d fluid ]]; then
