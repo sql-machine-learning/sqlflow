@@ -187,11 +187,11 @@ def submit_pai_explain(datasource,
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
                                                        model,
                                                        user=user)
-
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         params["pai_table"] = data_table
+        params["oss_model_path"] = oss_model_path
 
         if not try_pai_local_run(params, oss_model_path):
             with temp_file.TemporaryDirectory(prefix="sqlflow",

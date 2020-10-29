@@ -81,25 +81,27 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
-	// TODO(sneaxiy): move these 2 test cases inside the following for
-	// loop after refactoring TO RUN workflow code generation.
-	t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
-	t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
+	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
 
-	// test experimental workflow code generation when i == 0
-	// test old workflow code generation when i == 1
-	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "true")
-	for i := 0; i < 2; i++ {
-		t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
-		t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
-		t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
-		t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
-		t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
-		t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
-		t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
-		t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
-		os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
-	}
+	// // TODO(sneaxiy): move these 2 test cases inside the following for
+	// // loop after refactoring TO RUN workflow code generation.
+	// t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
+	// t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
+
+	// // test experimental workflow code generation when i == 0
+	// // test old workflow code generation when i == 1
+	// os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "true")
+	// for i := 0; i < 2; i++ {
+	// 	t.Run("CaseWorkflowTrainAndPredictDNNCustomImage", CaseWorkflowTrainAndPredictDNNCustomImage)
+	// 	t.Run("CaseWorkflowTrainAndPredictDNN", CaseWorkflowTrainAndPredictDNN)
+	// 	t.Run("CaseTrainDistributedPAIArgo", CaseTrainDistributedPAIArgo)
+	// 	t.Run("CaseBackticksInSQL", CaseBackticksInSQL)
+	// 	t.Run("CaseWorkflowStepErrorMessage", CaseWorkflowStepErrorMessage)
+	// 	t.Run("CaseWorkflowTrainXgboost", CaseWorkflowTrainXgboost)
+	// 	t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
+	// 	t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
+	// 	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
+	// }
 }
 
 func CaseWorkflowStepErrorMessage(t *testing.T) {
