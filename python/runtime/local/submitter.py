@@ -194,17 +194,25 @@ def submit_local_run(datasource, select, image_name, params, into):
     if not file_ext:
         args = [program_file_path]
         args.extend(params[1:])
-        sub_process = subprocess.run(args=args, env=subprocess_env, capture_output=True, text=True)
+        sub_process = subprocess.run(
+            args=args,
+            env=subprocess_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
     elif file_ext.lower() == ".py":
         args = ["python", "-m", program_file_path.stem]
         args.extend(params[1:])
-        sub_process = subprocess.run(args=args, env=subprocess_env, capture_output=True, text=True)
+        sub_process = subprocess.run(
+            args=args,
+            env=subprocess_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
     else:
         print("The other executable except Python program is not supported yet")
 
     if sub_process:
-        print(sub_process.stdout)
-        print(sub_process.stderr)
+        print(sub_process.stdout.decode("utf-8"))
+        print(sub_process.stderr.decode("utf-8"))
 
 
 def submit_local_show_train(datasource, model_name):

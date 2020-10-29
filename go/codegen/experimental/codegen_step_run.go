@@ -65,6 +65,6 @@ def step_entry_{{.StepIndex}}():
     run(datasource='''{{.DataSource}}''',
         select='''{{.Select}}''',
         image_name='''{{.ImageName}}''',
-        params='''{{.Parameters}}''',
+        params={{.Parameters}},
         into='''{{.Into}}''')
 `
