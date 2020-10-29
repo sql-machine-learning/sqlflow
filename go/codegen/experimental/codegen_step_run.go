@@ -15,7 +15,7 @@ package experimental
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
