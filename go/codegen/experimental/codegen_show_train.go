@@ -15,9 +15,9 @@ package experimental
 
 import (
 	"bytes"
-	"html/template"
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
+	"text/template"
 )
 
 func generateShowTrainCode(stmt *ir.ShowTrainStmt, stepIndex int, session *pb.Session) (string, error) {
