@@ -14,6 +14,7 @@
 package couler
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -31,11 +32,11 @@ class K8s(object):
     def __init__(self):
         pass
 
-    def with_pod(self, template):
+    def config_pod(self, template):
         self._with_tolerations(template)
         return template
 
-    def with_workflow_spec(self, spec):
+    def config_workflow(self, spec):
         spec["hostNetwork"] = True
         return spec
 
@@ -67,9 +68,12 @@ spec:
       container:
         image: docker/whalesay
         command:
-          - bash
-          - -c
           - 'echo "SQLFlow bridges AI and SQL engine."'
+        env:
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: ""
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: ""
       tolerations:
         - effect: NoSchedule
           key: key
@@ -81,6 +85,7 @@ spec:
 var testCoulerProgram = `
 import couler.argo as couler
 couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
+couler.config_workflow(cluster_config_file="%s")
 `
 
 func TestCoulerCodegen(t *testing.T) {
@@ -174,11 +179,8 @@ func TestCompileCoulerProgram(t *testing.T) {
 	a.NoError(e)
 	defer os.Remove(cfFileName)
 
-	os.Setenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG", cfFileName)
-	defer os.Unsetenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG")
-	out, e := GenYAML(testCoulerProgram)
+	out, e := GenYAML(fmt.Sprintf(testCoulerProgram, cfFileName))
 	a.NoError(e)
-
 	a.Equal(expectedArgoYAML, out)
 }
 

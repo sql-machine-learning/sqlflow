@@ -131,9 +131,9 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 func GetPyFuncBody(program string, funcName string) (string, error) {
 	const coulerGetPyFuncCodeImpl = `
 %s
-
-import couler.pyfunc as pyfunc
-print(pyfunc.body(%s))
+from couler.core.utils import body as pybody
+import sys
+print(pybody(%s), file=sys.stderr)
 `
 
 	tmpFile, err := ioutil.TempFile("/tmp", "sqlflow-couler-tmp")
@@ -157,12 +157,12 @@ print(pyfunc.body(%s))
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("%v: %s\nCode is:\n%s", err, stderr, coulerCode)
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	return strings.TrimSpace(stderr.String()), nil
 }
 
 const coulerCodeTmpl = `
 import couler.argo as couler
-import couler.pyfunc as pyfunc
+from couler.core.utils import body as pybody
 from os import path
 import json
 import re
@@ -194,7 +194,7 @@ step_exit_time_wait = {{.StepExitTimeWait}}
 
 codes = [
     "python <<EOF",
-    pyfunc.body(step_entry_{{.StepIndex}}),
+    pybody(step_entry_{{.StepIndex}}),
     "EOF",
 ]
 

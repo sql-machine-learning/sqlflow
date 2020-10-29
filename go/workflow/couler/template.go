@@ -39,6 +39,7 @@ type Filler struct {
 	SecretName       string
 	SecretData       string
 	Resources        string
+	ClusterConfigFn  string
 	// The step output duplication file, in the container.
 	// Log framework may read the file to collect logs.
 	StepLogFile string
@@ -51,7 +52,9 @@ import os
 import couler.argo as couler
 datasource = "{{ .DataSource }}"
 step_log_file = "{{ .StepLogFile }}"
-cluster_config = os.getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG")
+cluster_config = "{{.ClusterConfigFn}}"
+if cluster_config == "":
+    cluster_config = None
 workflow_ttl = {{.WorkflowTTL}}
 
 step_envs = dict()
@@ -112,7 +115,7 @@ couler.run_container(command=step_command('''{{ $ss.OriginalSQL}}''', step_log_f
 	{{end}}
 {{end}}
 
-couler.config_workflow(name="sqlflow", cluster_config_file=cluster_config, time_to_clean=workflow_ttl)
+couler.config_workflow(cluster_config_file=cluster_config, time_to_clean=workflow_ttl)
 `
 
 var coulerTemplate = template.Must(template.New("Couler").Parse(coulerTemplateText))

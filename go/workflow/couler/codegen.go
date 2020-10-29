@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
@@ -131,13 +132,14 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	stepLogFile := os.Getenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE")
 
 	r := &Filler{
-		DataSource:  session.DbConnStr,
-		StepEnvs:    stepEnvs,
-		WorkflowTTL: workflowTTL,
-		SecretName:  secretName,
-		SecretData:  secretData,
-		Resources:   os.Getenv(envResource),
-		StepLogFile: stepLogFile,
+		DataSource:      session.DbConnStr,
+		StepEnvs:        stepEnvs,
+		WorkflowTTL:     workflowTTL,
+		SecretName:      secretName,
+		SecretData:      secretData,
+		Resources:       os.Getenv(envResource),
+		StepLogFile:     stepLogFile,
+		ClusterConfigFn: os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"),
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.
@@ -208,7 +210,15 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 
 // GenYAML translate the Couler program into Argo YAML
 func GenYAML(coulerProgram string) (string, error) {
-	cmd := exec.Command("python", "-u")
+	file, e := ioutil.TempFile("/tmp", "sqlflow.py")
+	if e != nil {
+		return "", e
+	}
+	defer os.Remove(file.Name())
+	if e := ioutil.WriteFile(file.Name(), []byte(coulerProgram), 0644); e != nil {
+		return "", e
+	}
+	cmd := exec.Command("python", "-u", file.Name())
 	cmd.Env = append(os.Environ())
 	cmd.Stdin = strings.NewReader(coulerProgram)
 	out, err := cmd.CombinedOutput()
