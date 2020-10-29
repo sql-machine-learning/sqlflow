@@ -13,21 +13,21 @@
 
 import base64
 import json
-import re
-import urllib
 from collections import OrderedDict
 
-from six.moves.urllib.parse import parse_qs, urlencode, urlparse
+from six.moves.urllib.parse import parse_qs, urlparse
 
 
 class Config(object):
     """Alisa config object, this can be parsed from an alisa dsn
 
     Args:
-        url(string): a connection url like "alisa://user:pwd@host/path?env=AAB&with=XSE".
-        There are three required params in the url: current_project, env and with.
-        The env and with params are maps, which is dumpped to json and then encoded
-        in base64 format, that is: env=base64(json.dumps({"a":1, "b":2}))
+        url(string): a connection url like :
+        "alisa://user:pwd@host/path?env=AAB&with=XSE".
+        There are three required params in the url: current_project,
+        env and with. The env and with params are maps, which is
+        dumpped to json and then encoded in base64 format, that is:
+        env=base64(json.dumps({"a":1, "b":2}))
     """
     def __init__(self, url):
         urlpts = urlparse(url)
@@ -67,7 +67,7 @@ class Config(object):
 
     def to_url(self):
         """Serialize a config to connection url
-        
+
         Returns:
             (string) a connection url build from this config
         """
@@ -81,4 +81,5 @@ class Config(object):
             Config._encode_json_base64(self.env),
             Config._encode_json_base64(self.withs),
         )
-        return "alisa://%s:%s@%s?scheme=%s&verbose=%s&curr_project=%s&env=%s&with=%s" % parts
+        return ("alisa://%s:%s@%s?scheme=%s&verbose"
+                "=%s&curr_project=%s&env=%s&with=%s") % parts
