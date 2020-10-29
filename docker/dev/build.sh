@@ -89,8 +89,7 @@ cd $SQLFLOW_BIN
 if [[ ! -d couler ]]; then
     git clone https://github.com/couler-proj/couler.git
 fi
-git fetch origin
-git checkout 374716477964ef68284addabe9dcd322f3a18c3b
+git checkout 374716477964ef68284addabe9dcd322f3a18c3b 
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."

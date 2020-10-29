@@ -104,7 +104,6 @@ func TestCoulerCodegen(t *testing.T) {
 	a.True(strings.Contains(code, `couler.create_secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 	a.True(strings.Contains(code, `resources=json.loads('''{"memory": "32Mi", "cpu": "100m"}''')`))
 
-	_, e := GenYAML(code)
 	yaml, e := GenYAML(code)
 	a.NoError(e)
 	r, e := regexp.Compile(`step -e "(.*);"`)

@@ -218,7 +218,7 @@ func GenYAML(coulerProgram string) (string, error) {
 	if e := ioutil.WriteFile(file.Name(), []byte(coulerProgram), 0644); e != nil {
 		return "", e
 	}
-	cmd := exec.Command("python", "-u", file.Name())
+	cmd := exec.Command("python", file.Name())
 	cmd.Env = append(os.Environ())
 	cmd.Stdin = strings.NewReader(coulerProgram)
 	out, err := cmd.CombinedOutput()
