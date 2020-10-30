@@ -90,7 +90,7 @@ if [[ ! -d couler ]]; then
     git clone https://github.com/couler-proj/couler.git
 fi
 cd couler
-git checkout c52d0841de0a4b1b574f2c38385dfdf57e9f3ebd 
+git checkout 9c93f72791ebf5411fc5bec7d68890de753d8431 
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 
 echo "Convert tutorials from Markdown to IPython notebooks ..."

@@ -14,12 +14,9 @@
 package workflow
 
 import (
-	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 
 	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"sqlflow.org/sqlflow/go/database"
@@ -73,18 +70,7 @@ func CompileToYAMLExperimental(sqlProgram string, session *pb.Session) (string, 
 		return "", e
 	}
 	defer os.Remove(tmpfile.Name())
-	pyFileName := tmpfile.Name()
-	if _, e = tmpfile.Write([]byte(py)); e != nil {
-		tmpfile.Close()
-	}
-	cmdline := bytes.Buffer{}
-	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
-	if c := os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"); len(c) > 0 {
-		fmt.Fprintf(&cmdline, "--cluster_config %s ", c)
-	}
-	fmt.Fprintf(&cmdline, "--file %s", pyFileName)
-	coulerExec := strings.Split(cmdline.String(), " ")
-	cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
+	cmd := exec.Command("python", tmpfile.Name())
 	cmd.Env = append(os.Environ())
 	yamlBytes, e := cmd.CombinedOutput()
 	if e != nil {
