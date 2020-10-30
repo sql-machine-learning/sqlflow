@@ -226,6 +226,10 @@ def parse_pai_dataset(feature_column_names, label_meta, feature_metas, *row):
                 features[name] = tf.SparseTensor(*f)
         else:
             features[name] = f
+
+    if label_meta is None or not label_meta["feature_name"]:
+        return features
+
     label = row[-1] if label_meta["feature_name"] else -1
     if label_meta and label_meta["delimiter"] != "":
         # FIXME(typhoonzero): the label in the yielded row may not be the last

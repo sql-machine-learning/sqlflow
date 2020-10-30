@@ -637,7 +637,7 @@ func TestComplete(t *testing.T) {
 
 	p.InsertText(`RAIN `, false, true)
 	c = s.completer(*p.Document())
-	a.Equal(23, len(c))
+	a.Equal(24, len(c))
 	a.Equal("BoostedTreesClassifier", c[0].Text)
 
 	p.InsertText(`DNN`, false, true)

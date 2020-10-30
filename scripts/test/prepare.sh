@@ -44,7 +44,7 @@ python -m pip install --quiet \
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
-git checkout 36a2f217f3311d861cf736894ecb5147b6e44c74 && \
+git checkout 3df5bb63daa6b8d96174614918c9ed47256dfcc3 && \
 python setup.py install)
 
 git clone https://github.com/couler-proj/couler.git

@@ -372,7 +372,7 @@ func (s *modelZooServer) ReleaseModel(ctx context.Context, req *pb.ReleaseModelR
 		}
 		modelMeta.TrainSelect = modelMeta.GetMetaAsString("original_sql")
 
-		sendFile, err = sqlfs.Open(db.DB, req.Name)
+		sendFile, err = sqlfs.Open(db.DB, req.Name, true)
 		if err != nil {
 			return nil, err
 		}
@@ -604,7 +604,7 @@ func (s *modelZooServer) DownloadModel(req *pb.ReleaseModelRequest, respStream p
 		return err
 	}
 
-	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s_%s", publicModelDB, modelTableName, strings.ReplaceAll(modelTag, ".", "_")))
+	sqlf, err := sqlfs.Open(s.DB.DB, fmt.Sprintf("%s.%s_%s", publicModelDB, modelTableName, strings.ReplaceAll(modelTag, ".", "_")), true)
 	if err != nil {
 		return err
 	}
