@@ -70,6 +70,9 @@ func CompileToYAMLExperimental(sqlProgram string, session *pb.Session) (string, 
 		return "", e
 	}
 	defer os.Remove(tmpfile.Name())
+	if _, e = tmpfile.Write([]byte(py)); e != nil {
+		tmpfile.Close()
+	}
 	cmd := exec.Command("python", tmpfile.Name())
 	cmd.Env = append(os.Environ())
 	yamlBytes, e := cmd.CombinedOutput()
