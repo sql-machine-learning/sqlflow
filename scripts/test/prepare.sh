@@ -49,7 +49,7 @@ python setup.py install)
 
 git clone https://github.com/couler-proj/couler.git
 (cd couler && git fetch origin && \
-git checkout 374716477964ef68284addabe9dcd322f3a18c3b  && \
+git checkout c52d0841de0a4b1b574f2c38385dfdf57e9f3ebd  && \
 python setup.py install)
 
 protoc --python_out=python/runtime/dbapi/table_writer/ -I go/proto sqlflow.proto
