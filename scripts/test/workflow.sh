@@ -24,6 +24,7 @@ docker pull docker/whalesay
 
 export SQLFLOW_TEST=workflow
 export SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT=http://localhost:8001
+export CHECK_INTERVAL_SECS=2
 
 if [[ "$TIMEOUT" == "true" ]]; then
     echo "Workflow job timeout."
