@@ -128,6 +128,7 @@ func TestCoulerCodegen(t *testing.T) {
 
 	r, e = regexp.Compile("- name: SQLFLOW_WORKFLOW_STEP_LOG_FILE\n.*value: (.*)")
 	a.NoError(e)
+	fmt.Println(yaml)
 	a.Equal("/home/admin/logs/step.log", r.FindStringSubmatch(yaml)[1])
 }
 
