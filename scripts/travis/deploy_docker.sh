@@ -91,3 +91,6 @@ push_image jupyter jupyter
 push_image server server
 push_image step step
 push_image modelzooserver modelzooserver
+
+echo "Clean up root permission $TRAVIS_BUILD_DIR/build ..."
+docker run --rm  -v "$TRAVIS_BUILD_DIR":/work sqlflow:ci rm -rf /work/build /work/java /work/python

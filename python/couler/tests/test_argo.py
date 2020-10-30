@@ -28,7 +28,7 @@ class TestArgo(unittest.TestCase):
         actual = couler._convert_dict_to_env_list(test_d)
         expected_list = [{
             "name": "str",
-            "value": "value"
+            "value": "'value'"
         }, {
             "name": "boolean",
             "value": "'True'"
@@ -40,7 +40,7 @@ class TestArgo(unittest.TestCase):
             "value": "'3.1415926'"
         }, {
             "name": "json",
-            "value": "{\"key\": \"value\"}"
+            "value": "'{\"key\": \"value\"}'"
         }]
         self.assertEqual(actual, expected_list)
 
