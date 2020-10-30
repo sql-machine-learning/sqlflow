@@ -89,6 +89,7 @@ cd $SQLFLOW_BIN
 if [[ ! -d couler ]]; then
     git clone https://github.com/couler-proj/couler.git
 fi
+cd couler
 git checkout 374716477964ef68284addabe9dcd322f3a18c3b 
 python setup.py bdist_wheel -q --dist-dir $SQLFLOW_BIN > /dev/null
 

@@ -20,9 +20,6 @@ virtualenv build/env
 # shellcheck disable=SC1091
 source build/env/bin/activate
 
-# 2. install python deps
-(cd python/couler && python setup.py install)
-
 python -m pip install --quiet \
     numpy==1.16.2 \
     tensorflow-metadata==0.22.2 \
@@ -48,6 +45,11 @@ python -m pip install --quiet \
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
 git checkout 36a2f217f3311d861cf736894ecb5147b6e44c74 && \
+python setup.py install)
+
+git clone https://github.com/couler-proj/couler.git
+(cd couler && git fetch origin && \
+git checkout 374716477964ef68284addabe9dcd322f3a18c3b  && \
 python setup.py install)
 
 protoc --python_out=python/runtime/dbapi/table_writer/ -I go/proto sqlflow.proto
