@@ -255,12 +255,15 @@ class Model(object):
     def _load_metadata_from_db_impl(datasource, table):
         model_zoo_addr, table, tag = _decompose_model_name(table)
         if model_zoo_addr:
-            gen, metadata = load_model_from_model_zoo(model_zoo_addr, table,
-                                                      tag)
+            _, metadata = load_model_from_model_zoo(model_zoo_addr,
+                                                    table,
+                                                    tag,
+                                                    meta_only=True)
         else:
-            gen, metadata = read_with_generator_and_metadata(datasource, table)
+            _, metadata = read_with_generator_and_metadata(datasource,
+                                                           table,
+                                                           meta_only=True)
 
-        gen.close()
         return Model._from_dict(metadata)
 
     def save_to_oss(self, oss_model_dir, local_dir=None):

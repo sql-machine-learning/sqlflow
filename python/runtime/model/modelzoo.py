@@ -21,7 +21,7 @@ from runtime.model.modelzooserver_pb2 import ReleaseModelRequest
 from runtime.model.modelzooserver_pb2_grpc import ModelZooServerStub
 
 
-def load_model_from_model_zoo(address, model, tag):
+def load_model_from_model_zoo(address, model, tag, meta_only=False):
     stub = None
     meta = None
     channel = grpc.insecure_channel(address)
@@ -34,6 +34,10 @@ def load_model_from_model_zoo(address, model, tag):
         # make sure that the channel is closed when exception raises
         channel.close()
         six.reraise(*sys.exc_info())
+
+    if meta_only:
+        channel.close()
+        return None, meta
 
     def reader():
         try:
