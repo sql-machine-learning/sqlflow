@@ -45,7 +45,6 @@ class Config(object):
             if len(v) == 1:
                 kvs[k] = v[0]
 
-        conf = Config()
         self.pop_access_id = urlpts.username
         self.pop_access_secret = urlpts.password
         self.pop_url = urlpts.hostname + urlpts.path
