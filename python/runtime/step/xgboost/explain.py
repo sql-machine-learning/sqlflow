@@ -11,11 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
-
 import numpy as np
 import pandas as pd
-import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
 import scipy
 import shap
@@ -25,7 +22,6 @@ from runtime import db, explainer
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.feature.field_desc import DataType
 from runtime.model import EstimatorType, oss
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags
@@ -46,16 +42,7 @@ def explain(datasource,
             oss_sk=None,
             oss_endpoint=None,
             oss_bucket_name=None):
-    """Do XGBoost model explanation, this function use selected data to
-    explain the model stored at oss_model_path
-
-    Args:
-        datasource: The datasource to load explain data
-        select: SQL statement to get the data set
-        data_table: tmp table to save the explain data
-        result_table: table to store the explanation result
-        label_column: name of the label column
-        oss_model_path: path to the model to be explained
+    """TBD
     """
     if model_params is None:
         model_params = {}

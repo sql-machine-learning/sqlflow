@@ -36,25 +36,13 @@ def predict(datasource,
             model,
             pai_table="",
             oss_model_path=""):
-    """PAI XGBoost prediction wrapper
-    This function do some preparation for the local prediction, say,
-    download the model from OSS, extract metadata and so on.
-
-    Args:
-        datasource: the datasource from which to get data
-        select: data selection SQL statement
-        data_table: tmp table which holds the data from select
-        result_table: table to save prediction result
-        label_name: prediction label column
-        oss_model_path: the model path on OSS
+    """TBD
     """
     is_pai = True if pai_table != "" else False
     if is_pai:
-        # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
-        # in xgboost/train.py
+        # FIXME(typhoonzero): load metas from db instead.
         oss.load_file(oss_model_path, "my_model")
-        (estimator, model_params, train_params, feature_metas,
-         feature_column_names, train_label_desc,
+        (_, model_params, _, feature_metas, feature_column_names, _,
          fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
     else:
         if isinstance(model, six.string_types):
@@ -65,7 +53,6 @@ def predict(datasource,
 
         model_params = model.get_meta("attributes")
         fc_map_ir = model.get_meta("features")
-        train_label_desc = model.get_meta("label").get_field_desc()[0]
 
     feature_columns = compile_ir_feature_columns(fc_map_ir,
                                                  EstimatorType.XGBOOST)
