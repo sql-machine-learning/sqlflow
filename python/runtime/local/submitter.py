@@ -22,6 +22,7 @@ from runtime.step.create_result_table import (create_evaluate_table,
                                               create_predict_table)
 from runtime.step.tensorflow.evaluate import evaluate_step as tf_evaluate
 from runtime.step.tensorflow.explain import explain_step as tf_explain
+from runtime.step.tensorflow.explain import print_image_as_base64_html
 from runtime.step.tensorflow.predict import predict_step as tf_pred
 from runtime.step.tensorflow.train import train_step as tf_train
 from runtime.step.xgboost.evaluate import evaluate as xgboost_evaluate
@@ -195,6 +196,7 @@ def submit_local_explain(datasource,
                  model_params=model_params,
                  result_table=result_table,
                  model=model)
+    print_image_as_base64_html("summary.png")
 
 
 def submit_local_run(datasource, select, image_name, params, into):
