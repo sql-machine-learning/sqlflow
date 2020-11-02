@@ -46,7 +46,7 @@ class Client(object):
         config(Config): the config for build the client
     """
     def __init__(self, config):
-        self.config = config
+        self.config = config  #noqa F841
 
     def _base_params(self):
         # use gmtime(UTC+0) here instead of localtime
