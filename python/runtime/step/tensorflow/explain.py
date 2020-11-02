@@ -142,10 +142,6 @@ def explain_step(datasource,
     train_label_desc.name = label_name
     label_meta = train_label_desc.to_dict(dtype_to_string=True)
 
-    # if result_table:
-    #     create_explain_result_table(datasource, result_table, select,
-    #                                 estimator_string, label_name, field_descs)
-
     if pai_table:
         assert oss_dest, "oss_dest must be given when submit to PAI"
     else:
