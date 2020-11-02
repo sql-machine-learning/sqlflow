@@ -25,7 +25,6 @@ from runtime.feature.field_desc import DataType
 from runtime.model import EstimatorType, oss
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags
-from runtime.step.create_result_table import create_evaluate_table
 from runtime.step.xgboost.predict import _calc_predict_result
 from runtime.xgboost.dataset import xgb_dataset
 # TODO(typhoonzero): remove runtime.xgboost
@@ -63,6 +62,7 @@ def evaluate(datasource,
              model,
              label_name=None,
              model_params=None,
+             result_column_names=[],
              pai_table="",
              oss_model_path=""):
     """TBD
@@ -109,9 +109,6 @@ def evaluate(datasource,
     bst.load_model("my_model")
     conn = db.connect_with_data_source(datasource)
 
-    result_column_names = create_evaluate_table(conn, result_table,
-                                                validation_metrics)
-
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
 
@@ -121,7 +118,8 @@ def evaluate(datasource,
             dataset_sql=select,
             feature_metas=feature_metas,
             feature_column_names=feature_column_names,
-            label_meta=train_label_desc.to_dict(dtype_to_string=True),
+            label_meta=train_label_desc.get_field_desc()[0].to_dict(
+                dtype_to_string=True),
             cache=True,
             batch_size=10000,
             transform_fn=transform_fn)
@@ -129,7 +127,8 @@ def evaluate(datasource,
         for i, pred_dmatrix in enumerate(dpred):
             feature_file_name = pred_fn + "_%d" % i
             preds = _calc_predict_result(bst, pred_dmatrix, model_params)
-            _store_evaluate_result(preds, feature_file_name, train_label_desc,
+            _store_evaluate_result(preds, feature_file_name,
+                                   train_label_desc.get_field_desc()[0],
                                    result_table, result_column_names,
                                    validation_metrics, conn)
 

@@ -18,6 +18,7 @@ import oss2
 import runtime.temp_file as temp_file
 from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
+from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType
 from runtime.model.model import Model
 from runtime.pai import cluster_conf, pai_model, table_ops
@@ -26,6 +27,7 @@ from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
 from runtime.pai_local.try_run import try_pai_local_run
+from runtime.step.create_result_table import create_explain_table
 from runtime.step.tensorflow.explain import print_image_as_base64_html
 
 
@@ -187,11 +189,22 @@ def submit_pai_explain(datasource,
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
                                                        model,
                                                        user=user)
+
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         params["pai_table"] = data_table
         params["oss_model_path"] = oss_model_path
+
+        # Create explain result table
+        if result_table:
+            conn = db.connect_with_data_source(datasource)
+            feature_columns = meta.get_meta("features")
+            field_descs = get_ordered_field_descs(feature_columns)
+            feature_column_names = [fd.name for fd in field_descs]
+            create_explain_table(conn, explainer, result_table,
+                                 feature_column_names)
+            conn.close()
 
         if not try_pai_local_run(params, oss_model_path):
             with temp_file.TemporaryDirectory(prefix="sqlflow",

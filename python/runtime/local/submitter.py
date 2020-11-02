@@ -13,9 +13,13 @@
 
 from runtime import db
 from runtime.dbapi import table_writer
-from runtime.feature.derivation import infer_feature_columns
+from runtime.feature.derivation import (get_ordered_field_descs,
+                                        infer_feature_columns)
 from runtime.model.db import read_metadata_from_db
 from runtime.model.model import EstimatorType, Model
+from runtime.step.create_result_table import (create_evaluate_table,
+                                              create_explain_table,
+                                              create_predict_table)
 from runtime.step.tensorflow.evaluate import evaluate_step as tf_evaluate
 from runtime.step.tensorflow.explain import explain_step as tf_explain
 from runtime.step.tensorflow.predict import predict_step as tf_pred
@@ -114,10 +118,17 @@ def submit_local_pred(datasource,
     else:
         pred_func = tf_pred
 
+    conn = db.connect_with_data_source(datasource)
+    train_label_desc = model.get_meta("label").get_field_desc()[0]
+    result_column_names, train_label_idx = create_predict_table(
+        conn, select, result_table, train_label_desc, label_name)
+    conn.close()
+
     pred_func(datasource=datasource,
               select=select,
               result_table=result_table,
-              label_name=label_name,
+              result_column_names=result_column_names,
+              train_label_idx=train_label_idx,
               model=model)
 
 
@@ -132,15 +143,25 @@ def submit_local_evaluate(datasource,
     model = Model.load_from_db(datasource, model)
     if model.get_type() == EstimatorType.XGBOOST:
         evaluate_func = xgboost_evaluate
+        validation_metrics = model_params.get("validation.metrics",
+                                              "accuracy_score")
     else:
         evaluate_func = tf_evaluate
+        validation_metrics = model_params.get("validation.metrics", "Accuracy")
+
+    conn = db.connect_with_data_source(datasource)
+    validation_metrics = [m.strip() for m in validation_metrics.split(",")]
+    result_column_names = create_evaluate_table(conn, result_table,
+                                                validation_metrics)
+    conn.close()
 
     evaluate_func(datasource=datasource,
                   select=select,
                   result_table=result_table,
                   model=model,
                   label_name=label_name,
-                  model_params=model_params)
+                  model_params=model_params,
+                  result_column_names=result_column_names)
 
 
 def submit_local_explain(datasource,
@@ -156,6 +177,13 @@ def submit_local_explain(datasource,
         explain_func = xgboost_explain
     else:
         explain_func = tf_explain
+
+    feature_columns = model.get_meta("features")
+    field_descs = get_ordered_field_descs(feature_columns)
+    feature_column_names = [fd.name for fd in field_descs]
+    with db.connect_with_data_source(datasource) as conn:
+        create_explain_table(conn, explainer, result_table,
+                             feature_column_names)
 
     explain_func(datasource=datasource,
                  select=select,

@@ -151,9 +151,6 @@ def shap_explain(booster,
             to_write = shap_values
 
         columns = list(dataset.columns)
-        dtypes = [DataType.to_db_field_type(conn.driver, DataType.FLOAT32)
-                  ] * len(columns)
-        _create_table(conn, result_table, columns, dtypes)
         with db.buffered_db_writer(conn, result_table, columns) as w:
             for row in to_write:
                 w.write(list(row))
@@ -178,9 +175,13 @@ def shap_explain(booster,
         plot_func = lambda: shap.summary_plot(  # noqa: E731
             shap_values, dataset, show=False, **summary_params)
 
-    filename = 'summary.png'
-    explainer.plot_and_save(plot_func, filename, oss_dest, oss_ak, oss_sk,
-                            oss_endpoint, oss_bucket_name)
+    explainer.plot_and_save(plot_func,
+                            oss_dest=oss_dest,
+                            oss_ak=oss_ak,
+                            oss_sk=oss_sk,
+                            oss_endpoint=oss_endpoint,
+                            oss_bucket_name=oss_bucket_name,
+                            filename='summary')
 
 
 def xgb_native_explain(booster, datasource, result_table):
@@ -195,12 +196,6 @@ def xgb_native_explain(booster, datasource, result_table):
     all_feature_keys = list(gain_map.keys())
     all_feature_keys.sort()
     columns = ["feature", "fscore", "gain"]
-    dtypes = [
-        DataType.to_db_field_type(conn.driver, DataType.STRING),
-        DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-        DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-    ]
-    _create_table(conn, result_table, columns, dtypes)
 
     with db.buffered_db_writer(conn, result_table, columns) as w:
         for fkey in all_feature_keys:
@@ -225,17 +220,6 @@ def infer_data_type(feature):
         return 'int64'
     else:
         raise ValueError('Not supported data type {}'.format(type(feature)))
-
-
-def _create_table(conn, table, column_names, column_dtypes):
-    drop_sql = "DROP TABLE IF EXISTS %s;" % table
-    column_strs = [
-        "%s %s" % (name, dtype)
-        for name, dtype in zip(column_names, column_dtypes)
-    ]
-    create_sql = "CREATE TABLE %s (%s);" % (table, ",".join(column_strs))
-    conn.execute(drop_sql)
-    conn.execute(create_sql)
 
 
 def xgb_shap_dataset(datasource,
