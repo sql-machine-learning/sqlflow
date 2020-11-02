@@ -196,7 +196,8 @@ def submit_local_explain(datasource,
                  model_params=model_params,
                  result_table=result_table,
                  model=model)
-    print_image_as_base64_html("summary.png")
+    if not result_table:
+        print_image_as_base64_html("summary.png")
 
 
 def submit_local_run(datasource, select, image_name, params, into):
