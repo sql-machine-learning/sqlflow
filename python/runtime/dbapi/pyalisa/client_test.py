@@ -14,9 +14,7 @@
 import os
 import time
 import unittest
-from io import StringIO
 
-import dotenv
 from runtime import testing
 from runtime.dbapi.pyalisa.client import AlisaTaksStatus, Client
 
@@ -63,5 +61,4 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv("/Users/linhongwu/ws/sqlflow/.env")
     unittest.main()
