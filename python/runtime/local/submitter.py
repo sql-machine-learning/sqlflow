@@ -119,7 +119,10 @@ def submit_local_pred(datasource,
         pred_func = tf_pred
 
     conn = db.connect_with_data_source(datasource)
-    train_label_desc = model.get_meta("label").get_field_desc()[0]
+    if model.get_meta("label") is None:
+        train_label_desc = None
+    else:
+        train_label_desc = model.get_meta("label").get_field_desc()[0]
     result_column_names, train_label_idx = create_predict_table(
         conn, select, result_table, train_label_desc, label_name)
     conn.close()
@@ -178,12 +181,13 @@ def submit_local_explain(datasource,
     else:
         explain_func = tf_explain
 
-    feature_columns = model.get_meta("features")
-    field_descs = get_ordered_field_descs(feature_columns)
-    feature_column_names = [fd.name for fd in field_descs]
-    with db.connect_with_data_source(datasource) as conn:
-        create_explain_table(conn, explainer, result_table,
-                             feature_column_names)
+    if result_table:
+        feature_columns = model.get_meta("features")
+        field_descs = get_ordered_field_descs(feature_columns)
+        feature_column_names = [fd.name for fd in field_descs]
+        with db.connect_with_data_source(datasource) as conn:
+            create_explain_table(conn, explainer, result_table,
+                                 feature_column_names)
 
     explain_func(datasource=datasource,
                  select=select,

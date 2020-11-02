@@ -12,9 +12,9 @@
 # limitations under the License.
 
 import os
+import pickle
 import sys
 
-import dill as pickle
 import oss2
 import tensorflow as tf
 from runtime.diagnostics import SQLFlowDiagnostic

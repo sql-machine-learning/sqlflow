@@ -91,7 +91,8 @@ def evaluate(datasource,
 
         model_params = model.get_meta("attributes")
         fc_map_ir = model.get_meta("features")
-        train_label_desc = model.get_meta("label").get_field_desc()[0]
+        train_label = model.get_meta("label")
+        train_label_desc = train_label.get_field_desc()[0]
 
     if label_name:
         train_label_desc.name = label_name
@@ -118,8 +119,7 @@ def evaluate(datasource,
             dataset_sql=select,
             feature_metas=feature_metas,
             feature_column_names=feature_column_names,
-            label_meta=train_label_desc.get_field_desc()[0].to_dict(
-                dtype_to_string=True),
+            label_meta=train_label_desc.to_dict(dtype_to_string=True),
             cache=True,
             batch_size=10000,
             transform_fn=transform_fn)
@@ -127,8 +127,7 @@ def evaluate(datasource,
         for i, pred_dmatrix in enumerate(dpred):
             feature_file_name = pred_fn + "_%d" % i
             preds = _calc_predict_result(bst, pred_dmatrix, model_params)
-            _store_evaluate_result(preds, feature_file_name,
-                                   train_label_desc.get_field_desc()[0],
+            _store_evaluate_result(preds, feature_file_name, train_label_desc,
                                    result_table, result_column_names,
                                    validation_metrics, conn)
 
