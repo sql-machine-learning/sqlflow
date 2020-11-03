@@ -116,7 +116,7 @@ class TestXGBoostTrain(unittest.TestCase):
                      save_name,
                      label_name='class',
                      model_params={'validation.metrics': 'accuracy_score'},
-                     result_column_names=["loss", "accuracy_score"])
+                     result_column_names=result_column_names)
 
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
         self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))
