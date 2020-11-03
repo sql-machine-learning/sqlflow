@@ -103,8 +103,8 @@ def create_explain_table(conn, model_type, explainer, estimator_string,
     if model_type == EstimatorType.PAIML:
         return
     elif model_type == EstimatorType.TENSORFLOW and \
-        estimator_string in ("BoostedTreesClassifier",
-                             "BoostedTreesRegressor"):
+            estimator_string in ("BoostedTreesClassifier",
+                                 "BoostedTreesRegressor"):
         # Tensorflow boosted trees model explain:
         columns = ["feature", "dfc", "gain"]
         dtypes = [
@@ -113,7 +113,7 @@ def create_explain_table(conn, model_type, explainer, estimator_string,
             DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
         ]
     elif model_type == EstimatorType.XGBOOST and \
-         explainer == "XGBoostExplainer":
+            explainer == "XGBoostExplainer":
         columns = ["feature", "fscore", "gain"]
         dtypes = [
             DataType.to_db_field_type(conn.driver, DataType.STRING),
