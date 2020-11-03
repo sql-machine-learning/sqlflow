@@ -14,6 +14,7 @@
 import os
 import pathlib
 import subprocess
+import sys
 
 from runtime import db
 from runtime.dbapi import table_writer
@@ -212,7 +213,8 @@ def submit_local_run(datasource, select, image_name, params, into):
 
     if sub_process:
         print(sub_process.stdout.decode("utf-8"))
-        print(sub_process.stderr.decode("utf-8"))
+        if sub_process.returncode != 0:
+            print(sub_process.stderr.decode("utf-8"), file=sys.stderr)
 
 
 def submit_local_show_train(datasource, model_name):
