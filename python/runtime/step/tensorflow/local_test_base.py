@@ -93,8 +93,10 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         pred_select = "SELECT * FROM iris.test"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            pred(ds, pred_select, "iris.predict_result_table", class_name,
-                 save_name)
+            pred(ds, pred_select, "iris.predict_result_table", [
+                "sepal_length", "sepal_width", "petal_length", "petal_width",
+                "class"
+            ], 4, save_name)
 
         self.assertEqual(
             self.get_table_row_count(conn, "iris.test"),
