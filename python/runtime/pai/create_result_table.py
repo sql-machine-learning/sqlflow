@@ -12,7 +12,6 @@
 # limitations under the License.
 
 from runtime import db
-from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
 from runtime.pai import table_ops
 

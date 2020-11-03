@@ -112,7 +112,8 @@ def create_explain_table(conn, model_type, explainer, estimator_string,
             DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
             DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
         ]
-    elif model_type == EstimatorType.XGBOOST and explainer == "XGBoostExplainer":
+    elif model_type == EstimatorType.XGBOOST and \
+         explainer == "XGBoostExplainer":
         columns = ["feature", "fscore", "gain"]
         dtypes = [
             DataType.to_db_field_type(conn.driver, DataType.STRING),

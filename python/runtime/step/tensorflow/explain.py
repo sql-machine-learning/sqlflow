@@ -15,7 +15,6 @@ import base64
 import os
 
 import matplotlib
-import numpy as np
 import pandas as pd
 import six
 import tensorflow as tf
@@ -23,7 +22,6 @@ from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.feature.field_desc import DataType
 from runtime.model.model import Model
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.explain import explain_boosted_trees, explain_dnns
