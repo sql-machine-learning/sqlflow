@@ -142,7 +142,7 @@ class TestXGBoostTrain(unittest.TestCase):
         with temp_file.TemporaryDirectory(as_cwd=True):
             create_explain_table(conn, EstimatorType.XGBOOST,
                                  "XGBoostExplainer", "xgboost.gbtree",
-                                 "iris.explain_result_table",
+                                 "iris.explain_result_table_2",
                                  feature_column_names)
             explain(ds, select, "XGBoostExplainer", {},
                     "iris.explain_result_table_2", save_name)
