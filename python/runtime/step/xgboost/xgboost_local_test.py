@@ -19,7 +19,9 @@ import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
 from runtime.local.submitter import submit_local_train as train
+from runtime.model.model import EstimatorType
 from runtime.step.create_result_table import (create_evaluate_table,
+                                              create_explain_table,
                                               create_predict_table)
 from runtime.step.xgboost.evaluate import evaluate
 from runtime.step.xgboost.explain import explain
@@ -124,17 +126,24 @@ class TestXGBoostTrain(unittest.TestCase):
         self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))
 
         with temp_file.TemporaryDirectory(as_cwd=True):
+            feature_column_names = [
+                "petal_width", "petal_length", "sepal_width", "sepal_length"
+            ]
+            create_explain_table(conn, EstimatorType.XGBOOST, "TreeExplainer",
+                                 "xgboost.gbtree", "iris.explain_result_table",
+                                 feature_column_names)
             explain(ds, select, "TreeExplainer", {"plot_type": "decision"},
                     "iris.explain_result_table", save_name)
 
         explain_schema = self.get_table_schema(conn,
                                                "iris.explain_result_table")
-        self.assertEqual(
-            explain_schema.keys(),
-            set(["petal_width", "petal_length", "sepal_width",
-                 "sepal_length"]))
+        self.assertEqual(explain_schema.keys(), set(feature_column_names))
 
         with temp_file.TemporaryDirectory(as_cwd=True):
+            create_explain_table(conn, EstimatorType.XGBOOST,
+                                 "XGBoostExplainer", "xgboost.gbtree",
+                                 "iris.explain_result_table",
+                                 feature_column_names)
             explain(ds, select, "XGBoostExplainer", {},
                     "iris.explain_result_table_2", save_name)
 
