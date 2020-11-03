@@ -22,7 +22,6 @@ from runtime.pai import cluster_conf
 from runtime.pai.submitter import (ENTRY_FILE, JOB_ARCHIVE_FILE, PARAMS_FILE,
                                    clean_oss_model_path,
                                    create_evaluate_result_table,
-                                   create_explain_result_table,
                                    create_predict_result_table,
                                    create_tmp_table_from_select,
                                    create_train_and_eval_tmp_table,
@@ -303,8 +302,9 @@ def submit_alisa_explain(datasource, select, result_table, model_name,
 
     label_column = model_params.get("label_col")
     params["label_column"] = label_column
-    create_explain_result_table(datasource, data_table, result_table,
-                                model_type, estimator, label_column)
+    # FIXME(typhoonzero): Add this back using runtime.step.create_result_table
+    # create_explain_result_table(datasource, data_table, result_table,
+    #                             model_type, estimator, label_column)
 
     setup_explain_entry(params, model_type)
     prepare_archive(cwd, estimator, oss_model_path, params)

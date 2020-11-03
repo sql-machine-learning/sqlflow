@@ -35,49 +35,6 @@ from runtime.tensorflow.load_model import (load_keras_model_weights,
                                            pop_optimizer_and_loss)
 
 
-def create_explain_result_table(datasource, result_table, select,
-                                estimator_string, label_name, field_descs):
-    conn = db.connect_with_data_source(datasource)
-    if estimator_string.startswith("BoostedTrees"):
-        column_defs = [
-            "feature %s" %
-            DataType.to_db_field_type(conn.driver, DataType.STRING),
-            "dfc %s" %
-            DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-            "gain %s" %
-            DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-        ]
-    else:
-        selected_cols = db.selected_cols(conn, select)
-        if label_name in selected_cols:
-            selected_cols.remove(label_name)
-
-        name_to_shape = dict([(fd.name, fd.shape) for fd in field_descs])
-        column_defs = []
-        float_field_type = DataType.to_db_field_type(conn.driver,
-                                                     DataType.FLOAT32)
-        for name in selected_cols:
-            shape = name_to_shape.get(name, None)
-            if shape is None:
-                raise ValueError("cannot find column %s" % name)
-
-            size = int(np.prod(shape))
-            if size == 1:
-                column_def = "%s %s" % (name, float_field_type)
-                column_defs.append(column_def)
-            else:
-                for i in six.moves.range(size):
-                    column_def = "%s_%d %s" % (name, i, float_field_type)
-                    column_defs.append(column_def)
-
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
-    create_sql = "CREATE TABLE %s (%s);" % (result_table,
-                                            ",".join(column_defs))
-    conn.execute(drop_sql)
-    conn.execute(create_sql)
-    conn.close()
-
-
 def print_image_as_base64_html(file_path):
     with open(file_path, 'rb') as f:
         img = f.read()

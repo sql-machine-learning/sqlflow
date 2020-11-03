@@ -13,6 +13,7 @@
 
 from runtime import db
 from runtime.feature.field_desc import DataFormat, DataType
+from runtime.model.model import EstimatorType
 
 
 def create_predict_table(conn, select, result_table, train_label_desc,
@@ -94,8 +95,24 @@ def create_evaluate_table(conn, result_table, validation_metrics):
     return result_columns
 
 
-def create_explain_table(conn, explainer, result_table, feature_column_names):
-    if explainer == "XGBoostExplainer":
+def create_explain_table(conn, model_type, explainer, estimator_string,
+                         result_table, feature_column_names):
+    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
+    conn.execute(drop_sql)
+
+    if model_type == EstimatorType.PAIML:
+        return
+    elif model_type == EstimatorType.TENSORFLOW and \
+        estimator_string in ("BoostedTreesClassifier",
+                             "BoostedTreesRegressor"):
+        # Tensorflow boosted trees model explain:
+        columns = ["feature", "dfc", "gain"]
+        dtypes = [
+            DataType.to_db_field_type(conn.driver, DataType.STRING),
+            DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
+            DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
+        ]
+    elif model_type == EstimatorType.XGBOOST and explainer == "XGBoostExplainer":
         columns = ["feature", "fscore", "gain"]
         dtypes = [
             DataType.to_db_field_type(conn.driver, DataType.STRING),
@@ -103,15 +120,14 @@ def create_explain_table(conn, explainer, result_table, feature_column_names):
             DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
         ]
     else:
+        # shap explain result
         columns = feature_column_names
         dtypes = [DataType.to_db_field_type(conn.driver, DataType.FLOAT32)
                   ] * len(columns)
 
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
     column_strs = [
         "%s %s" % (name, dtype) for name, dtype in zip(columns, dtypes)
     ]
     create_sql = "CREATE TABLE %s (%s);" % (result_table,
                                             ",".join(column_strs))
-    conn.execute(drop_sql)
     conn.execute(create_sql)

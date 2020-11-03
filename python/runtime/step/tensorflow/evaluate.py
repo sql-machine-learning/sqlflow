@@ -45,6 +45,7 @@ def evaluate_step(datasource,
                   model,
                   label_name,
                   model_params,
+                  result_column_names=[],
                   pai_table=None):
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)

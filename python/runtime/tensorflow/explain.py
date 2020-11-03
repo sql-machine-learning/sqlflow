@@ -175,21 +175,6 @@ def explain_dnns(datasource, estimator, shap_dataset, plot_type, result_table,
         oss_dest, oss_ak, oss_sk, oss_endpoint, oss_bucket_name)
 
 
-def create_explain_result_table(conn, result_table):
-    if conn.driver == "mysql":
-        column_clause = "(feature VARCHAR(255), dfc float, gain float)"
-    else:
-        column_clause = "(feature STRING, dfc float, gain float)"
-    sql = "CREATE TABLE IF NOT EXISTS %s %s" % (result_table, column_clause)
-    cursor = conn.cursor()
-    try:
-        cursor.execute("DROP TABLE IF EXISTS %s" % result_table)
-        cursor.execute(sql)
-        conn.commit()
-    finally:
-        cursor.close()
-
-
 def write_shap_values(shap_values, conn, result_table, feature_column_names):
     with buffered_db_writer(conn, result_table, feature_column_names) as w:
         for row in shap_values[0]:

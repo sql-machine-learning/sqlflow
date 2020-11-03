@@ -184,10 +184,12 @@ def submit_local_explain(datasource,
 
     if result_table:
         feature_columns = model.get_meta("features")
+        estimator_string = model.get_meta("class_name")
         field_descs = get_ordered_field_descs(feature_columns)
         feature_column_names = [fd.name for fd in field_descs]
         with db.connect_with_data_source(datasource) as conn:
-            create_explain_table(conn, explainer, result_table,
+            create_explain_table(conn, model.get_type(), explainer,
+                                 estimator_string, result_table,
                                  feature_column_names)
 
     explain_func(datasource=datasource,

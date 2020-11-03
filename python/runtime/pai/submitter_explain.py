@@ -200,9 +200,11 @@ def submit_pai_explain(datasource,
         if result_table:
             conn = db.connect_with_data_source(datasource)
             feature_columns = meta.get_meta("features")
+            estimator_string = meta.get_meta("class_name")
             field_descs = get_ordered_field_descs(feature_columns)
             feature_column_names = [fd.name for fd in field_descs]
-            create_explain_table(conn, explainer, result_table,
+            create_explain_table(conn, meta.get_type(), explainer,
+                                 estimator_string, result_table,
                                  feature_column_names)
             conn.close()
 
