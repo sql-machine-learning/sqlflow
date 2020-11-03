@@ -56,8 +56,8 @@ def evaluate(datasource,
                                   feature_column_names,
                                   feature_metas,
                                   label_meta,
-                                  is_pai=False,
-                                  pai_table="",
+                                  is_pai=is_pai,
+                                  pai_table=pai_table,
                                   batch_size=batch_size)
 
     model_params.update(feature_columns)
