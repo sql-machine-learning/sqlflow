@@ -65,7 +65,7 @@ func CompileToYAMLExperimental(sqlProgram string, session *pb.Session) (string, 
 	if e != nil {
 		return "", e
 	}
-	tmpfile, e := ioutil.TempFile("/tmp", "couler")
+	tmpfile, e := ioutil.TempFile("/tmp", "sqlflow.py")
 	if e != nil {
 		return "", e
 	}

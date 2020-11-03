@@ -51,15 +51,20 @@ import re
 import os
 import couler.argo as couler
 datasource = "{{ .DataSource }}"
-step_log_file = "{{ .StepLogFile }}"
-cluster_config = "{{.ClusterConfigFn}}"
-if cluster_config == "":
-    cluster_config = None
+step_log_file = None
+if "{{ .StepLogFile }}" != "":
+  step_log_file = "{{ .StepLogFile }}"
+cluster_config = None
+if "{{.ClusterConfigFn}}" != "":
+  cluster_config = "{{.ClusterConfigFn}}"
 workflow_ttl = {{.WorkflowTTL}}
 
+# it's bug of the couler project, that needs "" on integer environment variable value to avoid the 
+# workflow failed: "invalid spec: cannot convert int64 to string"
+# issue: https://github.com/couler-proj/couler/issues/108
 step_envs = dict()
 {{range $k, $v := .StepEnvs}}
-step_envs["{{$k}}"] = '''{{$v}}'''
+step_envs["{{$k}}"] = '''"{{$v}}"'''
 {{end}}
 
 def step_command(sql, step_log_file):
@@ -94,7 +99,7 @@ if '''{{.Resources}}''' != "":
 
 {{ range $ss := .SQLStatements }}
 	{{if $ss.IsExtendedSQL }}
-couler.run_container(command=step_command('''{{ $ss.OriginalSQL}}''', step_log_file),
+couler.run_container(command=["bash", "-c", step_command('''{{ $ss.OriginalSQL}}''', step_log_file)],
   image="{{ $ss.DockerImage}}",
   env=step_envs,
   secret=sqlflow_secret,
@@ -107,7 +112,7 @@ params = json.loads('''{{ $ss.Parameters }}''')
 train_sql = '''{{ $ss.OriginalSQL }}'''
 auto.train(model=model, params=params, sql=escape_sql(train_sql), datasource=datasource)
 	{{else}}
-couler.run_container(command=step_command('''{{ $ss.OriginalSQL}}''', step_log_file),
+couler.run_container(command=["bash", "-c", step_command('''{{ $ss.OriginalSQL}}''', step_log_file)],
 	image="{{ $ss.DockerImage}}",
 	env=step_envs,
 	secret=sqlflow_secret,

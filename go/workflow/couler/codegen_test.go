@@ -99,7 +99,7 @@ func TestCoulerCodegen(t *testing.T) {
 	a.NoError(err)
 
 	a.True(strings.Contains(code, `SELECT * FROM iris.train limit 10`))
-	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
+	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''"oss_key"'''`))
 	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))
 	a.True(strings.Contains(code, `couler.create_secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 	a.True(strings.Contains(code, `resources=json.loads('''{"memory": "32Mi", "cpu": "100m"}''')`))
