@@ -451,6 +451,10 @@ func getPaiEvaluateCode(s *pythonExecutor, cl *ir.EvaluateStmt) (string, string,
 	if err != nil {
 		return "", "", "", "", err
 	}
+	err = fillDefaultValiationMetrics(cl, modelType)
+	if err != nil {
+		return "", "", "", "", err
+	}
 	// format resultTable name to "db.table" to let the codegen form a submitting
 	// argument of format "odps://project/tables/table_name"
 	// PAIML do not need to create explain result manually, PAI will
@@ -487,6 +491,27 @@ func getPaiEvaluateCode(s *pythonExecutor, cl *ir.EvaluateStmt) (string, string,
 		return "", "", "", "", e
 	}
 	return code, paiCmd, requirements, estimator, nil
+}
+
+func fillDefaultValiationMetrics(es *ir.EvaluateStmt, modelType int) error {
+	const metricAttrName = "validation.metrics"
+
+	metrics, ok := es.Attributes[metricAttrName]
+	if ok {
+		if _, ok := metrics.(string); !ok {
+			return fmt.Errorf("validation.metrics must be string")
+		}
+		return nil
+	}
+
+	var defaultMetrics []string
+	if modelType == model.XGBOOST {
+		defaultMetrics = []string{"accuracy_score"}
+	} else if modelType == model.TENSORFLOW {
+		defaultMetrics = []string{"Accuracy"}
+	}
+	es.Attributes[metricAttrName] = defaultMetrics
+	return nil
 }
 
 func (s *paiExecutor) ExecuteEvaluate(cl *ir.EvaluateStmt) error {

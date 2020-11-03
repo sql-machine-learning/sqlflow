@@ -238,6 +238,20 @@ func (s *alisaExecutor) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 	es.TmpEvaluateTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{es.TmpEvaluateTable}, s.Session.DbConnStr)
 
+	ossModelPath, e := model.GetOSSModelPath(es.ModelName, s.Session)
+	if e != nil {
+		return e
+	}
+	modelType, estimator, e := getOSSSavedModelType(ossModelPath)
+	if e != nil {
+		return e
+	}
+
+	e = fillDefaultValiationMetrics(es, modelType)
+	if e != nil {
+		return e
+	}
+
 	// default always output evaluation loss
 	metricNames := []string{"loss"}
 	metricsAttr, ok := es.Attributes["validation.metrics"]
@@ -246,15 +260,6 @@ func (s *alisaExecutor) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 		metricNames = append(metricNames, metricsList...)
 	}
 	if e = createEvaluationResultTable(s.Db, es.Into, metricNames); e != nil {
-		return e
-	}
-
-	ossModelPath, e := model.GetOSSModelPath(es.ModelName, s.Session)
-	if e != nil {
-		return e
-	}
-	modelType, estimator, e := getOSSSavedModelType(ossModelPath)
-	if e != nil {
 		return e
 	}
 
