@@ -29,7 +29,11 @@ class Config(object):
         dumpped to json and then encoded in base64 format, that is:
         env=base64(json.dumps({"a":1, "b":2}))
     """
-    def __init__(self, url):
+    def __init__(self, url=None):
+        if url:
+            self._parse_url(url)
+
+    def _parse_url(self, url):
         urlpts = urlparse(url)
         kvs = parse_qs(urlpts.query)
         required = ["env", "with", "curr_project"]
