@@ -13,6 +13,7 @@
 
 import unittest
 
+import runtime.temp_file as temp_file
 import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
@@ -39,35 +40,39 @@ class TestXGBoostTrain(unittest.TestCase):
             "num_boost_round": 20,
         }
         model_params = {"num_class": 3, "objective": "multi:softmax"}
-        eval_result = train(ds, original_sql, select, val_select,
-                            "xgboost.gbtree", "", None,
-                            NumericColumn(FieldDesc(name="class")),
-                            model_params, train_params, None,
-                            "iris.xgboost_train_model_test", None)
-        self.assertLess(eval_result['train']['merror'][-1], 0.01)
-        self.assertLess(eval_result['validate']['merror'][-1], 0.01)
+        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+            eval_result = train(ds, original_sql, select, val_select,
+                                "xgboost.gbtree", "", None,
+                                NumericColumn(FieldDesc(name="class")),
+                                model_params, train_params, None,
+                                "iris.xgboost_train_model_test", None)
+            self.assertLess(eval_result['train']['merror'][-1], 0.01)
+            self.assertLess(eval_result['validate']['merror'][-1], 0.01)
 
-        pred_original_sql = """SELECT * FROM iris.test
-        TO PREDICT iris.xgboost_pred_result.pred_val
-        USING iris.xgboost_train_model_test;"""
-        pred(ds, pred_original_sql, "SELECT * FROM iris.test",
-             "iris.xgboost_train_model_test", "pred_val", model_params,
-             "iris.xgboost_pred_result")
+        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+            pred_original_sql = """SELECT * FROM iris.test
+            TO PREDICT iris.xgboost_pred_result.pred_val
+            USING iris.xgboost_train_model_test;"""
+            pred(ds, pred_original_sql, "SELECT * FROM iris.test",
+                 "iris.xgboost_train_model_test", "pred_val", model_params,
+                 "iris.xgboost_pred_result")
 
-        explain_original_sql = """SELECT * FROM iris.test
-        TO EXPLAIN iris.xgboost_train_model_test
-        INTO iris.xgboost_explain_result;"""
-        explain(ds, explain_original_sql, "SELECT * FROM iris.test",
-                "iris.xgboost_train_model_test", model_params,
-                "iris.xgboost_explain_result")
+        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+            explain_original_sql = """SELECT * FROM iris.test
+            TO EXPLAIN iris.xgboost_train_model_test
+            INTO iris.xgboost_explain_result;"""
+            explain(ds, explain_original_sql, "SELECT * FROM iris.test",
+                    "iris.xgboost_train_model_test", model_params,
+                    "iris.xgboost_explain_result")
 
-        evaluate_original_sql = """SELECT * FROM iris.test
-        TO EVALUATE iris.xgboost_train_model_test
-        WITH label_col=class
-        INTO iris.xgboost_evaluate_result;"""
-        evaluate(ds, evaluate_original_sql, "SELECT * FROM iris.test", "class",
-                 "iris.xgboost_train_model_test", model_params,
-                 "iris.xgboost_evaluate_result")
+        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+            evaluate_original_sql = """SELECT * FROM iris.test
+            TO EVALUATE iris.xgboost_train_model_test
+            WITH label_col=class
+            INTO iris.xgboost_evaluate_result;"""
+            evaluate(ds, evaluate_original_sql, "SELECT * FROM iris.test",
+                     "class", "iris.xgboost_train_model_test", model_params,
+                     "iris.xgboost_evaluate_result")
 
 
 if __name__ == '__main__':

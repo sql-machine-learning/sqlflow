@@ -19,6 +19,7 @@ import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
 from runtime.local.submitter import submit_local_train as train
+from runtime.step.create_result_table import create_evaluate_table
 from runtime.step.xgboost.evaluate import evaluate
 from runtime.step.xgboost.explain import explain
 from runtime.step.xgboost.predict import predict
@@ -83,8 +84,10 @@ class TestXGBoostTrain(unittest.TestCase):
         pred_select = "SELECT * FROM iris.test"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            predict(ds, pred_select, "iris.predict_result_table", class_name,
-                    save_name)
+            predict(ds, pred_select, "iris.predict_result_table", [
+                "sepal_length", "sepal_width", "petal_length", "petal_width",
+                "class"
+            ], 4, save_name)
 
         self.assertEqual(
             self.get_table_row_count(conn, "iris.test"),
@@ -105,8 +108,15 @@ class TestXGBoostTrain(unittest.TestCase):
         self.assertEqual(len(diff_schema), 0)
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
-                     'class', {'validation.metrics': 'accuracy_score'})
+            result_column_names = create_evaluate_table(
+                conn, "iris.evaluate_result_table", ["accuracy_score"])
+            evaluate(ds,
+                     pred_select,
+                     "iris.evaluate_result_table",
+                     save_name,
+                     label_name='class',
+                     model_params={'validation.metrics': 'accuracy_score'},
+                     result_column_names=["loss", "accuracy_score"])
 
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
         self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))
