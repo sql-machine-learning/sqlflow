@@ -19,7 +19,8 @@ import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
 from runtime.local.submitter import submit_local_train as train
-from runtime.step.create_result_table import create_evaluate_table
+from runtime.step.create_result_table import (create_evaluate_table,
+                                              create_predict_table)
 from runtime.step.xgboost.evaluate import evaluate
 from runtime.step.xgboost.explain import explain
 from runtime.step.xgboost.predict import predict
@@ -84,10 +85,11 @@ class TestXGBoostTrain(unittest.TestCase):
         pred_select = "SELECT * FROM iris.test"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            predict(ds, pred_select, "iris.predict_result_table", [
-                "sepal_length", "sepal_width", "petal_length", "petal_width",
-                "class"
-            ], 4, save_name)
+            result_column_names, train_label_idx = create_predict_table(
+                conn, select, "iris.predict_result_table",
+                FieldDesc(name=class_name), "class")
+            predict(ds, pred_select, "iris.predict_result_table",
+                    result_column_names, train_label_idx, save_name)
 
         self.assertEqual(
             self.get_table_row_count(conn, "iris.test"),

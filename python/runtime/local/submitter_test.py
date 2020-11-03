@@ -40,7 +40,7 @@ class TestXGBoostTrain(unittest.TestCase):
             "num_boost_round": 20,
         }
         model_params = {"num_class": 3, "objective": "multi:softmax"}
-        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+        with temp_file.TemporaryDirectory(as_cwd=True):
             eval_result = train(ds, original_sql, select, val_select,
                                 "xgboost.gbtree", "", None,
                                 NumericColumn(FieldDesc(name="class")),
@@ -49,7 +49,7 @@ class TestXGBoostTrain(unittest.TestCase):
             self.assertLess(eval_result['train']['merror'][-1], 0.01)
             self.assertLess(eval_result['validate']['merror'][-1], 0.01)
 
-        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+        with temp_file.TemporaryDirectory(as_cwd=True):
             pred_original_sql = """SELECT * FROM iris.test
             TO PREDICT iris.xgboost_pred_result.pred_val
             USING iris.xgboost_train_model_test;"""
@@ -57,7 +57,7 @@ class TestXGBoostTrain(unittest.TestCase):
                  "iris.xgboost_train_model_test", "pred_val", model_params,
                  "iris.xgboost_pred_result")
 
-        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+        with temp_file.TemporaryDirectory(as_cwd=True):
             explain_original_sql = """SELECT * FROM iris.test
             TO EXPLAIN iris.xgboost_train_model_test
             INTO iris.xgboost_explain_result;"""
@@ -65,7 +65,7 @@ class TestXGBoostTrain(unittest.TestCase):
                     "iris.xgboost_train_model_test", model_params,
                     "iris.xgboost_explain_result")
 
-        with temp_file.TemporaryDirectory(prefix="sqlflow", dir="/tmp"):
+        with temp_file.TemporaryDirectory(as_cwd=True):
             evaluate_original_sql = """SELECT * FROM iris.test
             TO EVALUATE iris.xgboost_train_model_test
             WITH label_col=class
