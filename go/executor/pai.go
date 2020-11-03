@@ -504,13 +504,11 @@ func fillDefaultValiationMetrics(es *ir.EvaluateStmt, modelType int) error {
 		return nil
 	}
 
-	var defaultMetrics []string
 	if modelType == model.XGBOOST {
-		defaultMetrics = []string{"accuracy_score"}
+		es.Attributes[metricAttrName] = "accuracy_score"
 	} else if modelType == model.TENSORFLOW {
-		defaultMetrics = []string{"Accuracy"}
+		es.Attributes[metricAttrName] = "Accuracy"
 	}
-	es.Attributes[metricAttrName] = defaultMetrics
 	return nil
 }
 
