@@ -215,6 +215,7 @@ def submit_local_run(datasource, select, image_name, params, into):
         print(sub_process.stdout.decode("utf-8"))
         if sub_process.returncode != 0:
             print(sub_process.stderr.decode("utf-8"), file=sys.stderr)
+            raise RuntimeError("Executing {} failed.".format(params[0]))
 
 
 def submit_local_show_train(datasource, model_name):
