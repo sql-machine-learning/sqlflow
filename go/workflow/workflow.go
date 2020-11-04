@@ -54,7 +54,6 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 	if e != nil {
 		return "", e
 	}
-	fmt.Println(py)
 	// translate Couler program to workflow YAML
 	yaml, e = couler.GenYAML(py)
 	if e != nil {
