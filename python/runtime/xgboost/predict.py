@@ -133,6 +133,8 @@ def predict_and_store_result(bst,
         # multi:softmax output class labels
         elif obj.startswith("multi:softprob"):
             preds = np.argmax(np.array(preds), axis=1)
+        elif obj.startswith("binary:") or obj.startswith("multi:"):
+            preds = np.array(preds).astype(int)
         # TODO(typhoonzero): deal with binary:logitraw when needed.
     else:
         # prediction output with multi-class job has two dimensions, this

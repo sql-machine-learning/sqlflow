@@ -22,7 +22,7 @@ from runtime import db, explainer
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.model import EstimatorType, oss
+from runtime.model import EstimatorType
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags
 

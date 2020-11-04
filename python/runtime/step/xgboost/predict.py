@@ -21,7 +21,7 @@ from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.model import EstimatorType, Model, oss
+from runtime.model import EstimatorType, Model
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.xgboost.dataset import DMATRIX_FILE_SEP, xgb_dataset
 from runtime.xgboost.feature_column import ComposedColumnTransformer
@@ -119,6 +119,8 @@ def _calc_predict_result(bst, dpred, model_params):
     # multi:softmax output class labels
     elif obj.startswith("multi:softprob"):
         preds = np.argmax(np.array(preds), axis=1)
+    elif obj.startswith("binary:") or obj.startswith("multi:"):
+        preds = preds.astype(int)
     # TODO(typhoonzero): deal with binary:logitraw when needed.
 
     return preds
