@@ -31,7 +31,7 @@ type trainFiller struct {
 	TmpValidateTable  string
 }
 
-var templateTrain = `import copy
+const templateTrain = `import copy
 import os
 import shutil
 
