@@ -451,7 +451,7 @@ func getPaiEvaluateCode(s *pythonExecutor, cl *ir.EvaluateStmt) (string, string,
 	if err != nil {
 		return "", "", "", "", err
 	}
-	err = fillDefaultValiationMetrics(cl, modelType)
+	err = fillDefaultValidationMetrics(cl, modelType)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -493,13 +493,13 @@ func getPaiEvaluateCode(s *pythonExecutor, cl *ir.EvaluateStmt) (string, string,
 	return code, paiCmd, requirements, estimator, nil
 }
 
-func fillDefaultValiationMetrics(es *ir.EvaluateStmt, modelType int) error {
+func fillDefaultValidationMetrics(es *ir.EvaluateStmt, modelType int) error {
 	const metricAttrName = "validation.metrics"
 
 	metrics, ok := es.Attributes[metricAttrName]
 	if ok {
 		if _, ok := metrics.(string); !ok {
-			return fmt.Errorf("validation.metrics must be string")
+			return fmt.Errorf("%s must be string", metricAttrName)
 		}
 		return nil
 	}

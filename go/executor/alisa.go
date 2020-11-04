@@ -247,7 +247,7 @@ func (s *alisaExecutor) ExecuteEvaluate(es *ir.EvaluateStmt) error {
 		return e
 	}
 
-	e = fillDefaultValiationMetrics(es, modelType)
+	e = fillDefaultValidationMetrics(es, modelType)
 	if e != nil {
 		return e
 	}
