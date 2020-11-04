@@ -18,6 +18,7 @@ import runtime.temp_file as temp_file
 import six
 import xgboost as xgb
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, Model, oss
@@ -34,26 +35,17 @@ def predict(datasource,
             result_column_names,
             train_label_idx,
             model,
-            pai_table="",
-            oss_model_path=""):
+            pai_table=None):
     """TBD
     """
-    is_pai = True if pai_table != "" else False
-    if is_pai:
-        # FIXME(typhoonzero): load metas from db instead.
-        oss.load_file(oss_model_path, "my_model")
-        (_, model_params, _, feature_metas, feature_column_names, _,
-         fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
+    if isinstance(model, six.string_types):
+        model = Model.load_from_db(datasource, model)
     else:
-        if isinstance(model, six.string_types):
-            model = Model.load_from_db(datasource, model)
-        else:
-            assert isinstance(
-                model, Model), "not supported model type %s" % type(model)
+        assert isinstance(model,
+                          Model), "not supported model type %s" % type(model)
 
-        model_params = model.get_meta("attributes")
-        fc_map_ir = model.get_meta("features")
-
+    model_params = model.get_meta("attributes")
+    fc_map_ir = model.get_meta("features")
     feature_columns = compile_ir_feature_columns(fc_map_ir,
                                                  EstimatorType.XGBOOST)
     field_descs = get_ordered_field_descs(fc_map_ir)
@@ -66,7 +58,12 @@ def predict(datasource,
 
     bst = xgb.Booster()
     bst.load_model("my_model")
-    conn = db.connect_with_data_source(datasource)
+
+    is_pai = True if pai_table else False
+    if is_pai:
+        conn = PaiIOConnection.from_table(pai_table)
+    else:
+        conn = db.connect_with_data_source(datasource)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")

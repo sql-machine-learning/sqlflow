@@ -129,18 +129,15 @@ def submit_pai_predict(datasource,
                                                        user=user)
     model_metas = oss.load_metas(oss_model_path, "xgboost_model_desc")
     train_label_desc = model_metas[5].get_field_desc()[0]
-    conn = db.connect_with_data_source(datasource)
-    result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, label_name)
-    conn.close()
+    with db.connect_with_data_source(datasource) as conn:
+        result_column_names, train_label_idx = create_predict_table(
+            conn, select, result_table, train_label_desc, label_name)
 
     # TODO(typhoonzero): Do **NOT** create tmp table when the select statement
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         del params["label_name"]
         params["pai_table"] = data_table
-        params["oss_model_path"] = oss_model_path
-        params["model"] = ""
         params["result_column_names"] = result_column_names
         params["train_label_idx"] = train_label_idx
 

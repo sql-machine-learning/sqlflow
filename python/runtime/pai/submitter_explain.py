@@ -194,7 +194,6 @@ def submit_pai_explain(datasource,
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         params["pai_table"] = data_table
-        params["oss_model_path"] = oss_model_path
 
         # Create explain result table
         if result_table:

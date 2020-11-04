@@ -44,7 +44,7 @@ def evaluate_step(datasource,
                   model,
                   label_name,
                   model_params,
-                  result_column_names=[],
+                  result_column_names,
                   pai_table=None):
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
@@ -86,6 +86,7 @@ def evaluate_step(datasource,
               label_meta=label_meta,
               model_params=model_params,
               validation_metrics=validation_metrics,
+              result_column_names=result_column_names,
               save=save,
               batch_size=batch_size,
               validation_steps=validation_steps,
@@ -103,6 +104,7 @@ def _evaluate(datasource,
               label_meta={},
               model_params={},
               validation_metrics=["Accuracy"],
+              result_column_names=[],
               save="",
               batch_size=1,
               validation_steps=None,
@@ -143,11 +145,10 @@ def _evaluate(datasource,
                                         keras_model_pkg, validation_metrics)
 
     if result_table:
-        metric_name_list = ["loss"] + validation_metrics
         if is_pai:
             conn = PaiIOConnection.from_table(result_table)
         else:
             conn = db.connect_with_data_source(datasource)
-        write_result_metrics(result_metrics, metric_name_list, result_table,
+        write_result_metrics(result_metrics, result_column_names, result_table,
                              conn)
         conn.close()
