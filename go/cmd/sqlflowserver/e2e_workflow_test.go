@@ -81,6 +81,10 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Fatalf("prepare test dataset failed: %v", err)
 	}
 
+	// TODO: Run this case using experimental workflow after
+	// releasing a new runnable image built upon new architecture.
+	t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
+
 	// test experimental workflow code generation when i == 0
 	// test old workflow code generation when i == 1
 	os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "true")
@@ -94,7 +98,6 @@ func TestEnd2EndWorkflow(t *testing.T) {
 		t.Run("CaseWorkflowTrainTensorFlow", caseWorkflowTrainTensorFlow)
 		t.Run("CaseWorkflowOptimize", caseWorkflowOptimize)
 		t.Run("CaseWorkflowRunBinary", caseWorkflowRunBinary)
-		t.Run("CaseWorkflowRunPythonScript", caseWorkflowRunPythonScript)
 		os.Setenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN", "")
 	}
 }
