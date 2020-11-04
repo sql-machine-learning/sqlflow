@@ -14,6 +14,7 @@
 import os
 
 import runtime.temp_file as temp_file
+from runtime import db
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
 from runtime.pai import cluster_conf, pai_model, table_ops
@@ -22,6 +23,7 @@ from runtime.pai.get_pai_tf_cmd import (ENTRY_FILE, JOB_ARCHIVE_FILE,
 from runtime.pai.prepare_archive import prepare_archive
 from runtime.pai.submit_pai_task import submit_pai_task
 from runtime.pai_local.try_run import try_pai_local_run
+from runtime.step.create_result_table import create_evaluate_table
 
 
 def submit_pai_evaluate(datasource,
@@ -72,12 +74,22 @@ def submit_pai_evaluate(datasource,
 
     if model_type == EstimatorType.XGBOOST:
         params["entry_type"] = "evaluate_xgb"
+        validation_metrics = model_params.get("validation.metrics",
+                                              "accuracy_score")
     else:
         params["entry_type"] = "evaluate_tf"
+        validation_metrics = model_params.get("validation.metrics", "Accuracy")
 
-    # create_evaluate_result_table(datasource, result_table, metrics)
+    conn = db.connect_with_data_source(datasource)
+    validation_metrics = [m.strip() for m in validation_metrics.split(",")]
+    result_column_names = create_evaluate_table(conn, result_table,
+                                                validation_metrics)
+    conn.close()
+
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         params["pai_table"] = data_table
+        params["oss_model_path"] = oss_model_path
+        params["result_column_names"] = result_column_names
 
         if try_pai_local_run(params, oss_model_path):
             return

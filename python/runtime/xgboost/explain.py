@@ -21,7 +21,7 @@ from runtime import db, explainer
 from runtime.dbapi.paiio import PaiIOConnection
 
 
-def infer_dtype(feature):
+def infer_data_type(feature):
     if isinstance(feature, np.ndarray):
         if feature.dtype == np.float32 or feature.dtype == np.float64:
             return 'float32'
@@ -93,12 +93,12 @@ def xgb_shap_dataset(datasource,
                 flatten_features.extend(values.flatten().tolist())
                 if i == 0:
                     sizes.append(values.size)
-                    dtypes.append(infer_dtype(values))
+                    dtypes.append(infer_data_type(values))
             else:
                 flatten_features.append(values)
                 if i == 0:
                     sizes.append(1)
-                    dtypes.append(infer_dtype(values))
+                    dtypes.append(infer_data_type(values))
 
         # Create the column name according to the feature number
         # of each column.

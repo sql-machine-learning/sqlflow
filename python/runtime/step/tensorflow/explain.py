@@ -15,7 +15,6 @@ import base64
 import os
 
 import matplotlib
-import numpy as np
 import pandas as pd
 import six
 import tensorflow as tf
@@ -23,7 +22,6 @@ from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.feature.field_desc import DataType
 from runtime.model.model import Model
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.explain import explain_boosted_trees, explain_dnns
@@ -33,49 +31,6 @@ from runtime.tensorflow.keras_with_feature_column_input import \
     init_model_with_feature_column
 from runtime.tensorflow.load_model import (load_keras_model_weights,
                                            pop_optimizer_and_loss)
-
-
-def create_explain_result_table(datasource, result_table, select,
-                                estimator_string, label_name, field_descs):
-    conn = db.connect_with_data_source(datasource)
-    if estimator_string.startswith("BoostedTrees"):
-        column_defs = [
-            "feature %s" %
-            DataType.to_db_field_type(conn.driver, DataType.STRING),
-            "dfc %s" %
-            DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-            "gain %s" %
-            DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-        ]
-    else:
-        selected_cols = db.selected_cols(conn, select)
-        if label_name in selected_cols:
-            selected_cols.remove(label_name)
-
-        name_to_shape = dict([(fd.name, fd.shape) for fd in field_descs])
-        column_defs = []
-        float_field_type = DataType.to_db_field_type(conn.driver,
-                                                     DataType.FLOAT32)
-        for name in selected_cols:
-            shape = name_to_shape.get(name, None)
-            if shape is None:
-                raise ValueError("cannot find column %s" % name)
-
-            size = int(np.prod(shape))
-            if size == 1:
-                column_def = "%s %s" % (name, float_field_type)
-                column_defs.append(column_def)
-            else:
-                for i in six.moves.range(size):
-                    column_def = "%s_%d %s" % (name, i, float_field_type)
-                    column_defs.append(column_def)
-
-    drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
-    create_sql = "CREATE TABLE %s (%s);" % (result_table,
-                                            ",".join(column_defs))
-    conn.execute(drop_sql)
-    conn.execute(create_sql)
-    conn.close()
 
 
 def print_image_as_base64_html(file_path):
@@ -141,10 +96,6 @@ def explain_step(datasource,
     label_name = model_params.get("label_col", train_label_desc.name)
     train_label_desc.name = label_name
     label_meta = train_label_desc.to_dict(dtype_to_string=True)
-
-    if result_table:
-        create_explain_result_table(datasource, result_table, select,
-                                    estimator_string, label_name, field_descs)
 
     if pai_table:
         assert oss_dest, "oss_dest must be given when submit to PAI"

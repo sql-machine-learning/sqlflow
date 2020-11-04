@@ -18,7 +18,6 @@ from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model.model import Model
-from runtime.step.create_result_table import create_predict_table
 from runtime.tensorflow.get_tf_model_type import is_tf_estimator
 from runtime.tensorflow.import_model import import_model
 from runtime.tensorflow.load_model import pop_optimizer_and_loss
@@ -28,7 +27,8 @@ from runtime.tensorflow.predict import estimator_predict, keras_predict
 def predict_step(datasource,
                  select,
                  result_table,
-                 label_name,
+                 result_column_names,
+                 train_label_idx,
                  model,
                  pai_table=None):
     if isinstance(model, six.string_types):
@@ -56,9 +56,8 @@ def predict_step(datasource,
     if is_pai:
         select = "SELECT * FROM %s" % pai_table
 
+    label_name = result_column_names[train_label_idx]
     conn = db.connect_with_data_source(datasource)
-    result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, label_name)
 
     if is_pai:
         conn.close()

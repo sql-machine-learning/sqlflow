@@ -19,6 +19,10 @@ import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
 from runtime.local.submitter import submit_local_train as train
+from runtime.model.model import EstimatorType
+from runtime.step.create_result_table import (create_evaluate_table,
+                                              create_explain_table,
+                                              create_predict_table)
 from runtime.step.xgboost.evaluate import evaluate
 from runtime.step.xgboost.explain import explain
 from runtime.step.xgboost.predict import predict
@@ -83,8 +87,11 @@ class TestXGBoostTrain(unittest.TestCase):
         pred_select = "SELECT * FROM iris.test"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            predict(ds, pred_select, "iris.predict_result_table", class_name,
-                    save_name)
+            result_column_names, train_label_idx = create_predict_table(
+                conn, select, "iris.predict_result_table",
+                FieldDesc(name=class_name), "class")
+            predict(ds, pred_select, "iris.predict_result_table",
+                    result_column_names, train_label_idx, save_name)
 
         self.assertEqual(
             self.get_table_row_count(conn, "iris.test"),
@@ -105,24 +112,38 @@ class TestXGBoostTrain(unittest.TestCase):
         self.assertEqual(len(diff_schema), 0)
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            evaluate(ds, pred_select, "iris.evaluate_result_table", save_name,
-                     'class', {'validation.metrics': 'accuracy_score'})
+            result_column_names = create_evaluate_table(
+                conn, "iris.evaluate_result_table", ["accuracy_score"])
+            evaluate(ds,
+                     pred_select,
+                     "iris.evaluate_result_table",
+                     save_name,
+                     label_name='class',
+                     model_params={'validation.metrics': 'accuracy_score'},
+                     result_column_names=result_column_names)
 
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
         self.assertEqual(eval_schema.keys(), set(['loss', 'accuracy_score']))
 
         with temp_file.TemporaryDirectory(as_cwd=True):
+            feature_column_names = [
+                "petal_width", "petal_length", "sepal_width", "sepal_length"
+            ]
+            create_explain_table(conn, EstimatorType.XGBOOST, "TreeExplainer",
+                                 "xgboost.gbtree", "iris.explain_result_table",
+                                 feature_column_names)
             explain(ds, select, "TreeExplainer", {"plot_type": "decision"},
                     "iris.explain_result_table", save_name)
 
         explain_schema = self.get_table_schema(conn,
                                                "iris.explain_result_table")
-        self.assertEqual(
-            explain_schema.keys(),
-            set(["petal_width", "petal_length", "sepal_width",
-                 "sepal_length"]))
+        self.assertEqual(explain_schema.keys(), set(feature_column_names))
 
         with temp_file.TemporaryDirectory(as_cwd=True):
+            create_explain_table(conn, EstimatorType.XGBOOST,
+                                 "XGBoostExplainer", "xgboost.gbtree",
+                                 "iris.explain_result_table_2",
+                                 feature_column_names)
             explain(ds, select, "XGBoostExplainer", {},
                     "iris.explain_result_table_2", save_name)
 

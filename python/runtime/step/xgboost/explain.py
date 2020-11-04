@@ -11,21 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
-
 import numpy as np
 import pandas as pd
-import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
 import scipy
 import shap
 import six
 import xgboost as xgb
 from runtime import db, explainer
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.feature.field_desc import DataType
-from runtime.model import oss
+from runtime.model import EstimatorType, oss
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags
 
@@ -39,17 +36,13 @@ def explain(datasource,
             result_table,
             model,
             pai_table="",
-            oss_model_path=""):
-    """Do XGBoost model explanation, this function use selected data to
-    explain the model stored at oss_model_path
-
-    Args:
-        datasource: The datasource to load explain data
-        select: SQL statement to get the data set
-        data_table: tmp table to save the explain data
-        result_table: table to store the explanation result
-        label_column: name of the label column
-        oss_model_path: path to the model to be explained
+            oss_model_path="",
+            oss_dest=None,
+            oss_ak=None,
+            oss_sk=None,
+            oss_endpoint=None,
+            oss_bucket_name=None):
+    """TBD
     """
     if model_params is None:
         model_params = {}
@@ -65,11 +58,11 @@ def explain(datasource,
         # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
         # in xgboost/train.py
         oss.load_file(oss_model_path, "my_model")
-
         (estimator, model_params, train_params, feature_field_meta,
          feature_column_names, label_desc,
          fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
-        label_meta = label_desc.to_dict(dtype_to_string=True)
+        label_meta = label_desc.get_field_desc()[0].to_dict(
+            dtype_to_string=True)
     else:
         if isinstance(model, six.string_types):
             model = Model.load_from_db(datasource, model)
@@ -88,12 +81,13 @@ def explain(datasource,
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
     # of dumping the original data into DMatrix SVM file.
-    compiled_fc = compile_ir_feature_columns(fc_map_ir, model.get_type())
+    compiled_fc = compile_ir_feature_columns(fc_map_ir, EstimatorType.XGBOOST)
     transform_fn = xgboost_extended.feature_column.ComposedColumnTransformer(
         feature_column_names, *compiled_fc["feature_columns"])
 
     dataset = xgb_shap_dataset(datasource, select, feature_column_names,
-                               label_meta, feature_metas, transform_fn)
+                               label_meta, feature_metas, is_pai, pai_table,
+                               transform_fn)
 
     bst = xgb.Booster()
     bst.load_model("my_model")
@@ -102,15 +96,37 @@ def explain(datasource,
         xgb_native_explain(bst, datasource, result_table)
     else:
         # when explainer is "" or "TreeExplainer" use SHAP by default.
-        shap_explain(bst, datasource, dataset, summary_params, result_table)
+        shap_explain(bst,
+                     datasource,
+                     dataset,
+                     summary_params,
+                     result_table,
+                     is_pai=is_pai,
+                     oss_dest=oss_dest,
+                     oss_ak=oss_ak,
+                     oss_sk=oss_sk,
+                     oss_endpoint=oss_endpoint,
+                     oss_bucket_name=oss_bucket_name)
 
 
-def shap_explain(booster, datasource, dataset, summary_params, result_table):
-
+def shap_explain(booster,
+                 datasource,
+                 dataset,
+                 summary_params,
+                 result_table="",
+                 is_pai=False,
+                 oss_dest=None,
+                 oss_ak=None,
+                 oss_sk=None,
+                 oss_endpoint=None,
+                 oss_bucket_name=None):
     tree_explainer = shap.TreeExplainer(booster)
     shap_values = tree_explainer.shap_values(dataset)
     if result_table:
-        conn = db.connect_with_data_source(datasource)
+        if is_pai:
+            conn = PaiIOConnection.from_table(result_table)
+        else:
+            conn = db.connect_with_data_source(datasource)
         # TODO(typhoonzero): the shap_values is may be a
         # list of shape [3, num_samples, num_features],
         # use the first dimension here, should find out
@@ -122,13 +138,9 @@ def shap_explain(booster, datasource, dataset, summary_params, result_table):
             to_write = shap_values
 
         columns = list(dataset.columns)
-        dtypes = [DataType.to_db_field_type(conn.driver, DataType.FLOAT32)
-                  ] * len(columns)
-        _create_table(conn, result_table, columns, dtypes)
         with db.buffered_db_writer(conn, result_table, columns) as w:
             for row in to_write:
                 w.write(list(row))
-
         conn.close()
 
     if summary_params.get("plot_type") == "decision":
@@ -139,7 +151,6 @@ def shap_explain(booster, datasource, dataset, summary_params, result_table):
             shap_interaction_values = shap_interaction_values[0]
         if isinstance(expected_value, list):
             expected_value = expected_value[0]
-
         plot_func = lambda: shap.decision_plot(  # noqa: E731
             expected_value,
             shap_interaction_values,
@@ -151,18 +162,13 @@ def shap_explain(booster, datasource, dataset, summary_params, result_table):
         plot_func = lambda: shap.summary_plot(  # noqa: E731
             shap_values, dataset, show=False, **summary_params)
 
-    filename = 'summary.png'
-    with temp_file.TemporaryDirectory(as_cwd=True):
-        explainer.plot_and_save(plot_func, filename=filename)
-        with open(filename, 'rb') as f:
-            img = f.read()
-
-    img = base64.b64encode(img)
-    if six.PY3:
-        img = img.decode('utf-8')
-    img = "<div align='center'><img src='data:image/png;base64,%s' /></div>" \
-          % img
-    print(img)
+    explainer.plot_and_save(plot_func,
+                            oss_dest=oss_dest,
+                            oss_ak=oss_ak,
+                            oss_sk=oss_sk,
+                            oss_endpoint=oss_endpoint,
+                            oss_bucket_name=oss_bucket_name,
+                            filename='summary')
 
 
 def xgb_native_explain(booster, datasource, result_table):
@@ -177,12 +183,6 @@ def xgb_native_explain(booster, datasource, result_table):
     all_feature_keys = list(gain_map.keys())
     all_feature_keys.sort()
     columns = ["feature", "fscore", "gain"]
-    dtypes = [
-        DataType.to_db_field_type(conn.driver, DataType.STRING),
-        DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-        DataType.to_db_field_type(conn.driver, DataType.FLOAT32),
-    ]
-    _create_table(conn, result_table, columns, dtypes)
 
     with db.buffered_db_writer(conn, result_table, columns) as w:
         for fkey in all_feature_keys:
@@ -209,25 +209,22 @@ def infer_data_type(feature):
         raise ValueError('Not supported data type {}'.format(type(feature)))
 
 
-def _create_table(conn, table, column_names, column_dtypes):
-    drop_sql = "DROP TABLE IF EXISTS %s;" % table
-    column_strs = [
-        "%s %s" % (name, dtype)
-        for name, dtype in zip(column_names, column_dtypes)
-    ]
-    create_sql = "CREATE TABLE %s (%s);" % (table, ",".join(column_strs))
-    conn.execute(drop_sql)
-    conn.execute(create_sql)
-
-
 def xgb_shap_dataset(datasource,
                      select,
                      feature_column_names,
                      label_meta,
                      feature_metas,
+                     is_pai,
+                     pai_explain_table,
                      transform_fn=None):
-    conn = db.connect_with_data_source(datasource)
-    stream = db.db_generator(conn, select, label_meta)
+    if is_pai:
+        # (TODO: lhw) we may specify pai_explain_table in datasoure
+        # and discard the condition statement here
+        conn = PaiIOConnection.from_table(pai_explain_table)
+        stream = db.db_generator(conn, None, label_meta)
+    else:
+        conn = db.connect_with_data_source(datasource)
+        stream = db.db_generator(conn, select, label_meta)
     selected_cols = db.selected_cols(conn, select)
 
     if transform_fn:
@@ -299,14 +296,7 @@ def xgb_shap_dataset(datasource,
         xs.loc[i] = flatten_features
 
         i += 1
-    # NOTE(typhoonzero): set dtype to the feature's actual type, or the dtype
-    # may be "object". Use below code to reproduce:
-    # import pandas as pd
-    # feature_column_names=["a", "b"]
-    # xs = pd.DataFrame(columns=feature_column_names)
-    # for i in range(10):
-    #     xs.loc[i] = [int(j) for j in range(2)]
-    # print(xs.dtypes)
+
     columns = xs.columns
     for i, dtype in enumerate(dtypes):
         for j in six.moves.range(offsets[i], offsets[i + 1]):

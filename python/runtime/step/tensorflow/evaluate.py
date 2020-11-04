@@ -21,7 +21,6 @@ from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags, set_oss_environs
-from runtime.step.create_result_table import create_evaluate_table
 from runtime.tensorflow import is_tf_estimator
 from runtime.tensorflow.evaluate import (estimator_evaluate, keras_evaluate,
                                          write_result_metrics)
@@ -45,6 +44,7 @@ def evaluate_step(datasource,
                   model,
                   label_name,
                   model_params,
+                  result_column_names=[],
                   pai_table=None):
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
@@ -60,10 +60,6 @@ def evaluate_step(datasource,
     validation_steps = model_params.get("validation.steps", None)
     batch_size = model_params.get("validation.batch_size", 1)
     verbose = model_params.get("validation.verbose", 0)
-
-    conn = db.connect_with_data_source(datasource)
-    create_evaluate_table(conn, result_table, validation_metrics)
-    conn.close()
 
     model_params = model.get_meta("attributes")
     train_fc_map = model.get_meta("features")

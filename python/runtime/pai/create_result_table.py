@@ -12,7 +12,6 @@
 # limitations under the License.
 
 from runtime import db
-from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.model import EstimatorType
 from runtime.pai import table_ops
 
@@ -56,61 +55,6 @@ def create_predict_result_table(datasource, select, result_table, label_column,
         conn.execute(
             conn, "ALTER TABLE %s DROP COLUMN %s" %
             (result_table, train_label_column))
-
-
-# (TODO: lhw) This function is a common tool for prediction
-# on all platforms, we need to move it to a new file
-def create_explain_result_table(datasource, data_table, result_table,
-                                model_type, estimator, label_column):
-    """Create explain result table from given datasource
-
-    Args:
-        datasource: current datasource
-        data_table: input data table name
-        result_table: table name to store the result
-        model_type: type of the model to use
-        estimator: estimator class if the model is TensorFlow estimator
-        label_column: column name of the predict label
-    """
-    conn = db.connect_with_data_source(datasource)
-    drop_stmt = "DROP TABLE IF EXISTS %s" % result_table
-    conn.execute(drop_stmt)
-
-    create_stmt = ""
-    if model_type == EstimatorType.PAIML:
-        return
-    elif model_type == EstimatorType.TENSORFLOW:
-        if estimator.startswith("BoostedTrees"):
-            column_def = ""
-            if conn.driver == "mysql":
-                column_def = "(feature VARCHAR(255), dfc FLOAT, gain FLOAT)"
-            else:
-                # Hive & MaxCompute
-                column_def = "(feature STRING, dfc STRING, gain STRING)"
-            create_stmt = "CREATE TABLE IF NOT EXISTS %s %s;" % (result_table,
-                                                                 column_def)
-        else:
-            if not label_column:
-                raise SQLFlowDiagnostic(
-                    "need to specify WITH label_col=lable_col_name "
-                    "when explaining deep models")
-            create_stmt = get_create_shap_result_sql(conn, data_table,
-                                                     result_table,
-                                                     label_column)
-    elif model_type == EstimatorType.XGBOOST:
-        if not label_column:
-            raise SQLFlowDiagnostic(
-                "need to specify WITH label_col=lable_col_name "
-                "when explaining xgboost models")
-        create_stmt = get_create_shap_result_sql(conn, data_table,
-                                                 result_table, label_column)
-    else:
-        raise SQLFlowDiagnostic(
-            "not supported modelType %d for creating Explain result table" %
-            model_type)
-
-    if not conn.execute(create_stmt):
-        raise SQLFlowDiagnostic("Can't create explain result table")
 
 
 def get_create_shap_result_sql(conn, data_table, result_table, label_column):

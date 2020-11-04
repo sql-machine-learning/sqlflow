@@ -20,6 +20,10 @@ import runtime.testing as testing
 from runtime.feature.column import NumericColumn
 from runtime.feature.field_desc import FieldDesc
 from runtime.local.submitter import submit_local_train as train
+from runtime.model.model import EstimatorType
+from runtime.step.create_result_table import (create_evaluate_table,
+                                              create_explain_table,
+                                              create_predict_table)
 from runtime.step.tensorflow.evaluate import evaluate_step as evaluate
 from runtime.step.tensorflow.explain import explain_step as explain
 from runtime.step.tensorflow.predict import predict_step as pred
@@ -93,8 +97,11 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         pred_select = "SELECT * FROM iris.test"
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            pred(ds, pred_select, "iris.predict_result_table", class_name,
-                 save_name)
+            result_column_names, train_label_idx = create_predict_table(
+                conn, pred_select, "iris.predict_result_table",
+                FieldDesc(name=class_name), "class")
+            pred(ds, pred_select, "iris.predict_result_table",
+                 result_column_names, train_label_idx, save_name)
 
         self.assertEqual(
             self.get_table_row_count(conn, "iris.test"),
@@ -115,6 +122,8 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         self.assertEqual(len(diff_schema), 0)
 
         with temp_file.TemporaryDirectory(as_cwd=True):
+            create_evaluate_table(conn, "iris.evaluate_result_table",
+                                  ["Accuracy"])
             evaluate(ds, select, "iris.evaluate_result_table", save_name,
                      class_name, {'validation.metrics': 'Accuracy'})
 
@@ -123,6 +132,12 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         self.assertEqual(eval_schema, set(['loss', 'accuracy']))
 
         with temp_file.TemporaryDirectory(as_cwd=True):
+            feature_column_names = [
+                'petal_length', 'petal_width', 'sepal_length', 'sepal_width'
+            ]
+            create_explain_table(conn, EstimatorType.XGBOOST, "TreeExplainer",
+                                 estimator, "iris.explain_result_table",
+                                 feature_column_names)
             explain(ds, select, None, {"plot_type": "bar"},
                     "iris.explain_result_table", save_name)
 

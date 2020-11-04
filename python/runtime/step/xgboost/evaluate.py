@@ -25,7 +25,6 @@ from runtime.feature.field_desc import DataType
 from runtime.model import EstimatorType, oss
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags
-from runtime.step.create_result_table import create_evaluate_table
 from runtime.step.xgboost.predict import _calc_predict_result
 from runtime.xgboost.dataset import xgb_dataset
 # TODO(typhoonzero): remove runtime.xgboost
@@ -63,6 +62,7 @@ def evaluate(datasource,
              model,
              label_name=None,
              model_params=None,
+             result_column_names=[],
              pai_table="",
              oss_model_path=""):
     """TBD
@@ -91,7 +91,8 @@ def evaluate(datasource,
 
         model_params = model.get_meta("attributes")
         fc_map_ir = model.get_meta("features")
-        train_label_desc = model.get_meta("label").get_field_desc()[0]
+        train_label = model.get_meta("label")
+        train_label_desc = train_label.get_field_desc()[0]
 
     if label_name:
         train_label_desc.name = label_name
@@ -108,9 +109,6 @@ def evaluate(datasource,
     bst = xgb.Booster()
     bst.load_model("my_model")
     conn = db.connect_with_data_source(datasource)
-
-    result_column_names = create_evaluate_table(conn, result_table,
-                                                validation_metrics)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
