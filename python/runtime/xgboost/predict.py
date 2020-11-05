@@ -128,12 +128,15 @@ def predict_and_store_result(bst,
     if model_params:
         obj = model_params["objective"]
         # binary:hinge output class labels
-        if obj.startswith("binary:logistic"):
+        if obj == "binary:logistic":
             preds = (preds > 0.5).astype(int)
-        # multi:softmax output class labels
-        elif obj.startswith("multi:softprob"):
+        elif obj == "multi:softprob":
             preds = np.argmax(np.array(preds), axis=1)
-        elif obj.startswith("binary:") or obj.startswith("multi:"):
+        elif obj == "multi:softmax":
+            # multi:softmax output class labels
+            # Need to convert to int. Otherwise, the
+            # table writer of MaxCompute would cause
+            # error because of writing float values.
             preds = np.array(preds).astype(int)
         # TODO(typhoonzero): deal with binary:logitraw when needed.
     else:

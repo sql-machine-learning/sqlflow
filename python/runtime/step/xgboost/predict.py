@@ -114,13 +114,16 @@ def _calc_predict_result(bst, dpred, model_params):
     # objective function.
     obj = model_params.get("objective", "")
     # binary:hinge output class labels
-    if obj.startswith("binary:logistic"):
+    if obj == "binary:logistic":
         preds = (preds > 0.5).astype(int)
-    # multi:softmax output class labels
-    elif obj.startswith("multi:softprob"):
+    elif obj == "multi:softprob":
         preds = np.argmax(np.array(preds), axis=1)
-    elif obj.startswith("binary:") or obj.startswith("multi:"):
-        preds = preds.astype(int)
+    elif obj == "multi:softmax":
+        # multi:softmax output class labels
+        # Need to convert to int. Otherwise, the
+        # table writer of MaxCompute would cause
+        # error because of writing float values.
+        preds = np.array(preds).astype(int)
     # TODO(typhoonzero): deal with binary:logitraw when needed.
 
     return preds
