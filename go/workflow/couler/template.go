@@ -63,7 +63,7 @@ workflow_ttl = {{.WorkflowTTL}}
 # workflow failed: "invalid spec: cannot convert int64 to string"
 # issue: https://github.com/couler-proj/couler/issues/108
 def escape_env(value):
-	return '''%s'''.replace('"', '\\"')
+	return str(value).replace('"', '\\"')
 
 step_envs = dict()
 {{range $k, $v := .StepEnvs}}
