@@ -328,6 +328,7 @@ func Pred(predStmt *ir.PredictStmt, session *pb.Session) (string, error) {
 		TrainLabelMeta:    trainLabelFM,
 		PredLabelMeta:     predLabelFM,
 		ModelParams:       modelParams,
+		PredParams:        ResolveParams(predStmt.Attributes, "predict."),
 		Save:              "model_save",
 		HDFSNameNodeAddr:  session.HdfsNamenodeAddr,
 		HiveLocation:      session.HiveLocation,
@@ -356,7 +357,7 @@ func Explain(stmt *ir.ExplainStmt, session *pb.Session) (string, error) {
 	labelFM := stmt.TrainStmt.Label.GetFieldDesc()[0]
 
 	const summaryAttrPrefix = "summary."
-	summaryAttrs := resolveParams(stmt.Attributes, summaryAttrPrefix)
+	summaryAttrs := ResolveParams(stmt.Attributes, summaryAttrPrefix)
 	jsonSummary, err := json.Marshal(summaryAttrs)
 	if err != nil {
 		return "", err
@@ -397,7 +398,7 @@ func Evaluate(stmt *ir.EvaluateStmt, session *pb.Session) (string, error) {
 		return "", err
 	}
 	labelFM := stmt.TrainStmt.Label.GetFieldDesc()[0]
-	validationParams := resolveParams(stmt.Attributes, "validation.")
+	validationParams := ResolveParams(stmt.Attributes, "validation.")
 	if len(validationParams) == 0 {
 		// add default validation.metrics = "Accuracy".
 		validationParams["metrics"] = "Accuracy"
@@ -444,8 +445,8 @@ func restoreModel(stmt *ir.TrainStmt) (modelParams map[string]interface{}, featu
 	return
 }
 
-// make a exported function in outer package
-func resolveParams(attrs map[string]interface{}, group string) map[string]interface{} {
+// ResolveParams resolves the params in group
+func ResolveParams(attrs map[string]interface{}, group string) map[string]interface{} {
 	sp := make(map[string]interface{})
 	for k, v := range attrs {
 		if strings.HasPrefix(k, group) {

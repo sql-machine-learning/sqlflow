@@ -32,6 +32,7 @@ type predictFiller struct {
 	ResultColumn string
 	PAITable     string
 	Using        string
+	PredParams   string
 }
 
 type explainFiller struct {
@@ -112,6 +113,7 @@ const tfPredictTmplText = tfImportsText + `
 import os
 import types
 import traceback
+import json
 from runtime.tensorflow import predict
 
 try:
@@ -160,6 +162,7 @@ predict.pred(datasource="{{.DataSource}}",
              result_col_name="{{.ResultColumn}}",
              feature_metas=feature_metas,
              model_params=model_params,
+             pred_params=json.loads('''{{.PredParams}}'''),
              save="model_save",
              batch_size=1,
              pai_table="{{.PAITable}}")

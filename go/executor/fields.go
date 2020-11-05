@@ -121,3 +121,14 @@ func fieldType(dbms, typeName string) (string, error) {
 	}
 	return "", fmt.Errorf("Not supported DBMS:%s", dbms)
 }
+
+func stringFieldType(driver string) (string, error) {
+	switch driver {
+	case "mysql":
+		return "VARCHAR(255)", nil
+	case "hive", "maxcompute", "alisa":
+		return "STRING", nil
+	default:
+		return "", fmt.Errorf("unsupported driver type %s", driver)
+	}
+}

@@ -23,16 +23,16 @@ import (
 )
 
 type predStepFiller struct {
-	StepIndex      int
-	DataSource     string
-	OriginalSQL    string
-	Select         string
-	PredLabelName  string
-	ResultTable    string
-	ModelParamJSON string
-	Load           string
-	Submitter      string
-	User           string
+	StepIndex     int
+	DataSource    string
+	OriginalSQL   string
+	Select        string
+	PredLabelName string
+	ResultTable   string
+	PredParamJSON string
+	Load          string
+	Submitter     string
+	User          string
 }
 
 // GeneratePredict generates the prediction code.
@@ -48,16 +48,16 @@ func GeneratePredict(predStmt *ir.PredictStmt, stepIndex int, session *pb.Sessio
 	}
 
 	filler := &predStepFiller{
-		StepIndex:      stepIndex,
-		DataSource:     dbConnStr,
-		OriginalSQL:    escapeSpecialRunesAndTrimSpace(predStmt.OriginalSQL),
-		Select:         escapeSpecialRunesAndTrimSpace(predStmt.Select),
-		PredLabelName:  predStmt.ResultColumn,
-		ResultTable:    predStmt.ResultTable,
-		ModelParamJSON: string(modelParams),
-		Load:           predStmt.Using,
-		Submitter:      getSubmitter(session),
-		User:           session.UserId,
+		StepIndex:     stepIndex,
+		DataSource:    dbConnStr,
+		OriginalSQL:   escapeSpecialRunesAndTrimSpace(predStmt.OriginalSQL),
+		Select:        escapeSpecialRunesAndTrimSpace(predStmt.Select),
+		PredLabelName: predStmt.ResultColumn,
+		ResultTable:   predStmt.ResultTable,
+		PredParamJSON: string(modelParams),
+		Load:          predStmt.Using,
+		Submitter:     getSubmitter(session),
+		User:          session.UserId,
 	}
 
 	var program bytes.Buffer
@@ -75,14 +75,14 @@ def step_entry_{{.StepIndex}}():
     import runtime.temp_file as temp_file
     from runtime.{{.Submitter}} import pred
 
-    model_params = json.loads('''{{.ModelParamJSON}}''')
+    pred_params = json.loads('''{{.PredParamJSON}}''')
     with temp_file.TemporaryDirectory(as_cwd=True):
         pred(datasource='''{{.DataSource}}''', 
              original_sql='''{{.OriginalSQL}}''',
              select='''{{.Select}}''', 
              model='''{{.Load}}''',
              label_name='''{{.PredLabelName}}''',
-             model_params=model_params,
+             pred_params=pred_params,
              result_table='''{{.ResultTable}}''',
              user='''{{.User}}''')
 `

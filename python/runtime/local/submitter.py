@@ -115,7 +115,7 @@ def submit_local_pred(datasource,
                       select,
                       model,
                       label_name,
-                      model_params,
+                      pred_params,
                       result_table,
                       user=""):
     model = Model.load_from_db(datasource, model)
@@ -129,8 +129,18 @@ def submit_local_pred(datasource,
         train_label_desc = None
     else:
         train_label_desc = model.get_meta("label").get_field_desc()[0]
+
+    if pred_params is None:
+        extra_result_cols = []
+    else:
+        extra_result_cols = pred_params.get("predict.extra_outputs", "")
+        extra_result_cols = [
+            c.strip() for c in extra_result_cols.split(",") if c.strip()
+        ]
+
     result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, label_name)
+        conn, select, result_table, train_label_desc, label_name,
+        extra_result_cols)
     conn.close()
 
     pred_func(datasource=datasource,
@@ -138,7 +148,8 @@ def submit_local_pred(datasource,
               result_table=result_table,
               result_column_names=result_column_names,
               train_label_idx=train_label_idx,
-              model=model)
+              model=model,
+              extra_result_cols=extra_result_cols)
 
 
 def submit_local_evaluate(datasource,

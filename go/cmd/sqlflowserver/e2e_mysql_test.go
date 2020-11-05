@@ -183,6 +183,13 @@ func TestEnd2EndMySQL(t *testing.T) {
 	t.Run("CaseScoreCard", caseScoreCard)
 	t.Run("CaseOneClassSVMModel", caseOneClassSVMModel)
 
+	t.Run("CaseOneClassSVMModel", func(t *testing.T) {
+		caseOneClassSVMModel(t, nil)
+	})
+	t.Run("CaseOneClassSVMModelWithScore", func(t *testing.T) {
+		caseOneClassSVMModel(t, []string{"score"})
+	})
+
 	// Cases using feature derivation
 	t.Run("CaseFeatureDerivation", CaseFeatureDerivation)
 

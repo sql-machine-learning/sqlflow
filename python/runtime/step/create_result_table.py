@@ -16,8 +16,12 @@ from runtime.feature.field_desc import DataFormat, DataType
 from runtime.model.model import EstimatorType
 
 
-def create_predict_table(conn, select, result_table, train_label_desc,
-                         pred_label_name):
+def create_predict_table(conn,
+                         select,
+                         result_table,
+                         train_label_desc,
+                         pred_label_name,
+                         extra_result_cols=None):
     """
     Create the result prediction table.
 
@@ -27,10 +31,14 @@ def create_predict_table(conn, select, result_table, train_label_desc,
         result_table (str): the output data table.
         train_label_desc (FieldDesc): the FieldDesc of the trained label.
         pred_label_name (str): the output label name to predict.
+        extra_result_cols (list[str]): the extra output column names.
 
     Returns:
         A tuple of (result_column_names, train_label_index).
     """
+    if extra_result_cols is None:
+        extra_result_cols = []
+
     name_and_types = db.selected_columns_and_types(conn, select)
     train_label_index = -1
     if train_label_desc:
@@ -57,6 +65,9 @@ def create_predict_table(conn, select, result_table, train_label_desc,
             conn.driver, DataType.STRING)
 
     column_strs.append("%s %s" % (pred_label_name, train_label_field_type))
+    str_dtype = DataType.to_db_field_type(conn.driver, DataType.STRING)
+    for c in extra_result_cols:
+        column_strs.append("%s %s" % (c, str_dtype))
 
     drop_sql = "DROP TABLE IF EXISTS %s;" % result_table
     create_sql = "CREATE TABLE %s (%s);" % (result_table,
@@ -65,6 +76,7 @@ def create_predict_table(conn, select, result_table, train_label_desc,
     conn.execute(create_sql)
     result_column_names = [item[0] for item in name_and_types]
     result_column_names.append(pred_label_name)
+    result_column_names.extend(extra_result_cols)
     return result_column_names, train_label_index
 
 

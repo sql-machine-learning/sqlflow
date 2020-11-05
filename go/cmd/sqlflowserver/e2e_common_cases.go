@@ -1061,7 +1061,7 @@ USING %[2]s;`, caseDB, caseInto)
 	a.NoError(err)
 }
 
-func caseOneClassSVMModel(t *testing.T) {
+func caseOneClassSVMModel(t *testing.T, extraPredictColumns []string) {
 	a := assert.New(t)
 
 	trainSQL := fmt.Sprintf(`SELECT 
@@ -1075,26 +1075,35 @@ INTO %s;`, caseTrainTable, caseInto)
 	a.NoError(err)
 
 	predictTableName := caseDB + ".one_class_svm_predict_table"
+
+	var predWith string
+	if len(extraPredictColumns) > 0 {
+		predWith = fmt.Sprintf(`WITH predict.extra_outputs="%s"`, strings.Join(extraPredictColumns, ","))
+	}
 	predSQL := fmt.Sprintf(`SELECT 
 sepal_length, sepal_width, petal_length, petal_width
 FROM %s
-TO PREDICT %s.label USING %s;`, caseTrainTable, predictTableName, caseInto)
+TO PREDICT %s.label 
+%s
+USING %s;`, caseTrainTable, predictTableName, predWith, caseInto)
 	_, _, _, err = connectAndRunSQL(predSQL)
 	a.NoError(err)
 
 	selectPredSQL := fmt.Sprintf(`SELECT * FROM %s;`, predictTableName)
 	headers, rows, _, err := connectAndRunSQL(selectPredSQL)
 	a.NoError(err)
-	const headerNum = 5
-	a.Equal(headerNum, len(headers))
-	a.True(reflect.DeepEqual(headers, []string{"sepal_length",
-		"sepal_width", "petal_length", "petal_width", "label"}))
+	headerNum := 5 + len(extraPredictColumns)
+
+	expectedHeaders := []string{"sepal_length",
+		"sepal_width", "petal_length", "petal_width", "label"}
+	expectedHeaders = append(expectedHeaders, extraPredictColumns...)
+	a.True(reflect.DeepEqual(headers, expectedHeaders))
 
 	rowData, err := decodeAnyTypedRowData(rows)
 	a.NoError(err)
 	for _, row := range rowData {
 		a.Equal(headerNum, len(row))
-		switch v := row[headerNum-1].(type) {
+		switch v := row[4].(type) {
 		case int32:
 			a.True(v == 1 || v == -1)
 		case int64:
