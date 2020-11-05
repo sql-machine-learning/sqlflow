@@ -192,11 +192,6 @@ func UseExperimentalExecutor(dbConnStr string) (bool, error) {
 }
 
 func (s *pythonExecutor) tryExperimentalExecute(sqlStmt ir.SQLFlowStmt, logStderr bool) (bool, error) {
-	// TODO(sneaxiy): remove these lines when experimental codegen supports TO RUN statement
-	if _, ok := sqlStmt.(*ir.RunStmt); ok {
-		return false, nil
-	}
-
 	ok, err := UseExperimentalExecutor(s.Session.DbConnStr)
 	if err != nil {
 		return true, err

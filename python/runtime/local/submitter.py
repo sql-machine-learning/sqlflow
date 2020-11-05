@@ -11,6 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import pathlib
+import subprocess
+import sys
+
 from runtime import db
 from runtime.dbapi import table_writer
 from runtime.feature.derivation import (get_ordered_field_descs,
@@ -202,13 +207,52 @@ def submit_local_explain(datasource,
         print_image_as_base64_html("summary.png")
 
 
+SQLFLOW_TO_RUN_CONTEXT_KEY_SELECT = "SQLFLOW_TO_RUN_SELECT"
+SQLFLOW_TO_RUN_CONTEXT_KEY_INTO = "SQLFLOW_TO_RUN_INTO"
+SQLFLOW_TO_RUN_CONTEXT_KEY_IMAGE = "SQLFLOW_TO_RUN_IMAGE"
+
+
 def submit_local_run(datasource, select, image_name, params, into):
-    print("""Execute local run.
-    datasource: {},
-    select: {},
-    image_name: {},
-    params: {},
-    into: {}.""".format(datasource, select, image_name, params, into))
+    if not params:
+        raise ValueError("params should not be None or empty.")
+
+    subprocess_env = os.environ.copy()
+    update_env = {
+        SQLFLOW_TO_RUN_CONTEXT_KEY_SELECT: select,
+        SQLFLOW_TO_RUN_CONTEXT_KEY_INTO: into,
+        SQLFLOW_TO_RUN_CONTEXT_KEY_IMAGE: image_name
+    }
+    subprocess_env.update(update_env)
+
+    program_file_path = pathlib.Path(params[0])
+    if not program_file_path.is_file:
+        raise ValueError("{} is not a file".format(params[0]))
+
+    sub_process = None
+    file_ext = program_file_path.suffix
+    if not file_ext:
+        args = [program_file_path]
+        args.extend(params[1:])
+        sub_process = subprocess.run(args=args,
+                                     env=subprocess_env,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+    elif file_ext.lower() == ".py":
+        args = ["python", "-m", program_file_path.stem]
+        args.extend(params[1:])
+        sub_process = subprocess.run(args=args,
+                                     env=subprocess_env,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+    else:
+        print(
+            "The other executable except Python program is not supported yet")
+
+    if sub_process:
+        print(sub_process.stdout.decode("utf-8"))
+        if sub_process.returncode != 0:
+            print(sub_process.stderr.decode("utf-8"), file=sys.stderr)
+            raise RuntimeError("Executing {} failed.".format(params[0]))
 
 
 def submit_local_show_train(datasource, model_name):

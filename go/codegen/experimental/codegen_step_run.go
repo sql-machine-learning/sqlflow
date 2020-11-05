@@ -15,7 +15,7 @@ package experimental
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 
 	"sqlflow.org/sqlflow/go/ir"
 	pb "sqlflow.org/sqlflow/go/proto"
@@ -65,6 +65,6 @@ def step_entry_{{.StepIndex}}():
     run(datasource='''{{.DataSource}}''',
         select='''{{.Select}}''',
         image_name='''{{.ImageName}}''',
-        params='''{{.Parameters}}''',
+        params={{.Parameters}},
         into='''{{.Into}}''')
 `
