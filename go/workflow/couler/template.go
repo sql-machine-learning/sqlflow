@@ -62,9 +62,12 @@ workflow_ttl = {{.WorkflowTTL}}
 # it's bug of the couler project, that needs "" on integer environment variable value to avoid the 
 # workflow failed: "invalid spec: cannot convert int64 to string"
 # issue: https://github.com/couler-proj/couler/issues/108
+def escape_env(value):
+	return '''%s'''.replace('"', '\\"')
+
 step_envs = dict()
 {{range $k, $v := .StepEnvs}}
-step_envs["{{$k}}"] = '''"{{$v}}"'''
+step_envs["{{$k}}"] = '''"%s"''' % escape_env('''{{$v}}''')
 {{end}}
 
 def step_command(sql, step_log_file):
