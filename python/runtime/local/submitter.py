@@ -245,7 +245,7 @@ def submit_local_run(datasource, select, image_name, params, into):
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
     else:
-        print(
+        raise RuntimeError(
             "The other executable except Python program is not supported yet")
 
     if sub_process:
