@@ -129,9 +129,19 @@ def submit_pai_predict(datasource,
         train_label_desc = train_label.get_field_desc()[0]
     else:
         train_label_desc = None
+
+    if pred_params is None:
+        extra_result_cols = []
+    else:
+        extra_result_cols = pred_params.get("predict.extra_outputs", "")
+        extra_result_cols = [
+            c.strip() for c in extra_result_cols.split(",") if c.strip()
+        ]
+
     with db.connect_with_data_source(datasource) as conn:
         result_column_names, train_label_idx = create_predict_table(
-            conn, select, result_table, train_label_desc, label_name)
+            conn, select, result_table, train_label_desc, label_name,
+            extra_result_cols)
 
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
                                                        model,

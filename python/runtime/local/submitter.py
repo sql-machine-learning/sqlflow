@@ -124,7 +124,6 @@ def submit_local_pred(datasource,
     else:
         pred_func = tf_pred
 
-    conn = db.connect_with_data_source(datasource)
     if model.get_meta("label") is None:
         train_label_desc = None
     else:
@@ -138,10 +137,10 @@ def submit_local_pred(datasource,
             c.strip() for c in extra_result_cols.split(",") if c.strip()
         ]
 
-    result_column_names, train_label_idx = create_predict_table(
-        conn, select, result_table, train_label_desc, label_name,
-        extra_result_cols)
-    conn.close()
+    with db.connect_with_data_source(datasource) as conn:
+        result_column_names, train_label_idx = create_predict_table(
+            conn, select, result_table, train_label_desc, label_name,
+            extra_result_cols)
 
     pred_func(datasource=datasource,
               select=select,
