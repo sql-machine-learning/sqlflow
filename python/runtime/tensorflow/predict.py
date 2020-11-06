@@ -126,7 +126,7 @@ def keras_predict(estimator, model_params, save, result_table,
                    "%d items instead of %d" % (len(extra_result_cols) + 1,
                                                len(result))
                 extra_pred_outputs = result[1:len(extra_result_cols) + 1]
-                result = result[0]
+                result = result[0:1]
             else:
                 extra_pred_outputs = None
 
