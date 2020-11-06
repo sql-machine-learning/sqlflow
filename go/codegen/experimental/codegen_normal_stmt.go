@@ -36,7 +36,6 @@ def step_entry_{{.StepIndex}}():
             print(l)
     else:
         conn.execute(stmt)  # Exception would raise if error
-        print("OK")
 
     conn.close()
 `
