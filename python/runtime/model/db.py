@@ -145,9 +145,12 @@ class ReadOneByOneBlockReader(object):
         if len(ret) == 0:
             return None
         elif len(ret) == 1:
-            return ret[1]
+            return ret[0][1]
         else:
             raise ValueError("invalid sqlfs db: duplicate id %d" % self.cur_id)
+
+    def close(self):
+        pass
 
 
 class SQLFSReader(object):

@@ -19,10 +19,11 @@ import six
 import sklearn.metrics
 import xgboost as xgb
 from runtime import db
+from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.feature.field_desc import DataType
-from runtime.model import EstimatorType, oss
+from runtime.model import EstimatorType
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags
 from runtime.step.xgboost.predict import _calc_predict_result
@@ -63,8 +64,7 @@ def evaluate(datasource,
              label_name=None,
              model_params=None,
              result_column_names=[],
-             pai_table="",
-             oss_model_path=""):
+             pai_table=None):
     """TBD
     """
     if model_params is None:
@@ -73,26 +73,16 @@ def evaluate(datasource,
                                           "accuracy_score")
     validation_metrics = [m.strip() for m in validation_metrics.split(",")]
 
-    is_pai = True if pai_table != "" else False
-    if is_pai:
-        assert (oss_model_path != "")
-        # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
-        # in xgboost/train.py
-        oss.load_file(oss_model_path, "my_model")
-        (estimator, model_params, train_params, feature_metas,
-         feature_column_names, train_label_desc,
-         fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
+    if isinstance(model, six.string_types):
+        model = Model.load_from_db(datasource, model)
     else:
-        if isinstance(model, six.string_types):
-            model = Model.load_from_db(datasource, model)
-        else:
-            assert isinstance(
-                model, Model), "not supported model type %s" % type(model)
+        assert isinstance(model,
+                          Model), "not supported model type %s" % type(model)
 
-        model_params = model.get_meta("attributes")
-        fc_map_ir = model.get_meta("features")
-        train_label = model.get_meta("label")
-        train_label_desc = train_label.get_field_desc()[0]
+    model_params = model.get_meta("attributes")
+    fc_map_ir = model.get_meta("features")
+    train_label = model.get_meta("label")
+    train_label_desc = train_label.get_field_desc()[0]
 
     if label_name:
         train_label_desc.name = label_name
@@ -108,7 +98,12 @@ def evaluate(datasource,
 
     bst = xgb.Booster()
     bst.load_model("my_model")
-    conn = db.connect_with_data_source(datasource)
+
+    is_pai = True if pai_table else False
+    if is_pai:
+        conn = PaiIOConnection.from_table(pai_table)
+    else:
+        conn = db.connect_with_data_source(datasource)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")

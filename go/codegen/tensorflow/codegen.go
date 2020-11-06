@@ -125,11 +125,11 @@ func constructOptimizers(trainStmt *ir.TrainStmt) {
 		}
 	}
 	tf1OptimizerClsNames := map[string]string{
-		"Adagrad": "tf.train.AdagradOptimizer",
-		"Adam":    "tf.train.AdamOptimizer",
-		"Ftrl":    "tf.train.FtrlOptimizer",
-		"RMSProp": "tf.train.RMSPropOptimizer",
-		"SGD":     "tf.train.GradientDescentOptimizer",
+		"Adagrad": "AdagradOptimizer",
+		"Adam":    "AdamOptimizer",
+		"Ftrl":    "FtrlOptimizer",
+		"RMSProp": "RMSPropOptimizer",
+		"SGD":     "GradientDescentOptimizer",
 	}
 
 	for optimizerParamName, args := range optimizerArgs {

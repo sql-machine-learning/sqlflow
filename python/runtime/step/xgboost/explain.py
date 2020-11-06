@@ -22,7 +22,7 @@ from runtime import db, explainer
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
-from runtime.model import EstimatorType, oss
+from runtime.model import EstimatorType
 from runtime.model.model import Model
 from runtime.pai.pai_distributed import define_tf_flags
 
@@ -53,25 +53,15 @@ def explain(datasource,
             summary_key = k.replace("summary.", "")
             summary_params[summary_key] = model_params[k]
 
-    is_pai = True if pai_table != "" else False
-    if is_pai:
-        # NOTE(typhoonzero): the xgboost model file "my_model" is hard coded
-        # in xgboost/train.py
-        oss.load_file(oss_model_path, "my_model")
-        (estimator, model_params, train_params, feature_field_meta,
-         feature_column_names, label_desc,
-         fc_map_ir) = oss.load_metas(oss_model_path, "xgboost_model_desc")
-        label_meta = label_desc.get_field_desc()[0].to_dict(
-            dtype_to_string=True)
+    is_pai = True if pai_table else False
+    if isinstance(model, six.string_types):
+        model = Model.load_from_db(datasource, model)
     else:
-        if isinstance(model, six.string_types):
-            model = Model.load_from_db(datasource, model)
-        else:
-            assert isinstance(
-                model, Model), "not supported model type %s" % type(model)
-        fc_map_ir = model.get_meta("features")
-        label_meta = model.get_meta("label").get_field_desc()[0].to_dict(
-            dtype_to_string=True)
+        assert isinstance(model,
+                          Model), "not supported model type %s" % type(model)
+    fc_map_ir = model.get_meta("features")
+    label_meta = model.get_meta("label").get_field_desc()[0].to_dict(
+        dtype_to_string=True)
 
     field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
