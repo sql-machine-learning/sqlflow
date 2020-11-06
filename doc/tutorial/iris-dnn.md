@@ -36,7 +36,7 @@ select * from iris.train limit 5;
 
 Let's train a ternary DNNClassifier, which has two hidden layers with ten hidden units each. This can be done by specifying the training clause for SQLFlow's extended syntax.
 
-```sql
+```
 TO TRAIN DNNClassifier
 WITH
   model.n_classes = 3,
