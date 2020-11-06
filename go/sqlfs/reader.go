@@ -26,7 +26,7 @@ type fragment struct {
 	block string
 }
 
-func readNextBlocks(db *sql.DB, table string, startRowIdx, rowBufSize int) ([]*fragment, error) {
+func readNextFragments(db *sql.DB, table string, startRowIdx, rowBufSize int) ([]*fragment, error) {
 	stmt := fmt.Sprintf("SELECT id,block FROM %s WHERE id>=%d AND id<%d;", table, startRowIdx, startRowIdx+rowBufSize)
 	rows, err := db.Query(stmt)
 	if err != nil {
@@ -77,7 +77,7 @@ func (r *reader) nextBlock() (string, error) {
 			return "", io.EOF
 		}
 
-		r.fragments, err = readNextBlocks(r.db, r.table, r.rowIdx, r.rowBufSize)
+		r.fragments, err = readNextFragments(r.db, r.table, r.rowIdx, r.rowBufSize)
 		if err != nil {
 			return "", err
 		}
