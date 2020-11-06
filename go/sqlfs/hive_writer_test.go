@@ -60,11 +60,11 @@ func TestSQLFSNewHiveWriter(t *testing.T) {
 }
 
 func TestSQLFSHiveWriterWriteAndRead(t *testing.T) {
-	caseSQLFSHiveWriterWriteAndRead(t, true)
-	caseSQLFSHiveWriterWriteAndRead(t, false)
+	caseSQLFSHiveWriterWriteAndRead(t, 1)
+	caseSQLFSHiveWriterWriteAndRead(t, 32)
 }
 
-func caseSQLFSHiveWriterWriteAndRead(t *testing.T, readAllOnce bool) {
+func caseSQLFSHiveWriterWriteAndRead(t *testing.T, rowBufSize int) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
@@ -96,7 +96,7 @@ func caseSQLFSHiveWriterWriteAndRead(t *testing.T, readAllOnce bool) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(db.DB, tbl, readAllOnce)
+	r, e := Open(db.DB, tbl, rowBufSize)
 	a.NoError(e)
 	a.NotNil(r)
 

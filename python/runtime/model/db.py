@@ -112,54 +112,59 @@ def _build_ordered_reader(reader):
     assert not block_dict, "invalid model db format"
 
 
-class ReadAllOnceBlockReader(object):
-    def __init__(self, conn, table):
-        sql = "SELECT id, block FROM {};".format(table)
-        self.raw_rs = conn.query(sql)
-        self.rs = _build_ordered_reader(self.raw_rs)
-        self.reader = iter(self.rs)
-
-    def next_block(self):
-        fragment = next(self.reader, None)
-        if fragment is None:
-            return None
-        else:
-            return fragment[1]
-
-    def close(self):
-        self.raw_rs.close()
-
-
-class ReadOneByOneBlockReader(object):
-    def __init__(self, conn, table):
+class BlockReader(object):
+    def __init__(self, conn, table, row_buf_size):
+        assert row_buf_size > 0, "row_buf_size must larger than 0"
         self.conn = conn
         self.table = table
-        self.cur_id = 0
+        self.row_idx = 0
+        self.row_buf_size = row_buf_size
+        self.fragment_idx = 0
+        self.fragments = []
+
+    def _query_next(self):
+        sql = "SELECT id, block FROM {} WHERE id>={} AND id<{};".format(
+            self.table, self.row_idx, self.row_idx + self.row_buf_size)
+        rs = self.conn.query(sql)
+        fragments = list(rs)
+        rs.close()
+        fragments.sort(key=lambda f: f[0])
+        assert len(fragments) <= self.row_buf_size, \
+            "invalid sqlfs db table %s" % self.table
+
+        i = 0
+        for idx, _ in fragments:
+            assert idx == self.row_idx + i, \
+                "invalid sqlfs db table %s" % self.table
+            i += 1
+        return fragments
 
     def next_block(self):
-        sql = "SELECT id, block FROM {} WHERE id = {};".format(
-            self.table, self.cur_id)
-        rs = self.conn.query(sql)
-        ret = list(rs)
-        rs.close()
-        if len(ret) == 0:
-            return None
-        elif len(ret) == 1:
-            return ret[0][1]
+        assert self.conn is not None, "read from a closed reader"
+
+        if self.fragment_idx == len(self.fragments):
+            if self.row_idx > 0 and len(self.fragments) < self.row_buf_size:
+                return None
+
+            self.fragments = self._query_next()
+            self.row_idx += len(self.fragments)
+            self.fragment_idx = 0
+
+        if self.fragments:
+            block = self.fragments[self.fragment_idx][1]
+            self.fragment_idx += 1
+            return block
         else:
-            raise ValueError("invalid sqlfs db: duplicate id %d" % self.cur_id)
+            return None
 
     def close(self):
-        pass
+        self.conn = None
 
 
 class SQLFSReader(object):
-    def __init__(self, conn, table, read_all_once=True):
-        if read_all_once:
-            self.reader = ReadAllOnceBlockReader(conn, table)
-        else:
-            self.reader = ReadOneByOneBlockReader(conn, table)
-
+    def __init__(self, conn, table, row_buf_size=32):
+        assert row_buf_size > 0, "row_buf_size must larger than 0"
+        self.reader = BlockReader(conn, table, row_buf_size)
         self.buffer = b''
 
     def read(self, n):
@@ -277,7 +282,7 @@ def read_with_generator_and_metadata(datasource,
         and the model metadata dict.
     """
     conn = connect_with_data_source(datasource)
-    r = SQLFSReader(conn, table, not meta_only)
+    r = SQLFSReader(conn, table, 1 if meta_only else 32)
     metadata = _read_metadata(r)
 
     if meta_only:

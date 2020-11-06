@@ -244,7 +244,7 @@ func getModelMetadataFromDBImpl(dbConnStr, table string) (*Metadata, error) {
 		table = dbName + "." + table
 	}
 
-	fs, err := sqlfs.Open(db.DB, table, false)
+	fs, err := sqlfs.Open(db.DB, table, 1)
 	if err != nil {
 		return nil, err
 	}

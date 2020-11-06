@@ -163,7 +163,7 @@ INTO sqlflow_models.modelzoo_model_iris;`)
 	db, err := database.OpenAndConnectDB(database.GetTestingMySQLURL())
 	a.NoError(err)
 	defer db.Close()
-	sqlf, err := sqlfs.Open(db.DB, "sqlflow_models.modelzoo_model_iris", true)
+	sqlf, err := sqlfs.Open(db.DB, "sqlflow_models.modelzoo_model_iris", 32)
 	a.NoError(err)
 	defer sqlf.Close()
 	// Note that modelBuf is a gob encoded struct

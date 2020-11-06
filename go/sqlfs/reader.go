@@ -26,95 +26,75 @@ type fragment struct {
 	block string
 }
 
-type blockReader interface {
-	nextBlock() (string, error)
-}
-
-type readAllOnceBlockReader struct {
-	fragments []*fragment
-	cur       int
-}
-
-func newReadAllOnceBlockReader(db *sql.DB, table string) (blockReader, error) {
-	r := &readAllOnceBlockReader{
-		fragments: nil,
-		cur:       0,
-	}
-
-	stmt := fmt.Sprintf("SELECT id,block FROM %s;", table)
-	rows, e := db.Query(stmt)
-	if e != nil {
-		return nil, fmt.Errorf("open: db query [%s] failed: %v", stmt, e)
+func readNextBlocks(db *sql.DB, table string, startRowIdx, rowBufSize int) ([]*fragment, error) {
+	stmt := fmt.Sprintf("SELECT id,block FROM %s WHERE id>=%d AND id<%d;", table, startRowIdx, startRowIdx+rowBufSize)
+	rows, err := db.Query(stmt)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
-	// Since statement like `SELECT id,block FROM tbl ORDER BY id` causes an
-	// error in hive randomly. We decide to sort results here instead of
-	// by SQL engine.
-	// Probably you would worry about the dataset is too huge to be held in
-	// memory. It's fine due to we are going to save models to file system
-	// for a long term plan.
+	var fragments []*fragment
 	for rows.Next() {
 		f := &fragment{}
-		if e = rows.Scan(&f.id, &f.block); e != nil {
-			return nil, e
+		if err := rows.Scan(&f.id, &f.block); err != nil {
+			return nil, err
 		}
-		r.fragments = append(r.fragments, f)
+		fragments = append(fragments, f)
 	}
-	sort.Slice(r.fragments, func(i, j int) bool {
-		return r.fragments[i].id < r.fragments[j].id
+
+	if len(fragments) > rowBufSize {
+		return nil, fmt.Errorf("invalid sqlfs db table %s", table)
+	}
+
+	sort.Slice(fragments, func(i, j int) bool {
+		return fragments[i].id < fragments[j].id
 	})
-	return r, nil
-}
 
-func (r *readAllOnceBlockReader) nextBlock() (string, error) {
-	if r.cur < len(r.fragments) {
-		f := r.fragments[r.cur]
-		r.cur++
-		return f.block, nil
+	for i, f := range fragments {
+		if f.id != i+startRowIdx {
+			return nil, fmt.Errorf("invalid sqlfs db table %s", table)
+		}
 	}
-	return "", io.EOF
-}
-
-type readOneByOneBlockReader struct {
-	db    *sql.DB
-	table string
-	cur   int
-}
-
-func (r *readOneByOneBlockReader) nextBlock() (string, error) {
-	stmt := fmt.Sprintf("SELECT id,block FROM %s WHERE id=%d;", r.table, r.cur)
-	rows, e := r.db.Query(stmt)
-	if e != nil {
-		return "", e
-	}
-	defer rows.Close()
-
-	if !rows.Next() {
-		return "", io.EOF
-	}
-
-	f := &fragment{}
-	if e = rows.Scan(&f.id, &f.block); e != nil {
-		return "", e
-	}
-
-	if rows.Next() {
-		return "", fmt.Errorf("invalid sqlfs db: duplicate id %d", r.cur)
-	}
-
-	r.cur++
-	return f.block, nil
+	return fragments, nil
 }
 
 // reader implements io.ReadCloser
 type reader struct {
-	buf []byte
-	br  blockReader
+	db          *sql.DB
+	table       string
+	buf         []byte
+	fragments   []*fragment
+	fragmentIdx int
+	rowIdx      int
+	rowBufSize  int
+}
+
+func (r *reader) nextBlock() (string, error) {
+	var err error
+	if r.fragmentIdx == len(r.fragments) {
+		if r.rowIdx > 0 && len(r.fragments) < r.rowBufSize {
+			return "", io.EOF
+		}
+
+		r.fragments, err = readNextBlocks(r.db, r.table, r.rowIdx, r.rowBufSize)
+		if err != nil {
+			return "", err
+		}
+		r.rowIdx += len(r.fragments)
+		r.fragmentIdx = 0
+	}
+
+	if len(r.fragments) == 0 {
+		return "", io.EOF
+	}
+	block := r.fragments[r.fragmentIdx].block
+	r.fragmentIdx++
+	return block, nil
 }
 
 // Open returns a reader to read from the given table in db.
-func Open(db *sql.DB, table string, readAllOnce bool) (io.ReadCloser, error) {
+func Open(db *sql.DB, table string, rowBufSize int) (io.ReadCloser, error) {
 	has, e := hasTable(db, table)
 	if !has {
 		return nil, fmt.Errorf("open: table %s doesn't exist", table)
@@ -122,26 +102,23 @@ func Open(db *sql.DB, table string, readAllOnce bool) (io.ReadCloser, error) {
 	if e != nil {
 		return nil, fmt.Errorf("open: hasTable failed with %v", e)
 	}
-
-	var br blockReader
-	if readAllOnce {
-		br, e = newReadAllOnceBlockReader(db, table)
-		if e != nil {
-			return nil, e
-		}
-	} else {
-		br = &readOneByOneBlockReader{
-			db:    db,
-			table: table,
-			cur:   0,
-		}
+	if rowBufSize <= 0 {
+		return nil, fmt.Errorf("rowBufSize must be larger than 0")
 	}
 
-	return &reader{buf: nil, br: br}, nil
+	return &reader{
+		db:          db,
+		table:       table,
+		buf:         nil,
+		fragments:   nil,
+		fragmentIdx: 0,
+		rowIdx:      0,
+		rowBufSize:  rowBufSize,
+	}, nil
 }
 
 func (r *reader) Read(p []byte) (n int, e error) {
-	if r.br == nil {
+	if r.db == nil {
 		return 0, fmt.Errorf("read from a closed reader")
 	}
 
@@ -152,7 +129,7 @@ func (r *reader) Read(p []byte) (n int, e error) {
 		r.buf = r.buf[m:]
 		if len(r.buf) <= 0 {
 			var blk string
-			blk, e = r.br.nextBlock()
+			blk, e = r.nextBlock()
 			if e != nil {
 				break
 			}
@@ -167,6 +144,6 @@ func (r *reader) Read(p []byte) (n int, e error) {
 
 // Close the reader connection to sqlfs
 func (r *reader) Close() error {
-	r.br = nil // Mark closed.
+	r.db = nil // Mark closed.
 	return nil
 }
