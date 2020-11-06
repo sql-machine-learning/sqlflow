@@ -15,7 +15,7 @@ import sys
 
 import six
 import tensorflow as tf
-from runtime.model import oss, save_metadata
+from runtime.model import save_metadata
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)
 from runtime.seeding import get_tf_random_seed
@@ -31,6 +31,7 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
                          verbose, metric_names, validation_steps, load,
                          model_meta, is_pai):
     print("Start training using keras model...")
+    classifier = None
     try:
         classifier, has_none_optimizer = keras_compile(estimator, model_params,
                                                        metric_names)
@@ -65,11 +66,6 @@ def keras_train_and_save(estimator, model_params, save, FLAGS,
         keras_train_compiled(classifier, save, train_dataset, validate_dataset,
                              label_meta, epochs, verbose, model_meta,
                              validation_steps, has_none_optimizer)
-
-    if is_pai:
-        print("saving keras model to: %s" % FLAGS.sqlflow_oss_modeldir)
-        oss.save_dir(FLAGS.sqlflow_oss_modeldir, save)
-        oss.save_file(FLAGS.sqlflow_oss_modeldir, "model_meta.json")
 
 
 def keras_train_distributed(classifier,

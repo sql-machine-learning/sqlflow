@@ -208,27 +208,4 @@ def local_train(original_sql,
     save_model_to_local_file(bst, model_params, file_name)
     model = Model(EstimatorType.XGBOOST, meta)
     model.save_to_db(datasource, save)
-    if is_pai and len(oss_model_dir) > 0:
-        # TODO(typhoonzero): remove this since we are saving metas into db now.
-        save_model(oss_model_dir, "my_model", model_params, train_params,
-                   feature_metas, feature_column_names, label_column,
-                   feature_column_map)
-
     return eval_result
-
-
-def save_model(model_dir, filename, model_params, train_params, feature_metas,
-               feature_column_names, label_meta, fc_map_ir):
-    oss.save_file(model_dir, filename)
-    oss.save_file(model_dir, "{}.pmml".format(filename))
-    oss.save_metas(
-        model_dir,
-        1,
-        "xgboost_model_desc",
-        "",  # estimator = ""
-        model_params,
-        train_params,
-        feature_metas,
-        feature_column_names,
-        label_meta,
-        fc_map_ir)

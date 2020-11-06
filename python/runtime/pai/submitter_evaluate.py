@@ -80,15 +80,13 @@ def submit_pai_evaluate(datasource,
         params["entry_type"] = "evaluate_tf"
         validation_metrics = model_params.get("validation.metrics", "Accuracy")
 
-    conn = db.connect_with_data_source(datasource)
     validation_metrics = [m.strip() for m in validation_metrics.split(",")]
-    result_column_names = create_evaluate_table(conn, result_table,
-                                                validation_metrics)
-    conn.close()
+    with db.connect_with_data_source(datasource) as conn:
+        result_column_names = create_evaluate_table(conn, result_table,
+                                                    validation_metrics)
 
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         params["pai_table"] = data_table
-        params["oss_model_path"] = oss_model_path
         params["result_column_names"] = result_column_names
 
         if try_pai_local_run(params, oss_model_path):

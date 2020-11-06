@@ -194,7 +194,6 @@ def submit_pai_explain(datasource,
     # is like: "SELECT fields,... FROM table"
     with table_ops.create_tmp_tables_guard(select, datasource) as data_table:
         params["pai_table"] = data_table
-        params["oss_model_path"] = oss_model_path
 
         # Create explain result table
         if result_table:
@@ -219,5 +218,8 @@ def submit_pai_explain(datasource,
                     "file://" + os.path.join(cwd, PARAMS_FILE), label_name)
                 submit_pai_task(cmd, datasource)
 
-    print_oss_image(params["oss_dest"], params["oss_ak"], params["oss_sk"],
-                    params["oss_endpoint"], params["oss_bucket_name"])
+    if result_table:
+        print('Saved result into: {}'.format(result_table))
+    else:
+        print_oss_image(params["oss_dest"], params["oss_ak"], params["oss_sk"],
+                        params["oss_endpoint"], params["oss_bucket_name"])

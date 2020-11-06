@@ -122,10 +122,11 @@ class TestTensorFlowLocalSubmitter(unittest.TestCase):
         self.assertEqual(len(diff_schema), 0)
 
         with temp_file.TemporaryDirectory(as_cwd=True):
-            create_evaluate_table(conn, "iris.evaluate_result_table",
-                                  ["Accuracy"])
+            result_column_names = create_evaluate_table(
+                conn, "iris.evaluate_result_table", ["Accuracy"])
             evaluate(ds, select, "iris.evaluate_result_table", save_name,
-                     class_name, {'validation.metrics': 'Accuracy'})
+                     class_name, {'validation.metrics': 'Accuracy'},
+                     result_column_names)
 
         eval_schema = self.get_table_schema(conn, "iris.evaluate_result_table")
         eval_schema = set([k.lower() for k in eval_schema.keys()])
