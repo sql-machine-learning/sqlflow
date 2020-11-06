@@ -26,11 +26,11 @@ import (
 )
 
 func TestSQLFSWriteAndRead(t *testing.T) {
-	caseSQLFSWriteAndRead(t, true)
-	caseSQLFSWriteAndRead(t, false)
+	caseSQLFSWriteAndRead(t, 1)
+	caseSQLFSWriteAndRead(t, 32)
 }
 
-func caseSQLFSWriteAndRead(t *testing.T, readAllOnce bool) {
+func caseSQLFSWriteAndRead(t *testing.T, rowBufSize int) {
 	a := assert.New(t)
 	const bufSize = 32 * 1024
 
@@ -61,7 +61,7 @@ func caseSQLFSWriteAndRead(t *testing.T, readAllOnce bool) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(db.DB, tbl, readAllOnce)
+	r, e := Open(db.DB, tbl, rowBufSize)
 	a.NoError(e)
 	a.NotNil(r)
 

@@ -48,11 +48,11 @@ func TestSQLFSNewSQLWriter(t *testing.T) {
 }
 
 func TestSQLFSSQLWriterWriteAndRead(t *testing.T) {
-	caseSQLFSSQLWriterWriteAndRead(t, true)
-	caseSQLFSSQLWriterWriteAndRead(t, false)
+	caseSQLFSSQLWriterWriteAndRead(t, 1)
+	caseSQLFSSQLWriterWriteAndRead(t, 32)
 }
 
-func caseSQLFSSQLWriterWriteAndRead(t *testing.T, readAllOnce bool) {
+func caseSQLFSSQLWriterWriteAndRead(t *testing.T, rowBufSize int) {
 	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
 	db := database.GetTestingDBSingleton()
 	a := assert.New(t)
@@ -84,7 +84,7 @@ func caseSQLFSSQLWriterWriteAndRead(t *testing.T, readAllOnce bool) {
 
 	a.NoError(w.Close())
 
-	r, e := Open(db.DB, tbl, readAllOnce)
+	r, e := Open(db.DB, tbl, rowBufSize)
 	a.NoError(e)
 	a.NotNil(r)
 
