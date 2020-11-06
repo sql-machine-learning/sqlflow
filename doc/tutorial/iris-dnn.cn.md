@@ -36,7 +36,7 @@ select * from iris.train limit 5;
 
 我们在本节中训练一个三分类的DNNClassifier，它包含两个隐藏层，每层10个节点。使用SQLFlow扩展语法提供的模型训练子句，我们可以很容易地指定模型结构：
 
-```sql
+```
 TO TRAIN DNNClassifier
 WITH
   model.n_classes = 3,
