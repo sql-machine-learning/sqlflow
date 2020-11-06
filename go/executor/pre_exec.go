@@ -14,44 +14,38 @@
 package executor
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/ir"
 	"sqlflow.org/sqlflow/go/model"
-	pb "sqlflow.org/sqlflow/go/proto"
 	"sqlflow.org/sqlflow/go/verifier"
 )
 
-// Create prediction table using the `PredictStmt`.
-func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, session *pb.Session) error {
-	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
-	if _, e := db.Exec(dropStmt); e != nil {
-		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
-	}
-	flds, fts, e := verifier.GetSQLFieldType(predStmt.Select, db)
+func getPredictionTableFieldNamesAndTypes(predStmt *ir.PredictStmt, db *database.DB) ([]string, []string, error) {
+	slctFlds, slctTypes, e := verifier.GetSQLFieldType(predStmt.Select, db)
 	if e != nil {
-		return e
+		return nil, nil, e
 	}
 
-	var b bytes.Buffer
 	// NOTE(typhoonzero): predStmt.TrainStmt may be nil, because the model may not loaded when
 	// creating prediction table.
 	trainLabelColumn := ""
 	if predStmt.TrainStmt != nil {
 		trainLabelColumn = predStmt.TrainStmt.Label.GetFieldDesc()[0].Name
 	}
+
 	resultColumnName := predStmt.ResultColumn
 	resultColumnType := ""
-	fmt.Fprintf(&b, "create table %s (", predStmt.ResultTable)
-	for idx, colType := range fts {
+	var fieldNames []string
+	var fieldTypes []string
+	for idx, colType := range slctTypes {
 		stype, e := fieldType(db.DriverName, colType)
 		if e != nil {
-			return e
+			return nil, nil, e
 		}
-		fldName := flds[idx]
+		fldName := slctFlds[idx]
 		// When predicting use validation table, we should find the label column type
 		// using the label column name from train table.
 		// Skip label columns, and use predStmt.ResultColumn as the result column.
@@ -59,7 +53,8 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 			resultColumnType = stype
 			continue
 		}
-		fmt.Fprintf(&b, "%s %s, ", fldName, stype)
+		fieldNames = append(fieldNames, fldName)
+		fieldTypes = append(fieldTypes, stype)
 	}
 
 	// TODO(Yancey1989): For the current implementation, the prediction result column
@@ -67,22 +62,67 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB, sess
 	// the result column type by the prediction result.
 	//
 	// label column not found in predict table, create a column specified by PREDICT clause:
-	if resultColumnType == "" {
-		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use INT type
-		resultColumnType = "INT"
-	}
-	// mapping to DBMS column type from the result column type
-	stype, e := fieldType(db.DriverName, resultColumnType)
+	strFieldType, e := stringFieldType(db.DriverName)
 	if e != nil {
-		return fmt.Errorf("mapping to DBMS column type failed, %s", e)
-	}
-	if db.DriverName == "hive" {
-		fmt.Fprintf(&b, "%s %s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;", resultColumnName, stype)
-	} else {
-		fmt.Fprintf(&b, "%s %s);", resultColumnName, stype)
+		return nil, nil, e
 	}
 
-	createStmt := b.String()
+	if resultColumnType == "" {
+		// NOTE(typhoonzero): Clustering model may not have label in select statement, default use STRING type
+		resultColumnType = strFieldType
+	} else {
+		// mapping to DBMS column type from the result column type
+		resultColumnType, e = fieldType(db.DriverName, resultColumnType)
+		if e != nil {
+			return nil, nil, fmt.Errorf("mapping to DBMS column type failed, %s", e)
+		}
+	}
+	fieldNames = append(fieldNames, resultColumnName)
+	fieldTypes = append(fieldTypes, resultColumnType)
+
+	extraFieldsInterface, ok := predStmt.Attributes["predict.extra_outputs"]
+	if ok {
+		extraFields, ok := extraFieldsInterface.(string)
+		if !ok {
+			return nil, nil, fmt.Errorf("predict.extra_outputs must be string")
+		}
+		extraFieldList := strings.Split(extraFields, ",")
+		for _, field := range extraFieldList {
+			field = strings.TrimSpace(field)
+			if len(field) > 0 {
+				fieldNames = append(fieldNames, field)
+				fieldTypes = append(fieldTypes, strFieldType)
+			}
+		}
+	}
+	return fieldNames, fieldTypes, nil
+}
+
+// Create prediction table using the `PredictStmt`.
+func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB) error {
+	dropStmt := fmt.Sprintf("drop table if exists %s;", predStmt.ResultTable)
+	if _, e := db.Exec(dropStmt); e != nil {
+		return fmt.Errorf("failed executing %s: %q", dropStmt, e)
+	}
+
+	names, types, e := getPredictionTableFieldNamesAndTypes(predStmt, db)
+	if e != nil {
+		return e
+	}
+
+	var fieldItems []string
+	for idx := range names {
+		fieldItems = append(fieldItems, fmt.Sprintf("%s %s", names[idx], types[idx]))
+	}
+
+	var template string
+	if db.DriverName == "hive" {
+		template = "CREATE TABLE %s (%s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;"
+	} else {
+		template = "CREATE TABLE %s (%s);"
+	}
+
+	createStmt := fmt.Sprintf(template, predStmt.ResultTable, strings.Join(fieldItems, ","))
 	if _, e := db.Exec(createStmt); e != nil {
 		return fmt.Errorf("failed executing %s: %q", createStmt, e)
 	}

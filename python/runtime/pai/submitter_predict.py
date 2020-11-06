@@ -85,7 +85,7 @@ def submit_pai_predict(datasource,
                        select,
                        model,
                        label_name,
-                       model_params,
+                       pred_params,
                        result_table,
                        user=""):
     """This function pack needed params and resource to a tarball
@@ -103,7 +103,7 @@ def submit_pai_predict(datasource,
             Model to load and do prediction.
         label_name: string
             Name of the label column, if not exist in select.
-        model_params: dict
+        pred_params: dict
             Params for training, crossponding to WITH clause.
         result_table: string
             The table name to save prediction result.
@@ -129,9 +129,19 @@ def submit_pai_predict(datasource,
         train_label_desc = train_label.get_field_desc()[0]
     else:
         train_label_desc = None
+
+    if pred_params is None:
+        extra_result_cols = []
+    else:
+        extra_result_cols = pred_params.get("predict.extra_outputs", "")
+        extra_result_cols = [
+            c.strip() for c in extra_result_cols.split(",") if c.strip()
+        ]
+
     with db.connect_with_data_source(datasource) as conn:
         result_column_names, train_label_idx = create_predict_table(
-            conn, select, result_table, train_label_desc, label_name)
+            conn, select, result_table, train_label_desc, label_name,
+            extra_result_cols)
 
     oss_model_path = pai_model.get_oss_model_save_path(datasource,
                                                        model,
@@ -144,6 +154,7 @@ def submit_pai_predict(datasource,
         params["pai_table"] = data_table
         params["result_column_names"] = result_column_names
         params["train_label_idx"] = train_label_idx
+        params["extra_result_cols"] = extra_result_cols
 
         if try_pai_local_run(params, oss_model_path):
             return
@@ -153,7 +164,7 @@ def submit_pai_predict(datasource,
 
             cmd = get_pai_predict_cmd(
                 datasource, project, oss_model_path, model, data_table,
-                result_table, model_type, model_params,
+                result_table, model_type, pred_params,
                 "file://" + os.path.join(cwd, JOB_ARCHIVE_FILE),
                 "file://" + os.path.join(cwd, PARAMS_FILE))
             submit_pai_task(cmd, datasource)

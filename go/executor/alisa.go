@@ -138,7 +138,7 @@ func (s *alisaExecutor) ExecutePredict(ps *ir.PredictStmt) error {
 	ps.TmpPredictTable = strings.Join([]string{dbName, tableName}, ".")
 	defer dropTmpTables([]string{ps.TmpPredictTable}, s.Session.DbConnStr)
 
-	if e := createPredictionResultTable(ps, s.Db, s.Session); e != nil {
+	if e := createPredictionResultTable(ps, s.Db); e != nil {
 		return e
 	}
 

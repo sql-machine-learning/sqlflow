@@ -82,6 +82,11 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 	if tensorflow.IsPAI() && ir.TmpPredictTable != "" {
 		paiPredictTable = ir.TmpPredictTable
 	}
+	predParams, err := json.Marshal(tensorflow.ResolveParams(ir.Attributes, "predict."))
+	if err != nil {
+		return "", err
+	}
+
 	filler := predictFiller{
 		OSSModelDir:  ossModelDir,
 		DataSource:   session.DbConnStr,
@@ -90,6 +95,7 @@ func TFLoadAndPredict(ir *ir.PredictStmt, session *pb.Session, modelPath string)
 		ResultColumn: ir.ResultColumn,
 		PAITable:     paiPredictTable,
 		Using:        ir.Using,
+		PredParams:   string(predParams),
 	}
 	var code bytes.Buffer
 	if err := tpl.Execute(&code, filler); err != nil {

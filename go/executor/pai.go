@@ -327,7 +327,7 @@ func getPaiPredictCode(s *pythonExecutor, cl *ir.PredictStmt) (string, string, s
 	if len(resultTableParts) == 1 {
 		cl.ResultTable = fmt.Sprintf("%s.%s", currProject, cl.ResultTable)
 	}
-	if e := createPredictionResultTable(cl, s.Db, s.Session); e != nil {
+	if e := createPredictionResultTable(cl, s.Db); e != nil {
 		return "", "", "", "", e
 	}
 

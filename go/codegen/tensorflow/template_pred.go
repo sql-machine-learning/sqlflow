@@ -26,6 +26,7 @@ type predFiller struct {
 	TrainLabelMeta    *ir.FieldDesc
 	PredLabelMeta     *ir.FieldDesc
 	ModelParams       map[string]interface{}
+	PredParams        map[string]interface{}
 	Save              string
 	HDFSNameNodeAddr  string
 	HiveLocation      string
@@ -93,6 +94,11 @@ model_params=dict()
 model_params["{{$k}}"]={{$v | attrToPythonValue}}
 {{end}}
 
+pred_params=dict()
+{{range $k, $v := .PredParams}}
+pred_params["{{$k}}"]={{$v | attrToPythonValue}}
+{{end}}
+
 feature_columns = {{.FeatureColumnCode}}
 
 pred(datasource="{{.DataSource}}",
@@ -106,6 +112,7 @@ pred(datasource="{{.DataSource}}",
      result_col_name=label_meta["feature_name"],
      feature_metas=feature_metas,
      model_params=model_params,
+     pred_params=pred_params,
      save="{{.Save}}",
      batch_size=1)
 `

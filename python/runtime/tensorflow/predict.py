@@ -41,9 +41,27 @@ else:
     tf.logging.set_verbosity(tf.logging.ERROR)
 
 
+def encode_pred_result(result):
+    if isinstance(result, (list, tuple)):
+        result = np.array(result)
+
+    if isinstance(result, np.ndarray):
+        result = result.flatten()
+        if len(result) > 1:
+            # NOTE(typhoonzero): if the output dimension > 1, format
+            # output tensor using a comma separated string. Only
+            # available for keras models.
+            return ",".join([str(i) for i in result])
+        else:
+            return str(result[0])
+    else:
+        return str(result)
+
+
 def keras_predict(estimator, model_params, save, result_table,
                   feature_column_names, feature_metas, train_label_name,
-                  result_col_name, conn, predict_generator, selected_cols):
+                  result_col_name, conn, predict_generator, selected_cols,
+                  extra_result_cols):
     pop_optimizer_and_loss(model_params)
     classifier = init_model_with_feature_column(estimator, model_params)
 
@@ -89,12 +107,29 @@ def keras_predict(estimator, model_params, save, result_table,
         del column_names[train_label_index]
     column_names.append(result_col_name)
 
+    column_names.extend(extra_result_cols)
     with db.buffered_db_writer(conn, result_table, column_names, 100) as w:
         for features in pred_dataset:
             if hasattr(classifier, 'sqlflow_predict_one'):
                 result = classifier.sqlflow_predict_one(features)
             else:
                 result = classifier.predict_on_batch(features)
+
+            if extra_result_cols:
+                assert isinstance(
+                    result, tuple
+                ), "TO PREDICT must return a " \
+                   "tuple when predict.extra_outputs is not empty"
+                assert len(extra_result_cols) + 1 <= len(
+                    result
+                ), "TO PREDICT must return at least " \
+                   "%d items instead of %d" % (len(extra_result_cols) + 1,
+                                               len(result))
+                extra_pred_outputs = result[1:len(extra_result_cols) + 1]
+                result = result[0:1]
+            else:
+                extra_pred_outputs = None
+
             # FIXME(typhoonzero): determine the predict result is
             # classification by adding the prediction result together
             # to see if it is close to 1.0.
@@ -112,16 +147,11 @@ def keras_predict(estimator, model_params, save, result_table,
             for idx, name in enumerate(feature_column_names):
                 val = features[name].numpy()[0][0]
                 row.append(str(val))
-            if isinstance(result, np.ndarray):
-                if len(result) > 1:
-                    # NOTE(typhoonzero): if the output dimension > 1, format
-                    # output tensor using a comma separated string. Only
-                    # available for keras models.
-                    row.append(",".join([str(i) for i in result]))
-                else:
-                    row.append(str(result[0]))
-            else:
-                row.append(str(result))
+
+            row.append(encode_pred_result(result))
+            if extra_pred_outputs is not None:
+                row.extend([encode_pred_result(p) for p in extra_pred_outputs])
+
             w.write(row)
     del pred_dataset
 
@@ -250,6 +280,7 @@ def pred(datasource,
          result_col_name,
          feature_metas={},
          model_params={},
+         pred_params={},
          save="",
          batch_size=1,
          pai_table=""):
@@ -268,6 +299,14 @@ def pred(datasource,
 
     pop_optimizer_and_loss(model_params)
 
+    if pred_params is None:
+        extra_result_cols = []
+    else:
+        extra_result_cols = pred_params.get("extra_outputs", "")
+        extra_result_cols = [
+            c.strip() for c in extra_result_cols.split(",") if c.strip()
+        ]
+
     if not is_estimator:
         if not issubclass(estimator, tf.keras.Model):
             # functional model need field_metas parameter
@@ -275,8 +314,10 @@ def pred(datasource,
         print("Start predicting using keras model...")
         keras_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, train_label_name,
-                      result_col_name, conn, predict_generator, selected_cols)
+                      result_col_name, conn, predict_generator, selected_cols,
+                      extra_result_cols)
     else:
+        # TODO(sneaxiy): support extra_result_cols for estimator
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(result_table, feature_column_names, feature_metas,

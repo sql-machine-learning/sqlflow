@@ -551,6 +551,11 @@ func TestEnd2EndMaxComputePAI(t *testing.T) {
 		})
 
 		t.Run("CasePAIMaxComputeWeightedCategory", CasePAIMaxComputeWeightedCategory)
-		t.Run("CaseOneClassSVMModel", caseOneClassSVMModel)
+		t.Run("CaseOneClassSVMModel", func(t *testing.T) {
+			caseOneClassSVMModel(t, nil)
+		})
+		t.Run("CaseOneClassSVMModelWithScore", func(t *testing.T) {
+			caseOneClassSVMModel(t, []string{"score"})
+		})
 	})
 }

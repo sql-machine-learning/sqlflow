@@ -304,7 +304,7 @@ func (s *pythonExecutor) ExecuteTrain(cl *ir.TrainStmt) (e error) {
 
 func (s *pythonExecutor) ExecutePredict(cl *ir.PredictStmt) (e error) {
 	// NOTE(typhoonzero): model is already loaded under s.Cwd
-	if e = createPredictionResultTable(cl, s.Db, s.Session); e != nil {
+	if e = createPredictionResultTable(cl, s.Db); e != nil {
 		return e
 	}
 

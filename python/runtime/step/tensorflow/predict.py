@@ -30,6 +30,7 @@ def predict_step(datasource,
                  result_column_names,
                  train_label_idx,
                  model,
+                 extra_result_cols=[],
                  pai_table=None):
     if isinstance(model, six.string_types):
         model = Model.load_from_db(datasource, model)
@@ -54,17 +55,13 @@ def predict_step(datasource,
 
     is_pai = True if pai_table else False
     if is_pai:
-        select = "SELECT * FROM %s" % pai_table
-
-    label_name = result_column_names[train_label_idx]
-    conn = db.connect_with_data_source(datasource)
-
-    if is_pai:
-        conn.close()
         conn = PaiIOConnection.from_table(pai_table)
         select = None
+    else:
+        conn = db.connect_with_data_source(datasource)
 
-    selected_cols = result_column_names[0:-1]
+    label_name = result_column_names[-len(extra_result_cols) - 1]
+    selected_cols = result_column_names[0:-len(extra_result_cols) - 1]
     if train_label_idx >= 0:
         selected_cols = selected_cols[0:train_label_idx] + [
             train_label_name
@@ -83,8 +80,10 @@ def predict_step(datasource,
         print("Start predicting using keras model...")
         keras_predict(estimator, model_params, save, result_table,
                       feature_column_names, feature_metas, train_label_name,
-                      label_name, conn, predict_generator, selected_cols)
+                      label_name, conn, predict_generator, selected_cols,
+                      extra_result_cols)
     else:
+        # TODO(sneaxiy): support extra_result_cols for estimator
         model_params['model_dir'] = save
         print("Start predicting using estimator model...")
         estimator_predict(result_table, feature_column_names, feature_metas,

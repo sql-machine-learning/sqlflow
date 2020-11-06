@@ -35,6 +35,7 @@ def predict(datasource,
             result_column_names,
             train_label_idx,
             model,
+            extra_result_cols=[],
             pai_table=None):
     """TBD
     """
