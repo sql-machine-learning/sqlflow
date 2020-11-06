@@ -47,7 +47,7 @@ python -m pip install --quiet \
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
-git checkout 3df5bb63daa6b8d96174614918c9ed47256dfcc3 && \
+git checkout 5dc6421f562ea447e501fa355a48a6ee89856a1d && \
 python setup.py install)
 
 protoc --python_out=python/runtime/dbapi/table_writer/ -I go/proto sqlflow.proto
