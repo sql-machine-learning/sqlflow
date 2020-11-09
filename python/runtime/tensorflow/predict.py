@@ -108,8 +108,11 @@ def keras_predict(estimator, model_params, save, result_table,
     column_names.append(result_col_name)
 
     column_names.extend(extra_result_cols)
+
     with db.buffered_db_writer(conn, result_table, column_names, 100) as w:
-        for features in pred_dataset:
+        for features, (row, _) in zip(pred_dataset, predict_generator()):
+            # FIXME(yancey1989): convert select row to feature row
+            # to avoid traversing the predict_generator twice.
             if hasattr(classifier, 'sqlflow_predict_one'):
                 result = classifier.sqlflow_predict_one(features)
             else:
@@ -143,15 +146,10 @@ def keras_predict(estimator, model_params, save, result_table,
                     result = result[0].argmax(axis=-1)
                 else:
                     result = result[0]  # multiple regression result
-            row = []
-            for idx, name in enumerate(feature_column_names):
-                val = features[name].numpy()[0][0]
-                row.append(str(val))
 
             row.append(encode_pred_result(result))
             if extra_pred_outputs is not None:
                 row.extend([encode_pred_result(p) for p in extra_pred_outputs])
-
             w.write(row)
     del pred_dataset
 
