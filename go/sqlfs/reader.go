@@ -26,39 +26,6 @@ type fragment struct {
 	block string
 }
 
-func readNextFragments(db *sql.DB, table string, startRowIdx, rowBufSize int) ([]*fragment, error) {
-	stmt := fmt.Sprintf("SELECT id,block FROM %s WHERE id>=%d AND id<%d;", table, startRowIdx, startRowIdx+rowBufSize)
-	rows, err := db.Query(stmt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var fragments []*fragment
-	for rows.Next() {
-		f := &fragment{}
-		if err := rows.Scan(&f.id, &f.block); err != nil {
-			return nil, err
-		}
-		fragments = append(fragments, f)
-	}
-
-	if len(fragments) > rowBufSize {
-		return nil, fmt.Errorf("invalid sqlfs db table %s", table)
-	}
-
-	sort.Slice(fragments, func(i, j int) bool {
-		return fragments[i].id < fragments[j].id
-	})
-
-	for i, f := range fragments {
-		if f.id != i+startRowIdx {
-			return nil, fmt.Errorf("invalid sqlfs db table %s", table)
-		}
-	}
-	return fragments, nil
-}
-
 // reader implements io.ReadCloser
 type reader struct {
 	db          *sql.DB
@@ -70,19 +37,51 @@ type reader struct {
 	rowBufSize  int
 }
 
+func (r *reader) readNextFragments() error {
+	stmt := fmt.Sprintf("SELECT id,block FROM %s WHERE id>=%d AND id<%d;", r.table, r.rowIdx, r.rowIdx+r.rowBufSize)
+	rows, err := r.db.Query(stmt)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var fragments []*fragment
+	for rows.Next() {
+		f := &fragment{}
+		if err := rows.Scan(&f.id, &f.block); err != nil {
+			return err
+		}
+		fragments = append(fragments, f)
+	}
+
+	if len(fragments) > r.rowBufSize {
+		return fmt.Errorf("invalid sqlfs db table %s", r.table)
+	}
+
+	sort.Slice(fragments, func(i, j int) bool {
+		return fragments[i].id < fragments[j].id
+	})
+
+	for i, f := range fragments {
+		if f.id != i+r.rowIdx {
+			return fmt.Errorf("invalid sqlfs db table %s", r.table)
+		}
+	}
+	r.fragments = fragments
+	r.rowIdx += len(r.fragments)
+	r.fragmentIdx = 0
+	return nil
+}
+
 func (r *reader) nextBlock() (string, error) {
-	var err error
 	if r.fragmentIdx == len(r.fragments) {
 		if r.rowIdx > 0 && len(r.fragments) < r.rowBufSize {
 			return "", io.EOF
 		}
 
-		r.fragments, err = readNextFragments(r.db, r.table, r.rowIdx, r.rowBufSize)
-		if err != nil {
+		if err := r.readNextFragments(); err != nil {
 			return "", err
 		}
-		r.rowIdx += len(r.fragments)
-		r.fragmentIdx = 0
 	}
 
 	if len(r.fragments) == 0 {
@@ -139,6 +138,10 @@ func (r *reader) Read(p []byte) (n int, e error) {
 			}
 		}
 	}
+	if e == io.EOF && n > 0 {
+		return n, nil
+	}
+
 	return n, e
 }
 

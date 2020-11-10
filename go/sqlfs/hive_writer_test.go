@@ -15,7 +15,6 @@ package sqlfs
 
 import (
 	"fmt"
-	"io"
 	"math/rand"
 	"os/exec"
 	"path"
@@ -56,70 +55,5 @@ func TestSQLFSNewHiveWriter(t *testing.T) {
 
 	a.NoError(w.Close())
 	a.False(hasHDFSDir(path.Join("/hivepath", tbl)))
-	a.NoError(dropTableIfExists(db.DB, tbl))
-}
-
-func TestSQLFSHiveWriterWriteAndRead(t *testing.T) {
-	caseSQLFSHiveWriterWriteAndRead(t, 1)
-	caseSQLFSHiveWriterWriteAndRead(t, 32)
-}
-
-func caseSQLFSHiveWriterWriteAndRead(t *testing.T, rowBufSize int) {
-	createSQLFSTestingDatabaseOnce.Do(createSQLFSTestingDatabase)
-	db := database.GetTestingDBSingleton()
-	a := assert.New(t)
-
-	if db.DriverName != "hive" {
-		t.Skip("Skip as SQLFLOW_TEST_DB is not Hive")
-	}
-	t.Logf("Confirm executed with %s", db.DriverName)
-
-	tbl := fmt.Sprintf("%s%d", testDatabaseName, rand.Int())
-	w, e := newHiveWriter(db, tbl, bufSize)
-	a.NoError(e)
-	a.NotNil(w)
-
-	// A small output.
-	buf := []byte("\n\n\n")
-	n, e := w.Write(buf)
-	a.NoError(e)
-	a.Equal(len(buf), n)
-
-	// A big output.
-	buf = make([]byte, bufSize+1)
-	for i := range buf {
-		buf[i] = 'x'
-	}
-	n, e = w.Write(buf)
-	a.NoError(e)
-	a.Equal(len(buf), n)
-
-	a.NoError(w.Close())
-
-	r, e := Open(db.DB, tbl, rowBufSize)
-	a.NoError(e)
-	a.NotNil(r)
-
-	// A small read
-	buf = make([]byte, 2)
-	n, e = r.Read(buf)
-	a.NoError(e)
-	a.Equal(2, n)
-	a.Equal(2, strings.Count(string(buf), "\n"))
-
-	// A big read of rest
-	buf = make([]byte, bufSize*2)
-	n, e = r.Read(buf)
-	a.Equal(io.EOF, e)
-	a.Equal(bufSize+2, n)
-	a.Equal(1, strings.Count(string(buf), "\n"))
-	a.Equal(bufSize+1, strings.Count(string(buf), "x"))
-
-	// Another big read
-	n, e = r.Read(buf)
-	a.Equal(io.EOF, e)
-	a.Equal(0, n)
-	a.NoError(r.Close())
-
 	a.NoError(dropTableIfExists(db.DB, tbl))
 }
