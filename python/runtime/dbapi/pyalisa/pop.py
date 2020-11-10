@@ -14,10 +14,9 @@
 import base64
 import hashlib
 import hmac
-from encodings import utf_8
+import urllib
 
 import requests
-from six.moves import urllib
 
 
 class Pop(object):
@@ -59,10 +58,9 @@ class Pop(object):
             ek = Pop.percent_encode(k)
             ev = Pop.percent_encode(v)
             qry += '&{}={}'.format(ek, ev)
-        to_sign = '{}&%2F&{}'.format(http_method, Pop.percent_encode(qry[1:]))
-        bf = bytearray(utf_8.encode(to_sign)[0])
-        dig = hmac.digest(utf_8.encode(secret + "&")[0], bf, hashlib.sha1)
-        return utf_8.decode(base64.standard_b64encode(dig))[0]
+        str = '{}&%2F&{}'.format(http_method, Pop.percent_encode(qry[1:]))
+        dig = hmac.new(secret + '&', str, hashlib.sha1).digest()
+        return base64.standard_b64encode(dig)
 
     @staticmethod
     def percent_encode(str):
@@ -75,7 +73,7 @@ class Pop(object):
         Returns:
             (string) the encoded param
         """
-        es = urllib.parse.quote_plus(str)
-        es = es.replace('+', '%20')
-        es = es.replace('*', '%2A')
-        return es.replace('%7E', '~')
+        s = urllib.quote_plus(str)
+        s = s.replace('+', '%20')
+        s = s.replace('*', '%2A')
+        return s.replace('%7E', '~')
