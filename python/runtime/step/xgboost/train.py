@@ -115,6 +115,8 @@ def train(original_sql,
                            save,
                            load=load,
                            is_pai=is_pai,
+                           pai_train_table=pai_table,
+                           pai_validate_table=pai_val_table,
                            oss_model_dir=oss_model_dir)
 
 
@@ -134,6 +136,8 @@ def local_train(original_sql,
                 save,
                 load="",
                 is_pai=False,
+                pai_train_table="",
+                pai_validate_table="",
                 oss_model_dir=""):
     disk_cache = train_params.pop("disk_cache", False)
     batch_size = train_params.pop("batch_size", None)
@@ -145,7 +149,15 @@ def local_train(original_sql,
     label_meta_dict = label_column.get_field_desc()[0].to_dict(
         dtype_to_string=True)
 
-    def build_dataset(fn, slct):
+    file_name = "my_model"
+    bst = None
+    if load:
+        with temp_file.TemporaryDirectory(as_cwd=True):
+            Model.load_from_db(datasource, load)
+            bst = xgb.Booster()
+            bst.load_model(file_name)
+
+    def build_dataset(fn, slct, pai_table):
         return xgb_dataset(datasource,
                            fn,
                            slct,
@@ -155,22 +167,18 @@ def local_train(original_sql,
                            cache=disk_cache,
                            batch_size=batch_size,
                            epoch=epoch,
-                           transform_fn=transform_fn)
-
-    file_name = "my_model"
-    if load:
-        Model.load_from_db(datasource, load)
-        bst = xgb.Booster()
-        bst.load_model(file_name)
-    else:
-        bst = None
+                           transform_fn=transform_fn,
+                           is_pai=is_pai,
+                           pai_table=pai_table,
+                           feature_column_code=feature_column_map)
 
     with temp_file.TemporaryDirectory() as tmp_dir_name:
         train_fn = os.path.join(tmp_dir_name, 'train.txt')
         val_fn = os.path.join(tmp_dir_name, 'val.txt')
-        train_dataset = build_dataset(train_fn, select)
+        train_dataset = build_dataset(train_fn, select, pai_train_table)
         if validation_select:
-            val_dataset = build_dataset(val_fn, validation_select)
+            val_dataset = build_dataset(val_fn, validation_select,
+                                        pai_validate_table)
         else:
             val_dataset = None
 
