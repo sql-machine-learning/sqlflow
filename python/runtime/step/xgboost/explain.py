@@ -13,6 +13,7 @@
 
 import numpy as np
 import pandas as pd
+import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
 import scipy
 import shap
@@ -53,21 +54,25 @@ def explain(datasource,
             summary_key = k.replace("summary.", "")
             summary_params[summary_key] = model_params[k]
 
-    is_pai = True if pai_table else False
+    bst = xgb.Booster()
     if isinstance(model, six.string_types):
-        model = Model.load_from_db(datasource, model)
+        with temp_file.TemporaryDirectory(as_cwd=True):
+            model = Model.load_from_db(datasource, model)
+            bst.load_model("my_model")
     else:
         assert isinstance(model,
                           Model), "not supported model type %s" % type(model)
+        bst.load_model("my_model")
+
     fc_map_ir = model.get_meta("features")
     label_meta = model.get_meta("label").get_field_desc()[0].to_dict(
         dtype_to_string=True)
-
     field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
                           for fd in field_descs])
 
+    is_pai = True if pai_table else False
     # NOTE: in the current implementation, we are generating a transform_fn
     # from the COLUMN clause. The transform_fn is executed during the process
     # of dumping the original data into DMatrix SVM file.
@@ -78,9 +83,6 @@ def explain(datasource,
     dataset = xgb_shap_dataset(datasource, select, feature_column_names,
                                label_meta, feature_metas, is_pai, pai_table,
                                transform_fn)
-
-    bst = xgb.Booster()
-    bst.load_model("my_model")
 
     if explainer == "XGBoostExplainer":
         xgb_native_explain(bst, datasource, result_table)
