@@ -40,21 +40,20 @@ def predict(datasource,
     """TBD
     """
     bst = xgb.Booster()
-    fc_map_ir = None
-    model_params = None
     if isinstance(model, six.string_types):
         # NOTE(typhoonzero): must run Model.load_from_db in a temp
         # directory, calling pyodps in current directory on PAI
         # workers will cause paiio fails.
         with temp_file.TemporaryDirectory(as_cwd=True):
-            model_loaded = Model.load_from_db(datasource, model)
-            model_params = model_loaded.get_meta("attributes")
-            fc_map_ir = model_loaded.get_meta("features")
+            model = Model.load_from_db(datasource, model)
             bst.load_model("my_model")
     else:
         assert isinstance(model,
                           Model), "not supported model type %s" % type(model)
+        bst.load_model("my_model")
 
+    model_params = model.get_meta("attributes")
+    fc_map_ir = model.get_meta("features")
     feature_columns = compile_ir_feature_columns(fc_map_ir,
                                                  EstimatorType.XGBOOST)
     field_descs = get_ordered_field_descs(fc_map_ir)
@@ -92,7 +91,6 @@ def predict(datasource,
 
         print("Start predicting XGBoost model...")
         for idx, pred_dmatrix in enumerate(dpred):
-            print("start predict one batch...")
             if is_pai:
                 feature_file_name = os.path.join(tmp_dir_name,
                                                  "predict.txt.raw")

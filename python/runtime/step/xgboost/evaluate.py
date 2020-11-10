@@ -72,21 +72,20 @@ def evaluate(datasource,
     validation_metrics = model_params.get("validation.metrics",
                                           "accuracy_score")
     validation_metrics = [m.strip() for m in validation_metrics.split(",")]
-    fc_map_ir = None
-    train_label = None
 
     bst = xgb.Booster()
     if isinstance(model, six.string_types):
         with temp_file.TemporaryDirectory(as_cwd=True):
-            model_loaded = Model.load_from_db(datasource, model)
-            model_params = model_loaded.get_meta("attributes")
-            fc_map_ir = model_loaded.get_meta("features")
-            train_label = model_loaded.get_meta("label")
+            model = Model.load_from_db(datasource, model)
             bst.load_model("my_model")
     else:
         assert isinstance(model,
                           Model), "not supported model type %s" % type(model)
+        bst.load_model("my_model")
 
+    model_params = model.get_meta("attributes")
+    fc_map_ir = model.get_meta("features")
+    train_label = model.get_meta("label")
     train_label_desc = train_label.get_field_desc()[0]
 
     if label_name:

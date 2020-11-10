@@ -54,20 +54,19 @@ def explain(datasource,
             summary_key = k.replace("summary.", "")
             summary_params[summary_key] = model_params[k]
 
-    fc_map_ir = None
-    label_meta = None
     bst = xgb.Booster()
     if isinstance(model, six.string_types):
         with temp_file.TemporaryDirectory(as_cwd=True):
-            model_loaded = Model.load_from_db(datasource, model)
-            fc_map_ir = model_loaded.get_meta("features")
-            label_meta = model_loaded.get_meta(
-                "label").get_field_desc()[0].to_dict(dtype_to_string=True)
+            model = Model.load_from_db(datasource, model)
             bst.load_model("my_model")
     else:
         assert isinstance(model,
                           Model), "not supported model type %s" % type(model)
+        bst.load_model("my_model")
 
+    fc_map_ir = model.get_meta("features")
+    label_meta = model.get_meta("label").get_field_desc()[0].to_dict(
+        dtype_to_string=True)
     field_descs = get_ordered_field_descs(fc_map_ir)
     feature_column_names = [fd.name for fd in field_descs]
     feature_metas = dict([(fd.name, fd.to_dict(dtype_to_string=True))
