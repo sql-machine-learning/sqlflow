@@ -76,6 +76,9 @@ func (r *reader) readNextFragments() error {
 func (r *reader) nextBlock() (string, error) {
 	if r.fragmentIdx == len(r.fragments) {
 		if r.rowIdx > 0 && len(r.fragments) < r.rowBufSize {
+			// reset r.fragments and r.fragmentIdx when EOF
+			r.fragments = nil
+			r.fragmentIdx = 0
 			return "", io.EOF
 		}
 
@@ -85,6 +88,9 @@ func (r *reader) nextBlock() (string, error) {
 	}
 
 	if len(r.fragments) == 0 {
+		// reset r.fragments and r.fragmentIdx when EOF
+		r.fragments = nil
+		r.fragmentIdx = 0
 		return "", io.EOF
 	}
 	block := r.fragments[r.fragmentIdx].block
