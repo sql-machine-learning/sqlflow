@@ -75,7 +75,7 @@ func caseSQLFSWriteAndRead(t *testing.T, rowBufSize int) {
 	// A big read of rest
 	buf = make([]byte, bufSize*2)
 	n, e = r.Read(buf)
-	a.Equal(io.EOF, e)
+	a.NoError(e)
 	a.Equal(bufSize+2, n)
 	a.Equal(1, strings.Count(string(buf), "\n"))
 	a.Equal(bufSize+1, strings.Count(string(buf), "x"))
