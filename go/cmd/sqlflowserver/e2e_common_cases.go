@@ -1115,3 +1115,25 @@ USING %s;`, caseTrainTable, predictTableName, predWith, caseInto)
 		}
 	}
 }
+
+func casePassSelectedColumnsToPredResult(t *testing.T) {
+	a := assert.New(t)
+	sql := fmt.Sprintf(`
+SELECT sepal_length, sepal_width, petal_length
+FROM %s
+TO TRAIN sqlflow_models.OneClassSVM
+WITH model.kernel = "rbf"
+INTO %s;
+
+SELECT sepal_length, sepal_width, petal_length, petal_width
+FROM %s
+TO PREDICT %s.label
+USING %s;`, caseTrainTable, caseInto, caseTrainTable, casePredictTable, caseInto)
+	_, _, _, err := connectAndRunSQL(sql)
+	a.NoError(err)
+	selectPredSQL := fmt.Sprintf(`SELECT * FROM %s LIMIT 1;`, casePredictTable)
+	headers, _, _, err := connectAndRunSQL(selectPredSQL)
+	expectedHeaders := []string{"sepal_length",
+		"sepal_width", "petal_length", "petal_width", "label"}
+	a.True(reflect.DeepEqual(headers, expectedHeaders))
+}
