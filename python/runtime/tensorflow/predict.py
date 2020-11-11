@@ -169,11 +169,13 @@ def keras_predict(estimator, model_params, save, result_table,
                 else:
                     result = result[0]  # multiple regression result
 
+            # delete the label of training
+            if train_label_index != -1 and len(row) > train_label_index:
+                del row[train_label_index]
+
             row.append(encode_pred_result(result))
             if extra_pred_outputs is not None:
                 row.extend([encode_pred_result(p) for p in extra_pred_outputs])
-            if train_label_index != -1 and len(row) > train_label_index:
-                del row[train_label_index]
             w.write(row)
     del pred_dataset
 
