@@ -22,7 +22,7 @@ INTO ...
 | -------- | -------- |
 | model.hidden_units     | DNN模型中每个隐层的神经元个数，如[128,32] 表示模型有2个隐层，神经元个数分别是128, 32  |
 | model.n_classes | 模型可分类的类别总数(分类器模型使用)，比如：2 表示模型将把数据分为2类 |
-| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](https://yuque.antfin-inc.com/sqlflownews/userguide/params#827c4728) |
+| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](params.md) |
 | model.batch_norm | 是否在每个隐层之后使用batch_norm，比如：True表示开启，默认为False |
 | model.dropout | 配置dropout概率，比如：0.5，默认为None |
 | model.activation_fn | 待验证 |
@@ -39,7 +39,7 @@ INTO ...
 | 参数 | 说明 |
 | -------- | -------- |
 | model.n_classes | 模型可分类的类别总数(分类器模型使用)，比如：2 表示模型将把数据分为2类 |
-| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](https://yuque.antfin-inc.com/sqlflownews/userguide/params#827c4728) |
+| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](params.md) |
 | model.sparse_combiner | 指定如果category column输入如果包含多个相同值时的处理方法，可以是："mean", "sqrtn", 或 "sum" |
 
 ## LinearRegressor
@@ -76,8 +76,8 @@ Tensorflow Boosted Trees回归模型：https://www.tensorflow.org/api_docs/pytho
 
 | 参数 | 说明 |
 | -------- | -------- |
-| model.linear_optimizer | 模型线性部分使用的优化器，详细参考：[Optimizer配置方法](https://yuque.antfin-inc.com/sqlflownews/userguide/params#827c4728) |
-| model.dnn_optimizer | 模型DNN部分使用的优化器，详细参考：[Optimizer配置方法](https://yuque.antfin-inc.com/sqlflownews/userguide/params#827c4728) ｜
+| model.linear_optimizer | 模型线性部分使用的优化器，详细参考：[Optimizer配置方法](params.md) |
+| model.dnn_optimizer | 模型DNN部分使用的优化器，详细参考：[Optimizer配置方法](params.md) ｜
 | model.dnn_hidden_units | 模型DNN部分隐层每层的神经元数量，如：[128,32]表示包含2个隐层，每层的神经元个数分别为128, 32 |
 | model.dnn_dropout | 模型DNN部分每个隐层后是否执行dropout，默认为None |
 | model.n_classes | 模型可分类的类别总数(分类器模型使用) |
@@ -192,7 +192,7 @@ Tensorflow Boosted Trees回归模型：https://www.tensorflow.org/api_docs/pytho
 | -------- | -------- |
 | model.hidden_units     | DNN模型中每个隐层的神经元个数，如[128,32] 表示模型有2个隐层，神经元个数分别是128, 32  |
 | model.n_classes | 模型可分类的类别总数(分类器模型使用)，比如：2 表示模型将把数据分为2类 |
-| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](https://yuque.antfin-inc.com/sqlflownews/userguide/params#827c4728) |
+| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](params.md) |
 
 ## sqlflow_models.StackedBiLSTMClassifier
 
@@ -202,7 +202,7 @@ Tensorflow Boosted Trees回归模型：https://www.tensorflow.org/api_docs/pytho
 | -------- | -------- |
 | model.stack_units  | 双向LSTM的每层的大小，如：[32]表示使用一层双向LSTM，LSTM size是32  |
 | model.n_classes | 模型可分类的类别总数，比如：2 表示模型将把数据分为2类 |
-| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](https://yuque.antfin-inc.com/sqlflownews/userguide/params#827c4728) |
+| model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](params.md) |
 | model.hidden_size | 最后隐层的神经元树木，如：64表示使用一个大小为64的隐层链接最后一层LSTM和输出层 |
 
 
