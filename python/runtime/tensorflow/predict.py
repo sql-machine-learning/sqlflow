@@ -86,6 +86,29 @@ def keras_predict(estimator, model_params, save, result_table,
             dataset = dataset.cache()
         return dataset
 
+    def to_feature_sample(row, selected_cols):
+        features = {}
+        for name in feature_column_names:
+            row_val = row[selected_cols.index(name)]
+            if feature_metas[name].get("delimiter_kv", "") != "":
+                # kv list that should be parsed to two features.
+                if feature_metas[name]["is_sparse"]:
+                    features[name] = tf.SparseTensor(
+                        row_val[0], tf.ones_like(tf.reshape(row_val[0], [-1])),
+                        row_val[2])
+                    features["_".join([name,
+                                       "weight"])] = tf.SparseTensor(*row_val)
+                else:
+                    raise ValueError(
+                        "not supported DENSE column with key:value"
+                        "list format.")
+            else:
+                if feature_metas[name]["is_sparse"]:
+                    features[name] = tf.SparseTensor(*row_val)
+                else:
+                    features[name] = tf.constant(([row_val], ))
+        return features
+
     if not hasattr(classifier, 'sqlflow_predict_one'):
         # NOTE: load_weights should be called by keras models only.
         # NOTE: always use batch_size=1 when predicting to get the pairs of
@@ -108,8 +131,10 @@ def keras_predict(estimator, model_params, save, result_table,
     column_names.append(result_col_name)
 
     column_names.extend(extra_result_cols)
+
     with db.buffered_db_writer(conn, result_table, column_names, 100) as w:
-        for features in pred_dataset:
+        for row, _ in predict_generator():
+            features = to_feature_sample(row, column_names)
             if hasattr(classifier, 'sqlflow_predict_one'):
                 result = classifier.sqlflow_predict_one(features)
             else:
@@ -143,15 +168,12 @@ def keras_predict(estimator, model_params, save, result_table,
                     result = result[0].argmax(axis=-1)
                 else:
                     result = result[0]  # multiple regression result
-            row = []
-            for idx, name in enumerate(feature_column_names):
-                val = features[name].numpy()[0][0]
-                row.append(str(val))
 
             row.append(encode_pred_result(result))
             if extra_pred_outputs is not None:
                 row.extend([encode_pred_result(p) for p in extra_pred_outputs])
-
+            if train_label_index != -1 and len(row) > train_label_index:
+                del row[train_label_index]
             w.write(row)
     del pred_dataset
 

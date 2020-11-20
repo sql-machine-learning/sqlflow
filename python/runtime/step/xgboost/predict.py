@@ -39,11 +39,18 @@ def predict(datasource,
             pai_table=None):
     """TBD
     """
+    bst = xgb.Booster()
     if isinstance(model, six.string_types):
-        model = Model.load_from_db(datasource, model)
+        # NOTE(typhoonzero): must run Model.load_from_db in a temp
+        # directory, calling pyodps in current directory on PAI
+        # workers will cause paiio fails.
+        with temp_file.TemporaryDirectory(as_cwd=True):
+            model = Model.load_from_db(datasource, model)
+            bst.load_model("my_model")
     else:
         assert isinstance(model,
                           Model), "not supported model type %s" % type(model)
+        bst.load_model("my_model")
 
     model_params = model.get_meta("attributes")
     fc_map_ir = model.get_meta("features")
@@ -57,9 +64,6 @@ def predict(datasource,
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
 
-    bst = xgb.Booster()
-    bst.load_model("my_model")
-
     is_pai = True if pai_table else False
     if is_pai:
         conn = PaiIOConnection.from_table(pai_table)
@@ -70,22 +74,29 @@ def predict(datasource,
         pred_fn = os.path.join(tmp_dir_name, "predict.txt")
         raw_data_dir = os.path.join(tmp_dir_name, "predict_raw_dir")
 
-        dpred = xgb_dataset(
-            datasource=datasource,
-            fn=pred_fn,
-            dataset_sql=select,
-            feature_metas=feature_metas,
-            feature_column_names=feature_column_names,
-            label_meta=None,
-            cache=True,
-            batch_size=10000,
-            transform_fn=transform_fn,
-            raw_data_dir=raw_data_dir)  # NOTE: default to use external memory
+        dpred = xgb_dataset(datasource=datasource,
+                            fn=pred_fn,
+                            dataset_sql=select,
+                            feature_metas=feature_metas,
+                            feature_column_names=feature_column_names,
+                            label_meta=None,
+                            cache=True,
+                            batch_size=10000,
+                            transform_fn=transform_fn,
+                            raw_data_dir=raw_data_dir,
+                            is_pai=is_pai,
+                            pai_table=pai_table,
+                            pai_single_file=True,
+                            feature_column_code=fc_map_ir)
 
         print("Start predicting XGBoost model...")
         for idx, pred_dmatrix in enumerate(dpred):
-            feature_file_name = os.path.join(
-                tmp_dir_name, "predict_raw_dir/predict.txt_%d" % idx)
+            if is_pai:
+                feature_file_name = os.path.join(tmp_dir_name,
+                                                 "predict.txt.raw")
+            else:
+                feature_file_name = os.path.join(
+                    tmp_dir_name, "predict_raw_dir/predict.txt_%d" % idx)
             preds = _calc_predict_result(bst, pred_dmatrix, model_params)
             _store_predict_result(preds, result_table, result_column_names,
                                   train_label_idx, feature_file_name, conn)

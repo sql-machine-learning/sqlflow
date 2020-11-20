@@ -26,6 +26,7 @@ TRAIN_PARAMS_FILE = "train_params.pkl"
 
 TF_REQUIREMENT = """
 adanet==0.8.0
+dill==0.3.0
 numpy==1.16.2
 pandas==0.24.2
 plotille==3.7

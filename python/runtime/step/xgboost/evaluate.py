@@ -73,11 +73,15 @@ def evaluate(datasource,
                                           "accuracy_score")
     validation_metrics = [m.strip() for m in validation_metrics.split(",")]
 
+    bst = xgb.Booster()
     if isinstance(model, six.string_types):
-        model = Model.load_from_db(datasource, model)
+        with temp_file.TemporaryDirectory(as_cwd=True):
+            model = Model.load_from_db(datasource, model)
+            bst.load_model("my_model")
     else:
         assert isinstance(model,
                           Model), "not supported model type %s" % type(model)
+        bst.load_model("my_model")
 
     model_params = model.get_meta("attributes")
     fc_map_ir = model.get_meta("features")
@@ -95,9 +99,6 @@ def evaluate(datasource,
                           for fd in field_descs])
     transform_fn = ComposedColumnTransformer(
         feature_column_names, *feature_columns["feature_columns"])
-
-    bst = xgb.Booster()
-    bst.load_model("my_model")
 
     is_pai = True if pai_table else False
     if is_pai:
@@ -117,10 +118,17 @@ def evaluate(datasource,
             label_meta=train_label_desc.to_dict(dtype_to_string=True),
             cache=True,
             batch_size=10000,
-            transform_fn=transform_fn)
+            transform_fn=transform_fn,
+            is_pai=is_pai,
+            pai_table=pai_table,
+            pai_single_file=True,
+            feature_column_code=fc_map_ir)
 
         for i, pred_dmatrix in enumerate(dpred):
-            feature_file_name = pred_fn + "_%d" % i
+            if is_pai:
+                feature_file_name = pred_fn
+            else:
+                feature_file_name = pred_fn + "_%d" % i
             preds = _calc_predict_result(bst, pred_dmatrix, model_params)
             _store_evaluate_result(preds, feature_file_name, train_label_desc,
                                    result_table, result_column_names,
