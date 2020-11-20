@@ -22,7 +22,7 @@ INTO ...
 | train.epoch | int | 1 | 训练的轮数，int类型，如：10 |
 | train.verbose | int | 0 | 训练日志Level，可以是0,1,2，2为最详细 |
 | train.max_steps | int | 0 |最大训练步数。如果指定此项，train.epoch指定的轮数可能不生效，只按照最大步数停止训练，0表示训练所有数据 |
-| train.save_checkpoints_steps ｜ 100 | int | 保存checkpoint经过的步数 |
+| train.save_checkpoints_steps ｜ int | 100 | 保存checkpoint经过的步数 |
 | train.log_every_n_iter | int | 10 ｜ 打印日志的步数间隔 |
 
 # 评估过程参数
@@ -40,8 +40,8 @@ INTO ...
 
 ```sql
 WITH model.optimizer=AdagradOptimizer,
-    optimizer.learning_rate=0.001,
-	optimizer.initial_accumulator_value=0.1
+     optimizer.learning_rate=0.001,
+     optimizer.initial_accumulator_value=0.1
 ```
 
 1. `model.optimizer` 指定使用的optimzer

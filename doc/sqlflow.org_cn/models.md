@@ -203,7 +203,7 @@ Tensorflow Boosted Trees回归模型：https://www.tensorflow.org/api_docs/pytho
 | model.stack_units  | 双向LSTM的每层的大小，如：[32]表示使用一层双向LSTM，LSTM size是32  |
 | model.n_classes | 模型可分类的类别总数，比如：2 表示模型将把数据分为2类 |
 | model.optimizer | 配置模型训练使用的optimizer，支持的optimizer参考：[Optimizer配置方法](params.md) |
-| model.hidden_size | 最后隐层的神经元树木，如：64表示使用一个大小为64的隐层链接最后一层LSTM和输出层 |
+| model.hidden_size | 最后隐层的神经元数目，如：64表示使用一个大小为64的隐层链接最后一层LSTM和输出层 |
 
 
 ## sqlflow_models.LSTMBasedTimeSeriesModel
