@@ -1,6 +1,6 @@
 # 参数手册
 
-# 模型训练参数配置
+## 模型训练参数配置
 
 模型训练参数是指SQLFlow SQL语句中`WITH`后可以添加的指定模型训练细节的值，使用方法为：
 
@@ -12,11 +12,11 @@ LABEL ...
 INTO ...
 ```
 
-## 模型参数
+### 模型参数
 
 执行模型的配置需要以`model.`开头，比如`model.n_classes=3`。不同的模型会有不同的参数配置。详细参考：[模型手册](models.md)。
 
-## 训练过程参数
+### 训练过程参数
 
 | 参数 | 类型 | 默认值 | 说明 |
 | -------- | -------- | -------- | -------- |
@@ -27,7 +27,7 @@ INTO ...
 | train.save_checkpoints_steps ｜ int | 100 | 保存checkpoint经过的步数 |
 | train.log_every_n_iter | int | 10 ｜ 打印日志的步数间隔 |
 
-## 评估过程参数
+### 评估过程参数
 
 | 参数 | 类型 | 默认值 | 说明 |
 | -------- | -------- | -------- | -------- |
@@ -37,7 +37,7 @@ INTO ...
 | validation.metrics | string | "Accuracy" |（Keras模型适用）需要输出的模型评估指标，默认"Accuracy"，需要使用多个指标则使用逗号分割，如："Accuracy,AUC"，支持的指标包括：Accuracy, Precision, Recall, AUC, TruePositives, TrueNegatives, FalsePositives, FalseNegatives, BinaryAccuracy, CategoricalAccuracy, TopKCategoricalAccuracy, MeanAbsoluteError, MeanAbsolutePercentageError, MeanSquaredError, RootMeanSquaredError |
 | validation.steps | int | 0 | 执行validation的步数，0表示训练所有数据 |
 
-## Optimizer配置方法
+### Optimizer配置方法
 
 对于Estimator模型和Keras模型都可以用下面方法配置训练的优化器 (Optimizer)：
 
@@ -50,9 +50,9 @@ WITH model.optimizer=AdagradOptimizer,
 1. `model.optimizer` 指定使用的optimzer
 2. `optimizer.*`配置该optimizer的初始化参数。
 
-可以支持的optimizer和对应的参数详情可以对应参考https://www.tensorflow.org/api_docs/python/tf/keras/optimizers。
+可以支持的optimizer和对应的参数详情可以对应参考 https://www.tensorflow.org/api_docs/python/tf/keras/optimizers 。
 
-# 模型解释参数配置
+## 模型解释参数配置
 
 模型解释参数是指 SQLFlow 模型解释 SQL 语句中 `WITH` 后可以添加的细节的配置，使用方法为：
 
@@ -70,7 +70,7 @@ WITH param=value, param=value, ...
 - `dot`：点阵图
 - `decision`：决策图
 
-# 模型评估参数配置
+## 模型评估参数配置
 
 模型评估参数是指 SQLFlow 模型评估 SQL 语句中 `WITH` 后可以添加的细节配置，使用方法为：
 
