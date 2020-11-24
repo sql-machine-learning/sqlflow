@@ -321,7 +321,8 @@ FROM table_references
 TO EXPLAIN model_table_reference
 [WITH
   attr_expr [, attr_expr ...]]
-[USING explainer];
+[USING explainer]
+[INTO result_table];
 ```
 
 The select statement syntax is the same as the select statement syntax in the training syntax. SQLFlow uses the column name to guarantee the analysis data has the same order as the training data. For example, if we have used `c1`, `c2`, `c3` and `label` column to train a model, the select statement in the analysis job should also retrieve columns that contain the same names.
