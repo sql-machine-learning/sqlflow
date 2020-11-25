@@ -11,10 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import sys
 import time
 
-from runtime.dbapi.pyalisa.client import Client, AlisaTaksStatus
+from runtime.dbapi.pyalisa.client import AlisaTaksStatus, Client
 
 # waiting task completed
 WAIT_INTEVERAL_SEC = 2
@@ -22,14 +21,13 @@ WAIT_INTEVERAL_SEC = 2
 READ_RESULTS_BATCH = 20
 
 
-class Task(object):
+class Task(object):  # noqa: R0205
     """Task encapsulates operations to submit the alisa task.
 
     Args:
         config(Config): the config for building the task
     """
     def __init__(self, config):
-        # TODO(weiguoz): separate Task config from Client
         self.config = config
         self.cli = Client(config)
 
@@ -63,12 +61,12 @@ class Task(object):
     def _tracking_with_log(self, task_id, status, output, resultful):
         log_idx = 0
         while not self.cli.completed(status):
-            if status == AlisaTaksStatus.ALISA_TASK_WAITING or status == AlisaTaksStatus.ALISA_TASK_ALLOCATE:
+            if status in (AlisaTaksStatus.ALISA_TASK_WAITING,
+                          AlisaTaksStatus.ALISA_TASK_ALLOCATE):
                 output.write('waiting for resources')
             elif status == AlisaTaksStatus.ALISA_TASK_RUNNING and log_idx >= 0:
                 log_idx = self.cli.read_logs(task_id, log_idx, output)
                 if log_idx < 0:
-                    # FIXME(weiguoz): more details
                     raise Exception('got error while reading log')
             time.sleep(WAIT_INTEVERAL_SEC)
             status = self.cli.get_status(task_id)
@@ -92,7 +90,9 @@ class Task(object):
             status = self.cli.get_status(task_id)
 
         if status != AlisaTaksStatus.ALISA_TASK_COMPLETED:
-            raise Exception('task({}) status is {} which means incompleted.'.format(task_id, status))
+            raise Exception(
+                'task({}) status is {} which means incompleted.'.format(
+                    task_id, status))
 
         if resultful:
             return self.cli.get_results(task_id, READ_RESULTS_BATCH)
