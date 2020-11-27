@@ -12,13 +12,11 @@
 # limitations under the License
 
 import json
-import os
 import random
 import string
 import time
 from enum import Enum
 
-from runtime.dbapi.pyalisa.config import Config
 from runtime.dbapi.pyalisa.pop import Pop
 
 
@@ -43,7 +41,7 @@ class Client(object):
     """Client for building kinds of tasks and submitting them to alisa gateway
 
     Args:
-        config(Config): the config for build the client
+        config(Config): the Config(runtime.dbapi.pyalisa.config)
     """
     def __init__(self, config):
         self.config = config  # noqa F841
@@ -241,41 +239,3 @@ class Client(object):
             raise RuntimeError("%s got a bad result, response=%s" %
                                (code, buf))
         return resp["returnValue"]
-
-    @staticmethod
-    def from_env():
-        """Build a Client from environment variable
-
-        Returns:
-            a Client instance
-        """
-        if not os.getenv("POP_SECRET"):
-            return None
-        conf = Config()
-        conf.pop_url = os.getenv("POP_URL")
-        conf.pop_access_id = os.getenv("POP_ID")
-        conf.pop_access_secret = os.getenv("POP_SECRET")
-        conf.pop_scheme = "http"
-        conf.verbose = os.getenv("VERBOSE") == "true"
-        conf.env = {
-            "SKYNET_ONDUTY": os.getenv("SKYNET_ONDUTY"),
-            "SKYNET_ACCESSID": os.getenv("SKYNET_ACCESSID"),
-            "SKYNET_ACCESSKEY": os.getenv("SKYNET_ACCESSKEY"),
-            "SKYNET_ENDPOINT": os.getenv("SKYNET_ENDPOINT"),
-            "SKYNET_SYSTEMID": os.getenv("SKYNET_SYSTEMID"),
-            "SKYNET_PACKAGEID": os.getenv("SKYNET_PACKAGEID"),
-            "SKYNET_SYSTEM_ENV": os.getenv("SKYNET_SYSTEM_ENV"),
-            "SKYNET_BIZDATE": os.getenv("SKYNET_BIZDATE"),
-            "ALISA_TASK_EXEC_TARGET": os.getenv("ALISA_TASK_EXEC_TARGET"),
-        }
-        conf.withs = {
-            "CustomerId": os.getenv("CustomerId"),
-            "PluginName": os.getenv("PluginName"),
-            "Exec": os.getenv("Exec"),
-            "PluginName4PyODPS": os.getenv("PluginName4PyODPS"),
-            "Exec4PyODPS": os.getenv("Exec4PyODPS"),
-        }
-        conf.curr_project = conf.env["SKYNET_PACKAGEID"]
-        if len(conf.env["SKYNET_SYSTEMID"]) > 0:
-            conf.curr_project += "_" + conf.env["SKYNET_SYSTEMID"]
-        return Client(conf)
