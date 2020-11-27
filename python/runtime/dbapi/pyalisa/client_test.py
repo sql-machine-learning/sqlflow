@@ -16,12 +16,13 @@ import unittest
 
 from runtime import testing
 from runtime.dbapi.pyalisa.client import AlisaTaksStatus, Client
+from runtime.dbapi.pyalisa.config import Config
 
 
 @unittest.skipUnless(testing.get_driver() == "alisa", "Skip non-alisa test")
 class TestClient(unittest.TestCase):
     def test_create_sql_task(self):
-        ali = Client.from_env()
+        ali = Client(Config.from_env())
         code = "SELECT 2;"
         task_id, _ = ali.create_sql_task(code)
         self.assertIsNotNone(task_id)
@@ -41,7 +42,7 @@ class TestClient(unittest.TestCase):
                 break
 
     def test_create_pyodps_task(self):
-        ali = Client.from_env()
+        ali = Client(Config.from_env())
         code = """import argparse
 if __name__ == "__main__":
     input_table_name = args['input_table']
