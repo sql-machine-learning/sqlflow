@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import sys
 import time
 
 from runtime.dbapi.pyalisa.client import AlisaTaksStatus, Client
@@ -31,7 +32,7 @@ class Task(object):  # noqa: R0205
         self.config = config
         self.cli = Client(config)
 
-    def exec_sql(self, code, output, resultful=False):
+    def exec_sql(self, code, output=sys.stdout, resultful=False):
         """submit the sql statements to alisa server, write the logs to output
 
         Args:
@@ -42,7 +43,7 @@ class Task(object):  # noqa: R0205
         task_id, status = self.cli.create_sql_task(code)
         return self._tracking(task_id, status, output, resultful)
 
-    def exec_pyodps(self, code, args, output):
+    def exec_pyodps(self, code, args, output=sys.stdout):
         """submit the python code to alisa server, write the logs to output
 
         Args:
@@ -66,11 +67,7 @@ class Task(object):  # noqa: R0205
                           AlisaTaksStatus.ALISA_TASK_ALLOCATE):
                 output.write('waiting for resources')
             elif status == AlisaTaksStatus.ALISA_TASK_RUNNING and log_idx >= 0:
-                log_idx = self.cli.read_logs(task_id, log_idx, output)
-                if log_idx < 0:
-                    raise Exception(
-                        'task={} got an error while reading log'.format(
-                            task_id))
+                self.cli.read_logs(task_id, log_idx, output)
             time.sleep(WAIT_INTEVERAL_SEC)
             status = self.cli.get_status(task_id)
 
