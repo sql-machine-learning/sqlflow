@@ -113,6 +113,7 @@ class Config(object):
             "SKYNET_PACKAGEID": os.getenv("SKYNET_PACKAGEID"),
             "SKYNET_SYSTEM_ENV": os.getenv("SKYNET_SYSTEM_ENV"),
             "SKYNET_BIZDATE": os.getenv("SKYNET_BIZDATE"),
+            "SKYNET_TENANT_ID": os.getenv("SKYNET_TENANT_ID"),
             "ALISA_TASK_EXEC_TARGET": os.getenv("ALISA_TASK_EXEC_TARGET"),
         }
         conf.withs = {
