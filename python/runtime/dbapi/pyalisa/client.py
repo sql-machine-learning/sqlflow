@@ -91,7 +91,6 @@ class Client(object):
         params["Exec"] = self.config.withs["Exec4PyODPS"]
         if len(args) > 0:
             params["Args"] = args
-
         return self._create_task(params)
 
     def _create_task(self, params):
@@ -166,12 +165,12 @@ class Client(object):
             params["AlisaTaskId"] = task_id
             params["Offset"] = str(offset)
             log = self._requet_and_parse_response("GetAlisaTaskLog", params)
-            rlen = int(log["ReadLen"])
+            rlen = int(log["readLength"])
             if rlen == 0:
                 return offset
             offset += rlen
-            w.write(log["Content"])
-            if bool(log["End"]):
+            w.write(log["logMsg"])
+            if bool(log["isEnd"]):
                 return -1
         return offset
 
@@ -236,6 +235,9 @@ class Client(object):
         code, buf = Pop.request(url, params, self.config.pop_access_secret)
         resp = json.loads(buf)
         if code != 200:
-            raise RuntimeError("%s got a bad result, response=%s" %
-                               (code, buf))
+            raise RuntimeError("%s got a bad result, request=%s, response=%s" %
+                               (code, params, buf))
+        if resp['returnCode'] != '0':
+            raise Exception("returned an error request={}, response={}".format(
+                params, resp))
         return resp["returnValue"]
