@@ -54,9 +54,10 @@ class Task(object):  # noqa: R0205
         return self._tracking(task_id, status, output, False)
 
     def _tracking(self, task_id, status, output, resultful):
-        if not self.config.verbose:
-            return self._tracking_quietly(task_id, status, resultful)
-        return self._tracking_with_log(task_id, status, output, resultful)
+        return self._tracking_with_log(
+            task_id, status, output,
+            resultful) if self.config.verbose else self._tracking_quietly(
+                task_id, status, resultful)
 
     def _tracking_with_log(self, task_id, status, output, resultful):
         log_idx = 0
@@ -67,22 +68,22 @@ class Task(object):  # noqa: R0205
             elif status == AlisaTaksStatus.ALISA_TASK_RUNNING and log_idx >= 0:
                 log_idx = self.cli.read_logs(task_id, log_idx, output)
                 if log_idx < 0:
-                    raise Exception('got error while reading log')
+                    raise Exception(
+                        'task={} got an error while reading log'.format(
+                            task_id))
             time.sleep(WAIT_INTEVERAL_SEC)
             status = self.cli.get_status(task_id)
 
         if status == AlisaTaksStatus.ALISA_TASK_EXPIRED:
             output.write('timeout while waiting for resources')
         else:
-            # assert log_idx>0
-            log_idx = self.cli.read_logs(task_id, log_idx, output)
-            if log_idx < 0:
-                raise Exception('error occus while reading log')
+            # assert log_idx>=0
+            self.cli.read_logs(task_id, log_idx, output)
+            # assert log_idex<0
             if status == AlisaTaksStatus.ALISA_TASK_COMPLETED:
-                if resultful:
-                    return self.cli.get_results(task_id, READ_RESULTS_BATCH)
-                return []
-        raise Exception('invalid task status={}'.format(status))
+                return self.cli.get_results(
+                    task_id, READ_RESULTS_BATCH) if resultful else []
+        raise Exception('task={}, invalid status={}'.format(task_id, status))
 
     def _tracking_quietly(self, task_id, status, resultful):
         while not self.cli.completed(status):
