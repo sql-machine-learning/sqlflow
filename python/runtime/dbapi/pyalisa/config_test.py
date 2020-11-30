@@ -33,7 +33,7 @@ class TestConfig(unittest.TestCase):
         params["key1"] = "val1"
         params["key2"] = "val2"
         b64 = Config._encode_json_base64(params)
-        self.assertEqual("eyJrZXkxIjogInZhbDEiLCAia2V5MiI6ICJ2YWwyIn0", b64)
+        self.assertEqual("eyJrZXkyIjogInZhbDIiLCAia2V5MSI6ICJ2YWwxIn0", b64)
 
         params = Config._decode_json_base64(b64)
         self.assertEqual(2, len(params))
