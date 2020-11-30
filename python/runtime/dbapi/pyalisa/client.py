@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import ast
 import json
 import random
 import string
@@ -33,7 +34,7 @@ class AlisaTaksStatus(Enum):
     ALISA_TASK_ALLOCATE = 11
 
 
-# used to deal with too many logs.
+# used to deal with too many logs
 MAX_LOG_NUM = 2000
 
 
@@ -202,20 +203,23 @@ class Client(object):
         if batch <= 0:
             raise ValueError("batch should greater than 0")
         count = self.count_results(task_id)
-        result = []
+
+        columns, body = [], []
         for i in range(0, count, batch):
             params = self._base_params()
             params["AlisaTaskId"] = task_id
             params["Start"] = str(i)
             params["Limit"] = str(batch)
-            r = self._requet_and_parse_response("GetAlisaTaskResult", params)
-            # TODO(lhw): parse the result like:
-            # https://github.com/sql-machine-learning/goalisa/blob/68d3aad1344c9e5c0cd35c6556e1f3f2b6ca9db7/alisa.go#L190
-            result.append(r)
-        return result
+            val = self._requet_and_parse_response("GetAlisaTaskResult", params)
+            header, rows = self._parse_alisa_value(val)
+            if len(columns) == 0:
+                columns = header
+            body.extend(rows)
+        return {"columns": columns, "body": body}
 
     def stop(self, task_id):
-        """Stop given task
+        """Stop given task.
+        NOTE(weiguoz): need to be tested.
 
         Args:
             task_id(string): the task to stop
@@ -227,6 +231,28 @@ class Client(object):
         params["AlisaTaskId"] = task_id
         res = self._requet_and_parse_response("StopAlisaTask", params)
         return bool(res)
+
+    def _parse_alisa_value(self, val):
+        """Parse 'returnValue' in alisa response
+        https://github.com/sql-machine-learning/goalisa/blob/68d3aad1344c9e5c0cd35c6556e1f3f2b6ca9db7/alisa.go#L190
+
+        Args:
+            val: [{u'resultMsg': u'[["Alice","23.8","56000"]]',
+            u'dataHeader': u'["name::string","age::double","salary::bigint"]'}]
+        """
+        jsval = ast.literal_eval(json.dumps(val))
+        columns = []
+        for h in json.loads(jsval['dataHeader']):
+            nt = h.split("::")
+            name, typ = (nt[0], nt[1]) if len(nt) == 2 else (h, "string")
+            columns.append({"name": str(name), "typ": str(typ)})
+        body = []
+        for m in json.loads(jsval['resultMsg']):
+            row = []
+            for i in ast.literal_eval(json.dumps(m)):
+                row.append(i)
+            body.append(row)
+        return columns, body
 
     def _requet_and_parse_response(self, action, params):
         params["Action"] = action
