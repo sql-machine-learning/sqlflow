@@ -54,6 +54,7 @@ class TestConfig(unittest.TestCase):
     def test_to_dsn(self):
         cfg = Config(test_url)
         url = cfg.to_url()
+        # FIXME(weiguoz): bring test back later
         self.assertEqual(test_url, url)
 
     def test_parse_error(self):
