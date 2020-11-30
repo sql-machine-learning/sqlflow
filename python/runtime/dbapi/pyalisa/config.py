@@ -67,7 +67,7 @@ class Config(object):
     @staticmethod
     def _decode_json_base64(b64env):
         padded = b64env + "=" * (len(b64env) % 4)
-        jstr = base64.urlsafe_b64decode(padded).decode("utf8")
+        jstr = base64.urlsafe_b64decode(padded.encode('utf8')).decode("utf8")
         return json.loads(jstr)
 
     def to_url(self):
