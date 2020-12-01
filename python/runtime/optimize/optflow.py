@@ -182,6 +182,10 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
     if not query_job_log_url:
         raise ValueError("SQLFLOW_OPTFLOW_QUERY_JOB_LOG_URL must be set")
 
+    visual_job_url = os.getenv("SQLFLOW_OPTFLOW_VISUAL_JOB_URL")
+    if not visual_job_url:
+        raise ValueError("SQLFLOW_OPTFLOW_VISUAL_JOB_URL must be set")
+
     bucket_name = "sqlflow-optflow-models"
     bucket = get_bucket(bucket_name)
     try:
@@ -223,8 +227,10 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
         if not response_json['success']:
             raise ValueError("Job submission fails")
 
-        print('Job submission succeeds')
         record_id = response_json['data']['recordId']
+        print('Job submission succeeds, record id {}'.format(record_id))
+        print('FSL URL: {}'.format(fsl_url))
+        print('Please see log on: {}/{}'.format(visual_job_url, record_id))
         try:
             success = print_job_log_till_finish(query_job_status_url,
                                                 query_job_log_url, record_id,
