@@ -239,7 +239,7 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
                 print("Job succeeds. Save solved result in {}.".format(
                     result_table))
             else:
-                print("Job fails.")
+                raise ValueError("Job fails.")
         except:  # noqa: E722
             # FIXME(sneaxiy): we should not delete object if there is any
             # network error when querying job status and logs. But when
