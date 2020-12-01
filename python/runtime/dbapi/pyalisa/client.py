@@ -112,7 +112,7 @@ class Client(object):
         # display column type, for feature derivation.
         nenv["SHOW_COLUMN_TYPE"] = "true"
         params["Envs"] = json.dumps(nenv)
-        val = self._requet_and_parse_response("CreateAlisaTask", params)
+        val = self._request_and_parse_response("CreateAlisaTask", params)
         return val["alisaTaskId"], val["status"]
 
     def get_status(self, task_id):
@@ -126,7 +126,7 @@ class Client(object):
         """
         params = self._base_params()
         params["AlisaTaskId"] = task_id
-        val = self._requet_and_parse_response("GetAlisaTask", params)
+        val = self._request_and_parse_response("GetAlisaTask", params)
         return AlisaTaksStatus(int(val["status"]))
 
     def completed(self, status):
@@ -165,7 +165,7 @@ class Client(object):
             params = self._base_params()
             params["AlisaTaskId"] = task_id
             params["Offset"] = str(offset)
-            log = self._requet_and_parse_response("GetAlisaTaskLog", params)
+            log = self._request_and_parse_response("GetAlisaTaskLog", params)
             rlen = int(log["readLength"])
             if rlen == 0:
                 return offset
@@ -186,8 +186,8 @@ class Client(object):
         """
         params = self._base_params()
         params["AlisaTaskId"] = task_id
-        res = self._requet_and_parse_response("GetAlisaTaskResultCount",
-                                              params)
+        res = self._request_and_parse_response("GetAlisaTaskResultCount",
+                                               params)
         return int(res)
 
     def get_results(self, task_id, batch):
@@ -210,7 +210,8 @@ class Client(object):
             params["AlisaTaskId"] = task_id
             params["Start"] = str(i)
             params["Limit"] = str(batch)
-            val = self._requet_and_parse_response("GetAlisaTaskResult", params)
+            val = self._request_and_parse_response("GetAlisaTaskResult",
+                                                   params)
             header, rows = self._parse_alisa_value(val)
             if len(columns) == 0:
                 columns = header
@@ -229,7 +230,7 @@ class Client(object):
         """
         params = self._base_params()
         params["AlisaTaskId"] = task_id
-        res = self._requet_and_parse_response("StopAlisaTask", params)
+        res = self._request_and_parse_response("StopAlisaTask", params)
         return bool(res)
 
     def _parse_alisa_value(self, val):
@@ -254,7 +255,7 @@ class Client(object):
             body.append(row)
         return columns, body
 
-    def _requet_and_parse_response(self, action, params):
+    def _request_and_parse_response(self, action, params):
         params["Action"] = action
         params["ProjectEnv"] = self.config.env["SKYNET_SYSTEM_ENV"]
         url = self.config.pop_scheme + "://" + self.config.pop_url
