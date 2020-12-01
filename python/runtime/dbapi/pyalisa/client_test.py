@@ -16,12 +16,13 @@ import unittest
 
 from runtime import testing
 from runtime.dbapi.pyalisa.client import AlisaTaksStatus, Client
+from runtime.dbapi.pyalisa.config import Config
 
 
 @unittest.skipUnless(testing.get_driver() == "alisa", "Skip non-alisa test")
 class TestClient(unittest.TestCase):
     def test_create_sql_task(self):
-        ali = Client.from_env()
+        ali = Client(Config.from_env())
         code = "SELECT 2;"
         task_id, _ = ali.create_sql_task(code)
         self.assertIsNotNone(task_id)
@@ -31,6 +32,7 @@ class TestClient(unittest.TestCase):
 
         # try get result
         for _ in range(10):
+            # to avoid touching the flow-control
             time.sleep(1)
             status = ali.get_status(task_id)
             if ali.completed(status):
@@ -39,24 +41,6 @@ class TestClient(unittest.TestCase):
                 result = ali.get_results(task_id, 10)
                 self.assertGreater(len(result), 0)
                 break
-
-    def test_create_pyodps_task(self):
-        ali = Client.from_env()
-        code = """import argparse
-if __name__ == "__main__":
-    input_table_name = args['input_table']
-    output_table_name = args['output_table']
-    print(input_table_name)
-    print(output_table_name)
-    input_table = o.get_table(input_table_name)
-    print(input_table.schema)
-    output_table = o.create_table(output_table_name, input_table.schema)
-        """
-        args = "input_table=table_1 output_table=table_2"
-        task_id, _ = ali.create_pyodps_task(code, args)
-        # to avoid touching the flow-control
-        time.sleep(2)
-        self.assertIsNotNone(task_id)
 
 
 if __name__ == "__main__":

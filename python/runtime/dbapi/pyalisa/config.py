@@ -13,6 +13,7 @@
 
 import base64
 import json
+import os
 from collections import OrderedDict
 
 from six.moves.urllib.parse import parse_qs, urlparse
@@ -66,7 +67,7 @@ class Config(object):
     @staticmethod
     def _decode_json_base64(b64env):
         padded = b64env + "=" * (len(b64env) % 4)
-        jstr = base64.urlsafe_b64decode(padded).decode("utf8")
+        jstr = base64.urlsafe_b64decode(padded.encode('utf8')).decode("utf8")
         return json.loads(jstr)
 
     def to_url(self):
@@ -87,3 +88,42 @@ class Config(object):
         )
         return ("alisa://%s:%s@%s?scheme=%s&verbose"
                 "=%s&curr_project=%s&env=%s&with=%s") % parts
+
+    @staticmethod
+    def from_env():
+        """Build a Client from environment variable
+
+        Returns:
+            a Client instance
+        """
+        if not os.getenv("POP_SECRET"):
+            return None
+        conf = Config()
+        conf.pop_url = os.getenv("POP_URL")
+        conf.pop_access_id = os.getenv("POP_ID")
+        conf.pop_access_secret = os.getenv("POP_SECRET")
+        conf.pop_scheme = "http"
+        conf.verbose = os.getenv("VERBOSE") == "true"
+        conf.env = {
+            "SKYNET_ONDUTY": os.getenv("SKYNET_ONDUTY"),
+            "SKYNET_ACCESSID": os.getenv("SKYNET_ACCESSID"),
+            "SKYNET_ACCESSKEY": os.getenv("SKYNET_ACCESSKEY"),
+            "SKYNET_ENDPOINT": os.getenv("SKYNET_ENDPOINT"),
+            "SKYNET_SYSTEMID": os.getenv("SKYNET_SYSTEMID"),
+            "SKYNET_PACKAGEID": os.getenv("SKYNET_PACKAGEID"),
+            "SKYNET_SYSTEM_ENV": os.getenv("SKYNET_SYSTEM_ENV"),
+            "SKYNET_BIZDATE": os.getenv("SKYNET_BIZDATE"),
+            "SKYNET_TENANT_ID": os.getenv("SKYNET_TENANT_ID"),
+            "ALISA_TASK_EXEC_TARGET": os.getenv("ALISA_TASK_EXEC_TARGET"),
+        }
+        conf.withs = {
+            "CustomerId": os.getenv("CustomerId"),
+            "PluginName": os.getenv("PluginName"),
+            "Exec": os.getenv("Exec"),
+            "PluginName4PyODPS": os.getenv("PluginName4PyODPS"),
+            "Exec4PyODPS": os.getenv("Exec4PyODPS"),
+        }
+        conf.curr_project = conf.env["SKYNET_PACKAGEID"]
+        if len(conf.env["SKYNET_SYSTEMID"]) > 0:
+            conf.curr_project += "_" + conf.env["SKYNET_SYSTEMID"]
+        return conf

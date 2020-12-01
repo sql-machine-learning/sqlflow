@@ -13,6 +13,7 @@
 
 import unittest
 
+from runtime import testing
 from runtime.dbapi.pyalisa.config import Config
 
 test_url = ("alisa://pid:psc@dw.a.hk/?scheme=http&verbose=true&"
@@ -27,13 +28,16 @@ test_url = ("alisa://pid:psc@dw.a.hk/?scheme=http&verbose=true&"
             "sICJQbHVnaW5OYW1lIjogIndwZSIsICJDdXN0b21lcklkIjogIndjZCJ9")
 
 
+@unittest.skipUnless(testing.get_driver() == "alisa", "Skip non-alisa test")
 class TestConfig(unittest.TestCase):
+    """We use python2 in alisa, so let's skip the tests in the other drivers.
+    """
     def test_encode_json_base64(self):
         params = dict()
         params["key1"] = "val1"
         params["key2"] = "val2"
         b64 = Config._encode_json_base64(params)
-        self.assertEqual("eyJrZXkxIjogInZhbDEiLCAia2V5MiI6ICJ2YWwyIn0", b64)
+        self.assertEqual("eyJrZXkyIjogInZhbDIiLCAia2V5MSI6ICJ2YWwxIn0", b64)
 
         params = Config._decode_json_base64(b64)
         self.assertEqual(2, len(params))
@@ -52,9 +56,18 @@ class TestConfig(unittest.TestCase):
         self.assertEqual("SKY", cfg.env["SKYNET_ACCESSKEY"])
 
     def test_to_dsn(self):
-        cfg = Config(test_url)
-        url = cfg.to_url()
-        self.assertEqual(test_url, url)
+        c1 = Config(test_url)
+        u1 = c1.to_url()
+        c2 = Config(u1)
+        self.assertEqual(c1.pop_access_id, c2.pop_access_id)
+        self.assertEqual(c1.pop_access_secret, c2.pop_access_secret)
+        self.assertEqual(c1.curr_project, c2.curr_project)
+        self.assertEqual(c1.scheme, c2.scheme)
+        self.assertEqual(c1.withs["CustomerId"], c2.withs["CustomerId"])
+        self.assertEqual(c1.withs["PluginName"], c2.withs["PluginName"])
+        self.assertEqual(c1.withs["Exec"], c2.withs["Exec"])
+        self.assertEqual(c1.env["SKYNET_ACCESSKEY"],
+                         c2.env["SKYNET_ACCESSKEY"])
 
     def test_parse_error(self):
         # no env and with
