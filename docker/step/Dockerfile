@@ -19,7 +19,8 @@ RUN /bin/bash -c 'if [ "$FIND_FASTED_MIRROR" == "true" ]; then source find_faste
   dpkg-reconfigure --frontend noninteractive tzdata && \
   ln -s /usr/bin/python3 /usr/bin/python && \
   ln -s /usr/bin/pip3 /usr/bin/pip && \
-  pip install --upgrade pip
+  pip install --upgrade pip && \
+  pip install -U setuptools
 
 # Build python wheels in sub stage so we can 
 # keep the outcome and discard the build tool-chain
