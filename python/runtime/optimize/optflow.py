@@ -182,6 +182,10 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
     if not query_job_log_url:
         raise ValueError("SQLFLOW_OPTFLOW_QUERY_JOB_LOG_URL must be set")
 
+    visual_job_url = os.getenv("SQLFLOW_OPTFLOW_VISUAL_JOB_URL")
+    if not visual_job_url:
+        raise ValueError("SQLFLOW_OPTFLOW_VISUAL_JOB_URL must be set")
+
     bucket_name = "sqlflow-optflow-models"
     bucket = get_bucket(bucket_name)
     try:
@@ -223,8 +227,10 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
         if not response_json['success']:
             raise ValueError("Job submission fails")
 
-        print('Job submission succeeds')
         record_id = response_json['data']['recordId']
+        print('Job submission succeeds, record id {}'.format(record_id))
+        print('FSL URL: {}'.format(fsl_url))
+        print('Please see log on: {}/{}'.format(visual_job_url, record_id))
         try:
             success = print_job_log_till_finish(query_job_status_url,
                                                 query_job_log_url, record_id,
@@ -233,7 +239,7 @@ def submit_optflow_job(train_table, result_table, fsl_file_content, solver,
                 print("Job succeeds. Save solved result in {}.".format(
                     result_table))
             else:
-                print("Job fails.")
+                raise ValueError("Job fails.")
         except:  # noqa: E722
             # FIXME(sneaxiy): we should not delete object if there is any
             # network error when querying job status and logs. But when
