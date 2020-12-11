@@ -157,17 +157,17 @@ SQLFlow supports specifying various feature columns in the column clause and lab
 
  feature column type | usage | field type | example
 ---|---|---|---
- - | field | any | 3.14 or "3.14" or "1,2,4" etc.
- DENSE | DENSE(field, shape[,delimiter, dtype]) | string/varchar[n] | "0.2,1.7,0.6"
- SPARSE | SPARSE(field, shape[,delimiter, dtype, delimiter_kv, dtype_key]) | string/varchar[n] | "3,5,7"
- CATEGORY_ID | CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "66,67,42,68,48,69,70"
- SEQ_CATEGORY_ID | SEQ_CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "20,48,80,81,82,0,0,0,0"
- CATEGORY_HASH | CATEGORY_HASH([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "FEMALE"
- WEIGHTED_CATEGORY | WEIGHTED_CATEGORY([CATEGORY_ID(SPARSE(field,shape,delim,dtype_value,delim_kv,dtype_key))|CATEGORY_HASH(...)]) | string/varchar[n] | "0:0.2,1:0.3,4:0.8,73:0.6"
- EMBEDDING | EMBEDDING([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|field], SIZE[, COMBINER, INITIALIZER]) | string/varchar[n] | -
- INDICATOR | INDICATOR([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|field]) | string/varchar[n] | -
- CROSS | CROSS([column_1, column_2], HASH_BUCKET_SIZE) | - | -
- BUCKET | BUCKET([DENSE(...)|field], BOUNDARIES) | - | -
+| - | field | any | 3.14 or "3.14" or "1,2,4" etc.
+| DENSE | DENSE(field, shape[,delimiter, dtype]) | string/varchar[n] | "0.2,1.7,0.6"
+| SPARSE | SPARSE(field, shape[,delimiter, dtype, delimiter_kv, dtype_key]) | string/varchar[n] | "3,5,7"
+| CATEGORY_ID | CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "66,67,42,68,48,69,70"
+| SEQ_CATEGORY_ID | SEQ_CATEGORY_ID([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "20,48,80,81,82,0,0,0,0"
+| CATEGORY_HASH | CATEGORY_HASH([DENSE()|SPARSE()|field], BUCKET_SIZE) | string/varchar[n] | "FEMALE"
+| WEIGHTED_CATEGORY | WEIGHTED_CATEGORY([CATEGORY_ID(SPARSE(field,shape,delim,dtype_value,delim_kv,dtype_key))|CATEGORY_HASH(...)]) | string/varchar[n] | "0:0.2,1:0.3,4:0.8,73:0.6"
+| EMBEDDING | EMBEDDING([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|field], SIZE[, COMBINER, INITIALIZER]) | string/varchar[n] | -
+| INDICATOR | INDICATOR([CATEGORY_ID(...)|CATEGORY_HASH(...)|WEIGHTED_CATEGORY(...)|field]) | string/varchar[n] | -
+| CROSS | CROSS([column_1, column_2], HASH_BUCKET_SIZE) | - | -
+| BUCKET | BUCKET([DENSE(...)|field], BOUNDARIES) | - | -
 
 
 #### COLUMN field
