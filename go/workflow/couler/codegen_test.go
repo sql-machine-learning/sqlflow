@@ -14,6 +14,7 @@
 package couler
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -31,11 +32,11 @@ class K8s(object):
     def __init__(self):
         pass
 
-    def with_pod(self, template):
+    def config_pod(self, template):
         self._with_tolerations(template)
         return template
 
-    def with_workflow_spec(self, spec):
+    def config_workflow(self, spec):
         spec["hostNetwork"] = True
         return spec
 
@@ -67,9 +68,12 @@ spec:
       container:
         image: docker/whalesay
         command:
-          - bash
-          - -c
           - 'echo "SQLFlow bridges AI and SQL engine."'
+        env:
+          - name: NVIDIA_VISIBLE_DEVICES
+            value: ""
+          - name: NVIDIA_DRIVER_CAPABILITIES
+            value: ""
       tolerations:
         - effect: NoSchedule
           key: key
@@ -81,6 +85,7 @@ spec:
 var testCoulerProgram = `
 import couler.argo as couler
 couler.run_container(image="docker/whalesay", command='echo "SQLFlow bridges AI and SQL engine."')
+couler.config_workflow(cluster_config_file="%s")
 `
 
 func TestCoulerCodegen(t *testing.T) {
@@ -92,20 +97,15 @@ func TestCoulerCodegen(t *testing.T) {
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
 	code, err := GenCode(sqlIR, &pb.Session{})
 	a.NoError(err)
-
-	r, e := regexp.Compile(`steps.sqlflow\(sql=r'''(.*);''', `)
-	a.NoError(e)
-	a.Equal(r.FindStringSubmatch(code)[1], "SELECT * FROM iris.train limit 10")
-	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''oss_key'''`))
+	a.True(strings.Contains(code, `SELECT * FROM iris.train limit 10`))
+	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''"%s"''' % escape_env('''oss_key''')`))
 	a.False(strings.Contains(code, `step_envs["SQLFLOW_WORKFLOW_SECRET"]`))
-	a.True(strings.Contains(code, `couler.clean_workflow_after_seconds_finished(86400)`))
-	a.True(strings.Contains(code, `couler.secret(secret_data, name="sqlflow-secret", dry_run=True)`))
+	a.True(strings.Contains(code, `couler.create_secret(secret_data, name="sqlflow-secret", dry_run=True)`))
 	a.True(strings.Contains(code, `resources=json.loads('''{"memory": "32Mi", "cpu": "100m"}''')`))
 
-	_, e = GenYAML(code)
 	yaml, e := GenYAML(code)
 	a.NoError(e)
-	r, e = regexp.Compile(`step -e "(.*);"`)
+	r, e := regexp.Compile(`step -e "(.*);"`)
 	a.NoError(e)
 	a.Equal("SELECT * FROM iris.train limit 10", r.FindStringSubmatch(yaml)[1])
 	a.NoError(e)
@@ -116,7 +116,6 @@ func TestCoulerCodegen(t *testing.T) {
 	a.NoError(err)
 	r, e = regexp.Compile(`step_log_file = "(.*)"`)
 	a.True(strings.Contains(code, `step_log_file = "/home/admin/logs/step.log"`))
-	a.True(strings.Contains(code, "log_file=step_log_file"))
 
 	yaml, e = GenYAML(code)
 	a.NoError(e)
@@ -125,10 +124,6 @@ func TestCoulerCodegen(t *testing.T) {
 	a.Equal("/home/admin/logs", r.FindStringSubmatch(yaml)[1])
 	a.Equal("/home/admin/logs/step.log", r.FindStringSubmatch(yaml)[3])
 	a.NoError(e)
-
-	r, e = regexp.Compile("- name: SQLFLOW_WORKFLOW_STEP_LOG_FILE\n.*value: '(.*)'")
-	a.NoError(e)
-	a.Equal("/home/admin/logs/step.log", r.FindStringSubmatch(yaml)[1])
 }
 
 func TestCoulerCodegenSpecialChars(t *testing.T) {
@@ -158,8 +153,9 @@ func TestStringInStringSQL(t *testing.T) {
 	a.NoError(err)
 	yaml, e := GenYAML(code)
 	a.NoError(e)
-	expect := `validation.select=\\\"select * from iris.train where\
-            \ name like \\\\\\\"Versicolor\\\\\\\";\\\"`
+	expect := `validation.select=\\\"select * from iris.train where\`
+	a.True(strings.Contains(yaml, expect))
+	expect = `\ name like \\\\\\\"Versicolor\\\\\\\";\\\"`
 	a.True(strings.Contains(yaml, expect))
 }
 
@@ -177,11 +173,8 @@ func TestCompileCoulerProgram(t *testing.T) {
 	a.NoError(e)
 	defer os.Remove(cfFileName)
 
-	os.Setenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG", cfFileName)
-	defer os.Unsetenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG")
-	out, e := GenYAML(testCoulerProgram)
+	out, e := GenYAML(fmt.Sprintf(testCoulerProgram, cfFileName))
 	a.NoError(e)
-
 	a.Equal(expectedArgoYAML, out)
 }
 

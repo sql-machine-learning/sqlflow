@@ -131,9 +131,9 @@ func CodeGenCouler(stepList []*stepContext, session *pb.Session) (string, error)
 func GetPyFuncBody(program string, funcName string) (string, error) {
 	const coulerGetPyFuncCodeImpl = `
 %s
-
-import couler.pyfunc as pyfunc
-print(pyfunc.body(%s))
+from couler.core.utils import body as pybody
+import sys
+print(pybody(%s), file=sys.stderr)
 `
 
 	tmpFile, err := ioutil.TempFile("/tmp", "sqlflow-couler-tmp")
@@ -157,20 +157,24 @@ print(pyfunc.body(%s))
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("%v: %s\nCode is:\n%s", err, stderr, coulerCode)
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	return strings.TrimSpace(stderr.String()), nil
 }
 
 const coulerCodeTmpl = `
 import couler.argo as couler
-import couler.pyfunc as pyfunc
+from couler.core.utils import body as pybody
 from os import path
 import json
 import re
 
 datasource = "{{ .DataSource }}"
+workflow_ttl = {{.WorkflowTTL}}
 
+# it's bug of the couler project, that needs "" on integer environment variable value to avoid the 
+# workflow failed: "invalid spec: cannot convert int64 to string"
+# issue: https://github.com/couler-proj/couler/issues/108
 step_envs = dict()
-{{range $k, $v := .StepEnvs}}step_envs["{{$k}}"] = '''{{$v}}'''
+{{range $k, $v := .StepEnvs}}step_envs["{{$k}}"] = '''"{{$v}}"'''
 {{end}}
 
 sqlflow_secret = None
@@ -184,8 +188,6 @@ resources = None
 if '''{{.Resources}}''' != "":
     resources=json.loads('''{{.Resources}}''')
 
-couler.clean_workflow_after_seconds_finished({{.WorkflowTTL}})
-
 step_log_file = "{{.StepLogFile}}"
 step_exit_time_wait = {{.StepExitTimeWait}}
 
@@ -194,7 +196,7 @@ step_exit_time_wait = {{.StepExitTimeWait}}
 
 codes = [
     "python <<EOF",
-    pyfunc.body(step_entry_{{.StepIndex}}),
+    pybody(step_entry_{{.StepIndex}}),
     "EOF",
 ]
 
@@ -216,6 +218,7 @@ if step_log_file:
     ]
 
 couler.run_script(image="{{.Image}}", command="bash", source="\n".join(codes), env=step_envs, resources=resources)
+couler.config_workflow(time_to_clean=workflow_ttl)
 {{end}}
 `
 

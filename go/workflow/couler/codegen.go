@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
@@ -46,8 +47,6 @@ func fillEnvFromSession(envs *map[string]string, session *pb.Session) {
 	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_USER", session.HdfsUser)
 	fillMapIfValueNotEmpty(*envs, "SQLFLOW_HADOOP_PASS", session.HdfsUser)
 	fillMapIfValueNotEmpty(*envs, "SQLFLOW_submitter", session.Submitter)
-	fillMapIfValueNotEmpty(*envs, "SQLFLOW_WORKFLOW_STEP_LOG_FILE", os.Getenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE"))
-	fillMapIfValueNotEmpty(*envs, "SQLFLOW_WORKFLOW_EXIT_TIME_WAIT", os.Getenv("SQLFLOW_WORKFLOW_EXIT_TIME_WAIT"))
 }
 
 // GetStepEnvs returns a map of envs used for couler workflow.
@@ -100,6 +99,14 @@ func GetSecret() (string, string, error) {
 	return name, string(value), nil
 }
 
+func escapeStepSQL(sql string) string {
+	sql = strings.Replace(sql, `\`, `\\\`, -1)
+	sql = strings.Replace(sql, `"`, `\\\"`, -1)
+	sql = strings.Replace(sql, "`", "\\`", -1)
+	sql = strings.Replace(sql, "$", "\\$", -1)
+	return sql
+}
+
 // GenFiller generates Filler to fill the template
 func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error) {
 	stepEnvs, err := GetStepEnvs(session)
@@ -123,13 +130,14 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	stepLogFile := os.Getenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE")
 
 	r := &Filler{
-		DataSource:  session.DbConnStr,
-		StepEnvs:    stepEnvs,
-		WorkflowTTL: workflowTTL,
-		SecretName:  secretName,
-		SecretData:  secretData,
-		Resources:   os.Getenv(envResource),
-		StepLogFile: stepLogFile,
+		DataSource:      session.DbConnStr,
+		StepEnvs:        stepEnvs,
+		WorkflowTTL:     workflowTTL,
+		SecretName:      secretName,
+		SecretData:      secretData,
+		Resources:       os.Getenv(envResource),
+		StepLogFile:     stepLogFile,
+		ClusterConfigFn: os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"),
 	}
 	// NOTE(yancey1989): does not use ModelImage here since the Predict statement
 	// does not contain the ModelImage field in SQL Program IR.
@@ -138,11 +146,12 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	}
 
 	for _, sqlIR := range programIR {
+		escapedSQL := escapeStepSQL(sqlIR.GetOriginalSQL())
 		switch i := sqlIR.(type) {
 		case *ir.NormalStmt, *ir.PredictStmt, *ir.ExplainStmt, *ir.EvaluateStmt:
 			// TODO(typhoonzero): get model image used when training.
 			sqlStmt := &sqlStatement{
-				OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+				OriginalSQL: escapedSQL, IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage: defaultDockerImage}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
 		case *ir.TrainStmt:
@@ -158,20 +167,20 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			} else {
 				sqlStmt := &sqlStatement{
-					OriginalSQL: sqlIR.GetOriginalSQL(), IsExtendedSQL: sqlIR.IsExtended(),
+					OriginalSQL: escapedSQL, IsExtendedSQL: sqlIR.IsExtended(),
 					DockerImage: stepImage}
 				r.SQLStatements = append(r.SQLStatements, sqlStmt)
 			}
 		case *ir.ShowTrainStmt, *ir.OptimizeStmt:
 			sqlStmt := &sqlStatement{
-				OriginalSQL:   sqlIR.GetOriginalSQL(),
+				OriginalSQL:   escapedSQL,
 				IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage:   defaultDockerImage,
 			}
 			r.SQLStatements = append(r.SQLStatements, sqlStmt)
 		case *ir.RunStmt:
 			sqlStmt := &sqlStatement{
-				OriginalSQL:   sqlIR.GetOriginalSQL(),
+				OriginalSQL:   escapedSQL,
 				IsExtendedSQL: sqlIR.IsExtended(),
 				DockerImage:   i.ImageName,
 				Select:        i.Select,
@@ -199,16 +208,15 @@ func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
 
 // GenYAML translate the Couler program into Argo YAML
 func GenYAML(coulerProgram string) (string, error) {
-	cmdline := bytes.Buffer{}
-	fmt.Fprintf(&cmdline, "couler run --mode argo --workflow_name sqlflow ")
-	if c := os.Getenv("SQLFLOW_WORKFLOW_CLUSTER_CONFIG"); len(c) > 0 {
-		fmt.Fprintf(&cmdline, "--cluster_config %s ", c)
+	file, e := ioutil.TempFile("/tmp", "sqlflow.py")
+	if e != nil {
+		return "", e
 	}
-	fmt.Fprintf(&cmdline, "--file -")
-
-	coulerExec := strings.Split(cmdline.String(), " ")
-	// execute command: `cat sqlflow.couler | couler run --mode argo --workflow_name sqlflow --file -`
-	cmd := exec.Command(coulerExec[0], coulerExec[1:]...)
+	defer os.Remove(file.Name())
+	if e := ioutil.WriteFile(file.Name(), []byte(coulerProgram), 0644); e != nil {
+		return "", e
+	}
+	cmd := exec.Command("python", file.Name())
 	cmd.Env = append(os.Environ())
 	cmd.Stdin = strings.NewReader(coulerProgram)
 	out, err := cmd.CombinedOutput()

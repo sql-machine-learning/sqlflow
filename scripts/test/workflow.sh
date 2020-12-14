@@ -24,47 +24,12 @@ docker pull docker/whalesay
 
 export SQLFLOW_TEST=workflow
 export SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT=http://localhost:8001
-
-echo "Run Couler unit tests ..."
-pip -q install -r python/couler/requirements.txt
-pytest --cov=./ python/couler/tests
-
-
-echo "Run Couler end-to-end test ..."
-CHECK_INTERVAL_SECS=2
-
-cat <<EOF > /tmp/sqlflow_couler.py
-import couler.argo as couler
-couler.run_container(
-  image="docker/whalesay",
-  command='echo "SQLFlow bridges AI and SQL engine."')
-EOF
-
-couler run --mode argo --file /tmp/sqlflow_couler.py > /tmp/sqlflow_argo.yaml
-
-MESSAGE=$(kubectl create -f /tmp/sqlflow_argo.yaml)
-WORKFLOW_NAME=$(echo "$MESSAGE" | cut -d ' ' -f 1 | cut -d '/' -f 2)
-echo "Workflow name: $WORKFLOW_NAME"
-
-TIMEOUT="true"
-for _ in {1..30}; do
-    STATUS=$(kubectl get wf "${WORKFLOW_NAME}" -o jsonpath='{.status.phase}')
-    if [[ "$STATUS" == "Succeeded" ]]; then
-        echo "Argo workflow succeeded."
-        kubectl delete wf "${WORKFLOW_NAME}"
-        rm -rf /tmp/sqlflow* || true
-        TIMEOUT="false"
-        break
-    else
-        sleep "$CHECK_INTERVAL_SECS"
-    fi
-done
+export CHECK_INTERVAL_SECS=2
 
 if [[ "$TIMEOUT" == "true" ]]; then
     echo "Workflow job timeout."
     exit 1
 fi
-
 
 # shellcheck disable=SC2154
 if [[ "$SQLFLOW_submitter" == "pai" ]]; then
@@ -115,7 +80,7 @@ else
             TIMEOUT=false
             break
         else
-            sleep ${CHECK_INTERVAL_SECS}
+            sleep "${CHECK_INTERVAL_SECS}"
         fi
     done
 
