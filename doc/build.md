@@ -30,7 +30,7 @@ environment as a Docker image `sqfllow:dev` in
 release the building result as a Docker image `sqlflow:ci`.  Please
 follow [these steps](../docker/dev/README.md) in to bulid
 `sqlflow:dev` and then `sqlflow.ci`.  You can also use the prebuilt
-images on DockerHub.com.
+images on [Docker Hub](https://hub.docker.com/r/sqlflow/sqlflow).
 
 ## Build and Test
 
