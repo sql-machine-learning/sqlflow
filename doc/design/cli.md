@@ -2,7 +2,7 @@
 
 ## Overview
 
-At the moment, users can build SQLFlow into a gRPC server or a [command line binary](../run/repl.md).  Both forms statically link to the SQLFlow core code and inherit all dependencies, including TensorFlow, various database client libraries, and various SQL dialect parsers in the form of gRPC backend servers. The many dependencies require us to release and run both forms in Docker containers.
+At the moment, users can build SQLFlow into a gRPC server or a [command line binary](../run/cli.md).  Both forms statically link to the SQLFlow core code and inherit all dependencies, including TensorFlow, various database client libraries, and various SQL dialect parsers in the form of gRPC backend servers. The many dependencies require us to release and run both forms in Docker containers.
 
 For convenient deployment, we want to run the SQLFlow server in containers, and end users access the server via the command-line client. In particular, we want it easy to install the client tool, so we need to prune the dependencies. As a solution, we make the client tool a statically linked Go binary that remotely calls the SQLFlow server, so users can just download and run it.
 
