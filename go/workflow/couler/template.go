@@ -132,7 +132,7 @@ from ant_couler.couler_submitter import CoulerSubmitter
 sbmtr = CoulerSubmitter(address="{{.CoulerServerAddr}}", namespace="kubemaker")
 resp = couler.run(submitter=sbmtr, cluster="{{.CoulerCluster}}")
 print(resp)
-{{ endif }}
+{{ end }}
 `
 
 var coulerTemplate = template.Must(template.New("Couler").Parse(coulerTemplateText))
