@@ -95,7 +95,7 @@ func TestCoulerCodegen(t *testing.T) {
 	os.Setenv("SQLFLOW_WORKFLOW_SECRET", `{"sqlflow-secret":{"oss_sk": "oss_sk"}}`)
 	os.Setenv(envResource, `{"memory": "32Mi", "cpu": "100m"}`)
 	defer os.Unsetenv("SQLFLOW_OSS_AK")
-	code, err := GenCode(sqlIR, &pb.Session{})
+	code, err := GenCode(sqlIR, &pb.Session{}, false)
 	a.NoError(err)
 	a.True(strings.Contains(code, `SELECT * FROM iris.train limit 10`))
 	a.True(strings.Contains(code, `step_envs["SQLFLOW_OSS_AK"] = '''"%s"''' % escape_env('''oss_key''')`))
@@ -112,7 +112,7 @@ func TestCoulerCodegen(t *testing.T) {
 
 	os.Setenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE", "/home/admin/logs/step.log")
 	defer os.Unsetenv("SQLFLOW_WORKFLOW_STEP_LOG_FILE")
-	code, err = GenCode(sqlIR, &pb.Session{})
+	code, err = GenCode(sqlIR, &pb.Session{}, false)
 	a.NoError(err)
 	r, e = regexp.Compile(`step_log_file = "(.*)"`)
 	a.True(strings.Contains(code, `step_log_file = "/home/admin/logs/step.log"`))
@@ -130,7 +130,7 @@ func TestCoulerCodegenSpecialChars(t *testing.T) {
 	a := assert.New(t)
 	specialCharsStmt := ir.NormalStmt("`$\"\\;")
 	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
-	code, err := GenCode(sqlIR, &pb.Session{})
+	code, err := GenCode(sqlIR, &pb.Session{}, false)
 	a.NoError(err)
 	yaml, e := GenYAML(code)
 	a.NoError(e)
@@ -149,7 +149,7 @@ func TestStringInStringSQL(t *testing.T) {
 		INTO my_iris_model`,
 	}
 	sqlIR := []ir.SQLFlowStmt{&specialCharsStmt}
-	code, err := GenCode(sqlIR, &pb.Session{})
+	code, err := GenCode(sqlIR, &pb.Session{}, false)
 	a.NoError(err)
 	yaml, e := GenYAML(code)
 	a.NoError(e)
@@ -187,7 +187,7 @@ func TestKatibCodegen(t *testing.T) {
 
 	program := []ir.SQLFlowStmt{&standardSQL, &sqlIR}
 
-	_, err := GenCode(program, &pb.Session{})
+	_, err := GenCode(program, &pb.Session{}, false)
 
 	a.NoError(err)
 }
