@@ -29,8 +29,8 @@ from runtime.step.create_result_table import create_evaluate_table
 def submit_pai_evaluate(datasource,
                         original_sql,
                         select,
-                        model,
                         label_name,
+                        model,
                         model_params,
                         result_table,
                         user=""):

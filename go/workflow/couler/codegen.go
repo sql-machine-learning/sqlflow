@@ -108,7 +108,7 @@ func escapeStepSQL(sql string) string {
 }
 
 // GenFiller generates Filler to fill the template
-func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error) {
+func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session, useCoulerSubmitter bool) (*Filler, error) {
 	stepEnvs, err := GetStepEnvs(session)
 	if err != nil {
 		return nil, err
@@ -143,6 +143,15 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 	// does not contain the ModelImage field in SQL Program IR.
 	if os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE") != "" {
 		defaultDockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
+	}
+
+	if useCoulerSubmitter {
+		r.UseCoulerSubmitter = true
+		r.CoulerServerAddr = os.Getenv("SQLFLOW_COULER_SERVER_ADDR")
+		r.CoulerCluster = os.Getenv("SQLFLOW_COULER_CLUSTER")
+		if r.CoulerServerAddr == "" || r.CoulerCluster == "" {
+			return nil, fmt.Errorf("must config SQLFLOW_COULER_SERVER_ADDR and SQLFLOW_COULER_CLUSTER when useCoulerSubmitter")
+		}
 	}
 
 	for _, sqlIR := range programIR {
@@ -194,8 +203,8 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session) (*Filler, error)
 }
 
 // GenCode generates a Couler program
-func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session) (string, error) {
-	r, e := GenFiller(programIR, session)
+func GenCode(programIR []ir.SQLFlowStmt, session *pb.Session, useCoulerSubmitter bool) (string, error) {
+	r, e := GenFiller(programIR, session, useCoulerSubmitter)
 	if e != nil {
 		return "", e
 	}

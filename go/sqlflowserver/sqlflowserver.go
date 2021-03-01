@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"sqlflow.org/sqlflow/go/database"
@@ -132,6 +134,7 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 		logger.Fatalf("should set SQLFLOW_WORKFLOW_LOGVIEW_ENDPOINT if enable argo mode.")
 	}
 	useExperimentalCodegen := os.Getenv("SQLFLOW_USE_EXPERIMENTAL_CODEGEN") == "true"
+	useCoulerSubmitter := os.Getenv("SQLFLOW_USE_COULER_SUBMITTER") == "true"
 
 	startTime := time.Now()
 	go func() {
@@ -147,6 +150,33 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 				}
 				return
 			}
+		} else if useCoulerSubmitter {
+			var pycode string
+			pycode, err = workflow.CompileToCoulerSubmitCode(sqlProgram, session, logger)
+			if err != nil {
+				logger.Printf("compile error: %v", err)
+				if e := wr.Write(err); e != nil {
+					logger.Errorf("piping error: %v", e)
+				}
+				return
+			}
+
+			cmd := exec.Command("python")
+			cmd.Env = append(os.Environ())
+			cmd.Stdin = strings.NewReader(pycode)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				logger.Printf("run couler program to submit: %v", err)
+				if e := wr.Write(err); e != nil {
+					logger.Errorf("piping error: %v", e)
+				}
+				return
+			}
+			if err = wr.Write(out); err != nil {
+				logger.Errorf("piping error: %v", err)
+			}
+			// end submit here
+			return
 		} else {
 			yaml, err = workflow.CompileToYAMLExperimental(sqlProgram, session)
 			if err != nil {

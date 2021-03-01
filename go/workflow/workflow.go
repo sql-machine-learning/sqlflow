@@ -47,7 +47,7 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 	}
 
 	// Generate Fluid/Tekton program
-	py, e := couler.GenCode(spIRs, session)
+	py, e := couler.GenCode(spIRs, session, false)
 	if e != nil {
 		return "", e
 	}
@@ -57,6 +57,31 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 		return "", e
 	}
 	return yaml, nil
+}
+
+// CompileToCoulerSubmitCode compiles the sqlProgram to a couler python code to submit
+func CompileToCoulerSubmitCode(sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
+	driverName, _, e := database.ParseURL(session.DbConnStr)
+	if e != nil {
+		return "", e
+	}
+
+	stmts, e := parser.Parse(driverName, sqlProgram)
+	if e != nil {
+		return "", e
+	}
+	sqls := sql.RewriteStatementsWithHints(stmts, driverName)
+	spIRs, e := sql.ResolveSQLProgram(sqls, logger)
+	if e != nil {
+		return "", e
+	}
+
+	// Generate Fluid/Tekton program
+	py, e := couler.GenCode(spIRs, session, true)
+	if e != nil {
+		return "", e
+	}
+	return py, nil
 }
 
 // CompileToYAMLExperimental compiles sqlProgram to a YAML workflow.
