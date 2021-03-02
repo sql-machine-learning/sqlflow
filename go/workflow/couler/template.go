@@ -42,7 +42,10 @@ type Filler struct {
 	ClusterConfigFn  string
 	// The step output duplication file, in the container.
 	// Log framework may read the file to collect logs.
-	StepLogFile string
+	StepLogFile        string
+	UseCoulerSubmitter bool
+	CoulerServerAddr   string
+	CoulerCluster      string
 }
 
 const coulerTemplateText = `
@@ -124,6 +127,12 @@ couler.run_container(command=["bash", "-c", step_command('''{{ $ss.OriginalSQL}}
 {{end}}
 
 couler.config_workflow(cluster_config_file=cluster_config, time_to_clean=workflow_ttl)
+{{ if .UseCoulerSubmitter }}
+from ant_couler.couler_submitter import CoulerSubmitter
+sbmtr = CoulerSubmitter(address="{{.CoulerServerAddr}}", namespace="kubemaker")
+resp = couler.run(submitter=sbmtr, cluster="{{.CoulerCluster}}")
+print(resp)
+{{ end }}
 `
 
 var coulerTemplate = template.Must(template.New("Couler").Parse(coulerTemplateText))

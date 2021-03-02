@@ -39,6 +39,7 @@ python -m pip install --quiet \
     pyomo==5.6.9 \
     mysqlclient==1.4.4 \
     grpcio-tools==1.28.1 \
+    googleapis-common-protos==1.52.0 \
     pytest \
     pytest-cov
 
