@@ -145,6 +145,7 @@ func GenFiller(programIR []ir.SQLFlowStmt, session *pb.Session, useCoulerSubmitt
 		defaultDockerImage = os.Getenv("SQLFLOW_WORKFLOW_STEP_IMAGE")
 	}
 
+	r.UseCoulerSubmitter = false
 	if useCoulerSubmitter {
 		r.UseCoulerSubmitter = true
 		r.CoulerServerAddr = os.Getenv("SQLFLOW_COULER_SERVER_ADDR")
