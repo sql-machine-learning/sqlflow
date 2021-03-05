@@ -129,9 +129,9 @@ couler.run_container(command=["bash", "-c", step_command('''{{ $ss.OriginalSQL}}
 couler.config_workflow(cluster_config_file=cluster_config, time_to_clean=workflow_ttl)
 {{ if .UseCoulerSubmitter }}
 from ant_couler.couler_submitter import CoulerSubmitter
-sbmtr = CoulerSubmitter(address="{{.CoulerServerAddr}}", namespace="kubemaker")
+sbmtr = CoulerSubmitter(address="{{.CoulerServerAddr}}", namespace="sqlflow")
 resp = couler.run(submitter=sbmtr, cluster="{{.CoulerCluster}}")
-print(resp)
+print(resp.name)
 {{ end }}
 `
 
