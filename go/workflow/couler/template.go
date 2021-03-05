@@ -131,7 +131,7 @@ couler.config_workflow(cluster_config_file=cluster_config, time_to_clean=workflo
 from ant_couler.couler_submitter import CoulerSubmitter
 sbmtr = CoulerSubmitter(address="{{.CoulerServerAddr}}", namespace="kubemaker")
 resp = couler.run(submitter=sbmtr, cluster="{{.CoulerCluster}}")
-print(resp)
+print(resp.name)
 {{ end }}
 `
 

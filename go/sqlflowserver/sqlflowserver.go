@@ -141,16 +141,7 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 		defer wr.Close()
 		var yaml string
 		var err error
-		if !useExperimentalCodegen {
-			yaml, err = workflow.CompileToYAML(sqlProgram, session, logger)
-			if err != nil {
-				logger.Printf("compile error: %v", err)
-				if e := wr.Write(err); e != nil {
-					logger.Errorf("piping error: %v", e)
-				}
-				return
-			}
-		} else if useCoulerSubmitter {
+		if useCoulerSubmitter {
 			var pycode string
 			pycode, err = workflow.CompileToCoulerSubmitCode(sqlProgram, session, logger)
 			if err != nil {
@@ -172,11 +163,21 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 				}
 				return
 			}
-			if err = wr.Write(out); err != nil {
+			if err = wr.Write(pb.Job{Id: string(out)}); err != nil {
 				logger.Errorf("piping error: %v", err)
 			}
 			// end submit here
 			return
+		}
+		if !useExperimentalCodegen {
+			yaml, err = workflow.CompileToYAML(sqlProgram, session, logger)
+			if err != nil {
+				logger.Printf("compile error: %v", err)
+				if e := wr.Write(err); e != nil {
+					logger.Errorf("piping error: %v", e)
+				}
+				return
+			}
 		} else {
 			yaml, err = workflow.CompileToYAMLExperimental(sqlProgram, session)
 			if err != nil {
