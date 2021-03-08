@@ -45,7 +45,7 @@ func isPodFailed(pod *corev1.Pod) bool {
 }
 
 func isWorkflowPending(wf *wfv1.Workflow) bool {
-	return wf.Status.Phase == wfv1.NodePending
+	return wf.Status.Phase == wfv1.NodePending || wf.Status.Phase == ""
 }
 
 func getPodNameByStepGroup(wf *wfv1.Workflow, stepGroupName string) (string, error) {
