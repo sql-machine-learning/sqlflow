@@ -35,6 +35,16 @@ None of the existing solution solves our pain point, instead we want it to be fu
 ## Quick Overview
 
 Here are examples for training a TensorFlow [DNNClassifier](https://www.tensorflow.org/api_docs/python/tf/estimator/DNNClassifier) model using sample data Iris.train, and running prediction using the trained model. You can see how cool it is to write some elegant ML code using SQL:
+```
+sqlflowserver  # start a sqlflowserver
+```
+connect to a clickhouse datasource
+```
+# for clickhouse
+sqlflow -s 127.0.0.1:50051 -d 'clickhouse://tcp(192.168.31.114:9000)/iris?database=iris'
+# for mysql
+sqlflow  -s 127.0.0.1:50051 -d 'mysql://user:password@tcp(192.168.31.114:3306)/iris?maxAllowedPacket=0'
+```
 
 ```sql
 sqlflow> SELECT *
