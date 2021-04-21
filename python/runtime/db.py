@@ -285,6 +285,8 @@ def buffered_db_writer(conn,
     if driver == "maxcompute":
         w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema,
                                          buff_size)
+    elif driver == "clickhouse":
+        w = db_writer.ClickhouseDBWriter(conn,table_name,table_schema,buff_size)
     elif driver == "mysql":
         w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":

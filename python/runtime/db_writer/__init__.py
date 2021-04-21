@@ -14,9 +14,10 @@
 from runtime.db_writer.hive import HiveDBWriter
 from runtime.db_writer.maxcompute import MaxComputeDBWriter
 from runtime.db_writer.mysql import MySQLDBWriter
+from runtime.db_writer.clickhouse import ClickhouseDBWriter
 from runtime.db_writer.pai_maxcompute import PAIMaxComputeDBWriter
 
 __all__ = [
     "MySQLDBWriter", "HiveDBWriter", "MaxComputeDBWriter",
-    "PAIMaxComputeDBWriter"
+    "PAIMaxComputeDBWriter","ClickhouseDBWriter"
 ]

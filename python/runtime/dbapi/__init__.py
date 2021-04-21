@@ -19,6 +19,9 @@ def get_connection_object(driver):
     if driver == "mysql":
         from runtime.dbapi.mysql import MySQLConnection
         return MySQLConnection
+    elif driver == "clickhouse":
+        from runtime.dbapi.clickhouse import ClickhouseConnection
+        return ClickhouseConnection
     elif driver == "hive":
         from runtime.dbapi.hive import HiveConnection
         return HiveConnection
