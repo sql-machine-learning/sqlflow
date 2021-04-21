@@ -370,7 +370,7 @@ func getDataSource(dataSource, db string) string {
 		}
 		v["curr_project"] = []string{db}
 		return fmt.Sprintf("%s://%s?%s", driver, pieces[0], v.Encode())
-	case "mysql":
+	case "mysql", "clickhouse":
 		fallthrough
 	case "hive":
 		pieces[0] = strings.Split(pieces[0], "/")[0] + "/" + db
