@@ -32,7 +32,7 @@ type Statement struct {
 // NewParser instantiates a parser.
 func NewParser(dialect string) (Parser, error) {
 	switch dialect {
-	case "mysql", "tidb":
+	case "mysql", "tidb", "clickhouse":
 		return newTiDBParser(), nil
 	case "hive":
 		return newJavaParser("hive"), nil

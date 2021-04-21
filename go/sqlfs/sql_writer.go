@@ -42,6 +42,33 @@ func flushToSQLTable(db *sql.DB, table string) func([]byte) error {
 	}
 }
 
+func clickhouseFlushToSQLTable(db *sql.DB, table string) func([]byte) error {
+	row := 0
+	return func(buf []byte) error {
+		if db == nil {
+			return fmt.Errorf("clickhouse flushToSQLTable: no database connection")
+		}
+		tx, _ := db.Begin()
+		stmt, _ := tx.Prepare(fmt.Sprintf("INSERT INTO %s (id, block) VALUES(?,?)",
+			table))
+
+		defer stmt.Close()
+
+		if len(buf) > 0 {
+			block := base64.StdEncoding.EncodeToString(buf)
+
+			if _, e := stmt.Exec(row, block); e != nil {
+				return fmt.Errorf("clickhouse cannot flush to table %s: %v", table, e)
+			}
+			row++
+		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("clickhouse cannot flush to table %s: %v", table, err)
+		}
+		return nil
+	}
+}
+
 func noopWrapUp() error {
 	return nil
 }
@@ -52,6 +79,9 @@ func newSQLWriter(db *database.DB, table string, bufSize int) (io.WriteCloser, e
 	}
 	if e := createTable(db, table); e != nil {
 		return nil, fmt.Errorf("cannot create table %s: %v", table, e)
+	}
+	if db.DriverName == "clickhouse" {
+		return newFlushWriteCloser(clickhouseFlushToSQLTable(db.DB, table), noopWrapUp, bufSize), nil
 	}
 	return newFlushWriteCloser(flushToSQLTable(db.DB, table), noopWrapUp, bufSize), nil
 }
