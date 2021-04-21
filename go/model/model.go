@@ -14,10 +14,11 @@
 package model
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
-	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"io"
 	"io/ioutil"
 	"os"
@@ -26,6 +27,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 
 	"github.com/bitly/go-simplejson"
 	"google.golang.org/grpc"
@@ -206,16 +209,19 @@ func (m *Model) saveDB(connStr, table string, session *pb.Session) (e error) {
 	}
 	defer sqlf.Close()
 
-	// model and its metadata are both zipped into a tarball
-	cmd := exec.Command("tar", "czf", "-", "-C", m.workDir, ".")
-	cmd.Stdout = sqlf
-	var errBuf bytes.Buffer
-	cmd.Stderr = &errBuf
+	gw := gzip.NewWriter(sqlf)
 
-	if e := cmd.Run(); e != nil {
-		return fmt.Errorf("tar stderr: %v\ntar cmd %v", errBuf.String(), e)
+	tarwriter := tar.NewWriter(gw)
+	e = tarFolder(m.workDir, tarwriter)
+	if e != nil {
+		return fmt.Errorf("cannot write sqlfs tar file %s: %v", m.workDir, e)
 	}
-
+	if e := tarwriter.Close(); e != nil {
+		return fmt.Errorf("close sqlfs tarwriter error: %v", e)
+	}
+	if e := gw.Close(); e != nil {
+		return fmt.Errorf("close sqlfs gzip error: %v", e)
+	}
 	if e := sqlf.Close(); e != nil {
 		return fmt.Errorf("close sqlfs error: %v", e)
 	}
@@ -276,9 +282,37 @@ func loadTar(modelDir, save, dst string) (*Model, error) {
 	tarFile := filepath.Join(modelDir, save+".tar.gz")
 	cmd := exec.Command("tar", "zxf", tarFile, "-C", dst)
 	if e := cmd.Run(); e != nil {
-		return nil, fmt.Errorf("unzip tar file %s failed", modelDir)
+		return nil, fmt.Errorf("unzip tar file %s failed %v", modelDir, e)
 	}
-	return loadMeta(path.Join(dst, modelMetaFileName))
+	// mv
+	mv := exec.Command("mv", fmt.Sprintf("%v/tmp/sql*/*", dst), dst)
+	mv.Run()
+	//
+	metaPath, e := findMetaPath(dst, modelMetaFileName)
+	if e != nil {
+		return nil, fmt.Errorf("find metaPath failed %v %v", modelDir, e)
+	}
+	return loadMeta(metaPath)
+}
+
+func findMetaPath(dst, target string) (string, error) {
+	ret := filepath.Join(dst, target)
+	f, e := os.Stat(dst)
+	if e != nil {
+		return ret, e
+	}
+	if f.IsDir() {
+		filepath.Walk(dst, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.Name() == target {
+				ret = path
+			}
+			return nil
+		})
+	}
+	return ret, nil
 }
 
 // loadModelFromDB reads from the given sqlfs table for the train select
