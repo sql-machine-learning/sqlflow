@@ -100,7 +100,7 @@ func fieldValue(val interface{}) (interface{}, error) {
 }
 
 func fieldType(dbms, typeName string) (string, error) {
-	if dbms == "mysql" || dbms == "maxcompute" || dbms == "alisa" {
+	if dbms == "mysql" || dbms == "maxcompute" || dbms == "alisa" || dbms == "clickhouse" {
 		if typeName == "VARCHAR" {
 			// FIXME(tony): MySQL driver DatabaseName doesn't include the type length of a field.
 			// Hardcoded to 255 for now.
@@ -126,7 +126,7 @@ func stringFieldType(driver string) (string, error) {
 	switch driver {
 	case "mysql":
 		return "VARCHAR(255)", nil
-	case "hive", "maxcompute", "alisa":
+	case "hive", "maxcompute", "alisa", "clickhouse":
 		return "STRING", nil
 	default:
 		return "", fmt.Errorf("unsupported driver type %s", driver)
