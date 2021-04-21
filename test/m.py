@@ -1,0 +1,20 @@
+sql="""insert into iris.predict (id, sepal_length, sepal_width, petal_length, petal_width, class) values """
+data="""[[0, 6.300000190734863, 2.700000047683716, 4.900000095367432, 1.7999999523162842, 1], [1, 5.699999809265137, 2.799999952316284, 4.099999904632568, 1.2999999523162842, 1], [2, 5.0, 3.0, 1.600000023841858, 0.20000000298023224, 1], [3, 6.300000190734863, 3.299999952316284, 6.0, 2.5, 2], [4, 5.0, 3.5, 1.600000023841858, 0.6000000238418579, 1], [5, 5.5, 2.5999999046325684, 4.400000095367432, 1.2000000476837158, 2], [6, 5.699999809265137, 3.0, 4.199999809265137, 1.2000000476837158, 2], [7, 4.400000095367432, 2.9000000953674316, 1.399999976158142, 0.20000000298023224, 1], [8, 4.800000190734863, 3.0, 1.399999976158142, 0.10000000149011612, 1], [9, 5.5, 2.4000000953674316, 3.700000047683716, 1.0, 1]]"""
+
+import json 
+rows=json.loads(data)
+
+print(sql)
+print(rows)
+from clickhouse_driver import connect
+
+conn = connect('clickhouse://192.168.31.114:9000/iris')
+cursor = conn.cursor()
+
+cursor.execute('SHOW tables')
+print(cursor.fetchall())
+cursor.set_types_check(True)
+cursor.executemany(sql,rows)
+# cursor.executemany(sql,rows)
+print(cursor.rowcount)
+
