@@ -89,7 +89,10 @@ func unifyDatabaseTypeName(typeName string) string {
 	if strings.HasSuffix(typeName, "_TYPE") {
 		typeName = strings.Replace(typeName, "_TYPE", "", 1)
 	}
-
+	if strings.HasPrefix(typeName, "Nullable(") {
+		typeName = strings.Replace(typeName, "Nullable(", "", 1)
+		typeName = strings.Replace(typeName, ")", "", 1)
+	}
 	// NOTE(tony): MaxCompute type name is in lower cases
 	return strings.ToUpper(typeName)
 }
@@ -349,10 +352,10 @@ func fillFieldDesc(columnTypeList []*sql.ColumnType, rowdata []interface{}, fiel
 		// start the feature derivation routine
 		typeName := ct.DatabaseTypeName()
 		switch unifyDatabaseTypeName(typeName) {
-		case "INT", "TINYINT", "DECIMAL", "BIGINT":
+		case "INT", "TINYINT", "DECIMAL", "BIGINT", "UINT64", "UINT32", "INT32", "INT64":
 			fieldDescMap[fld].DType = Int
 			fieldDescMap[fld].Shape = []int{1}
-		case "FLOAT", "DOUBLE":
+		case "FLOAT", "DOUBLE", "FLOAT32", "FLOAT64":
 			fieldDescMap[fld].DType = Float
 			fieldDescMap[fld].Shape = []int{1}
 		case "CHAR", "VARCHAR", "TEXT", "STRING":
