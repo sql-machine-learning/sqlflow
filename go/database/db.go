@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	// import drivers for heterogenous DB support
+	_ "github.com/ClickHouse/clickhouse-go"
 	_ "github.com/go-sql-driver/mysql"
 	_ "sqlflow.org/goalisa"
 	_ "sqlflow.org/gohive"
@@ -41,11 +42,18 @@ func OpenDB(url string) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db := &DB{DriverName: driver, DataSourceName: dataSource}
+	con := dataSource
+	if driver == "clickhouse" {
+		r := strings.Replace(dataSource, "clickhouse://", "", -1)
+		r = strings.Replace(r, "tcp(", "tcp://", -1)
+		r = strings.Replace(r, ")/", "/", 1)
+		con = r
+	}
+	db := &DB{DriverName: driver, DataSourceName: con}
 
 	for _, d := range sql.Drivers() {
 		if db.DriverName == d {
-			db.DB, err = sql.Open(db.DriverName, db.DataSourceName)
+			db.DB, err = sql.Open(db.DriverName, con)
 			if err != nil {
 				return db, err
 			}
@@ -81,7 +89,7 @@ func OpenAndConnectDB(url string) (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %v", err)
 	}
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %v", err)
+		return nil, fmt.Errorf("failed to ping url %v,db %v %v", url, db.DataSourceName, err)
 	}
 	return db, nil
 }

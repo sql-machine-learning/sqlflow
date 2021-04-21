@@ -43,8 +43,9 @@ func GetDatabaseName(datasource string) (string, error) {
 			return "", e
 		}
 		return cfg.Project, nil
-	case "mysql":
+	case "mysql", "clickhouse":
 		// mysql://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
+		// clickhouse://root:root@tcp(127.0.0.1:3306)/iris?maxAllowedPacket=0
 		re := regexp.MustCompile(`[^/]*/(\w*).*`) // Extract the database name of MySQL and Hive
 		if group := re.FindStringSubmatch(dsName); group != nil {
 			return group[1], nil
