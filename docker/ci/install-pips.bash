@@ -40,5 +40,6 @@ pip install --quiet \
     PyUtilib==5.8.0 \
     pyomo==5.6.9 \
     pyodps==0.8.3 \
-    requests==2.23.0
+    requests==2.23.0 \
+    clickhouse-driver
 

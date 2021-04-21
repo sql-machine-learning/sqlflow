@@ -78,7 +78,8 @@ python -m pip install --quiet \
     $JS_LINTER \
     $PYTHON_LINTER \
     $GRPC_PACKAGES \
-    $THRIFT_SASL
+    $THRIFT_SASL \
+    clickhouse-driver
 rm -rf "$HOME"/.cache/pip/*
 
 

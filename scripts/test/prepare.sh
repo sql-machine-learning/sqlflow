@@ -41,7 +41,8 @@ python -m pip install --quiet \
     grpcio-tools==1.28.1 \
     googleapis-common-protos==1.52.0 \
     pytest \
-    pytest-cov
+    pytest-cov \
+    clickhouse-driver
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
