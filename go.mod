@@ -2,6 +2,7 @@ module sqlflow.org/sqlflow
 
 require (
 	github.com/BurntSushi/graphics-go v0.0.0-20160129215708-b43f31a4a966 // indirect
+	github.com/ClickHouse/clickhouse-go v1.4.3
 	github.com/alecthomas/chroma v0.7.1
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.5+incompatible
@@ -25,6 +26,7 @@ require (
 	github.com/joho/godotenv v1.3.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pty v1.1.5 // indirect
+	github.com/mailru/go-clickhouse v1.5.0
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/mattn/go-runewidth v0.0.7 // indirect
