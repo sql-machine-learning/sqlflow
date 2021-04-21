@@ -30,7 +30,7 @@ func createTable(db *database.DB, table string) error {
 	if db.DriverName == "mysql" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT, PRIMARY KEY (id))", table)
 	} else if db.DriverName == "clickhouse" {
-		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT) engine=MergeTree() order by id", table)
+		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block TEXT) engine=MergeTree() order by tuple()", table)
 	} else if db.DriverName == "hive" {
 		stmt = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (id INT, block STRING) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE", table)
 	} else if db.DriverName == "maxcompute" {
