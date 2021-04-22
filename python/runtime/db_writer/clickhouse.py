@@ -29,7 +29,6 @@ class ClickhouseDBWriter(BufferedDBWriter):
         super().__init__(conn, table_name, table_schema, buff_size)
         self.statement = '''insert into {} ({}) values '''.format(
             self.table_name, ", ".join(self.table_schema))
-        self.fo = open("/tmp/log.txt", "w")
 
     def flush(self):
         """

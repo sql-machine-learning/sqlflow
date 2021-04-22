@@ -212,7 +212,7 @@ func (m *Model) saveDB(connStr, table string, session *pb.Session) (e error) {
 	gw := gzip.NewWriter(sqlf)
 
 	tarwriter := tar.NewWriter(gw)
-	e = tarFolder(m.workDir, tarwriter)
+	e = tarFolder(m.workDir, m.workDir, tarwriter)
 	if e != nil {
 		return fmt.Errorf("cannot write sqlfs tar file %s: %v", m.workDir, e)
 	}

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func tarFile(filesource string, sfileInfo os.FileInfo, tarwriter *tar.Writer) error {
+func tarFile(filesource, prefix string, sfileInfo os.FileInfo, tarwriter *tar.Writer) error {
 	sfile, err := os.Open(filesource)
 	if err != nil {
 		fmt.Println(err)
@@ -21,7 +21,8 @@ func tarFile(filesource string, sfileInfo os.FileInfo, tarwriter *tar.Writer) er
 		fmt.Println(err)
 		return err
 	}
-	header.Name = filesource
+	name := strings.TrimPrefix(strings.TrimPrefix(sfile.Name(), prefix), "/")
+	header.Name = name
 	err = tarwriter.WriteHeader(header)
 	if err != nil {
 		fmt.Println(err)
@@ -34,7 +35,8 @@ func tarFile(filesource string, sfileInfo os.FileInfo, tarwriter *tar.Writer) er
 	return nil
 }
 
-func tarFolder(directory string, tarwriter *tar.Writer) error {
+func tarFolder(directory, prefix string, tarwriter *tar.Writer) error {
+
 	return filepath.Walk(directory, func(targetpath string, file os.FileInfo, err error) error {
 		//read the file failure
 		if file == nil {
@@ -48,14 +50,15 @@ func tarFolder(directory string, tarwriter *tar.Writer) error {
 			if err != nil {
 				return err
 			}
-			header.Name = filepath.Join(directory, strings.TrimPrefix(targetpath, directory))
+			name := strings.TrimPrefix(strings.TrimPrefix(targetpath, prefix), "/")
+			header.Name = name
 			if err = tarwriter.WriteHeader(header); err != nil {
 				return err
 			}
 			os.Mkdir(strings.TrimPrefix(directory, file.Name()), os.ModeDir)
 			//如果压缩的目录里面还有目录，则递归压缩
-			return tarFolder(targetpath, tarwriter)
+			return tarFolder(targetpath, prefix, tarwriter)
 		}
-		return tarFile(targetpath, file, tarwriter)
+		return tarFile(targetpath, prefix, file, tarwriter)
 	})
 }

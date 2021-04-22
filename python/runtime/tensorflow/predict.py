@@ -203,7 +203,6 @@ def estimator_predict(result_table, feature_column_names, feature_metas,
         del write_cols[train_label_index]
     write_cols.append(result_col_name)
     
-    os.system("mv ./tmp/sql*/* ./")
     # load from the exported model
     with open("exported_path", "r") as fn:
         export_path = fn.read()
