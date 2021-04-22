@@ -119,7 +119,7 @@ func createPredictionResultTable(predStmt *ir.PredictStmt, db *database.DB) erro
 	if db.DriverName == "hive" {
 		template = "CREATE TABLE %s (%s) ROW FORMAT DELIMITED FIELDS TERMINATED BY \"\\001\" STORED AS TEXTFILE;"
 	} else if db.DriverName == "clickhouse" {
-		template = "CREATE TABLE %s (%s) Engine=MergeTree() Order by id"
+		template = "CREATE TABLE %s (%s) Engine=MergeTree() Order by tuple()"
 	} else {
 		template = "CREATE TABLE %s (%s);"
 	}

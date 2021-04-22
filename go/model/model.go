@@ -284,35 +284,7 @@ func loadTar(modelDir, save, dst string) (*Model, error) {
 	if e := cmd.Run(); e != nil {
 		return nil, fmt.Errorf("unzip tar file %s failed %v", modelDir, e)
 	}
-	// mv
-	mv := exec.Command("mv", fmt.Sprintf("%v/tmp/sql*/*", dst), dst)
-	mv.Run()
-	//
-	metaPath, e := findMetaPath(dst, modelMetaFileName)
-	if e != nil {
-		return nil, fmt.Errorf("find metaPath failed %v %v", modelDir, e)
-	}
-	return loadMeta(metaPath)
-}
-
-func findMetaPath(dst, target string) (string, error) {
-	ret := filepath.Join(dst, target)
-	f, e := os.Stat(dst)
-	if e != nil {
-		return ret, e
-	}
-	if f.IsDir() {
-		filepath.Walk(dst, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.Name() == target {
-				ret = path
-			}
-			return nil
-		})
-	}
-	return ret, nil
+	return loadMeta(filepath.Join(dst, modelMetaFileName))
 }
 
 // loadModelFromDB reads from the given sqlfs table for the train select
