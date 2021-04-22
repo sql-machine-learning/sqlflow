@@ -14,6 +14,7 @@
 import sys
 
 import six
+
 import xgboost as xgb
 from runtime.model import collect_metadata
 from runtime.model import oss as pai_model_store
