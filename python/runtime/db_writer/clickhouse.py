@@ -12,7 +12,6 @@
 # limitations under the License.
 
 from .base import BufferedDBWriter
-import json
 
 class ClickhouseDBWriter(BufferedDBWriter):
     """
