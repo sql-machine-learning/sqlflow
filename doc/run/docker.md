@@ -37,6 +37,8 @@ SQLFlow server and Jupyter Notebook which connects to your own database service.
 
 For MySQL, please refer to [run_with_mysql](../run_with_mysql.md).
 
+For Clickhouse, please refer to [run_with_clickhouse](../run_with_clickhouse.md).
+
 For Hive, please refer to [run_with_hive](../run_with_hive.md).
 
 For MaxCompute, please refer to [run_with_maxcompute](../run_with_maxcompute.md).
