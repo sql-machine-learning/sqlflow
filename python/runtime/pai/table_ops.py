@@ -16,6 +16,7 @@ import random
 import string
 
 import six
+
 from runtime import db
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic

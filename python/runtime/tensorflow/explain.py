@@ -16,9 +16,10 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import tensorflow as tf
+
 import seaborn as sns
 import shap
-import tensorflow as tf
 from runtime import explainer
 from runtime.db import buffered_db_writer, connect_with_data_source
 from runtime.dbapi.paiio import PaiIOConnection

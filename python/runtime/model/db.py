@@ -15,6 +15,7 @@ import base64
 import json
 
 import six
+
 from runtime.db import buffered_db_writer, connect_with_data_source
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.feature.column import (JSONDecoderWithFeatureColumn,

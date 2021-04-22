@@ -18,16 +18,17 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import runtime.feature.column as fc
 import six
+from scipy.sparse import vstack
+from sklearn.datasets import load_svmlight_file, load_svmlight_files
+
+import runtime.feature.column as fc
 import xgboost as xgb
 from runtime import db
 from runtime.db import XGBOOST_NULL_MAGIC
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.model import EstimatorType
-from scipy.sparse import vstack
-from sklearn.datasets import load_svmlight_file, load_svmlight_files
 
 DMATRIX_FILE_SEP = "\t"
 

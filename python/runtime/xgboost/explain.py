@@ -14,8 +14,9 @@
 import numpy as np
 import pandas as pd
 import scipy
-import shap
 import six
+
+import shap
 import xgboost as xgb
 from runtime import db, explainer
 from runtime.dbapi.paiio import PaiIOConnection

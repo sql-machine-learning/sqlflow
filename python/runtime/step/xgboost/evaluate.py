@@ -14,9 +14,10 @@
 import os
 
 import numpy as np
-import runtime.temp_file as temp_file
 import six
 import sklearn.metrics
+
+import runtime.temp_file as temp_file
 import xgboost as xgb
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection

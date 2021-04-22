@@ -17,8 +17,9 @@ try:
 except:  # noqa: E722
     COMPRESS_ODPS_ZLIB = None
 
-from runtime.dbapi.connection import Connection, ResultSet
 from six.moves.urllib.parse import parse_qs, urlparse
+
+from runtime.dbapi.connection import Connection, ResultSet
 
 
 class MaxComputeResultSet(ResultSet):

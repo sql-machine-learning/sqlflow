@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
+
 import xgboost
 from jpmml_evaluator import make_evaluator
 from jpmml_evaluator.pyjnius import PyJNIusBackend, jnius_configure_classpath

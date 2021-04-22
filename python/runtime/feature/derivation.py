@@ -17,6 +17,7 @@ import re
 
 import numpy as np
 import six
+
 from runtime.feature.column import (CategoryIDColumn, EmbeddingColumn,
                                     IndicatorColumn, NumericColumn)
 from runtime.feature.field_desc import DataFormat, DataType, FieldDesc

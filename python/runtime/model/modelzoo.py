@@ -16,6 +16,7 @@ import sys
 
 import grpc
 import six
+
 from runtime.feature.column import JSONDecoderWithFeatureColumn
 from runtime.model.modelzooserver_pb2 import ReleaseModelRequest
 from runtime.model.modelzooserver_pb2_grpc import ModelZooServerStub

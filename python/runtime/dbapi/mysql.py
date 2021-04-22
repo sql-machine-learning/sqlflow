@@ -13,8 +13,9 @@
 
 import re
 
-from runtime.dbapi.connection import Connection, ResultSet
 from six.moves.urllib.parse import ParseResult
+
+from runtime.dbapi.connection import Connection, ResultSet
 
 # NOTE: use MySQLdb to avoid bugs like infinite reading:
 # https://bugs.mysql.com/bug.php?id=91971

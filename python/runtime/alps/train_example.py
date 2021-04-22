@@ -18,6 +18,7 @@ import os
 import shutil
 
 import tensorflow as tf
+
 # pylint: disable=E0401
 # need to import GroupedSparseColumn, SparseColumn when it's used
 from alps.framework.column.column import DenseColumn

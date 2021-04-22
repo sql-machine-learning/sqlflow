@@ -14,6 +14,7 @@
 import shutil
 
 import tensorflow as tf
+
 from runtime.tensorflow.estimator_example import datasource
 from runtime.tensorflow.predict import pred
 from runtime.tensorflow.train import train

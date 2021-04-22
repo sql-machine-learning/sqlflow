@@ -15,6 +15,7 @@ import copy
 import types
 
 import tensorflow.keras.losses as tf_loss  # noqa: F401
+
 from runtime.feature.compile import compile_ir_feature_columns
 from runtime.feature.derivation import get_ordered_field_descs
 from runtime.model import EstimatorType, Model, collect_metadata

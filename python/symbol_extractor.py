@@ -16,8 +16,9 @@ import json
 import re
 
 import six
-import sqlflow_models  # noqa: F401
 import tensorflow as tf
+
+import sqlflow_models  # noqa: F401
 import xgboost
 
 

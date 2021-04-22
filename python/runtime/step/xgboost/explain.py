@@ -13,11 +13,12 @@
 
 import numpy as np
 import pandas as pd
+import scipy
+import six
+
 import runtime.temp_file as temp_file
 import runtime.xgboost as xgboost_extended
-import scipy
 import shap
-import six
 import xgboost as xgb
 from runtime import db, explainer
 from runtime.dbapi.paiio import PaiIOConnection

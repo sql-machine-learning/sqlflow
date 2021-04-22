@@ -13,6 +13,7 @@
 
 from .base import BufferedDBWriter
 
+
 class ClickhouseDBWriter(BufferedDBWriter):
     """
     ClickhouseDBWriter is used to write the Python row data into

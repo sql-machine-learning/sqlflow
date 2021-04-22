@@ -16,6 +16,7 @@ import functools
 
 import numpy as np
 import tensorflow as tf
+
 from runtime import db
 from runtime.feature.field_desc import DataType
 

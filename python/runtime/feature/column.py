@@ -14,6 +14,7 @@
 import json
 
 import six
+
 from runtime.feature.field_desc import DataType, FieldDesc
 
 

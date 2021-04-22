@@ -16,8 +16,9 @@ import re
 import sys
 
 import numpy as np
-import runtime.db_writer as db_writer
 import six
+
+import runtime.db_writer as db_writer
 from runtime.dbapi import connect as dbapi_connect
 
 
@@ -286,7 +287,8 @@ def buffered_db_writer(conn,
         w = db_writer.MaxComputeDBWriter(conn, table_name, table_schema,
                                          buff_size)
     elif driver == "clickhouse":
-        w = db_writer.ClickhouseDBWriter(conn,table_name,table_schema,buff_size)
+        w = db_writer.ClickhouseDBWriter(conn, table_name, table_schema,
+                                         buff_size)
     elif driver == "mysql":
         w = db_writer.MySQLDBWriter(conn, table_name, table_schema, buff_size)
     elif driver == "hive":

@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
+
 import pyomo.environ as pyomo_env
 from runtime.optimize.local import generate_model_with_data_frame, solve_model
 from runtime.optimize.model_generation import (

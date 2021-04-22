@@ -14,6 +14,7 @@
 import subprocess
 
 import six
+
 from runtime.dbapi.maxcompute import MaxComputeConnection
 from runtime.diagnostics import SQLFlowDiagnostic
 

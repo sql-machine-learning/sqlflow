@@ -15,6 +15,7 @@ import sys
 
 import six
 import tensorflow as tf
+
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.compile import compile_ir_feature_columns

@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import tensorflow as tf
+
 from runtime.diagnostics import init_model, load_pretrained_model_estimator
 from runtime.pai.pai_distributed import make_estimator_distributed_runconfig
 from runtime.tensorflow import metrics

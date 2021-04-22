@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import six
+
 from runtime import db
 
 

@@ -17,6 +17,7 @@ from matplotlib._pylab_helpers import Gcf
 from matplotlib.backend_bases import FigureManagerBase
 from matplotlib.backends.backend_agg import FigureCanvasAgg, RendererAgg
 from PIL import Image
+
 from plotille import Canvas
 
 

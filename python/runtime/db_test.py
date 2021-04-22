@@ -16,6 +16,7 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
+
 import runtime.testing as testing
 from runtime.db import (XGBOOST_NULL_MAGIC, buffered_db_writer,
                         connect_with_data_source, db_generator,

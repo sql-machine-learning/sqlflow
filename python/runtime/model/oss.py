@@ -15,8 +15,9 @@ import os
 import pickle
 import sys
 
-import oss2
 import tensorflow as tf
+
+import oss2
 from runtime.diagnostics import SQLFlowDiagnostic
 from runtime.tensorflow import is_tf_estimator
 

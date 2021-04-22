@@ -14,8 +14,9 @@
 # NOTE: this file is used by train_predict_test.py, do **NOT** delete!
 import shutil
 
-import runtime.testing as testing
 import tensorflow as tf
+
+import runtime.testing as testing
 from runtime.tensorflow.predict import pred
 from runtime.tensorflow.train import train
 

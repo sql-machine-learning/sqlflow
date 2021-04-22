@@ -15,6 +15,7 @@ import sys
 
 import six
 import tensorflow as tf
+
 from runtime.model import save_metadata
 from runtime.pai.pai_distributed import (
     dump_into_tf_config, make_distributed_info_without_evaluator)

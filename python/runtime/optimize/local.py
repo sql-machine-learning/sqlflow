@@ -15,10 +15,11 @@ import threading
 
 import numpy as np
 import pandas as pd
+import six
+
 import pyomo.environ as pyomo_env
 import runtime.db as db
 import runtime.verifier as verifier
-import six
 from runtime.optimize.model_generation import (
     generate_objective_and_constraint_expr, generate_unique_result_value_name)
 

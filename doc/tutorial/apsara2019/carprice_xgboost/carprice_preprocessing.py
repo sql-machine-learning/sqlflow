@@ -19,9 +19,10 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import shap
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
+
+import shap
 
 warnings.filterwarnings('ignore')
 
@@ -37,7 +38,8 @@ def fillna_num(df):
         upper = miu + 4 * sigma
         df[(df[i] < lower) | df[i] > upper][i] = np.nan
         # According to the skewness to determine the filling situation,
-        # if the absolute value of the skewness is greater than 2, fill in the median, otherwise fill in the mean
+        # if the absolute value of the skewness is greater than 2, 
+        # fill in the median, otherwise fill in the mean
         if (np.abs(df[i].skew() > 2)):
             df[i].fillna(df.ix[df[i].isnull() == False][i].median(),
                          inplace=True)

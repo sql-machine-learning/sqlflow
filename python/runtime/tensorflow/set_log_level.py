@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import tensorflow as tf
+
 from runtime.tensorflow.get_tf_version import tf_is_version2
 
 

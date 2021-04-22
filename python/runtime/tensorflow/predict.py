@@ -16,6 +16,7 @@ import os
 
 import numpy as np
 import tensorflow as tf
+
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection
 from runtime.feature.field_desc import DataType

@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+
 import runtime.db as db
 import runtime.testing as testing
 from runtime.verifier import fetch_samples, verify_column_name_and_type

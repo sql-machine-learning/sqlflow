@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+
 import runtime.xgboost.feature_column as fc
 from runtime.xgboost.feature_column import hashing
 

@@ -13,21 +13,21 @@
 
 import re
 
-from runtime.dbapi.connection import Connection, ResultSet
+from clickhouse_driver import connect
 from six.moves.urllib.parse import ParseResult
 
-from clickhouse_driver import connect
+from runtime.dbapi.connection import Connection, ResultSet
 
 try:
     # Refer to
     Clickhouse_FIELD_TYPE_DICT = {
-        "UInt64":"INT",
-        "Int64":"INT",
-        "Float64":"FLOAT",
-        "Nullable(Float32)":"FLOAT",
-        "Nullable(UInt64)":"INT",
-        "Nullable(Int32)":"INT",
-        "String":"String"
+        "UInt64": "INT",
+        "Int64": "INT",
+        "Float64": "FLOAT",
+        "Nullable(Float32)": "FLOAT",
+        "Nullable(UInt64)": "INT",
+        "Nullable(Int32)": "INT",
+        "String": "String"
         # Clickhouse_FIELD_TYPE.TINY: "TINYINT",  # 1
         # Clickhouse_FIELD_TYPE.LONG: "INT",  # 3
         # Clickhouse_FIELD_TYPE.FLOAT: "FLOAT",  # 4
@@ -67,8 +67,9 @@ class ClickhouseResultSet(ResultSet):
             # to represent the data type.
             typ = Clickhouse_FIELD_TYPE_DICT.get(desc[1])
             if typ is None:
-                raise ValueError("unsupported data type of column {} of {}".format(
-                    desc[0],desc[1]))
+                raise ValueError(
+                    "unsupported data type of column {} of {}".format(
+                        desc[0], desc[1]))
             columns.append((desc[0], typ))
         self._column_info = columns
         return self._column_info
@@ -95,7 +96,7 @@ class ClickhouseConnection(Connection):
         super(ClickhouseConnection, self).__init__(conn_uri)
         self.driver = "clickhouse"
         self.params["database"] = self.uripts.path.strip("/")
-        self._conn = connect(conn_uri.replace("tcp(","").replace(")",""))
+        self._conn = connect(conn_uri.replace("tcp(", "").replace(")", ""))
 
     def _parse_uri(self):
         # Clickhouse connection string is a DataSourceName(DSN),

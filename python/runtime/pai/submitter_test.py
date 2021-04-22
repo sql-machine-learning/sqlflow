@@ -16,11 +16,12 @@ import os
 import unittest
 from unittest import TestCase
 
+import tensorflow as tf  # noqa: E0401,F401
+
 import runtime.feature.column as fc
 import runtime.feature.field_desc as fd
 import runtime.testing as testing
 import runtime.xgboost as xgboost_extended  # noqa: F401
-import tensorflow as tf  # noqa: E0401,F401
 from runtime.pai import (evaluate, explain, get_pai_tf_cmd, pai_model, pred,
                          train)
 from runtime.pai.cluster_conf import get_cluster_config

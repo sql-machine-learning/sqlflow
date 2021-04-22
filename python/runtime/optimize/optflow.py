@@ -16,9 +16,10 @@ import sys
 import time
 import uuid
 
-import oss2
 import requests
 import six
+
+import oss2
 from runtime.model.oss import get_bucket
 from runtime.optimize.model_generation import (
     assert_are_valid_tokens, find_matched_aggregation_function_brackets,

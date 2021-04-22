@@ -15,8 +15,9 @@ import random
 
 import pandas as pd
 import tensorflow as tf
-from runtime.tensorflow.load_model import load_keras_model_weights
 from sklearn.model_selection import train_test_split
+
+from runtime.tensorflow.load_model import load_keras_model_weights
 
 data = {
     'c1': [random.random() for _ in range(300)],

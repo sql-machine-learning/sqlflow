@@ -14,6 +14,7 @@
 from datetime import datetime
 
 import numpy as np
+
 import xgboost as xgb
 from runtime import db
 from runtime.dbapi.paiio import PaiIOConnection

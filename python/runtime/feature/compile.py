@@ -13,6 +13,7 @@
 
 import numpy as np
 import six
+
 from runtime.feature.column import (BucketColumn, CategoryHashColumn,
                                     CategoryIDColumn, CrossColumn,
                                     EmbeddingColumn, IndicatorColumn,
