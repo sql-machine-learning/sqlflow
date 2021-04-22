@@ -19,8 +19,9 @@ import os
 import socket
 import sys
 
-from dummyauthenticator import DummyAuthenticator
 from kubernetes import client
+
+from dummyauthenticator import DummyAuthenticator
 from oauthenticator.github import GitHubOAuthenticator
 
 sqlflow_jupyter_image = os.getenv("SQLFLOW_JUPYTER_IMAGE")
