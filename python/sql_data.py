@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import tensorflow as tf
+
 from MySQLdb import connect as mysql_connect
 
 
