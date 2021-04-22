@@ -34,7 +34,7 @@ func flushToSQLTable(db *sql.DB, table string) func([]byte) error {
 			query := fmt.Sprintf("INSERT INTO %s (id, block) VALUES(%d, '%s')",
 				table, row, block)
 			if _, e := db.Exec(query); e != nil {
-				return fmt.Errorf("cannot flush to table %s: %v", table, e)
+				return fmt.Errorf("can't flush to table %s: %v", table, e)
 			}
 			row++
 		}
@@ -58,12 +58,12 @@ func clickhouseFlushToSQLTable(db *sql.DB, table string) func([]byte) error {
 			block := base64.StdEncoding.EncodeToString(buf)
 
 			if _, e := stmt.Exec(row, block); e != nil {
-				return fmt.Errorf("clickhouse cannot flush to table %s: %v", table, e)
+				return fmt.Errorf("clickhouse can't flush to table %s: %v", table, e)
 			}
 			row++
 		}
 		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("clickhouse cannot flush to table %s: %v", table, err)
+			return fmt.Errorf("clickhouse can't flush to table %s: %v", table, err)
 		}
 		return nil
 	}
@@ -75,10 +75,10 @@ func noopWrapUp() error {
 
 func newSQLWriter(db *database.DB, table string, bufSize int) (io.WriteCloser, error) {
 	if e := dropTableIfExists(db.DB, table); e != nil {
-		return nil, fmt.Errorf("cannot drop table %s: %v", table, e)
+		return nil, fmt.Errorf("can't drop table %s: %v", table, e)
 	}
 	if e := createTable(db, table); e != nil {
-		return nil, fmt.Errorf("cannot create table %s: %v", table, e)
+		return nil, fmt.Errorf("can't create table %s: %v", table, e)
 	}
 	if db.DriverName == "clickhouse" {
 		return newFlushWriteCloser(clickhouseFlushToSQLTable(db.DB, table), noopWrapUp, bufSize), nil
