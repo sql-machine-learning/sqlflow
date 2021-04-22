@@ -12,6 +12,7 @@
 # limitations under the License.
 
 from google.protobuf import text_format, wrappers_pb2
+
 from runtime.dbapi.connection import ResultSet
 # NOTE(sneaxiy): importing sqlflow_pb2 consumes about
 # 0.24s. Do not know how to shorten the import time.
