@@ -131,7 +131,7 @@ known = set([
     "dtype",
     "elasticdl",
     "elasticdlpredict",
-    "elasticdltrain"
+    "elasticdltrain",
     "elem",
     "elif",
     "else",
@@ -238,7 +238,7 @@ known = set([
     "lexer",
     "lexers",
     "lexing",
-    "lhw362950217"
+    "lhw362950217",
     "linkedin",
     "linux",
     "localhost",
@@ -369,7 +369,7 @@ known = set([
     "textfile",
     "tf",
     "thenewstack",
-    "timelines"
+    "timelines",
     "timeout",
     "timeout",
     "timeouts",
