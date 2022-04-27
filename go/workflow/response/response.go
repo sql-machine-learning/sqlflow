@@ -62,15 +62,15 @@ func (r *CompoundResponses) ErrorMessage() string {
 }
 
 // Response returns the compounded Response
-func (r *CompoundResponses) Response(jobID, stepID, stepPhase string, eof bool) *pb.FetchResponse {
-	return NewFetchResponse(NewFetchRequest(jobID, stepID, stepPhase), eof, r.responses)
+func (r *CompoundResponses) Response(jobID, namespace, stepID, stepPhase string, eof bool) *pb.FetchResponse {
+	return NewFetchResponse(NewFetchRequest(jobID, namespace, stepID, stepPhase), eof, r.responses)
 }
 
 // ResponseWithStepComplete returns the compounded Response at the end of step
-func (r *CompoundResponses) ResponseWithStepComplete(jobID, stepID, stepPhase string, eof bool) *pb.FetchResponse {
+func (r *CompoundResponses) ResponseWithStepComplete(jobID, namespace, stepID, stepPhase string, eof bool) *pb.FetchResponse {
 	eoe := &pb.Response{Response: &pb.Response_Eoe{Eoe: &pb.EndOfExecution{}}}
 	r.responses = append(r.responses, eoe)
-	return r.Response(jobID, stepID, stepPhase, eof)
+	return r.Response(jobID, namespace, stepID, stepPhase, eof)
 }
 
 func unMarshalProtoMessages(messages []string) ([]*pb.Response, []string, error) {
@@ -110,10 +110,11 @@ func isHTMLCode(code string) bool {
 }
 
 // NewFetchRequest returns a FetchRequest
-func NewFetchRequest(workflowID, stepID, stepPhase string) *pb.FetchRequest {
+func NewFetchRequest(workflowID, namespace, stepID, stepPhase string) *pb.FetchRequest {
 	return &pb.FetchRequest{
 		Job: &pb.Job{
-			Id: workflowID,
+			Id:        workflowID,
+			Namespace: namespace,
 		},
 		StepId:    stepID,
 		StepPhase: stepPhase,

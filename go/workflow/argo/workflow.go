@@ -16,6 +16,7 @@ package argo
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	wfv1 "github.com/argoproj/argo/pkg/apis/workflow/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -62,12 +63,12 @@ func getPodNameByStepGroup(wf *wfv1.Workflow, stepGroupName string) (string, err
 	return stepGroupNode.Children[0], nil
 }
 
-func getPodByStepGroup(wf *wfv1.Workflow, stepGroupName string) (*corev1.Pod, error) {
+func getPodByStepGroup(wf *wfv1.Workflow, stepGroupName, namespace string) (*corev1.Pod, error) {
 	podName, err := getPodNameByStepGroup(wf, stepGroupName)
 	if err != nil {
 		return nil, err
 	}
-	return k8sReadPod(podName)
+	return k8sReadPod(podName, namespace)
 }
 
 func getNextStepGroup(wf *wfv1.Workflow, current string) (string, error) {
@@ -94,6 +95,13 @@ func getNextStepGroup(wf *wfv1.Workflow, current string) (string, error) {
 
 func getFirstStepGroup(wf *wfv1.Workflow, workflowID string) (string, error) {
 	stepNode := wf.Status.Nodes[workflowID]
+	for retry := 0; retry < 3; retry++ {
+		if stepNode.Type == "" {
+			time.Sleep(time.Second * 5)
+		} else {
+			break
+		}
+	}
 	if err := checkNodeType(wfv1.NodeTypeSteps, stepNode.Type); err != nil {
 		return "", fmt.Errorf("getCurrentStepGroup: %v", err)
 	}

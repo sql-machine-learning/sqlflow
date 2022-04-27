@@ -178,8 +178,8 @@ func TestFetch(t *testing.T) {
 	workflowID, err := k8sCreateResource(fmt.Sprintf(stepYAML, stepImage, ds, stepImage))
 	a.NoError(err)
 
-	defer k8sDeleteWorkflow(workflowID)
-	req := wfrsp.NewFetchRequest(workflowID, "", "")
+	defer k8sDeleteWorkflow(workflowID, "")
+	req := wfrsp.NewFetchRequest(workflowID, "", "", "")
 	fr, err := Fetch(req)
 	messages := []string{}
 	columns := []string{}
@@ -241,7 +241,7 @@ func TestGetPodLogs(t *testing.T) {
 	a := assert.New(t)
 	podID, err := k8sCreateResource(podYAML)
 	a.NoError(err)
-	defer k8sDeletePod(podID)
+	defer k8sDeletePod(podID, "")
 
 	err = waitUntilPodRunning(podID)
 	a.NoError(err)
@@ -249,10 +249,10 @@ func TestGetPodLogs(t *testing.T) {
 	actual := []string{}
 	expected := []string{"hello1", "hello2", "hello3"}
 	for {
-		pod, err := k8sReadPod(podID)
+		pod, err := k8sReadPod(podID, "")
 		a.NoError(err)
 		isPodCompleted := isPodCompleted(pod)
-		logs, newOffset, err := getPodLogs(pod.Name, offset)
+		logs, newOffset, err := getPodLogs(pod.Name, "", offset)
 		a.NoError(err)
 		if len(logs) != 0 {
 			actual = append(actual, logs...)
@@ -273,17 +273,17 @@ func TestGetPodLogsStress(t *testing.T) {
 	a := assert.New(t)
 	podID, err := k8sCreateResource(podYAML2)
 	a.NoError(err)
-	defer k8sDeletePod(podID)
+	defer k8sDeletePod(podID, "")
 
 	err = waitUntilPodRunning(podID)
 	a.NoError(err)
 	offset := ""
 	actual := []string{}
 	for {
-		pod, err := k8sReadPod(podID)
+		pod, err := k8sReadPod(podID, "")
 		a.NoError(err)
 		isPodCompleted := isPodCompleted(pod)
-		logs, newOffset, err := getPodLogs(pod.Name, offset)
+		logs, newOffset, err := getPodLogs(pod.Name, "", offset)
 		a.NoError(err)
 		if len(logs) != 0 {
 			actual = append(actual, logs...)

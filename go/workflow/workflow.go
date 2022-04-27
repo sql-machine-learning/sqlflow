@@ -14,10 +14,12 @@
 package workflow
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
 
+	"gopkg.in/yaml.v2"
 	"sqlflow.org/sqlflow/go/codegen/experimental"
 	"sqlflow.org/sqlflow/go/database"
 	"sqlflow.org/sqlflow/go/log"
@@ -29,7 +31,7 @@ import (
 
 // CompileToYAML compiles the sqlProgram to a YAML workflow
 func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
-	var yaml string
+	var yaml_str string
 
 	driverName, _, e := database.ParseURL(session.DbConnStr)
 	if e != nil {
@@ -52,11 +54,40 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 		return "", e
 	}
 	// translate Couler program to workflow YAML
-	yaml, e = couler.GenYAML(py)
+	yaml_str, e = couler.GenYAML(py)
 	if e != nil {
 		return "", e
 	}
-	return yaml, nil
+	// patch YAML with service account
+	obj := make(map[interface{}]interface{})
+	e = yaml.Unmarshal([]byte(yaml_str), &obj)
+	if e != nil {
+		return "", e
+	}
+	logger.Errorf("before submit, wfns: (%s), sa: (%s)", session.WfNamespace, session.ServiceAccount)
+
+	if session.WfNamespace != "" {
+		metadata, ok := obj["metadata"].(map[interface{}]interface{})
+		if !ok {
+			return "", errors.New("Can not parse workflow metadata")
+		}
+		metadata["namespace"] = session.WfNamespace
+	}
+
+	if session.ServiceAccount != "" {
+		spec, ok := obj["spec"].(map[interface{}]interface{})
+		if !ok {
+			return "", errors.New("Can not parse workflow spec")
+		}
+		spec["serviceAccountName"] = session.ServiceAccount
+	}
+	yaml_bytes, e := yaml.Marshal(obj)
+	if e != nil {
+		return "", e
+	}
+	yaml_str = string(yaml_bytes)
+	logger.Errorf("final yaml: %s", yaml_str)
+	return yaml_str, nil
 }
 
 // CompileToCoulerSubmitCode compiles the sqlProgram to a couler python code to submit
