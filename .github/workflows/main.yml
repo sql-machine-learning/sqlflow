@@ -47,7 +47,6 @@ jobs:
     - name: mysql unit test
       run: |
         set -e
-        source build/env/bin/activate
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
         bash scripts/test/ipython.sh
         bash <(curl -s https://codecov.io/bash)
