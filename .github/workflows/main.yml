@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SQLFLOW_PARSER_SERVER_PORT: 12300
-      SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
+      SQLFLOW_PARSER_SERVER_LOADING_PATH: "~/sqlflow/java"
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     services:
       mysql:
