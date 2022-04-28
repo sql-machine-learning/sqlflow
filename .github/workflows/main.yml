@@ -34,6 +34,7 @@ jobs:
     - name: setup-env
       run: |
         set -e
+        bash -x scripts/code-style-deps.sh
         bash -x scripts/test/prepare.sh
     - name: pre-commit
       run: |
