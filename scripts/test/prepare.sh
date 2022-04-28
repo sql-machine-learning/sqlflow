@@ -42,15 +42,15 @@ python -m pip install --quiet \
     grpcio-tools==1.28.1 \
     googleapis-common-protos==1.52.0 \
     pytest \
-    pytest-cov
+    pytest-cov -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 sudo apt-get update
 sudo apt-get install -y git
 
-git clone https://github.com/sql-machine-learning/models.git
-(cd models && git fetch origin && \
-git checkout 5dc6421f562ea447e501fa355a48a6ee89856a1d && \
-python setup.py install)
+# git clone https://github.com/sql-machine-learning/models.git
+# (cd models && git fetch origin && \
+# git checkout 5dc6421f562ea447e501fa355a48a6ee89856a1d && \
+# python setup.py install)
 
 git clone https://github.com/couler-proj/couler.git
 (cd couler && git fetch origin && \
