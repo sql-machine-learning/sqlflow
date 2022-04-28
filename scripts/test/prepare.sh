@@ -14,13 +14,9 @@
 
 set -e
 
-# 1. setup virtualenv for sqlflow runtime
-python -m pip install virtualenv
 mkdir -p build
-virtualenv build/env
-# shellcheck disable=SC1091
-source build/env/bin/activate
 
+# 1. install python deps
 python -m pip install --quiet \
     numpy==1.16.2 \
     tensorflow-metadata==0.22.2 \
@@ -42,15 +38,10 @@ python -m pip install --quiet \
     grpcio-tools==1.28.1 \
     googleapis-common-protos==1.52.0 \
     pytest \
-    pytest-cov -i https://pypi.tuna.tsinghua.edu.cn/simple
+    pytest-cov
 
 sudo apt-get update
 sudo apt-get install -y git
-
-# git clone https://github.com/sql-machine-learning/models.git
-# (cd models && git fetch origin && \
-# git checkout 5dc6421f562ea447e501fa355a48a6ee89856a1d && \
-# python setup.py install)
 
 git clone https://github.com/couler-proj/couler.git
 (cd couler && git fetch origin && \
@@ -69,17 +60,6 @@ echo "Build parser gRPC servers in Java ..."
 # clean up previous build
 rm -rf "$SQLFLOW_PARSER_SERVER_LOADING_PATH"
 mkdir -p "$SQLFLOW_PARSER_SERVER_LOADING_PATH"
-
-wget -q -O build/protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe
-chmod +x build/protoc-gen-grpc-java
-sudo mkdir -p /usr/local/bin
-sudo mv build/protoc-gen-grpc-java /usr/local/bin/
-wget -q -O build/google-java-format-1.6-all-deps.jar https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar
-sudo mv build/google-java-format-1.6-all-deps.jar /usr/local/bin
-wget -q -O build/google_checks.xml https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml
-sudo mv build/google_checks.xml /usr/local/bin
-wget -q -O build/checkstyle-8.29-all.jar https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar
-sudo mv build/checkstyle-8.29-all.jar /usr/local/bin
 
 # Make mvn compile quiet
 export MAVEN_OPTS="-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
@@ -105,12 +85,5 @@ cp target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" )
 
 # Go deps:
 go install golang.org/x/tools/cmd/goyacc@latest
-
 go install github.com/golang/protobuf/protoc-gen-go@v1.3.3
-go install golang.org/x/lint/golint@latest
-go install golang.org/x/tools/cmd/goyacc@latest
-go install golang.org/x/tools/cmd/cover@latest
-go install github.com/mattn/goveralls@latest
-go install github.com/rakyll/gotest@latest
-go install github.com/wangkuiyi/goyaccfmt@latest
 go install github.com/wangkuiyi/ipynb/markdown-to-ipynb@latest
