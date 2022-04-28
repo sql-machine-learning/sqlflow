@@ -41,11 +41,11 @@ spec:
 		t.Fatalf("parse sepc error")
 	}
 	spec["serviceAccountName"] = "someSA"
-	yaml_bytes, e := yaml.Marshal(obj)
+	yamlBytes, e := yaml.Marshal(obj)
 	if e != nil {
 		t.Fatalf("%v", e)
 	}
-	result := string(yaml_bytes)
+	result := string(yamlBytes)
 	fmt.Printf("result: %s", result)
 	if !strings.Contains(result, "serviceAccountName: someSA") {
 		t.Fatalf("yaml string do not patched")

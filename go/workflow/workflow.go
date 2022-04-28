@@ -31,7 +31,7 @@ import (
 
 // CompileToYAML compiles the sqlProgram to a YAML workflow
 func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (string, error) {
-	var yaml_str string
+	var yamlStr string
 
 	driverName, _, e := database.ParseURL(session.DbConnStr)
 	if e != nil {
@@ -54,13 +54,13 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 		return "", e
 	}
 	// translate Couler program to workflow YAML
-	yaml_str, e = couler.GenYAML(py)
+	yamlStr, e = couler.GenYAML(py)
 	if e != nil {
 		return "", e
 	}
 	// patch YAML with service account
 	obj := make(map[interface{}]interface{})
-	e = yaml.Unmarshal([]byte(yaml_str), &obj)
+	e = yaml.Unmarshal([]byte(yamlStr), &obj)
 	if e != nil {
 		return "", e
 	}
@@ -80,13 +80,13 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 		}
 		spec["serviceAccountName"] = session.ServiceAccount
 	}
-	yaml_bytes, e := yaml.Marshal(obj)
+	yamlBytes, e := yaml.Marshal(obj)
 	if e != nil {
 		return "", e
 	}
-	yaml_str = string(yaml_bytes)
-	logger.Errorf("Submitting: %s", yaml_str)
-	return yaml_str, nil
+	yamlStr = string(yamlBytes)
+	logger.Errorf("Submitting: %s", yamlStr)
+	return yamlStr, nil
 }
 
 // CompileToCoulerSubmitCode compiles the sqlProgram to a couler python code to submit
