@@ -16,6 +16,10 @@ set -e
 
 mkdir -p build
 
+pip install pre-commit flake8 jsbeautifier
+sudo apt-get update
+sudo apt-get install -y shellcheck
+
 # go linters
 go install golang.org/x/lint/golint@latest
 go install golang.org/x/tools/cmd/goyacc@latest
