@@ -30,7 +30,7 @@ jobs:
         distribution: 'zulu' # See 'Supported distributions' for available options
         java-version: '8'
         cache: 'maven'
-    uses: arduino/setup-protoc@v1
+    - uses: arduino/setup-protoc@v1
       with:
         version: '3.7.1'
     - name: setup-env
