@@ -15,6 +15,7 @@
 set -e
 
 # 1. setup virtualenv for sqlflow runtime
+python -m pip install virtualenv
 mkdir -p build
 virtualenv build/env
 # shellcheck disable=SC1091
@@ -42,6 +43,9 @@ python -m pip install --quiet \
     googleapis-common-protos==1.52.0 \
     pytest \
     pytest-cov
+
+apt-get update
+apt-get install -y git
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
