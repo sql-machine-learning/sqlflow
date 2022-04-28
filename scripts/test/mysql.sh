@@ -20,17 +20,6 @@ if [[ "$changed_fileext" == "md" ]]; then
     exit 0
 fi
 
-# Wait for MySQL server to initialize, the the sqlflow/sqlflow:mysql will
-# start an HTTP server at 8890
-while true; do
-    if [ -f mysql-inited ]; then
-        break
-    else
-        echo "still waiting, MySQL server is not ready..."
-        sleep 1
-    fi
-done
-
 export SQLFLOW_TEST_DB=mysql
 
 python -c "import sqlflow_models"

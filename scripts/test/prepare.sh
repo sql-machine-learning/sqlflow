@@ -17,6 +17,7 @@ set -e
 mkdir -p build
 
 # 1. install python deps
+python -m pip install sqlflow_models
 python -m pip install --quiet \
     numpy==1.16.2 \
     tensorflow-metadata==0.22.2 \
