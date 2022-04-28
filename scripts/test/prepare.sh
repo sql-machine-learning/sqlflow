@@ -44,8 +44,8 @@ python -m pip install --quiet \
     pytest \
     pytest-cov
 
-apt-get update
-apt-get install -y git
+sudo apt-get update
+sudo apt-get install -y git
 
 git clone https://github.com/sql-machine-learning/models.git
 (cd models && git fetch origin && \
