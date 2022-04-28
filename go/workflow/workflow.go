@@ -64,7 +64,6 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 	if e != nil {
 		return "", e
 	}
-	logger.Errorf("before submit, wfns: (%s), sa: (%s)", session.WfNamespace, session.ServiceAccount)
 
 	if session.WfNamespace != "" {
 		metadata, ok := obj["metadata"].(map[interface{}]interface{})
@@ -86,7 +85,7 @@ func CompileToYAML(sqlProgram string, session *pb.Session, logger *log.Logger) (
 		return "", e
 	}
 	yaml_str = string(yaml_bytes)
-	logger.Errorf("final yaml: %s", yaml_str)
+	logger.Errorf("Submitting: %s", yaml_str)
 	return yaml_str, nil
 }
 

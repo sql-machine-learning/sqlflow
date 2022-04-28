@@ -70,6 +70,17 @@ echo "Build parser gRPC servers in Java ..."
 rm -rf "$SQLFLOW_PARSER_SERVER_LOADING_PATH"
 mkdir -p "$SQLFLOW_PARSER_SERVER_LOADING_PATH"
 
+wget -O build/protoc-gen-grpc-java https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.21.0/protoc-gen-grpc-java-1.21.0-linux-x86_64.exe
+chmod +x build/protoc-gen-grpc-java
+sudo mkdir -p /usr/local/bin
+sudo mv build/protoc-gen-grpc-java /usr/local/bin/
+wget -O build/google-java-format-1.6-all-deps.jar https://github.com/google/google-java-format/releases/download/google-java-format-1.6/google-java-format-1.6-all-deps.jar
+sudo mv build/google-java-format-1.6-all-deps.jar /usr/local/bin
+wget -O build/google_checks.xml https://raw.githubusercontent.com/checkstyle/checkstyle/master/src/main/resources/google_checks.xml
+sudo mv build/google_checks.xml /usr/local/bin
+wget -O build/checkstyle-8.29-all.jar https://github.com/checkstyle/checkstyle/releases/download/checkstyle-8.29/checkstyle-8.29-all.jar
+sudo mv build/checkstyle-8.29-all.jar /usr/local/bin
+
 # Make mvn compile quiet
 export MAVEN_OPTS="-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
 
@@ -94,3 +105,13 @@ cp target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" )
 
 # Go deps:
 go install golang.org/x/tools/cmd/goyacc@latest
+
+go install \
+   github.com/golang/protobuf/protoc-gen-go@v1.3.3 \
+   golang.org/x/lint/golint@latest \
+   golang.org/x/tools/cmd/goyacc@latest \
+   golang.org/x/tools/cmd/cover@latest \
+   github.com/mattn/goveralls@latest \
+   github.com/rakyll/gotest@latest \
+   github.com/wangkuiyi/goyaccfmt@latest \
+   github.com/wangkuiyi/ipynb/markdown-to-ipynb@latest
