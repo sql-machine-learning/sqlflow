@@ -21,19 +21,33 @@ jobs:
         ports:
           - 13306:3306
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v3
+      with:
+        python-version: '3.x'
+    - uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu' # See 'Supported distributions' for available options
+        java-version: '8'
+        cache: 'maven'
+    uses: arduino/setup-protoc@v1
+      with:
+        version: '3.7.1'
+    - name: setup-env
+      run: |
+        set -e
+        bash scripts/test/prepare.sh
     - name: pre-commit
       run: |
         export TRAVIS_BUILD_DIR=${{ github.workspace }}
         go generate ./...
         go install ./...
         pre-commit run -a --show-diff-on-failure
-    - name: build mysql image
-      run: docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
+    # - name: build mysql image
+    #   run: docker build -t sqlflow:mysql -f docker/mysql/Dockerfile .
     - name: mysql unit test
       run: |
         set -e
-        bash scripts/test/prepare.sh
         source build/env/bin/activate
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
         bash scripts/test/ipython.sh

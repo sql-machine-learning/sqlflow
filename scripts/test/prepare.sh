@@ -87,3 +87,6 @@ protoc --java_out=src/main/java \
        src/main/proto/parser.proto && \
 mvn -B -q clean compile assembly:single && \
 cp target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" )
+
+# Go deps:
+go install golang.org/x/tools/cmd/goyacc@latest
