@@ -74,7 +74,7 @@ def save_model_to_local_file(booster, model_params, file_name):
     # https://github.com/dmlc/xgboost/blob/d19cec70f1b40ea1e1a35101ca22e46dd4e4eecd/python-package/xgboost/sklearn.py#L356
     booster.set_attr(scikit_learn=json.dumps(bst_meta))
     booster.save_model(file_name)
-    booster.set_attr(scikit_learn=None)
-    model.load_model(file_name)
-    pipeline = PMMLPipeline([(model_type, model)])
-    sklearn2pmml(pipeline, "{}.pmml".format(file_name))
+    # booster.set_attr(scikit_learn=None)
+    # model.load_model(file_name)
+    # pipeline = PMMLPipeline([(model_type, model)])
+    # sklearn2pmml(pipeline, "{}.pmml".format(file_name))

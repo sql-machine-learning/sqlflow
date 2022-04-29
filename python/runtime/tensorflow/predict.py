@@ -119,7 +119,8 @@ def keras_predict(estimator, model_params, save, result_table,
         # https://www.tensorflow.org/alpha/guide/keras/saving_and_serializing#saving_subclassed_models  # noqa: E501
         classifier.predict_on_batch(one_batch)
         load_keras_model_weights(classifier, save)
-    pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
+    # pred_dataset = eval_input_fn(1, cache=True).make_one_shot_iterator()
+    pred_dataset = eval_input_fn(1, cache=True).__iter__()
 
     column_names = selected_cols[:]
     try:

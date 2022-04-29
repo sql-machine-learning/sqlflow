@@ -152,6 +152,7 @@ func caseListRepos(t *testing.T) {
 }
 
 func TestModelZooOperation(t *testing.T) {
+	t.Skip("skip modelzoo tests")
 	a := assert.New(t)
 	startTestModelZooServer()
 	stopServer := startServer()

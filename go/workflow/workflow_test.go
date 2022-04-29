@@ -14,7 +14,6 @@
 package workflow
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -47,7 +46,6 @@ spec:
 	if e != nil {
 		t.Fatalf("%v", e)
 	}
-	fmt.Printf("obj: %v\n", obj)
 
 	spec, ok := obj["spec"].(map[interface{}]interface{})
 	if !ok {
@@ -59,7 +57,6 @@ spec:
 		t.Fatalf("%v", e)
 	}
 	result := string(yamlBytes)
-	fmt.Printf("result: %s", result)
 	if !strings.Contains(result, "serviceAccountName: someSA") {
 		t.Fatalf("yaml string do not patched")
 	}

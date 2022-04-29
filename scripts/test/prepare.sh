@@ -18,26 +18,25 @@ mkdir -p build
 
 # 1. install python deps
 python -m pip install sqlflow_models
-python -m pip install --quiet \
-    numpy==1.16.2 \
-    tensorflow-metadata==0.22.2 \
-    tensorflow==2.0.1 \
-    impyla==0.16.0 \
-    pyodps==0.8.3 \
-    dill==0.3.0 \
-    shap==0.30.1 \
-    xgboost==0.90 \
-    oss2==2.9.0 \
-    plotille==3.7 \
-    seaborn==0.9.0 \
-    scikit-learn==0.21.0 \
-    sklearn2pmml==0.56.0 \
-    jpmml-evaluator==0.3.1 \
-    PyUtilib==5.8.0 \
-    pyomo==5.6.9 \
-    mysqlclient==1.4.4 \
-    grpcio-tools==1.28.1 \
-    googleapis-common-protos==1.52.0 \
+python -m pip install "numpy>=1.16.2,<1.19.0" \
+    "tensorflow-metadata>=0.22.2" \
+    "tensorflow==2.2.3" \
+    "impyla==0.16.0" \
+    "pyodps==0.8.3" \
+    "dill==0.3.0" \
+    "shap==0.30.1" \
+    "xgboost==0.90" \
+    "oss2==2.9.0" \
+    "plotille==3.7" \
+    "seaborn==0.9.0" \
+    "scikit-learn>=0.21.3" \
+    "sklearn2pmml==0.56.0" \
+    "jpmml-evaluator==0.3.1" \
+    "PyUtilib==5.8.0" \
+    "pyomo==5.6.9" \
+    "mysqlclient==1.4.4" \
+    "grpcio-tools==1.28.1" \
+    "googleapis-common-protos==1.52.0" \
     pytest \
     pytest-cov
 
