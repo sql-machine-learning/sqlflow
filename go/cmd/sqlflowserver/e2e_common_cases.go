@@ -924,6 +924,7 @@ INTO ` + resultTable + `;`
 }
 
 func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
+	t.Skip("skip OptimizeClauseWithGroupBy")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"
