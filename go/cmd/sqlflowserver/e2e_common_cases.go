@@ -835,6 +835,7 @@ INTO ` + resultTable + `;`
 }
 
 func caseTestOptimizeClauseWithBinaryVarType(t *testing.T) {
+	t.Skip("skip optimize cases")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"
@@ -880,6 +881,7 @@ INTO ` + resultTable + `;`
 }
 
 func caseTestOptimizeClauseWithoutConstraint(t *testing.T) {
+	t.Skip("Skip optimize cases")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"
