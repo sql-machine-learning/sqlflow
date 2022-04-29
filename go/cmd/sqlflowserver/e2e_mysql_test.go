@@ -576,6 +576,7 @@ INTO iris.explain_result;`, // explain tf boosted trees model
 }
 
 func caseTrainARIMAWithSTLDecompositionModel(t *testing.T) {
+	t.Skip("fix ARIMAWithSTLDecomposition model")
 	a := assert.New(t)
 
 	trainSQL := `

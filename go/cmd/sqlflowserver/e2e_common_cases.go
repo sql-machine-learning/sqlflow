@@ -782,6 +782,7 @@ func removeColumnNamePrefix(columns []string) []string {
 }
 
 func caseTestOptimizeClauseWithoutGroupBy(t *testing.T) {
+	t.Skip("skip OptimizeClauseWithoutGroupBy")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"
