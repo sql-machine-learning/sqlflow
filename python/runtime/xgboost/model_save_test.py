@@ -146,7 +146,6 @@ class TestXGBoostRegressorModelSaving(TestXGBoostModelSavingBase):
     def filename(self):
         return "xgboost_regressor_model"
 
-    @unittest.skip()
     def test_main(self):
         batch_size = self.batch_size()
         feature_size = self.feature_size()

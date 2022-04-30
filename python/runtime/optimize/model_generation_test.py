@@ -144,7 +144,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
         else:
             return replace_one_constraint(constraint)
 
-    @unittest.skip()
+    @unittest.skip("skip optimize test")
     def test_multiple_brackets(self):
         constraint = {
             "tokens": [
@@ -172,7 +172,7 @@ class TestModelGenerationWithoutGroupBy(TestModelGenerationBase):
             'sum([DATA_FRAME["finishing"][i_0]*model.x[i_0]+sum([model.x[i_1] '
             'for i_1 in model.x]) for i_0 in model.x])<=100')
 
-    @unittest.skip()
+    @unittest.skip("skip optimize test")
     def test_model_generation(self):
         objective = [
             'SUM', '(', '(', 'price', '-', 'materials_cost', '-', 'other_cost',
@@ -293,7 +293,7 @@ class TestModelGenerationWithGroupBy(TestModelGenerationBase):
         self.variables = ["plants", "markets"]
         self.result_value_name = "shipment"
 
-    @unittest.skip()
+    @unittest.skip("skip optimize test")
     def test_main(self):
         objective = [
             'SUM', '(', 'distance', '*', 'shipment', '*', '90', '/', '1000',
