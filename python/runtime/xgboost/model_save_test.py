@@ -60,17 +60,15 @@ class TestXGBoostModelSavingBase(unittest.TestCase):
         # self.assertTrue(os.path.exists(self.pmml_filename()))
         # pmml_evaluator = make_evaluator(PMML_BACKEND,
         #                                 self.pmml_filename()).verify()
-        return loaded_booster #, pmml_evaluator
+        return loaded_booster  #, pmml_evaluator
 
     def validate_predict_result(self, booster, params, x):
-        loaded_booster = self.save_and_load_model(
-            booster, params)
+        loaded_booster = self.save_and_load_model(booster, params)
 
         original_model_y_predict = booster.predict(xgboost.DMatrix(x))
         loaded_model_y_predict = booster.predict(xgboost.DMatrix(x))
         self.assertTrue(
             np.array_equal(original_model_y_predict, loaded_model_y_predict))
-
 
         # FIXME(typhoonzero): re-enable pmml tests
         # column_names = [
