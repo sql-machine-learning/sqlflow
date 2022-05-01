@@ -48,9 +48,23 @@ jobs:
       run: |
         set -e
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
+    - name: java unit test
+      run: |
+        set -e
+        bash scripts/test/java.sh
   # TODO(typhoonzero): add back hive tests
-  # test-hive-java:
-  #   runs-on: [self-hosted, linux]
+  test-hive-java:
+    runs-on: ubuntu-latest
+    steps:
+    - name: hive unit test
+      run: |
+        echo "skip hive test"
+  test-workflow:
+    runs-on: ubuntu-latest
+    steps:
+    - name: workflow unit test
+      run: |
+        echo "skip workflow test"
   #   env:
   #     SQLFLOW_PARSER_SERVER_PORT: 12300
   #     SQLFLOW_PARSER_SERVER_LOADING_PATH: "/usr/local/sqlflow/java"
@@ -79,10 +93,7 @@ jobs:
     #     source build/env/bin/activate
     #     PYTHONPATH=${{ github.workspace }}/python bash scripts/test/maxcompute.sh
     #     # bash scripts/travis/upload_codecov.sh
-    - name: java unit test
-      run: |
-        set -e
-        bash scripts/test/java.sh
+    
   # test-workflow:
   #   runs-on: [self-hosted, linux]
   #   env:
