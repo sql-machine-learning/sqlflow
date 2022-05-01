@@ -35,7 +35,7 @@ class TestXGBoostModelSavingBase(unittest.TestCase):
         filename = self.filename()
         if filename is not None and os.path.exists(filename):
             os.remove(filename)
-            os.remove(self.pmml_filename())
+            # os.remove(self.pmml_filename())
 
     def filename(self):
         pass
