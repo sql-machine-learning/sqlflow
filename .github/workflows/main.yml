@@ -48,7 +48,6 @@ jobs:
       run: |
         set -e
         SQLFLOW_TEST_DB_MYSQL_ADDR="127.0.0.1:13306" PYTHONPATH=${{ github.workspace }}/python scripts/test/mysql.sh
-        bash scripts/test/ipython.sh
   # TODO(typhoonzero): add back hive tests
   # test-hive-java:
   #   runs-on: [self-hosted, linux]
