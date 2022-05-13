@@ -40,8 +40,12 @@ func k8sCreateResource(yamlContent string) (string, error) {
 	return createRes[1], nil
 }
 
-func k8sReadWorkflow(workflowID string) (*wfv1.Workflow, error) {
-	cmd := exec.Command("kubectl", "get", "wf", workflowID, "-o", "json")
+func k8sReadWorkflow(workflowID string, namespace string) (*wfv1.Workflow, error) {
+	var cmd *exec.Cmd
+	if namespace == "" {
+		namespace = "default"
+	}
+	cmd = exec.Command("kubectl", "-n", namespace, "get", "wf", workflowID, "-o", "json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("getWorkflowResource error: %v\n%v", string(output), err)
@@ -49,8 +53,12 @@ func k8sReadWorkflow(workflowID string) (*wfv1.Workflow, error) {
 	return parseWorkflowResource(output)
 }
 
-func k8sReadPod(podName string) (*corev1.Pod, error) {
-	cmd := exec.Command("kubectl", "get", "pod", podName, "-o", "json")
+func k8sReadPod(podName, namespace string) (*corev1.Pod, error) {
+	var cmd *exec.Cmd
+	if namespace == "" {
+		namespace = "default"
+	}
+	cmd = exec.Command("kubectl", "-n", namespace, "get", "pod", podName, "-o", "json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("cmd: %s failed: %v", cmd, err)
@@ -58,8 +66,11 @@ func k8sReadPod(podName string) (*corev1.Pod, error) {
 	return parsePodResource(output)
 }
 
-func k8sReadPodLogs(podName, containerName, sinceTime string, enableTimeStamp bool) ([]string, error) {
-	cmdArray := []string{"kubectl", "logs", podName, containerName}
+func k8sReadPodLogs(podName, namespace, containerName, sinceTime string, enableTimeStamp bool) ([]string, error) {
+	if namespace == "" {
+		namespace = "default"
+	}
+	cmdArray := []string{"kubectl", "-n", namespace, "logs", podName, containerName}
 	if enableTimeStamp {
 		cmdArray = append(cmdArray, []string{"--timestamps=true", fmt.Sprintf("--since-time=%s", sinceTime)}...)
 	}
@@ -71,8 +82,11 @@ func k8sReadPodLogs(podName, containerName, sinceTime string, enableTimeStamp bo
 	return strings.Split(strings.TrimSpace(string(output)), "\n"), nil
 }
 
-func k8sDeletePod(podID string) error {
-	cmd := exec.Command("kubectl", "delete", "pod", podID, "--ignore-not-found")
+func k8sDeletePod(podID, namespace string) error {
+	if namespace == "" {
+		namespace = "default"
+	}
+	cmd := exec.Command("kubectl", "-n", namespace, "delete", "pod", podID, "--ignore-not-found")
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)
@@ -80,8 +94,11 @@ func k8sDeletePod(podID string) error {
 	return nil
 }
 
-func k8sDeleteWorkflow(workflowID string) error {
-	cmd := exec.Command("kubectl", "delete", "workflow", workflowID, "--ignore-not-found")
+func k8sDeleteWorkflow(workflowID, namespace string) error {
+	if namespace == "" {
+		namespace = "default"
+	}
+	cmd := exec.Command("kubectl", "-n", namespace, "delete", "workflow", workflowID, "--ignore-not-found")
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed %s, %v", cmd, err)

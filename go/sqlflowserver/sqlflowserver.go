@@ -163,7 +163,7 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 				}
 				return
 			}
-			if err = wr.Write(pb.Job{Id: string(out)}); err != nil {
+			if err = wr.Write(pb.Job{Id: string(out), Namespace: session.WfNamespace}); err != nil {
 				logger.Errorf("piping error: %v", err)
 			}
 			// end submit here
@@ -190,14 +190,15 @@ func SubmitWorkflow(sqlProgram string, session *pb.Session) *pipe.Reader {
 		}
 
 		wfID, e := argo.Submit(yaml)
-		defer logger.Infof("submitted, workflowID:%s, spent:%.f, SQL:%s, error:%v", wfID, time.Since(startTime).Seconds(), sqlProgram, e)
+		defer logger.Infof("submitted, workflowID:%s, namespace:%s, spent:%.f, SQL:%s, error:%v",
+			wfID, session.WfNamespace, time.Since(startTime).Seconds(), sqlProgram, e)
 		if e != nil {
 			if e := wr.Write(e); e != nil {
 				logger.Errorf("piping error: %v", e)
 			}
 			return
 		}
-		if e := wr.Write(pb.Job{Id: wfID}); e != nil {
+		if e := wr.Write(pb.Job{Id: wfID, Namespace: session.WfNamespace}); e != nil {
 			logger.Errorf("piping error: %v", e)
 			return
 		}

@@ -14,39 +14,34 @@
 
 set -e
 
-# 1. setup virtualenv for sqlflow runtime
 mkdir -p build
-virtualenv build/env
-# shellcheck disable=SC1091
-source build/env/bin/activate
 
-python -m pip install --quiet \
-    numpy==1.16.2 \
-    tensorflow-metadata==0.22.2 \
-    tensorflow==2.0.1 \
-    impyla==0.16.0 \
-    pyodps==0.8.3 \
-    dill==0.3.0 \
-    shap==0.30.1 \
-    xgboost==0.90 \
-    oss2==2.9.0 \
-    plotille==3.7 \
-    seaborn==0.9.0 \
-    scikit-learn==0.21.0 \
-    sklearn2pmml==0.56.0 \
-    jpmml-evaluator==0.3.1 \
-    PyUtilib==5.8.0 \
-    pyomo==5.6.9 \
-    mysqlclient==1.4.4 \
-    grpcio-tools==1.28.1 \
-    googleapis-common-protos==1.52.0 \
+# 1. install python deps
+python -m pip install sqlflow_models
+python -m pip install "numpy>=1.16.2,<1.19.0" \
+    "tensorflow-metadata>=0.22.2" \
+    "tensorflow==2.2.3" \
+    "impyla==0.16.0" \
+    "pyodps==0.8.3" \
+    "dill==0.3.0" \
+    "shap==0.30.1" \
+    "xgboost==0.90" \
+    "oss2==2.9.0" \
+    "plotille==3.7" \
+    "seaborn==0.9.0" \
+    "scikit-learn>=0.21.3" \
+    "sklearn2pmml==0.56.0" \
+    "jpmml-evaluator==0.3.1" \
+    "PyUtilib==5.8.0" \
+    "pyomo==5.6.9" \
+    "mysqlclient==1.4.4" \
+    "grpcio-tools==1.28.1" \
+    "googleapis-common-protos==1.52.0" \
     pytest \
     pytest-cov
 
-git clone https://github.com/sql-machine-learning/models.git
-(cd models && git fetch origin && \
-git checkout 5dc6421f562ea447e501fa355a48a6ee89856a1d && \
-python setup.py install)
+sudo apt-get update
+sudo apt-get install -y git
 
 git clone https://github.com/couler-proj/couler.git
 (cd couler && git fetch origin && \
@@ -87,3 +82,8 @@ protoc --java_out=src/main/java \
        src/main/proto/parser.proto && \
 mvn -B -q clean compile assembly:single && \
 cp target/*.jar "$SQLFLOW_PARSER_SERVER_LOADING_PATH" )
+
+# Go deps:
+go install golang.org/x/tools/cmd/goyacc@latest
+go install github.com/golang/protobuf/protoc-gen-go@v1.3.3
+go install github.com/wangkuiyi/ipynb/markdown-to-ipynb@latest

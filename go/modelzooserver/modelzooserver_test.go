@@ -61,6 +61,7 @@ func mockTmpModelRepo() (string, error) {
 }
 
 func TestModelZooServer(t *testing.T) {
+	t.Skip("skip model zoo tests")
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("Skipping mysql tests")
 	}

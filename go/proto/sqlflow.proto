@@ -53,6 +53,7 @@ service SQLFlow {
 
 message Job {
     string id = 1;
+    string namespace = 2;
 }
 
 message FetchRequest {
@@ -82,6 +83,9 @@ message Session {
     string hdfs_user = 7;
     string hdfs_pass = 8;
     string submitter = 9;
+    // for rbac
+    string service_account = 10;
+    string wf_namespace = 11;
 }
 
 // SQL statements to run

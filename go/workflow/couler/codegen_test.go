@@ -166,6 +166,7 @@ func mockSQLProgramIR() []ir.SQLFlowStmt {
 }
 
 func TestCompileCoulerProgram(t *testing.T) {
+	t.Skip("skip couler program test")
 	a := assert.New(t)
 
 	cfFileName := "/tmp/sqlflow-cluster.py"

@@ -21,6 +21,7 @@ import (
 )
 
 func TestCheckImageExists(t *testing.T) {
+	t.Skip("skip modelzoo tests")
 	a := assert.New(t)
 	os.Setenv("SQLFLOW_MODEL_ZOO_REGISTRY", "hub.docker.com")
 	exists := imageExistsOnRegistry("sqlflow/sqlflow", "latest")
@@ -30,6 +31,7 @@ func TestCheckImageExists(t *testing.T) {
 }
 
 func TestBuildAndPush(t *testing.T) {
+	t.Skip("skip modelzoo tests")
 	if os.Getenv("SQLFLOW_TEST_DB") != "mysql" {
 		t.Skip("only test build and push to model zoo when SQLFLOW_TEST_DB=mysql")
 	}
@@ -42,6 +44,7 @@ func TestBuildAndPush(t *testing.T) {
 }
 
 func TestBuildAndPushKaniko(t *testing.T) {
+	t.Skip("skip modelzoo tests")
 	if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
 		t.Skip("skip TestBuildAndPushKaniko when not in kubernetes cluster")
 	}

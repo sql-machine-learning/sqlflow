@@ -75,11 +75,12 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger := log.WithFields(log.Fields{
 		"requestID": log.UUID(),
 		"jobID":     req.Job.Id,
+		"namespace": req.Job.Namespace,
 		"stepID":    req.StepId,
 		"event":     "fetch",
 	})
 
-	wf, err := k8sReadWorkflow(req.Job.Id)
+	wf, err := k8sReadWorkflow(req.Job.Id, req.Job.Namespace)
 	if err != nil {
 		logger.Errorf("workflowFailed/k8sRead, error: %v", err)
 		return nil, err
@@ -87,7 +88,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	logger.Infof("phase:%s", wf.Status.Phase)
 
 	if isWorkflowPending(wf) {
-		return wfrsp.New().Response(req.Job.Id, "", "", false), nil
+		return wfrsp.New().Response(req.Job.Id, req.Job.Namespace, "", "", false), nil
 	}
 	stepGroupName, err := getStepGroup(wf, req.Job.Id, req.StepId)
 	if err != nil {
@@ -101,7 +102,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 	}
 	logPrefix := fmt.Sprintf("SQLFlow Step: [%d/%d]", stepIdx, stepCnt)
 
-	pod, err := getPodByStepGroup(wf, stepGroupName)
+	pod, err := getPodByStepGroup(wf, stepGroupName, req.Job.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +131,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		// snip the pod logs when it complete
 		// TODO(yancey1989): fetch the pod logs using an iteration way
 		// to avoid the memory overflow
-		podLogs, e := k8sReadPodLogs(pod.ObjectMeta.Name, "main", "", false)
+		podLogs, e := k8sReadPodLogs(pod.ObjectMeta.Name, req.Job.Namespace, "main", "", false)
 		if e != nil {
 			return nil, e
 		}
@@ -144,7 +145,7 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 		if isPodFailed(pod) {
 			e = fmt.Errorf("%s Failed, Log: %s\n%s", logPrefix, logURL, r.ErrorMessage())
 			logger.Errorf("workflowFailed, %v, spent:%d", e, time.Now().Second()-wf.CreationTimestamp.Second())
-			return r.ResponseWithStepComplete(req.Job.Id, "", newStepPhase, eof), e
+			return r.ResponseWithStepComplete(req.Job.Id, req.Job.Namespace, "", newStepPhase, eof), e
 		}
 		logger.Infof("workflowSucceed, spent:%d", time.Now().Second()-wf.CreationTimestamp.Second())
 
@@ -162,9 +163,9 @@ func Fetch(req *pb.FetchRequest) (*pb.FetchResponse, error) {
 			newStepPhase = ""
 			stepGroupName = nextStepGroup
 		}
-		return r.ResponseWithStepComplete(req.Job.Id, stepGroupName, newStepPhase, eof), nil
+		return r.ResponseWithStepComplete(req.Job.Id, req.Job.Namespace, stepGroupName, newStepPhase, eof), nil
 	}
-	return r.Response(req.Job.Id, stepGroupName, newStepPhase, eof), nil
+	return r.Response(req.Job.Id, req.Job.Namespace, stepGroupName, newStepPhase, eof), nil
 }
 
 func parseOffset(content string) (string, string, error) {
@@ -203,10 +204,10 @@ func getOffsetAndContentFromLogs(logs []string, oldOffset string) ([]string, str
 	return buffer, offset, nil
 }
 
-func getPodLogs(podName string, offset string) ([]string, string, error) {
+func getPodLogs(podName, namespace, offset string) ([]string, string, error) {
 	// NOTE(tony): A workflow pod usually contains two container: main and wait
 	// I believe wait is used for management by Argo, so we only need to care about main.
-	logs, err := k8sReadPodLogs(podName, "main", offset, true)
+	logs, err := k8sReadPodLogs(podName, namespace, "main", offset, true)
 	if err != nil {
 		return nil, "", err
 	}

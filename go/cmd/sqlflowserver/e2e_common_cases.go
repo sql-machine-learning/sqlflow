@@ -782,6 +782,7 @@ func removeColumnNamePrefix(columns []string) []string {
 }
 
 func caseTestOptimizeClauseWithoutGroupBy(t *testing.T) {
+	t.Skip("skip OptimizeClauseWithoutGroupBy")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"
@@ -834,6 +835,7 @@ INTO ` + resultTable + `;`
 }
 
 func caseTestOptimizeClauseWithBinaryVarType(t *testing.T) {
+	t.Skip("skip optimize cases")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"
@@ -879,6 +881,7 @@ INTO ` + resultTable + `;`
 }
 
 func caseTestOptimizeClauseWithoutConstraint(t *testing.T) {
+	t.Skip("Skip optimize cases")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"
@@ -923,6 +926,7 @@ INTO ` + resultTable + `;`
 }
 
 func caseTestOptimizeClauseWithGroupBy(t *testing.T) {
+	t.Skip("skip OptimizeClauseWithGroupBy")
 	a := assert.New(t)
 
 	dbName := "optimize_test_db"

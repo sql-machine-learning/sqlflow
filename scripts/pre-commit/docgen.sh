@@ -24,4 +24,4 @@ set -e
 # "latest"
 #
 go install ./go/cmd/docgen
-$GOPATH/bin/docgen > doc/model_parameter.md
+docgen > doc/model_parameter.md
