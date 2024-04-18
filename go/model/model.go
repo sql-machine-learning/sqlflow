@@ -316,6 +316,7 @@ func DumpDBModel(db *database.DB, table, cwd string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Can't careate model file: %v", err)
 	}
+	defer file.Close()
 	if _, err = io.Copy(file, sqlf); err != nil {
 		return "", fmt.Errorf("Can't dump model to local file")
 	}
